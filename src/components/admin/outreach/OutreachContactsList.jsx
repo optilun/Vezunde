@@ -160,7 +160,7 @@ export default function OutreachContactsList() {
         });
       }
     } catch (err) {
-      setError(`Sincronizarea s-a oprit la ${cursor} locatii. Apasa din nou: continua fara dubluri. (${err.response?.data?.error || err.message})`);
+      setError(`Sincronizarea s-a oprit la ${cursor} adrese. Apasa din nou: continua fara dubluri. (${err.response?.data?.error || err.message})`);
     }
     setSyncing(false);
     load();
@@ -193,7 +193,7 @@ export default function OutreachContactsList() {
               {syncSummary.created} create, {syncSummary.updated} actualizate, {syncSummary.unchanged} neschimbate, {syncSummary.skipped} sarite
               {syncSummary.done
                 ? ` — finalizat: ${syncSummary.total} locatii publicate cu email, ${syncSummary.uniqueEmails} adrese unice.`
-                : ` — in curs: ${syncSummary.processed} din ${syncSummary.total} locatii...`}
+                : ` — in curs: ${syncSummary.processed} din ${syncSummary.uniqueEmails} adrese...`}
             </p>
             {syncSummary.breakdown && <TagBreakdown breakdown={syncSummary.breakdown} />}
           </div>

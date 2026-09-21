@@ -187,7 +187,15 @@ assert.match(campaignOpsSource, /AUTO_TAG_PREFIXES/, 'Tag-urile automate trebuie
 
   const syncBody = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
   assert.match(syncBody, /everyLocation\.filter\(isOutreachCandidate\)/, 'Sincronizarea ia doar locatiile publice cu o adresa valida');
-  assert.match(syncBody, /const email = firstValidEmail\(location\.public_email\)/, 'Adresa se extrage cu firstValidEmail, nu se respinge tot campul');
+  const groupBody = extractFunctionBody(campaignOpsSource, /function groupCandidatesByEmail\(/);
+  assert.match(groupBody, /firstValidEmail\(location\.public_email\)/, 'Adresa se extrage cu firstValidEmail, nu se respinge tot campul');
+  // Un contact se scrie cel mult o data per sincronizare: bucla merge pe adrese, nu pe locatii.
+  assert.match(syncBody, /const groups = groupCandidatesByEmail\(candidates\)/);
+  assert.match(syncBody, /const chunk = groups\.slice\(cursor, cursor \+ SYNC_CHUNK_SIZE\)/, 'Cursorul avanseaza pe adrese unice, nu pe locatii');
+  assert.match(syncBody, /for \(const group of chunk\)/);
+  assert.doesNotMatch(syncBody, /for \(const location of chunk\)/, 'Bucla pe locatii rescria acelasi contact de zeci de ori pentru lanturi');
+  const nameBody = extractFunctionBody(campaignOpsSource, /function groupDisplayName\(/);
+  assert.match(nameBody, /organization\?\.public_display_name \|\| organization\?\.name/, 'O adresa comuna unui lant poarta numele organizatiei, nu al primei sucursale');
   assert.match(syncBody, /if \(!syncPatchChangesContact\(existing, patch\)\)/, 'Contactele neschimbate nu se rescriu la fiecare resincronizare');
   assert.match(syncBody, /unique_emails:/, 'Raspunsul raporteaza cate adrese unice sunt, ca numarul final sa nu surprinda');
 

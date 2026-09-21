@@ -277,6 +277,39 @@ async function actionPreviewSegment(svc, payload) {
   });
 }
 
+// Un contact = o adresa de email. Candidatii (deja sortati dupa nume) se grupeaza pe adresa, iar
+// fiecare grup se scrie O SINGURA DATA per sincronizare. Inainte se scria per locatie: cele 79 de
+// locatii Lensa cu aceeasi adresa rescriau acelasi contact de 79 de ori la rand, fiecare data cu
+// alt nume si alt oras, iar sincronizarea murea exact acolo (2026-09-21, de doua ori la "Lensa").
+function groupCandidatesByEmail(candidates) {
+  const groups = new Map();
+  for (const location of candidates) {
+    const email = firstValidEmail(location.public_email);
+    if (!email) continue;
+    if (!groups.has(email)) groups.set(email, []);
+    groups.get(email).push(location);
+  }
+  return [...groups.entries()].map(([email, locations]) => ({ email, locations }));
+}
+
+// Numele afisat pentru o adresa folosita de mai multe locatii ale ACELEIASI organizatii e numele
+// organizatiei ("Lensa"), nu numele primei sucursale ("Lensa Bacau — Hello Shopping Park"):
+// emailul ajunge la sediu, nu la un magazin.
+function groupDisplayName(group, organizationsById) {
+  const representative = group.locations[0];
+  const locationName = representative.public_display_name || representative.name || '';
+  if (group.locations.length < 2) return locationName;
+  const orgIds = new Set(group.locations.map((location) => location.organization_id || ''));
+  if (orgIds.size !== 1 || orgIds.has('')) return locationName;
+  const organization = organizationsById.get(representative.organization_id);
+  return organization?.public_display_name || organization?.name || locationName;
+}
+
+async function listAllOrganizationsById(svc) {
+  const rows = (await svc.entities.ProviderOrganization.list('name', DEFAULT_LOCATION_LIST_LIMIT)) || [];
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
 async function actionSyncContactsFromDirectory(svc, user, payload) {
   const filters = {
     target_counties: payload.target_counties,
@@ -291,14 +324,15 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   const locationCounts = countLocationsByOrganization(everyLocation);
   const allLocations = everyLocation.filter(isOutreachCandidate);
   const candidates = allLocations.filter((location) => locationMatchesSegment(location, filters));
-  const chunk = candidates.slice(cursor, cursor + SYNC_CHUNK_SIZE);
+  const groups = groupCandidatesByEmail(candidates);
+  const chunk = groups.slice(cursor, cursor + SYNC_CHUNK_SIZE);
 
-  const existingContacts = await listAllContacts(svc);
-  const byLocationId = new Map(existingContacts.filter((c) => c.location_id).map((c) => [c.location_id, c]));
+  const [existingContacts, organizationsById] = await Promise.all([
+    listAllContacts(svc),
+    listAllOrganizationsById(svc),
+  ]);
   const byNormalizedEmail = new Map(existingContacts.map((c) => [normalizeEmail(c.normalized_email || c.email), c]));
-  // Ambele harti se actualizeaza si in timpul buclei de mai jos: doua locatii din ACELASI lot care
-  // publica aceeasi adresa nu se regasesc in harta initiala si, fara actualizare, ar crea doua
-  // contacte duplicate pentru aceeasi adresa.
+  const byLocationId = new Map(existingContacts.filter((c) => c.location_id).map((c) => [c.location_id, c]));
 
   const now = new Date().toISOString();
   let created = 0;
@@ -306,16 +340,17 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   let unchanged = 0;
   let skipped = 0;
 
-  for (const location of chunk) {
-    const email = firstValidEmail(location.public_email);
-    if (!email) { skipped++; continue; }
-    const existing = byLocationId.get(location.id) || byNormalizedEmail.get(email);
+  for (const group of chunk) {
+    const { email } = group;
+    const location = group.locations[0];
+    const existing = byNormalizedEmail.get(email)
+      || group.locations.map((row) => byLocationId.get(row.id)).find(Boolean);
     const locationCount = location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1;
     const autoTags = buildAutoTags(location, locationCount);
     const descriptive = {
       location_id: location.id,
       organization_id: location.organization_id || '',
-      company_name: location.public_display_name || location.name || '',
+      company_name: groupDisplayName(group, organizationsById),
       city: location.locality_name || location.city || '',
       county: location.county_name || location.county || '',
       provider_type: location.provider_type || '',
@@ -336,18 +371,13 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
       if (!existing.source_type) patch.source_type = location.source_type || 'public_directory';
       if (!existing.lawful_basis) patch.lawful_basis = 'legitimate_interest';
       if (!syncPatchChangesContact(existing, patch)) {
-        byNormalizedEmail.set(email, existing);
-        byLocationId.set(location.id, existing);
         unchanged++;
         continue;
       }
-      const saved = await svc.entities.OutreachContact.update(existing.id, patch);
-      const merged = saved || { ...existing, ...patch };
-      byNormalizedEmail.set(email, merged);
-      byLocationId.set(location.id, merged);
+      await svc.entities.OutreachContact.update(existing.id, patch);
       updated++;
     } else {
-      const created_contact = await svc.entities.OutreachContact.create({
+      const createdContact = await svc.entities.OutreachContact.create({
         ...descriptive,
         tags: autoTags,
         status: 'new',
@@ -361,31 +391,26 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
         consent_audit: [{ at: now, source: 'sync_contacts_from_directory', action: 'created' }],
         last_status_change_at: now,
       });
-      if (created_contact) {
-        byNormalizedEmail.set(email, created_contact);
-        byLocationId.set(location.id, created_contact);
-      }
+      if (createdContact) byNormalizedEmail.set(email, createdContact);
       created++;
     }
   }
 
   const nextCursor = cursor + chunk.length;
-  const hasMore = nextCursor < candidates.length;
-  // Distributia se calculeaza peste toti candidatii, nu doar peste lotul curent, ca numerele sa
+  const hasMore = nextCursor < groups.length;
+  // Distributia se calculeaza peste toate adresele, nu doar peste lotul curent, ca numerele sa
   // fie citibile ca imagine de ansamblu inca de la primul lot.
-  const breakdown = tallyTags(candidates.map((location) => buildAutoTags(
-    location,
-    location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1,
+  const breakdown = tallyTags(groups.map((group) => buildAutoTags(
+    group.locations[0],
+    group.locations[0].organization_id ? (locationCounts.get(group.locations[0].organization_id) || 1) : 1,
   )));
-
-  const uniqueEmails = new Set(candidates.map((location) => firstValidEmail(location.public_email))).size;
 
   return Response.json({
     created,
     updated,
     unchanged,
     skipped,
-    unique_emails: uniqueEmails,
+    unique_emails: groups.length,
     processed: chunk.length,
     total_candidates: candidates.length,
     next_cursor: nextCursor,
