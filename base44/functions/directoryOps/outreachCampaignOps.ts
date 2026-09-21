@@ -299,13 +299,14 @@ function groupCandidatesByEmail(candidates) {
 // Numele afisat pentru o adresa folosita de mai multe locatii ale ACELEIASI organizatii e numele
 // organizatiei ("Lensa"), nu numele primei sucursale ("Lensa Bacau — Hello Shopping Park"):
 // emailul ajunge la sediu, nu la un magazin.
+// Si cand adresa e comuna mai multor organizatii inrudite (Vitreum SRL / Vitreum Medical / ...),
+// numele organizatiei primei locatii e mai potrivit decat numele unei sucursale ("Cabinet
+// Oftalmologic Vitreum Baia Mare — Regele Mihai I" pentru un email trimis la 19 locatii).
 function groupDisplayName(group, organizationsById) {
   const representative = group.locations[0];
   const locationName = representative.public_display_name || representative.name || '';
   if (group.locations.length < 2) return locationName;
-  const orgIds = new Set(group.locations.map((location) => location.organization_id || ''));
-  if (orgIds.size !== 1 || orgIds.has('')) return locationName;
-  const organization = organizationsById.get(representative.organization_id);
+  const organization = organizationsById.get(representative.organization_id || '');
   return organization?.public_display_name || organization?.name || locationName;
 }
 
