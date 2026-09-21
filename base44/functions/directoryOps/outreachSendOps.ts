@@ -191,7 +191,10 @@ async function releaseLock(svc, campaignId, patch = {}) {
 async function releaseLockPreservingAdminStop(svc, campaignId, { finished, previousSentAt, patch = {} }) {
   const current = await svc.entities.OutreachCampaign.get(campaignId).catch(() => null);
   if (current && ADMIN_STOP_STATUSES.has(current.status)) {
-    await releaseLock(svc, campaignId, patch);
+    // Motivul opririi (scris de admin sau de oprirea automata din webhook in timpul lotului)
+    // trebuie sa ramana vizibil: nu il stergem odata cu eliberarea lock-ului.
+    const { failure_message: _keepStopReason, ...rest } = patch;
+    await releaseLock(svc, campaignId, rest);
     return current.status;
   }
   const status = finished ? 'sent' : 'sending';
