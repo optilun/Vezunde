@@ -83,6 +83,34 @@
       },
       "description": "location/organization (vezi OutreachContact.email_scope), gol = ambele. Permite o campanie separata, cu alt text, pentru adresele comune mai multor locatii."
     },
+    "daily_send_limit": {
+      "type": "number",
+      "default": 50,
+      "description": "Cate emailuri trimite campania pe zi (ora Romaniei), intre 10 si 2000. Cu daily_send_ramp activ e limita din prima zi de trimitere."
+    },
+    "daily_send_ramp": {
+      "type": "boolean",
+      "default": true,
+      "description": "Dubleaza limita in fiecare zi in care campania a trimis (50, 100, 200...), ca domeniul de trimitere sa-si construiasca reputatia treptat."
+    },
+    "next_send_after": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Limita zilei a fost atinsa: trimiterea se reia dupa acest moment (a doua zi la 09:00, ora Romaniei). Gol = nicio asteptare."
+    },
+    "pause_reason": {
+      "type": "string",
+      "description": "De ce e campania pe pauza: admin, bounce_rate (prea multe emailuri respinse) sau complaints (reclamatie de spam). Ultimele doua sunt puse automat."
+    },
+    "auto_paused_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Cand a fost oprita automat campania (bounce_rate / complaints)"
+    },
+    "health_baseline": {
+      "type": "object",
+      "description": "{sent, bounced, complained, at}: contoarele in momentul in care adminul a reluat o campanie oprita automat. Oprirea automata se calculeaza doar pe ce s-a trimis dupa acest moment."
+    },
     "status": {
       "type": "string",
       "enum": [
