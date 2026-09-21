@@ -4,7 +4,7 @@
   "properties": {
     "location_id": {
       "type": "string",
-      "description": "ProviderLocation asociata, daca a fost materializat din director"
+      "description": "ProviderLocation asociata, daca a fost materializat din director. Pentru o adresa de organizatie: prima locatie alfabetic dintre cele care folosesc adresa."
     },
     "organization_id": {
       "type": "string",
@@ -12,7 +12,7 @@
     },
     "company_name": {
       "type": "string",
-      "description": "Numele firmei/locatiei"
+      "description": "Numele firmei/locatiei. Pentru o adresa de organizatie: numele organizatiei."
     },
     "email": {
       "type": "string",
@@ -39,6 +39,23 @@
     "organization_location_count": {
       "type": "number",
       "description": "Cate locatii are organizatia din care face parte contactul. Sta la baza tag-urilor retea:locatie-unica / retea:grup-mic / retea:lant."
+    },
+    "email_scope": {
+      "type": "string",
+      "enum": [
+        "location",
+        "organization"
+      ],
+      "default": "location",
+      "description": "A cui e adresa: location = o singura locatie din director o foloseste; organization = aceeasi adresa e folosita de mai multe locatii (de obicei sediul unui lant). Se calculeaza la sincronizare; campaniile pot tinti separat cele doua tipuri."
+    },
+    "shared_location_count": {
+      "type": "number",
+      "description": "Cate locatii publice din director folosesc aceasta adresa (1 pentru o adresa de locatie). Alimenteaza campul de sablon [LOCATII]."
+    },
+    "shared_city_count": {
+      "type": "number",
+      "description": "In cate orase sunt locatiile care folosesc aceasta adresa. Alimenteaza campul de sablon [ORASE]."
     },
     "status": {
       "type": "string",
@@ -80,7 +97,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Etichete pentru segmentare. Cele cu prefix tip:/retea:/profil: sunt puse automat la sincronizarea din director si reimprospatate la fiecare sincronizare; restul sunt ale adminului si nu se ating."
+      "description": "Etichete pentru segmentare. Cele cu prefix tip:/retea:/profil:/adresa: sunt puse automat la sincronizarea din director si reimprospatate la fiecare sincronizare; restul sunt ale adminului si nu se ating."
     },
     "last_contacted_at": {
       "type": "string",
