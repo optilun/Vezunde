@@ -88,15 +88,28 @@ assert.doesNotMatch(unsubscribeSource, /searchParams\.get\('email'\)/, 'Nu trebu
 const sendOpsSource = source('base44/functions/directoryOps/outreachSendOps.ts');
 assert.match(sendOpsSource, /action === 'advance_campaign_sends' && input\.__automation_trigger === true/, 'Bypass-ul de automatizare trebuie sa verifice explicit actiunea si flag-ul, ca la directoryAutoImportOps');
 assert.match(sendOpsSource, /user\.role !== 'admin'/, 'O rulare manuala (fara __automation_trigger) trebuie sa ramana rezervata adminilor');
-assert.match(sendOpsSource, /getAlreadyProcessedContactIds/);
+// __automation_trigger e doar o indicatie de rutare: cronul se identifica prin credentialul de
+// serviciu (Authorization === Base44-Service-Authorization), validat cu o citire reala.
+const automationBody = extractFunctionBody(sendOpsSource, /async function automationServiceRole\(/);
+assert.match(automationBody, /authorization === serviceAuthorization/);
+assert.match(automationBody, /Base44-Service-Authorization/);
+assert.match(automationBody, /svc\.entities\.OutreachCampaign\.filter\(/, 'Credentialul de serviciu trebuie validat cu o citire facuta cu el');
+assert.match(sendOpsSource, /const svc = await automationServiceRole\(base44, req\);\s*if \(!svc\) return Response\.json\([^)]*\{ status: 403 \}\)/, 'Un apel de automatizare fara credential de serviciu trebuie refuzat');
+assert.doesNotMatch(sendOpsSource, /actionAdvanceCampaignSends\(base44\.asServiceRole\)/, 'asServiceRole nu se da fara verificarea credentialului');
+assert.match(sendOpsSource, /loadCampaignProgress/);
 assert.match(sendOpsSource, /sendBatchViaResend/);
+// Idempotenta Resend: cheie din continutul lotului, etichete campanie + contact pe fiecare email.
+assert.match(sendOpsSource, /sendBatchViaResend\(apiKey, payloads, \{ idempotencyKey \}\)/);
+assert.match(sendOpsSource, /name: 'viasee_campaign'/);
+assert.match(sendOpsSource, /name: 'viasee_contact'/);
+assert.match(sendOpsSource, /issuedAt: tokenIssuedAt/, 'Tokenul de dezabonare trebuie sa fie determinist, altfel cheia de idempotenta difera la reincercare');
 
 const advanceBody = extractFunctionBody(sendOpsSource, /async function advanceOneCampaign\(/);
 assert.doesNotMatch(advanceBody, /\bsendViaResend\(/, 'Trimiterea reala a campaniei trebuie sa foloseasca Resend Batch API, nu trimitere sincrona per destinatar');
 // Suprimarea e pe categorii (marketing / anunturi); 'all' (respingeri, reclamatii, dezabonare
 // totala) blocheaza orice campanie. Vezi shared/outreachAudiencePolicy.js.
 const suppressionCheckIndex = advanceBody.search(/isContactSuppressed\(contact\)\s*\|\|\s*isSuppressedFor\(suppressionMap, email, category\)/);
-const batchSendIndex = advanceBody.indexOf('sendBatchViaResend(');
+const batchSendIndex = advanceBody.indexOf('deliverBatch(');
 assert.ok(suppressionCheckIndex !== -1, 'Verificarea de suprimare per-destinatar lipseste din advanceOneCampaign');
 assert.ok(suppressionCheckIndex < batchSendIndex, 'Suprimarea trebuie verificata inainte de trimiterea efectiva a lotului');
 
@@ -107,9 +120,13 @@ assert.doesNotMatch(
   /safeCampaignLog\([^;]*status: 'failed'/s,
   'Un esec de lot nu trebuie sa scrie log-uri terminale failed per destinatar: ei ar fi sariti definitiv, desi nu au primit nimic',
 );
-assert.match(advanceBody, /batchFailure = \{/, 'Esecul de lot trebuie retinut si tratat dupa bucla, nu ignorat');
-assert.match(advanceBody, /isTransientBatchFailure\(result\)/, 'Esecurile tranzitorii trebuie deosebite de cele permanente');
-const batchFailureIndex = advanceBody.indexOf('batchFailure = {');
+assert.match(advanceBody, /batchFailure = delivery\.failure/, 'Esecul de lot trebuie retinut si tratat dupa bucla, nu ignorat');
+assert.match(sendOpsSource, /isTransientBatchFailure\(result\)/, 'Esecurile tranzitorii trebuie deosebite de cele permanente');
+// Inaintea fiecarui lot: lock-ul e inca al rularii, adminul n-a oprit campania.
+const gateIndex = advanceBody.lastIndexOf('checkBeforeSend(', batchSendIndex);
+assert.ok(gateIndex !== -1 && gateIndex < batchSendIndex, 'Verificarea lock-ului trebuie facuta chiar inainte de trimiterea lotului');
+assert.match(extractFunctionBody(sendOpsSource, /async function checkBeforeSend\(/), /live\.execution_lock_token !== lockToken/);
+const batchFailureIndex = advanceBody.indexOf('batchFailure = delivery.failure');
 const cursorAdvanceIndex = advanceBody.indexOf('cursor += batchIds.length');
 assert.ok(batchFailureIndex !== -1 && cursorAdvanceIndex !== -1);
 assert.ok(
@@ -139,8 +156,13 @@ assert.doesNotMatch(
 );
 assert.match(advanceBody, /releaseLockPreservingAdminStop\(/);
 
-// Preluarea unei campanii se confirma prin re-citire (Base44 nu are update conditionat).
-assert.match(sendOpsSource, /claimed\.execution_lock_token !== token/, 'Lipseste confirmarea lock-ului prin re-citire');
+// Preluarea unei campanii se confirma prin doua re-citiri, la o clipa distanta (Base44 nu are
+// update conditionat, iar ordinea a doua scrieri simultane nu e garantata).
+const claimBody = extractFunctionBody(sendOpsSource, /async function claimCampaignForSending\(/);
+assert.match(claimBody, /first\.execution_lock_token !== token/, 'Lipseste confirmarea lock-ului prin re-citire');
+assert.match(claimBody, /await sleep\(lockConfirmDelayMs\(\)\);\s*const confirmed = /, 'Lipseste a doua confirmare, dupa o pauza');
+assert.match(claimBody, /confirmed\.execution_lock_token !== token/);
+assert.match(claimBody, /hasActiveLock\(fresh, nowMs\)/, 'Re-citirea dinaintea preluarii trebuie sa respecte un lock activ');
 
 // --- outreachCampaignOps.ts: aprobare cu confirmare tastata + materializare cu conformitate ------
 const campaignOpsSource = source('base44/functions/directoryOps/outreachCampaignOps.ts');
