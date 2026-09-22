@@ -1,7 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-import OutreachAudienceBuilder from "./OutreachAudienceBuilder";
+import {
+  CATEGORY_OPTIONS,
+  CATEGORY_LABELS,
+  categoryBadgeClass,
+  normalizeCategory,
+  callOutreach,
+  formatPercent,
+  formatDateTime,
+} from "./outreachLabels";
 
 const STATUS_LABELS = {
   draft: "Ciorna",
@@ -35,64 +42,119 @@ function statusClass(status) {
   return "bg-secondary text-muted-foreground";
 }
 
-const EMPTY_DRAFT = {
-  name: "",
-  campaign_type: "marketing",
-  subject: "",
-  body_html: "",
-  from_name: "VIASEE",
-  // from = subdomeniul verificat in Resend; reply_to = casuta reala de pe radacina, livrata prin
-  // Cloudflare Email Routing. Vezi DEFAULT_FROM_EMAIL din base44/shared/outreachEmailPolicy.js.
-  from_email: "contact@mail.viasee.ro",
-  reply_to_email: "contact@viasee.ro",
-  target_counties: [],
-  target_provider_types: [],
-  target_profile_control_status: [],
-  target_tags: [],
-  target_email_scope: [],
-};
+function rate(part, whole) {
+  return whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0;
+}
+
+const EMPTY_DRAFT = { category: "marketing", template_id: "", name: "", subject: "" };
+
+function OverviewCard({ category, data }) {
+  const stats = data || { campaigns: 0, active: 0, sent: 0, delivered: 0, bounced: 0 };
+  return (
+    <div className="rounded-2xl border border-border p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(category)}`}>
+          {category === "announcement" ? "Anunturi" : "Marketing"}
+        </span>
+        <span className="text-[11px] text-muted-foreground">
+          {stats.campaigns} {stats.campaigns === 1 ? "campanie" : "campanii"}{stats.active ? ` · ${stats.active} in curs` : ""}
+        </span>
+      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Trimise</dt>
+          <dd className="text-lg font-bold tabular-nums text-foreground">{stats.sent}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Livrate</dt>
+          <dd className="text-lg font-bold tabular-nums text-foreground">
+            {stats.delivered}
+            <span className="ml-1 text-[11px] font-semibold text-muted-foreground">{formatPercent(rate(stats.delivered, stats.sent))}</span>
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Respinse</dt>
+          <dd className={`text-lg font-bold tabular-nums ${stats.bounced ? "text-red-700" : "text-foreground"}`}>{stats.bounced}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
 
 export default function OutreachCampaignList({ onSelect }) {
   const [campaigns, setCampaigns] = useState([]);
+  const [overview, setOverview] = useState(null);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState("all");
 
   const load = async () => {
     setLoading(true);
     setError("");
-    const response = await base44.functions.invoke("outreachCampaignOps", { action: "list_campaigns" })
-      .catch((err) => ({ data: { error: err.response?.data?.error || err.message } }));
+    const [list, summary, templateData] = await Promise.all([
+      callOutreach("outreachCampaignOps", "list_campaigns"),
+      callOutreach("outreachCampaignOps", "outreach_overview"),
+      callOutreach("outreachCampaignOps", "list_templates"),
+    ]);
     setLoading(false);
-    if (response.data?.error) { setError(response.data.error); return; }
-    setCampaigns(response.data?.campaigns || []);
+    if (list.error) { setError(list.error); return; }
+    setCampaigns(list.campaigns || []);
+    if (!summary.error) setOverview(summary);
+    if (Array.isArray(templateData.templates)) setTemplates(templateData.templates);
   };
 
   useEffect(() => { load(); }, []);
 
+  const categoryTemplates = useMemo(
+    () => templates.filter((template) => normalizeCategory(template.category) === draft.category),
+    [templates, draft.category],
+  );
+  const chosenTemplate = templates.find((template) => template.id === draft.template_id) || null;
+
+  const visibleCampaigns = filter === "all"
+    ? campaigns
+    : campaigns.filter((campaign) => normalizeCategory(campaign.category) === filter);
+
   const create = async () => {
-    if (!draft.name.trim() || !draft.subject.trim()) {
-      setError("Numele si subiectul sunt obligatorii.");
-      return;
-    }
+    if (!draft.name.trim()) { setError("Da-i campaniei un nume intern."); return; }
+    if (!chosenTemplate && !draft.subject.trim()) { setError("Alege un sablon sau scrie subiectul emailului."); return; }
     setSaving(true);
     setError("");
-    const response = await base44.functions.invoke("outreachCampaignOps", { action: "create_campaign", ...draft })
-      .catch((err) => ({ data: { error: err.response?.data?.error || err.message } }));
+    const data = await callOutreach("outreachCampaignOps", "create_campaign", {
+      name: draft.name.trim(),
+      category: draft.category,
+      template_id: chosenTemplate?.id || "",
+      subject: chosenTemplate ? "" : draft.subject.trim(),
+      from_name: "VIASEE",
+      // from = subdomeniul verificat in Resend; reply_to = casuta reala de pe radacina, livrata prin
+      // Cloudflare Email Routing. Vezi DEFAULT_FROM_EMAIL din base44/shared/outreachEmailPolicy.js.
+      from_email: "contact@mail.viasee.ro",
+      reply_to_email: "contact@viasee.ro",
+    });
     setSaving(false);
-    if (response.data?.error) { setError(response.data.error); return; }
+    if (data.error) { setError(data.error); return; }
     setShowForm(false);
     setDraft(EMPTY_DRAFT);
     await load();
-    if (response.data?.campaign?.id) onSelect(response.data.campaign.id);
+    if (data.campaign?.id) onSelect(data.campaign.id);
   };
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-foreground">Campanii de outreach</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Campanii</h3>
+          {overview?.contacts && (
+            <p className="text-[11px] text-muted-foreground">
+              Destinatari disponibili: {overview.contacts.directory} din director, {overview.contacts.provider_account} {overview.contacts.provider_account === 1 ? "furnizor cu cont" : "furnizori cu cont"}.
+              {overview.suppressed && ` Dezabonati: ${overview.suppressed.marketing} de la marketing, ${overview.suppressed.announcement} de la anunturi, ${overview.suppressed.all} de la tot (inclusiv respinsi).`}
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
@@ -102,95 +164,100 @@ export default function OutreachCampaignList({ onSelect }) {
         </button>
       </div>
 
+      {overview?.by_category && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <OverviewCard category="marketing" data={overview.by_category.marketing} />
+          <OverviewCard category="announcement" data={overview.by_category.announcement} />
+        </div>
+      )}
+
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
       {showForm && (
-        <div className="space-y-4 rounded-2xl border border-border p-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs font-semibold text-foreground">Nume intern campanie</span>
-              <input
-                type="text"
-                value={draft.name}
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-foreground">Tip campanie</span>
-              <select
-                value={draft.campaign_type}
-                onChange={(e) => setDraft((d) => ({ ...d, campaign_type: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              >
-                <option value="marketing">Marketing</option>
-                <option value="claim_notice">Notificare revendicare</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="text-xs font-semibold text-foreground">Subiect email</span>
-            <input
-              type="text"
-              value={draft.subject}
-              onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
-              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-xs font-semibold text-foreground">Continut email</span>
-            <textarea
-              value={draft.body_html}
-              onChange={(e) => setDraft((d) => ({ ...d, body_html: e.target.value }))}
-              rows={8}
-              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm font-mono"
-            />
-          </label>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <label className="block">
-              <span className="text-xs font-semibold text-foreground">Nume expeditor</span>
-              <input
-                type="text"
-                value={draft.from_name}
-                onChange={(e) => setDraft((d) => ({ ...d, from_name: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-foreground">Email expeditor</span>
-              <input
-                type="text"
-                value={draft.from_email}
-                onChange={(e) => setDraft((d) => ({ ...d, from_email: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              />
-              <span className="mt-1 block text-[11px] text-muted-foreground">Domeniul trebuie verificat in Resend</span>
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-foreground">Reply-to</span>
-              <input
-                type="text"
-                value={draft.reply_to_email}
-                onChange={(e) => setDraft((d) => ({ ...d, reply_to_email: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              />
-            </label>
-          </div>
-
+        <div className="space-y-5 rounded-2xl border border-border p-5">
           <div>
-            <span className="text-xs font-semibold text-foreground">Audienta tinta</span>
-            <div className="mt-2">
-              <OutreachAudienceBuilder
-                filters={draft}
-                onChange={(next) => setDraft((d) => ({ ...d, ...next }))}
-              />
+            <p className="text-xs font-semibold text-foreground">1. Ce trimiti?</p>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {CATEGORY_OPTIONS.map((option) => {
+                const active = draft.category === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, category: option.value, template_id: "" }))}
+                    className={`rounded-xl border p-3 text-left transition-colors ${active ? "border-foreground bg-secondary/60" : "border-border hover:bg-secondary/40"}`}
+                  >
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(option.value)}`}>{option.label}</span>
+                    <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">{option.description}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div>
+            <p className="text-xs font-semibold text-foreground">2. Porneste de la un sablon</p>
+            <div className="mt-2 space-y-2">
+              {categoryTemplates.map((template) => (
+                <label
+                  key={template.id}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${draft.template_id === template.id ? "border-foreground bg-secondary/60" : "border-border hover:bg-secondary/40"}`}
+                >
+                  <input
+                    type="radio"
+                    name="outreach-new-template"
+                    checked={draft.template_id === template.id}
+                    onChange={() => setDraft((d) => ({ ...d, template_id: template.id }))}
+                    className="mt-0.5"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-foreground">{template.name}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">Subiect: {template.subject}</span>
+                  </span>
+                </label>
+              ))}
+              <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${!draft.template_id ? "border-foreground bg-secondary/60" : "border-border hover:bg-secondary/40"}`}>
+                <input
+                  type="radio"
+                  name="outreach-new-template"
+                  checked={!draft.template_id}
+                  onChange={() => setDraft((d) => ({ ...d, template_id: "" }))}
+                  className="mt-0.5"
+                />
+                <span className="text-xs font-semibold text-foreground">Fara sablon, scriu emailul de la zero</span>
+              </label>
+              {!categoryTemplates.length && (
+                <p className="text-[11px] text-muted-foreground">Nu exista inca sabloane pentru aceasta categorie. Le poti adauga din tab-ul Sabloane.</p>
+              )}
+            </div>
+            {!draft.template_id && (
+              <label className="mt-3 block">
+                <span className="text-xs font-semibold text-foreground">Subiectul emailului</span>
+                <input
+                  id="outreach-new-subject"
+                  type="text"
+                  value={draft.subject}
+                  onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
+                />
+              </label>
+            )}
+          </div>
+
+          <label className="block">
+            <span className="text-xs font-semibold text-foreground">3. Nume intern</span>
+            <input
+              id="outreach-new-name"
+              type="text"
+              value={draft.name}
+              placeholder={draft.category === "announcement" ? "Anunt functii noi, octombrie" : "Revendicare, adrese de organizatie"}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
+            />
+            <span className="mt-1 block text-[11px] text-muted-foreground">Apare doar aici si in fraza de confirmare de la trimitere.</span>
+          </label>
+
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={create}
@@ -198,7 +265,7 @@ export default function OutreachCampaignList({ onSelect }) {
               className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-60"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Creeaza ciorna
+              Creeaza si alege destinatarii
             </button>
             <button
               type="button"
@@ -211,6 +278,19 @@ export default function OutreachCampaignList({ onSelect }) {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-2">
+        {[{ value: "all", label: "Toate" }, { value: "marketing", label: "Marketing" }, { value: "announcement", label: "Anunturi" }].map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setFilter(option.value)}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold ${filter === option.value ? "bg-foreground text-background" : "border border-border hover:bg-secondary"}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Se incarca...
@@ -221,16 +301,17 @@ export default function OutreachCampaignList({ onSelect }) {
             <thead className="bg-secondary/60 text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">Nume</th>
+                <th className="px-3 py-2">Tip</th>
                 <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Destinatari</th>
-                <th className="px-3 py-2">Trimise</th>
-                <th className="px-3 py-2">Deschise</th>
-                <th className="px-3 py-2">Click</th>
-                <th className="px-3 py-2">Respinse</th>
+                <th className="px-3 py-2 text-right">Destinatari</th>
+                <th className="px-3 py-2 text-right">Trimise</th>
+                <th className="px-3 py-2 text-right">Livrate</th>
+                <th className="px-3 py-2 text-right">Respinse</th>
+                <th className="px-3 py-2">Creata</th>
               </tr>
             </thead>
             <tbody>
-              {campaigns.map((campaign) => (
+              {visibleCampaigns.map((campaign) => (
                 <tr
                   key={campaign.id}
                   onClick={() => onSelect(campaign.id)}
@@ -238,19 +319,29 @@ export default function OutreachCampaignList({ onSelect }) {
                 >
                   <td className="px-3 py-2 font-medium text-foreground">{campaign.name}</td>
                   <td className="px-3 py-2">
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(campaign.category)}`}>
+                      {CATEGORY_LABELS[normalizeCategory(campaign.category)]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isAutoPaused(campaign) ? "bg-red-50 text-red-800" : statusClass(campaign.status)}`}>
                       {campaignStatusLabel(campaign)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">{campaign.recipient_count || 0}</td>
-                  <td className="px-3 py-2">{campaign.sent_count || 0}</td>
-                  <td className="px-3 py-2">{campaign.opened_count || 0}</td>
-                  <td className="px-3 py-2">{campaign.clicked_count || 0}</td>
-                  <td className="px-3 py-2">{campaign.bounced_count || 0}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{campaign.recipient_count || 0}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{campaign.sent_count || 0}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {campaign.delivered_count || 0}
+                    {(campaign.sent_count || 0) > 0 && (
+                      <span className="ml-1 text-muted-foreground">({formatPercent(rate(campaign.delivered_count || 0, campaign.sent_count))})</span>
+                    )}
+                  </td>
+                  <td className={`px-3 py-2 text-right tabular-nums ${(campaign.bounced_count || 0) > 0 ? "text-red-700" : ""}`}>{campaign.bounced_count || 0}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{formatDateTime(campaign.created_date)}</td>
                 </tr>
               ))}
-              {!campaigns.length && (
-                <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Nicio campanie inca.</td></tr>
+              {!visibleCampaigns.length && (
+                <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Nicio campanie in aceasta categorie.</td></tr>
               )}
             </tbody>
           </table>
