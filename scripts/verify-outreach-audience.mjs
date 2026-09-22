@@ -7,13 +7,43 @@ import {
   createStore,
   loadHandler,
   callHandler,
-  signedWebhookHeaders,
+  runSender as runSenderWith,
+  resendEvent,
+  sendWebhook,
   seedContact,
 } from './lib/outreachTestHarness.mjs';
 
 const { state, webhookSecretBytes } = installOutreachEnvironment({ dns: { 'faramx.ro': { Status: 0 } } });
 const audience = await import('../base44/shared/outreachAudiencePolicy.js');
 const policy = await import('../base44/shared/outreachEmailPolicy.js');
+const composer = await import('../base44/shared/outreachComposer.js');
+const csv = await import('../src/components/admin/outreach/csv.js');
+
+// ── 0. Adrese, caractere speciale, CSV ───────────────────────────────────────────────────────
+for (const good of ['office@optica.ro', 'Programari.Centru@Clinica-Ochi.RO', "o'brien+info@firma.co.uk", 'a@xn--mnchen-3ya.de']) {
+  assert.equal(policy.isSendableEmail(good), true, good);
+}
+for (const bad of ['office@optica.ro.', 'office@@optica.ro', 'of..fice@optica.ro', '.office@optica.ro', 'oficiu@optică.ro', 'office@optica', 'office @optica.ro', 'office@-optica.ro', 'a@b.c']) {
+  assert.equal(policy.isSendableEmail(bad), false, `${bad} ar face Resend sa refuze tot lotul`);
+}
+{
+  const html = composer.composeOutreachEmail(
+    { subject: 'S', body_html: 'Buna ziua, [FIRMA] din [ORAS].', show_listing_preview: false },
+    { company_name: 'Ochi & Lentile <Premium> $& $1', city: 'Targu "Mures"' },
+    { unsubscribeUrl: 'https://viasee.ro/dezabonare?t=x' },
+  );
+  assert.ok(html.html.includes('Ochi &amp; Lentile &lt;Premium&gt; $&amp; $1'), 'numele firmei e scapat in HTML, iar $& nu e interpretat');
+  assert.ok(!html.html.includes('<Premium>'));
+  assert.ok(html.html.includes('Targu &quot;Mures&quot;'));
+  assert.ok(html.text.includes('Buna ziua, Ochi & Lentile <Premium> $& $1 din Targu "Mures".'), 'versiunea text arata numele exact');
+}
+assert.equal(csv.csvCell('=HYPERLINK("http://rau")'), `"'=HYPERLINK(""http://rau"")"`, 'o formula devine text');
+assert.equal(csv.csvCell('+40 721 000 000'), "'+40 721 000 000");
+assert.equal(csv.csvCell('@SUM(A1)'), "'@SUM(A1)");
+assert.equal(csv.csvCell('-2+3'), "'-2+3");
+assert.equal(csv.csvCell('Optica; Centru'), '"Optica; Centru"');
+assert.equal(csv.csvCell('office@optica.ro'), 'office@optica.ro');
+assert.ok(csv.buildCsv(['a'], [['=1+1']]).startsWith('﻿a\r\n'));
 
 // ── 1. Reguli pure ───────────────────────────────────────────────────────────────────────────
 const base = {
@@ -60,6 +90,21 @@ const contacts = [
   assert.deepEqual(manual.eligible.map((c) => c.id), ['b'], 'doar alesi de mana; cei blocati raman blocati');
 }
 {
+  // Debifarea scoate adresa: randul duplicat cu aceeasi adresa nu ia locul celui debifat.
+  const spec = { category: 'announcement', audience_sources: ['provider_account', 'directory'] };
+  const withoutAccount = audience.computeAudienceRows(contacts, { ...spec, excluded_contact_ids: ['f'] });
+  const eligible = withoutAccount.eligible.map((c) => c.id);
+  assert.ok(!eligible.includes('e') && !eligible.includes('f'), 'shared@x.ro nu mai primeste nimic dupa debifare');
+  const rowE = audience.audienceRowView(withoutAccount.rows.find((row) => row.contact.id === 'e'));
+  assert.equal(rowE.excluded, true);
+  assert.equal(rowE.excluded_by_address, true);
+  assert.equal(withoutAccount.counts.excluded, 2);
+  const withoutDirectory = audience.computeAudienceRows(contacts, { ...spec, excluded_contact_ids: ['e'] });
+  assert.ok(!withoutDirectory.eligible.some((c) => c.email === 'shared@x.ro'), 'si invers: debifarea duplicatului scoate adresa');
+  const invalid = audience.computeAudienceRows([{ ...base, id: 'z', email: 'oficiu@optică.ro' }], { category: 'marketing' });
+  assert.equal(audience.audienceRowView(invalid.rows[0]).reason, 'invalid_email', 'adresele pe care Resend le-ar refuza nu intra in lista');
+}
+{
   const map = audience.buildSuppressionMap([
     { normalized_email: 'x@x.ro' },
     { normalized_email: 'y@y.ro', categories: ['marketing'] },
@@ -98,7 +143,7 @@ const unsubscribeOps = await loadHandler('base44/functions/directoryOps/outreach
 
 const store = createStore();
 const ops = (payload) => callHandler(campaignOps, store, payload);
-const runSender = () => callHandler(sendOps, store, { action: 'advance_campaign_sends', __automation_trigger: true }, { user: null });
+const runSender = () => runSenderWith(sendOps, store);
 
 // Furnizori cu cont: un utilizator activ, unul fara acces activ.
 await store.svc.entities.ProviderOrganization.create({ id: 'org-1', name: 'Optica Cont' });
@@ -153,7 +198,10 @@ assert.equal(listed('b@optica-b.ro').excluded, true);
 assert.equal(listed('fara-prezentari@optica-c.ro').reason, 'unsubscribed_category');
 assert.ok(list.facets.counties.includes('Timis'));
 assert.equal(list.facets.sources.provider_account, 1);
-await ops({ action: 'update_campaign', id: marketing.id, excluded_contact_ids: [directoryB.id] });
+const beforeExclusion = store.row('OutreachCampaign', marketing.id).recipient_count;
+const edited = await ops({ action: 'update_campaign', id: marketing.id, excluded_contact_ids: [directoryB.id] });
+assert.equal(edited.campaign.recipient_count, beforeExclusion - 1, 'numarul de destinatari al ciornei urmeaza bifele');
+assert.equal(edited.campaign.recipient_count, list.counts.eligible);
 const approval = await ops({ action: 'approve_campaign', id: marketing.id, confirmation_text: '' });
 assert.equal(approval.recipient_count, list.counts.eligible, 'aprobarea numara exact ce arata lista');
 
@@ -181,16 +229,20 @@ assert.match(accountEmail.html, /Dezaboneaza-te de la anunturi/);
 
 // Raport: o livrare si o respingere prin webhook, restul neconfirmate.
 const logFor = (email) => store.rows('OutreachCampaignLog').find((log) => log.campaign_id === announcement.id && log.email === email);
-for (const [type, email] of [['email.delivered', 'owner@cont.ro'], ['email.bounced', 'a@optica-a.ro']]) {
-  const body = JSON.stringify({ type, created_at: new Date().toISOString(), data: { email_id: logFor(email).resend_message_id, to: [email] } });
-  const result = await callHandler(webhookOps, store, null, { user: null, rawBody: body, headers: signedWebhookHeaders(webhookSecretBytes, body) });
+for (const [type, email, tagsAsList] of [['email.delivered', 'owner@cont.ro', false], ['email.bounced', 'a@optica-a.ro', true], ['email.delivered', 'fara-prezentari@optica-c.ro', false]]) {
+  const event = resendEvent(state, type, email, { tagsAsList, messageId: logFor(email).resend_message_id });
+  const result = await sendWebhook(webhookOps, store, webhookSecretBytes, event);
   assert.equal(result.processed, true, JSON.stringify(result));
 }
 const report = await ops({ action: 'campaign_report', id: announcement.id });
 assert.equal(report.summary.counts.sent, recipients.length);
-assert.equal(report.summary.counts.delivered, 1);
+assert.equal(report.summary.counts.delivered, 2);
 assert.equal(report.summary.counts.bounced, 1);
-assert.equal(report.summary.counts.awaiting, recipients.length - 2);
+assert.equal(report.summary.counts.awaiting, recipients.length - 3);
+const listed2 = await ops({ action: 'list_campaigns' });
+const listedAnnouncement = listed2.campaigns.find((campaign) => campaign.id === announcement.id);
+assert.equal(listedAnnouncement.delivered_count, 2, 'lista de campanii numara din jurnal');
+assert.equal(listedAnnouncement.bounced_count, 1);
 assert.equal(report.rows.find((row) => row.email === 'owner@cont.ro').outcome, 'delivered');
 assert.equal(report.rows.find((row) => row.email === 'owner@cont.ro').kind, 'provider_account');
 const bouncedSuppression = store.rows('OutreachSuppression').find((row) => row.normalized_email === 'a@optica-a.ro');
@@ -198,12 +250,45 @@ assert.deepEqual(bouncedSuppression.categories, ['all'], 'o respingere blocheaza
 
 // Dezabonare pe categorie, apoi de la tot.
 const token = await policy.createUnsubscribeToken('fara-prezentari@optica-c.ro', announcement.id);
-const byCategory = await callHandler(unsubscribeOps, store, null, { user: null, url: `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(token)}`, rawBody: '' });
+const unsubUrl = `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(token)}`;
+
+// Deschiderea linkului (un scaner de linkuri, un preview) nu dezaboneaza: redirect la pagina.
+const opened = await callHandler(unsubscribeOps, store, null, { user: null, url: unsubUrl, method: 'GET', raw: true });
+assert.equal(opened.status, 302);
+assert.equal(opened.headers.get('location'), `https://viasee.ro/dezabonare?t=${encodeURIComponent(token)}`);
+const inspected = await callHandler(unsubscribeOps, store, { mode: 'inspect' }, { user: null, url: unsubUrl });
+assert.equal(inspected.scope, 'announcement');
+assert.equal(inspected.email, 'fara-prezentari@optica-c.ro');
+assert.equal(store.row('OutreachContact', onlyMarketingOff.id).unsubscribed_categories.includes('announcement'), false, 'verificarea paginii nu dezaboneaza');
+assert.ok(!store.rows('OutreachSuppression').some((row) => row.normalized_email === 'fara-prezentari@optica-c.ro'));
+
+// Butonul Dezabonare din Gmail/Outlook (one-click, RFC 8058): imediat.
+const logsBefore = store.rows('OutreachCampaignLog').length;
+const byCategory = await callHandler(unsubscribeOps, store, null, { user: null, url: unsubUrl, rawBody: 'List-Unsubscribe=One-Click', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
 assert.equal(byCategory.scope, 'announcement', JSON.stringify(byCategory));
 let unsubscribed = store.row('OutreachContact', onlyMarketingOff.id);
 assert.deepEqual(unsubscribed.unsubscribed_categories.sort(), ['announcement', 'marketing']);
 assert.equal(unsubscribed.email_status, 'active', 'dezabonarea dintr-o categorie nu e dezabonare totala');
 assert.deepEqual(store.rows('OutreachSuppression').find((row) => row.normalized_email === 'fara-prezentari@optica-c.ro').categories, ['announcement']);
+assert.equal(store.rows('OutreachSuppression').find((row) => row.normalized_email === 'fara-prezentari@optica-c.ro').source, 'one_click_signed_token');
+const unsubLog = logFor('fara-prezentari@optica-c.ro');
+assert.equal(unsubLog.status, 'unsubscribed');
+assert.ok(unsubLog.unsubscribed_at && unsubLog.delivered_at, 'livrat, apoi dezabonat');
+assert.equal(store.rows('OutreachCampaignLog').length, logsBefore, 'nicio intrare de jurnal inventata');
+
+// Dezabonarea unei adrese respinse nu transforma respingerea in dezabonare.
+const bouncedToken = await policy.createUnsubscribeToken('a@optica-a.ro', announcement.id);
+await callHandler(unsubscribeOps, store, {}, { user: null, url: `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(bouncedToken)}` });
+assert.equal(logFor('a@optica-a.ro').status, 'bounced');
+assert.equal(audience.logOutcome(logFor('a@optica-a.ro')), 'bounced');
+assert.equal(store.rows('OutreachSuppression').find((row) => row.normalized_email === 'a@optica-a.ro').status, 'bounced', 'motivul suprimarii ramane respingerea');
+
+// Un token de test (emailul de test al campaniei) nu atinge jurnalul campaniei.
+const testToken = await policy.createUnsubscribeToken('owner@cont.ro', `test:${announcement.id}`);
+const testUnsub = await callHandler(unsubscribeOps, store, {}, { user: null, url: `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(testToken)}` });
+assert.equal(testUnsub.scope, 'announcement');
+assert.equal(logFor('owner@cont.ro').status, 'delivered');
+assert.equal(store.rows('OutreachCampaignLog').length, logsBefore);
 const everything = await callHandler(unsubscribeOps, store, { scope: 'all' }, { user: null, url: `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(token)}` });
 assert.equal(everything.scope, 'all');
 unsubscribed = store.row('OutreachContact', onlyMarketingOff.id);
