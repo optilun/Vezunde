@@ -30,6 +30,23 @@ export function isValidEmail(email = '') {
   return EMAIL_RE.test(normalizeEmail(email));
 }
 
+// Verificarea stricta de dinaintea trimiterii. isValidEmail e permisiva (accepta orice cu @ si
+// punct), iar Resend respinge cu 422 LOTUL INTREG daca o singura adresa din el nu e valida (de ex.
+// diacritice in adresa, puncte duble, un punct la final). O adresa care nu trece aici nu intra in
+// lista de destinatari si nu pleaca spre Resend.
+const SENDABLE_LOCAL_RE = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
+const SENDABLE_DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+
+export function isSendableEmail(email = '') {
+  const value = normalizeEmail(email);
+  if (!value || value.length > 254) return false;
+  const at = value.indexOf('@');
+  if (at <= 0 || at !== value.lastIndexOf('@')) return false;
+  const local = value.slice(0, at);
+  const domain = value.slice(at + 1);
+  return local.length <= 64 && SENDABLE_LOCAL_RE.test(local) && SENDABLE_DOMAIN_RE.test(domain);
+}
+
 // Unele locatii au doua adrese in acelasi camp, asa cum apar pe site-ul lor
 // ("programari@x.ro / secretariat@x.ro"). isValidEmail respinge tot sirul, iar locatia disparea
 // din outreach fara nicio urma. Luam prima adresa valida din camp.
@@ -105,6 +122,11 @@ export function stripHtml(html = '') {
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    // &amp; ultimul: altfel "&amp;lt;" ar deveni "<" in loc de "&lt;".
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
@@ -142,19 +164,25 @@ export function renderCityScope(contact = {}) {
   return formatRoCount(cities, 'oras', 'orase', 'un');
 }
 
-export function renderTemplateMergeFields(bodyHtml, contact = {}) {
-  const name = contact.contact_name || contact.company_name || '';
-  const company = contact.company_name || '';
-  const city = contact.city || '';
-  const county = contact.county || '';
+// Cu `escape: true` (emailul HTML) valorile din director se scapa: un nume de firma ca
+// "Ochi & Lentile <Premium>" trebuie sa apara ca text, nu sa strice sau sa injecteze HTML.
+// Functia de inlocuire (nu sirul) evita si interpretarea lui "$&" / "$1" din nume.
+export function renderTemplateMergeFields(bodyHtml, contact = {}, { escape = false } = {}) {
+  const out = (value) => (escape ? escapeHtml(value) : String(value ?? ''));
+  const name = out(contact.contact_name || contact.company_name || '');
+  const company = out(contact.company_name || '');
+  const city = out(contact.city || '');
+  const county = out(contact.county || '');
+  const locations = out(renderLocationCount(contact));
+  const cities = out(renderCityScope(contact));
   return String(bodyHtml || '')
-    .replace(/\[NUME\]/g, name)
-    .replace(/\[NAME\]/g, name)
-    .replace(/\[FIRMA\]/g, company)
-    .replace(/\[ORAS\]/g, city)
-    .replace(/\[LOCATII\]/g, renderLocationCount(contact))
-    .replace(/\[ORASE\]/g, renderCityScope(contact))
-    .replace(/\[JUDET\]/g, county);
+    .replace(/\[NUME\]/g, () => name)
+    .replace(/\[NAME\]/g, () => name)
+    .replace(/\[FIRMA\]/g, () => company)
+    .replace(/\[ORAS\]/g, () => city)
+    .replace(/\[LOCATII\]/g, () => locations)
+    .replace(/\[ORASE\]/g, () => cities)
+    .replace(/\[JUDET\]/g, () => county);
 }
 
 function base64UrlEncode(input) {
@@ -194,14 +222,16 @@ export function getUnsubscribeEndpointBaseUrl() {
   return String(Deno.env.get('OUTREACH_UNSUBSCRIBE_ENDPOINT') || `${getPublicBaseUrl()}/api/functions/directoryOps`).replace(/\/$/, '');
 }
 
-export async function createUnsubscribeToken(email, campaignId) {
+// `issuedAt` fix (data aprobarii campaniei) face tokenul, deci si emailul, identic la o
+// reincercare: cheia de idempotenta Resend recunoaste atunci acelasi lot si nu il trimite de doua ori.
+export async function createUnsubscribeToken(email, campaignId, issuedAt = '') {
   const secret = getUnsubscribeSecret();
   if (!secret) throw new Error('OUTREACH_UNSUBSCRIBE_SECRET nu este configurat. Nu se poate trimite email promotional fara token de dezabonare securizat.');
   const payload = {
     v: 1,
     e: normalizeEmail(email),
     cid: campaignId || null,
-    iat: new Date().toISOString(),
+    iat: issuedAt || new Date().toISOString(),
   };
   const encoded = base64UrlEncode(JSON.stringify(payload));
   const sig = await signValue(encoded, secret);
@@ -221,8 +251,8 @@ export async function verifyUnsubscribeToken(token) {
   return { email, campaign_id: payload.cid || payload.campaign_id || null, token_version: payload.v || 1 };
 }
 
-export async function buildUnsubscribeUrls(email, campaignId) {
-  const token = await createUnsubscribeToken(email, campaignId);
+export async function buildUnsubscribeUrls(email, campaignId, { issuedAt = '' } = {}) {
+  const token = await createUnsubscribeToken(email, campaignId, issuedAt);
   const publicUrl = `${getPublicBaseUrl()}/dezabonare?t=${encodeURIComponent(token)}`;
   const oneClickUrl = `${getUnsubscribeEndpointBaseUrl()}?outreach_action=unsubscribe&t=${encodeURIComponent(token)}`;
   return { token, publicUrl, oneClickUrl };
@@ -429,10 +459,18 @@ export function complianceMissing(contact) {
   return missing;
 }
 
-export async function sendViaResend(apiKey, payload) {
+function resendHeaders(apiKey, idempotencyKey = '') {
+  const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+  // Resend pastreaza 24 de ore raspunsul unei chei: aceeasi cerere repetata (dupa un timeout la
+  // care emailurile plecasera totusi) primeste raspunsul initial, fara o a doua trimitere.
+  if (idempotencyKey) headers['Idempotency-Key'] = String(idempotencyKey).slice(0, 256);
+  return headers;
+}
+
+export async function sendViaResend(apiKey, payload, { idempotencyKey = '' } = {}) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers: resendHeaders(apiKey, idempotencyKey),
     body: JSON.stringify(payload),
   });
   const text = await res.text();
@@ -445,12 +483,12 @@ export async function sendViaResend(apiKey, payload) {
 // aceeasi forma ca payload-ul acceptat de sendViaResend. Rezultatul e in aceeasi ordine ca inputul
 // cand Resend reuseste (json.data[i].id); la eroare (ok:false) ordinea rezultatelor Resend nu mai e garantata per e-mail, deci
 // apelantul trebuie sa trateze intreg lotul ca esuat si sa reincerce mai tarziu.
-export async function sendBatchViaResend(apiKey, payloads) {
+export async function sendBatchViaResend(apiKey, payloads, { idempotencyKey = '' } = {}) {
   if (!Array.isArray(payloads) || payloads.length === 0) return { ok: true, status: 200, results: [] };
   if (payloads.length > 100) throw new Error('Resend Batch API accepta maxim 100 de email-uri per apel.');
   const res = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers: resendHeaders(apiKey, idempotencyKey),
     body: JSON.stringify(payloads),
   });
   const text = await res.text();
@@ -511,6 +549,21 @@ export function extractResendRecipientEmail(event) {
   if (typeof raw !== 'string') return '';
   const match = raw.match(/<([^>]+)>/);
   return normalizeEmail(match ? match[1] : raw);
+}
+
+// Etichetele puse la trimitere (viasee_campaign, viasee_contact). Resend le intoarce in webhook fie
+// ca obiect { nume: valoare }, fie ca lista [{ name, value }]; le citim pe amandoua.
+export function extractResendTags(event) {
+  const raw = event?.data?.tags;
+  const tags = {};
+  if (Array.isArray(raw)) {
+    for (const tag of raw) {
+      if (tag && typeof tag.name === 'string') tags[tag.name] = String(tag.value ?? '');
+    }
+  } else if (raw && typeof raw === 'object') {
+    for (const [name, value] of Object.entries(raw)) tags[name] = String(value ?? '');
+  }
+  return tags;
 }
 
 export function resendEventTime(event) {
