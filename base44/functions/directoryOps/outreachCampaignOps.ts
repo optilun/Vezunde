@@ -560,9 +560,6 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   });
 }
 
-// O campanie noua porneste din categorie + (optional) un sablon din aceeasi categorie: subiectul,
-// textul si butonul se copiaza din sablon; tot ce vine explicit in payload are prioritate.
-// Anunturile pleaca implicit si catre furnizorii cu cont, fara fisa din director.
 // ── Furnizorii cu cont ca destinatari ──
 // Fiecare utilizator cu acces activ la o organizatie devine un contact de tip provider_account
 // (unul per utilizator, nu per adresa din director). Temeiul e relatia contractuala (contul);
@@ -774,6 +771,9 @@ async function actionOutreachOverview(svc) {
   });
 }
 
+// O campanie noua porneste din categorie + (optional) un sablon din aceeasi categorie: subiectul,
+// textul si butonul se copiaza din sablon; tot ce vine explicit in payload are prioritate.
+// Anunturile pleaca implicit si catre furnizorii cu cont, fara fisa din director.
 async function actionCreateCampaign(svc, user, payload) {
   const name = clean(payload.name);
   const category = normalizeCategory(payload.category);
