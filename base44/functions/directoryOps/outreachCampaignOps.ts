@@ -5,7 +5,21 @@ import {
   firstValidEmail,
   isContactSuppressed,
   complianceMissing,
+  getPublicBaseUrl,
 } from '../../shared/outreachEmailPolicy.js';
+import {
+  normalizeCategory,
+  normalizeAudienceSources,
+  contactKind,
+  contactMatchesFilters,
+  computeAudienceRows,
+  audienceRowView,
+  buildSuppressionMap,
+  summarizeCampaignLogs,
+  logOutcome,
+  notSentReason,
+} from '../../shared/outreachAudiencePolicy.js';
+import { composeOutreachEmail } from '../../shared/outreachComposer.js';
 import {
   normalizeDailySendLimit,
   effectiveDailyLimit,
@@ -70,16 +84,10 @@ function contactMatchesTags(contact, filters = {}) {
 // e entitatea catre care se trimite, si el poarta judetul, tipul si starea profilului, copiate la
 // materializare. Fara asta, filtrele de judet/tip de pe campanie erau acceptate in interfata dar
 // ignorate la calculul listei — o campanie "doar Cluj, doar optici" ar fi plecat catre toata tara.
+// Regulile (judet, tip, stare profil, tipul adresei, etichete) stau in
+// shared/outreachAudiencePolicy.js, folosite la fel de lista de destinatari, aprobare si test.
 function contactMatchesSegment(contact, filters = {}) {
-  const counties = Array.isArray(filters.target_counties) ? filters.target_counties : [];
-  const providerTypes = Array.isArray(filters.target_provider_types) ? filters.target_provider_types : [];
-  const controlStatuses = Array.isArray(filters.target_profile_control_status) ? filters.target_profile_control_status : [];
-  if (counties.length && !counties.includes(contact.county)) return false;
-  if (providerTypes.length && !providerTypes.includes(contact.provider_type)) return false;
-  if (controlStatuses.length && !controlStatuses.includes(contact.profile_control_status || 'directory')) return false;
-  const emailScopes = Array.isArray(filters.target_email_scope) ? filters.target_email_scope : [];
-  if (emailScopes.length && !emailScopes.includes(contact.email_scope || 'location')) return false;
-  return contactMatchesTags(contact, filters);
+  return contactMatchesFilters(contact, filters);
 }
 
 // ── Clasificarea contactelor materializate din director ──
@@ -195,17 +203,37 @@ function dedupeContactsByEmail(contacts) {
   return [...byEmail.values()];
 }
 
+// Specificatia audientei: categoria (din ce lista se poate dezabona), sursele (director / conturi),
+// filtrele si ajustarile manuale. Aceeasi forma vine din ciorna din interfata sau din campanie.
+function audienceSpecFrom(source = {}) {
+  const list = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
+  return {
+    category: normalizeCategory(source.category),
+    audience_sources: normalizeAudienceSources(source.audience_sources),
+    audience_mode: source.audience_mode === 'manual' ? 'manual' : 'filters',
+    included_contact_ids: list(source.included_contact_ids),
+    excluded_contact_ids: list(source.excluded_contact_ids),
+    target_counties: list(source.target_counties),
+    target_provider_types: list(source.target_provider_types),
+    target_profile_control_status: list(source.target_profile_control_status),
+    target_tags: list(source.target_tags),
+    target_email_scope: list(source.target_email_scope),
+  };
+}
+
+// Cine primeste campania. Exclude adresele invalide, suprimate (respinse, reclamatii, dezabonate de
+// la tot sau de la categoria campaniei), conturile inchise, domeniile care nu primesc email si
+// contactele fara temei legal; o adresa apare o singura data.
+async function computeAudience(svc, spec) {
+  const [contacts, suppressionRows] = await Promise.all([
+    listAllContacts(svc),
+    svc.entities.OutreachSuppression.list('-updated_at', 20000).catch(() => []),
+  ]);
+  return computeAudienceRows(contacts || [], spec, buildSuppressionMap(suppressionRows || []));
+}
+
 async function eligibleContactsForSegment(svc, filters) {
-  const contacts = await listAllContacts(svc);
-  // Adresele de pe domenii care nu pot primi email (verificate la sincronizare) nu intra in
-  // lista: ar fi respinse sigur, iar respingerile sunt ce opreste contul de trimitere.
-  const matching = (contacts || []).filter((contact) => (
-    isValidEmail(contact.normalized_email || contact.email)
-    && !isContactSuppressed(contact)
-    && !isDomainUndeliverable(contact.email_domain_status)
-    && contactMatchesSegment(contact, filters)
-  ));
-  return dedupeContactsByEmail(matching);
+  return (await computeAudience(svc, audienceSpecFrom(filters))).eligible;
 }
 
 async function writeAudit(svc, user, { entityId, actionType, note, previous, next }) {
