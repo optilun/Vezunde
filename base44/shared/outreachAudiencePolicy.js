@@ -9,7 +9,7 @@
 
 import {
   normalizeEmail,
-  isValidEmail,
+  isSendableEmail,
   complianceMissing,
   isContactSuppressed,
 } from './outreachEmailPolicy.js';
@@ -97,7 +97,7 @@ export const BLOCK_REASON_LABELS = {
 
 export function contactBlockReason(contact, category, suppressionMap = null) {
   const email = normalizeEmail(contact?.normalized_email || contact?.email);
-  if (!email || !isValidEmail(email)) return 'invalid_email';
+  if (!email || !isSendableEmail(email)) return 'invalid_email';
   if (isContactSuppressed(contact)) return 'suppressed';
   if (suppressionMap) {
     const set = suppressionMap.get(email);
@@ -138,9 +138,21 @@ export function computeAudienceRows(contacts = [], spec = {}, suppressionMap = n
       email: normalizeEmail(contact.normalized_email || contact.email),
       added_manually: byHand && !byFilters,
       excluded: excluded.has(contact.id),
+      excluded_by_address: false,
       block: contactBlockReason(contact, category, suppressionMap),
       duplicate: false,
     });
+  }
+
+  // Debifarea scoate ADRESA, nu doar randul: aceeasi adresa poate veni si din director, si din
+  // contul de furnizor (sau de pe doua locatii). Altfel, dupa debifarea primului rand, duplicatul
+  // lui ar trece pe "primeste" si adresa ar primi totusi emailul.
+  const excludedEmails = new Set(rows.filter((row) => row.excluded && row.email).map((row) => row.email));
+  for (const row of rows) {
+    if (!row.excluded && row.email && excludedEmails.has(row.email)) {
+      row.excluded = true;
+      row.excluded_by_address = true;
+    }
   }
 
   const sendable = rows
@@ -191,6 +203,7 @@ export function audienceRowView(row) {
     shared_location_count: c.shared_location_count || 1,
     added_manually: row.added_manually,
     excluded: row.excluded,
+    excluded_by_address: !!row.excluded_by_address,
     reason: row.block || (row.duplicate ? 'duplicate' : ''),
   };
 }
@@ -216,21 +229,43 @@ export function eyebrowFor(category) {
 
 // ── Raportul campaniei ──
 
-// Ce s-a intamplat, in final, cu emailul unui destinatar. Statusul din jurnal se schimba prin
-// webhook (delivered, bounced...), iar dezabonarea sau raspunsul vin dupa livrare, deci le
-// numaram si ca livrate.
+// Ce s-a intamplat, in final, cu emailul unui destinatar. Evenimentele Resend pot ajunge in orice
+// ordine (un "sent" intarziat dupa "bounced"), deci rezultatul se decide dupa marcajele de timp
+// pastrate pe jurnal, de la cel mai grav la cel mai slab, nu dupa ultimul status scris.
+// Dezabonarea sau raspunsul vin dupa livrare, deci se numara si ca livrate.
 export function logOutcome(log = {}) {
   const wasSent = !!(log.sent_at || log.resend_message_id);
   if (!wasSent) return 'not_sent';
-  switch (log.status) {
-    case 'bounced': return 'bounced';
-    case 'complained': return 'complained';
-    case 'failed': return 'failed';
-    case 'unsubscribed': return 'unsubscribed';
-    case 'replied': return 'replied';
-    case 'delivered': return 'delivered';
-    default: return log.delivered_at ? 'delivered' : 'awaiting';
-  }
+  const status = log.status;
+  if (log.complained_at || status === 'complained') return 'complained';
+  if (log.bounced_at || status === 'bounced') return 'bounced';
+  if (log.failed_at || status === 'failed') return 'failed';
+  if (log.unsubscribed_at || status === 'unsubscribed') return 'unsubscribed';
+  if (log.replied_at || status === 'replied') return 'replied';
+  if (log.delivered_at || status === 'delivered') return 'delivered';
+  return 'awaiting';
+}
+
+// Ordinea starilor unui email trimis: un eveniment mai slab venit tarziu nu il coboara pe unul mai
+// grav (un "delivered" intarziat nu sterge un "bounced", un "sent" nu sterge un "delivered").
+export const LOG_STATUS_RANK = Object.freeze({
+  unknown: 0,
+  pending: 0,
+  sent: 1,
+  delivery_delayed: 2,
+  delivered: 3,
+  failed: 4,
+  bounced: 5,
+  unsubscribed: 5,
+  replied: 5,
+  complained: 6,
+});
+
+export function shouldReplaceLogStatus(current, next) {
+  const currentRank = LOG_STATUS_RANK[current] ?? 0;
+  const nextRank = LOG_STATUS_RANK[next];
+  if (nextRank === undefined) return false;
+  return nextRank >= currentRank;
 }
 
 export function notSentReason(log = {}) {
@@ -240,6 +275,7 @@ export function notSentReason(log = {}) {
   if (reason === 'domain_dns_error') return 'domain_dns_error';
   if (reason === 'suppressed_at_send_time' || reason === 'unsubscribed_category') return 'suppressed';
   if (reason === 'inactive_account') return 'inactive_account';
+  if (reason === 'rejected_by_provider') return 'rejected_by_provider';
   if (reason.startsWith('missing_compliance')) return 'missing_compliance';
   if (log.status === 'invalid') return 'invalid_email';
   return 'other';
@@ -253,6 +289,7 @@ export const NOT_SENT_REASON_LABELS = {
   missing_compliance: 'Lipsesc temeiul legal sau sursa',
   invalid_email: 'Adresa invalida',
   inactive_account: 'Contul nu mai e activ',
+  rejected_by_provider: 'Adresa refuzata de serviciul de email',
   other: 'Alt motiv',
 };
 
