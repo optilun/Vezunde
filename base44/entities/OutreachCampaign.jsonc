@@ -155,6 +155,10 @@
       "type": "string",
       "description": "Parte din cheia de idempotenta Resend a loturilor. Se schimba doar dupa ce Resend a refuzat explicit un lot (nimic nu a plecat), ca reluarea sa nu primeasca raspunsul vechi de refuz; o reincercare dupa timeout pastreaza cheia si nu trimite a doua oara."
     },
+    "inflight_batch": {
+      "type": "object",
+      "description": "{cursor, span, key, contact_ids, at}: lotul trimis catre Resend al carui rezultat nu e inca sigur (raspuns pierdut, eroare 5xx, rulare intrerupta). Urmatoarea rulare retrimite exact acesti destinatari cu aceeasi cheie, fara sa refiltreze, ca Resend sa recunoasca lotul si sa nu-l trimita a doua oara. Gol = niciun lot nesigur."
+    },
     "status": {
       "type": "string",
       "enum": [
