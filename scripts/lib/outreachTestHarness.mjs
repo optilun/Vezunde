@@ -31,7 +31,10 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
     resendBatches: [], resendSingles: [], messageSeq: 0,
     idempotencyKeys: [], idempotentReplays: 0,
     rejectAddresses: new Set(), failNextBatches: [],
+    // loseNextResponse: Resend primeste si trimite lotul, dar raspunsul se pierde pe drum (timeout).
+    loseNextResponse: false,
     onBatch: null,
+    onDns: null,
   };
   const idempotencyCache = new Map();
   const unreachable = new Set(dnsUnreachable);
@@ -55,6 +58,7 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
     const target = new URL(String(url));
     if (target.hostname === 'cloudflare-dns.com' || target.hostname === 'dns.google') {
       const name = target.searchParams.get('name');
+      if (state.onDns) await state.onDns(name);
       if (unreachable.has(name)) return new Response('unavailable', { status: 503 });
       const answer = dns[name] || { Status: 0, Answer: [{ type: 15, data: `10 mx.${name}.` }] };
       return new Response(JSON.stringify(answer), { status: 200 });
@@ -67,7 +71,7 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
         const failure = state.failNextBatches.shift();
         return new Response(JSON.stringify({ message: failure.message || 'fail' }), { status: failure.status });
       }
-      return replayOr(key, () => {
+      const response = replayOr(key, () => {
         const payloads = JSON.parse(options.body);
         if (payloads.some((payload) => state.rejectAddresses.has(payload.to[0]))) {
           return { status: 422, body: JSON.stringify({ name: 'validation_error', message: 'Invalid `to` field.' }) };
@@ -75,6 +79,11 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
         state.resendBatches.push(payloads);
         return { status: 200, body: JSON.stringify({ data: payloads.map(() => ({ id: `msg-${++state.messageSeq}` })) }) };
       });
+      if (state.loseNextResponse) {
+        state.loseNextResponse = false;
+        throw new Error('network timeout (raspuns pierdut)');
+      }
+      return response;
     }
     if (target.hostname === 'api.resend.com' && target.pathname === '/emails') {
       const key = headerOf(options, 'Idempotency-Key');
