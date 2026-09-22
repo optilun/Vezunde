@@ -74,12 +74,6 @@ function locationMatchesSegment(location, filters = {}) {
   return true;
 }
 
-function contactMatchesTags(contact, filters = {}) {
-  const tags = Array.isArray(filters.target_tags) ? filters.target_tags : [];
-  if (!tags.length) return true;
-  return Array.isArray(contact.tags) && tags.some((tag) => contact.tags.includes(tag));
-}
-
 // Segmentarea reala a destinatarilor. Se aplica pe campurile contactului, nu ale locatiei: contactul
 // e entitatea catre care se trimite, si el poarta judetul, tipul si starea profilului, copiate la
 // materializare. Fara asta, filtrele de judet/tip de pe campanie erau acceptate in interfata dar
@@ -187,21 +181,9 @@ async function listAllContacts(svc) {
   return svc.entities.OutreachContact.list('-created_date', DEFAULT_LOCATION_LIST_LIMIT);
 }
 
-// O singura intrare per adresa de email. Doua locatii ale aceleiasi firme pot publica aceeasi
-// adresa de contact, deci lista bruta de contacte contine duplicate reale; daca le-am lasa, acelasi
-// om ar primi aceeasi campanie de mai multe ori si numarul din fraza de confirmare ar fi umflat.
-// La egalitate pastram intrarea cu metadatele de conformitate complete (temei legal + provenienta).
-function dedupeContactsByEmail(contacts) {
-  const byEmail = new Map();
-  for (const contact of contacts) {
-    const email = normalizeEmail(contact.normalized_email || contact.email);
-    if (!email) continue;
-    const existing = byEmail.get(email);
-    if (!existing) { byEmail.set(email, contact); continue; }
-    if (complianceMissing(existing).length > complianceMissing(contact).length) byEmail.set(email, contact);
-  }
-  return [...byEmail.values()];
-}
+// O singura intrare per adresa de email (doua locatii ale aceleiasi firme pot publica aceeasi
+// adresa): deduplicarea se face in computeAudienceRows, dupa ce contactele blocate (fara temei legal,
+// suprimate etc.) au fost scoase, deci ramane mereu intrarea care chiar poate primi emailul.
 
 // Specificatia audientei: categoria (din ce lista se poate dezabona), sursele (director / conturi),
 // filtrele si ajustarile manuale. Aceeasi forma vine din ciorna din interfata sau din campanie.
@@ -258,29 +240,34 @@ async function actionListTemplates(svc) {
   return Response.json({ templates });
 }
 
+// Un sablon descrie emailul complet: categoria, subiectul, textul, butonul si daca arata fisa din
+// director. Campania copiaza tot la alegere, deci o schimbare ulterioara a sablonului nu atinge
+// campaniile deja pornite.
+function templateFieldsFrom(payload, { partial = false } = {}) {
+  const patch = {};
+  const has = (key) => payload[key] !== undefined;
+  if (!partial || has('name')) patch.name = clean(payload.name);
+  if (!partial || has('subject')) patch.subject = clean(payload.subject);
+  if (!partial || has('body')) patch.body = clean(payload.body);
+  if (!partial || has('category')) patch.category = normalizeCategory(payload.category);
+  if (!partial || has('cta_label')) patch.cta_label = clean(payload.cta_label);
+  if (!partial || has('cta_url')) patch.cta_url = clean(payload.cta_url);
+  if (!partial || has('show_listing_preview')) patch.show_listing_preview = payload.show_listing_preview !== false;
+  if (has('campaign_type') && ['claim_notice', 'marketing'].includes(payload.campaign_type)) patch.campaign_type = payload.campaign_type;
+  return patch;
+}
+
 async function actionCreateTemplate(svc, payload) {
-  const name = clean(payload.name);
-  const subject = clean(payload.subject);
-  const body = clean(payload.body);
-  if (!name || !subject || !body) return Response.json({ error: 'name, subject si body sunt obligatorii' }, { status: 400 });
-  const template = await svc.entities.OutreachTemplate.create({
-    name,
-    subject,
-    body,
-    campaign_type: ['claim_notice', 'marketing'].includes(payload.campaign_type) ? payload.campaign_type : 'marketing',
-  });
+  const fields = templateFieldsFrom(payload);
+  if (!fields.name || !fields.subject || !fields.body) return Response.json({ error: 'name, subject si body sunt obligatorii' }, { status: 400 });
+  const template = await svc.entities.OutreachTemplate.create({ campaign_type: 'marketing', ...fields });
   return Response.json({ template });
 }
 
 async function actionUpdateTemplate(svc, payload) {
   const id = clean(payload.id);
   if (!id) return Response.json({ error: 'id este obligatoriu' }, { status: 400 });
-  const patch = {};
-  if (payload.name !== undefined) patch.name = clean(payload.name);
-  if (payload.subject !== undefined) patch.subject = clean(payload.subject);
-  if (payload.body !== undefined) patch.body = clean(payload.body);
-  if (payload.campaign_type !== undefined && ['claim_notice', 'marketing'].includes(payload.campaign_type)) patch.campaign_type = payload.campaign_type;
-  const template = await svc.entities.OutreachTemplate.update(id, patch);
+  const template = await svc.entities.OutreachTemplate.update(id, templateFieldsFrom(payload, { partial: true }));
   return Response.json({ template });
 }
 
@@ -292,36 +279,94 @@ async function actionDeleteTemplate(svc, payload) {
 }
 
 async function actionPreviewSegment(svc, payload) {
-  const filters = {
-    target_counties: payload.target_counties,
-    target_provider_types: payload.target_provider_types,
-    target_profile_control_status: payload.target_profile_control_status,
-    target_tags: payload.target_tags,
-    target_email_scope: payload.target_email_scope,
-  };
+  const spec = audienceSpecFrom(payload);
   const locations = await listAllLocationsWithEmail(svc);
-  const matchingLocations = locations.filter((location) => locationMatchesSegment(location, filters));
+  const matchingLocations = locations.filter((location) => locationMatchesSegment(location, spec));
+  const audience = await computeAudience(svc, spec);
+  const blocked = audience.counts.blocked;
+  const directoryCandidates = audience.rows.filter((row) => row.kind === 'directory').length;
 
-  const contacts = await listAllContacts(svc);
-  const matchingContacts = contacts.filter((contact) => contactMatchesSegment(contact, filters));
-  const eligibleContacts = matchingContacts.filter((contact) => !isContactSuppressed(contact));
-  const deliverableContacts = eligibleContacts.filter((contact) => !isDomainUndeliverable(contact.email_domain_status));
-  // Numarul real de emailuri trimise e numarul de ADRESE distincte, nu de contacte: acelasi numar
-  // pe care il cere si fraza de confirmare la aprobare.
-  const uniqueEligible = dedupeContactsByEmail(deliverableContacts);
-  const missingCompliance = uniqueEligible.filter((contact) => complianceMissing(contact).length > 0).length;
-
+  // Numarul real de emailuri trimise e numarul de ADRESE distincte care pot primi emailul: acelasi
+  // numar pe care il cere si fraza de confirmare la aprobare.
   return Response.json({
     directory_locations_matching: matchingLocations.length,
     directory_locations_total_with_email: locations.length,
-    contacts_materialized_matching: matchingContacts.length,
-    contacts_eligible_for_send: uniqueEligible.length,
-    contacts_duplicate_emails: deliverableContacts.length - uniqueEligible.length,
-    contacts_suppressed: matchingContacts.length - eligibleContacts.length,
-    contacts_undeliverable_domain: eligibleContacts.length - deliverableContacts.length,
-    contacts_missing_compliance_metadata: missingCompliance,
-    contacts_blocked_until_compliance_completed: missingCompliance,
-    not_yet_materialized: Math.max(0, matchingLocations.length - matchingContacts.length),
+    contacts_materialized_matching: audience.counts.candidates,
+    contacts_eligible_for_send: audience.counts.eligible,
+    contacts_excluded_manually: audience.counts.excluded,
+    contacts_duplicate_emails: blocked.duplicate || 0,
+    contacts_suppressed: (blocked.suppressed || 0) + (blocked.unsubscribed_category || 0),
+    contacts_undeliverable_domain: blocked.undeliverable_domain || 0,
+    contacts_missing_compliance_metadata: blocked.missing_compliance || 0,
+    contacts_blocked_until_compliance_completed: blocked.missing_compliance || 0,
+    not_yet_materialized: spec.audience_sources.includes('directory')
+      ? Math.max(0, matchingLocations.length - directoryCandidates)
+      : 0,
+  });
+}
+
+// Lista reala de destinatari pentru pasul "Destinatari": fiecare contact cu motivul pentru care nu
+// primeste (daca e cazul), plus valorile disponibile pentru filtre (judete, tipuri).
+async function actionListRecipients(svc, payload) {
+  const spec = audienceSpecFrom(payload);
+  const audience = await computeAudience(svc, spec);
+  const contacts = await listAllContacts(svc);
+  const inSources = (contacts || []).filter((contact) => spec.audience_sources.includes(contactKind(contact)));
+  const distinct = (values) => [...new Set(values.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'ro'));
+  return Response.json({
+    category: audience.category,
+    counts: audience.counts,
+    rows: audience.rows.map(audienceRowView),
+    facets: {
+      counties: distinct(inSources.map((contact) => contact.county)),
+      provider_types: distinct(inSources.map((contact) => contact.provider_type)),
+      sources: {
+        directory: (contacts || []).filter((contact) => contactKind(contact) === 'directory').length,
+        provider_account: (contacts || []).filter((contact) => contactKind(contact) === 'provider_account').length,
+      },
+    },
+  });
+}
+
+// Cautare pentru "Adauga manual": orice contact, din orice sursa, dupa nume, email sau oras.
+async function actionSearchContacts(svc, payload) {
+  const term = clean(payload.query).toLowerCase();
+  if (term.length < 2) return Response.json({ contacts: [] });
+  const contacts = await listAllContacts(svc);
+  const matches = (contacts || [])
+    .filter((contact) => [contact.company_name, contact.contact_name, contact.email, contact.city]
+      .some((value) => String(value || '').toLowerCase().includes(term)))
+    .slice(0, 40)
+    .map((contact) => ({
+      id: contact.id,
+      company_name: contact.company_name || '',
+      email: normalizeEmail(contact.normalized_email || contact.email),
+      city: contact.city || '',
+      kind: contactKind(contact),
+    }));
+  return Response.json({ contacts: matches });
+}
+
+// Emailul exact, asa cum il primeste un destinatar ales (sau un exemplu), fara sa trimita nimic.
+// Ciorna nesalvata din interfata poate suprascrie continutul campaniei.
+async function actionRenderPreview(svc, payload) {
+  const id = clean(payload.id);
+  const campaign = id ? await svc.entities.OutreachCampaign.get(id).catch(() => null) : null;
+  const overrides = {};
+  for (const key of ['category', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview']) {
+    if (payload[key] !== undefined) overrides[key] = payload[key];
+  }
+  const merged = { ...(campaign || {}), ...overrides };
+  const contactId = clean(payload.contact_id);
+  const contact = (contactId ? await svc.entities.OutreachContact.get(contactId).catch(() => null) : null) || {
+    company_name: 'Optica Exemplu', provider_type: 'optica_medicala', city: 'Bucuresti', county: 'Bucuresti',
+    profile_control_status: 'directory', email: 'exemplu@optica.ro',
+  };
+  const composed = composeOutreachEmail(merged, contact, { unsubscribeUrl: `${getPublicBaseUrl()}/dezabonare` });
+  return Response.json({
+    subject: composed.subject,
+    html: composed.html,
+    recipient: { company_name: contact.company_name || '', email: normalizeEmail(contact.normalized_email || contact.email), kind: contactKind(contact) },
   });
 }
 
