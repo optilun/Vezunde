@@ -95,8 +95,10 @@ export default function OutreachContactsList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
+  const [kindFilter, setKindFilter] = useState("");
 
   const [syncFilters, setSyncFilters] = useState(EMPTY_FILTERS);
+  const [accountSync, setAccountSync] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncSummary, setSyncSummary] = useState(null);
 
@@ -121,11 +123,12 @@ export default function OutreachContactsList() {
         if (!DOMAIN_PROBLEM_LABELS[contact.email_domain_status]) return false;
       } else if (statusFilter && contact.status !== statusFilter) return false;
       if (scopeFilter && (contact.email_scope || "location") !== scopeFilter) return false;
+      if (kindFilter && (contact.contact_kind || "directory") !== kindFilter) return false;
       if (!term) return true;
       return [contact.company_name, contact.email, contact.city, contact.county]
         .some((value) => String(value || "").toLowerCase().includes(term));
     });
-  }, [contacts, search, statusFilter, scopeFilter]);
+  }, [contacts, search, statusFilter, scopeFilter, kindFilter]);
 
   const runSync = async () => {
     setSyncing(true);
@@ -179,6 +182,14 @@ export default function OutreachContactsList() {
     } catch (err) {
       setError(`Sincronizarea s-a oprit la ${cursor} adrese. Apasa din nou: continua fara dubluri. (${err.response?.data?.error || err.message})`);
     }
+    // Dupa director, furnizorii cu cont (utilizatorii cu acces activ la o organizatie): putini,
+    // intr-un singur apel.
+    try {
+      const response = await base44.functions.invoke("outreachCampaignOps", { action: "sync_provider_accounts" });
+      setAccountSync(response.data || null);
+    } catch (err) {
+      setAccountSync({ error: err.response?.data?.error || err.message });
+    }
     setSyncing(false);
     load();
   };
@@ -219,6 +230,13 @@ export default function OutreachContactsList() {
                 Le gasesti cu filtrul „Probleme de domeniu”.
               </p>
             )}
+            {accountSync && (
+              <p className="text-xs text-muted-foreground">
+                {accountSync.error
+                  ? `Furnizorii cu cont nu s-au putut sincroniza: ${accountSync.error}`
+                  : `Furnizori cu cont: ${accountSync.active_accounts} activi (${accountSync.created} noi, ${accountSync.updated} actualizati${accountSync.deactivated ? `, ${accountSync.deactivated} fara acces activ` : ""}).`}
+              </p>
+            )}
             {syncSummary.breakdown && <TagBreakdown breakdown={syncSummary.breakdown} />}
           </div>
         )}
@@ -235,6 +253,16 @@ export default function OutreachContactsList() {
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-lg border border-border px-3 py-1.5 text-xs"
             />
+            <select
+              value={kindFilter}
+              onChange={(e) => setKindFilter(e.target.value)}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs"
+              aria-label="Sursa contactului"
+            >
+              <option value="">Toate sursele</option>
+              <option value="directory">Din director</option>
+              <option value="provider_account">Furnizori cu cont</option>
+            </select>
             <select
               value={scopeFilter}
               onChange={(e) => setScopeFilter(e.target.value)}
@@ -283,7 +311,17 @@ export default function OutreachContactsList() {
                   <tr key={contact.id} className="border-t border-border">
                     <td className="px-3 py-2 font-medium text-foreground">
                       {contact.company_name || "—"}
-                      {contact.email_scope === "organization" && (
+                      {contact.contact_kind === "provider_account" && (
+                        <span className={`ml-2 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${contact.account_active === false ? "bg-secondary text-muted-foreground" : "bg-sky-50 text-sky-800"}`}>
+                          {contact.account_active === false ? "Cont inactiv" : "Cont furnizor"}{contact.contact_name ? ` · ${contact.contact_name}` : ""}
+                        </span>
+                      )}
+                      {Array.isArray(contact.unsubscribed_categories) && contact.unsubscribed_categories.length > 0 && (
+                        <span className="ml-2 whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                          Dezabonat: {contact.unsubscribed_categories.map((c) => (c === "announcement" ? "anunturi" : "marketing")).join(", ")}
+                        </span>
+                      )}
+                      {contact.contact_kind !== "provider_account" && contact.email_scope === "organization" && (
                         <span className="ml-2 whitespace-nowrap rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground" title="Aceeasi adresa e folosita de mai multe locatii din director">
                           Organizatie · {contact.shared_location_count || "?"} locatii{(contact.shared_city_count || 0) > 1 ? ` · ${contact.shared_city_count} orase` : ""}
                         </span>
