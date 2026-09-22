@@ -258,6 +258,13 @@ function hasActiveLock(campaign, nowMs = Date.now()) {
   return Number.isFinite(expiresAt) && expiresAt >= nowMs;
 }
 
+function inflightBatchAt(campaign, cursor) {
+  const value = campaign?.inflight_batch;
+  if (!value || typeof value !== 'object') return null;
+  if (Number(value.cursor) !== cursor || !value.key || !Array.isArray(value.contact_ids) || !value.contact_ids.length) return null;
+  return value;
+}
+
 async function readCampaign(svc, campaignId) {
   return svc.entities.OutreachCampaign.get(campaignId).catch(() => null);
 }
@@ -541,6 +548,30 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
   let remainingToday = dailyLimit - processed.sends.sentToday;
   // Un domeniu se verifica o singura data per rulare (gmail.com apare de zeci de ori).
   const domainCache = new Map();
+  const salt = clean(campaign.send_key_salt);
+
+  // Emailul se compune per destinatar (fisa lui, subsolul potrivit sursei, dezabonarea din
+  // categoria campaniei), din acelasi loc ca testul si previzualizarea din admin. Rezultatul e
+  // determinist: acelasi contact da exact acelasi email la o retrimitere.
+  const buildPayload = async (contact, email) => {
+    const unsub = await buildUnsubscribeUrls(email, campaign.id, { issuedAt: tokenIssuedAt });
+    const composed = composeOutreachEmail(campaign, contact, { unsubscribeUrl: unsub.publicUrl });
+    return {
+      from: `${campaign.from_name || 'VIASEE'} <${sender.email}>`,
+      to: [email],
+      reply_to: [campaign.reply_to_email || legalConfig().contactEmail],
+      subject: campaign.subject,
+      html: composed.html,
+      text: composed.text,
+      headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
+      // Webhook-ul leaga fiecare eveniment Resend de campania si contactul exact, chiar daca
+      // evenimentul ajunge inaintea jurnalului sau adresa apare in mai multe campanii.
+      tags: [
+        { name: 'viasee_campaign', value: tagValue(campaign.id) },
+        { name: 'viasee_contact', value: tagValue(contact.id) },
+      ],
+    };
+  };
 
   const baseSent = Math.max(Number(campaign.sent_count) || 0, logCounts.sent);
   const baseSkipped = Math.max(Number(campaign.skipped_count) || 0, logCounts.not_sent);
@@ -551,8 +582,10 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
   let batchFailure = null;
   let healthStop = null;
   let lostLock = false;
+  // Un lot al carui rezultat a ramas nesigur la rularea anterioara se retrimite primul, identic.
+  let inflight = inflightBatchAt(campaign, cursor);
 
-  for (let batchNum = 0; batchNum < MAX_BATCHES_PER_RUN && cursor < ids.length && remainingToday > 0; batchNum += 1) {
+  for (let batchNum = 0; batchNum < MAX_BATCHES_PER_RUN && cursor < ids.length && (inflight || remainingToday > 0); batchNum += 1) {
     if (batchNum > 0) {
       // Pauza/anularea data de admin trebuie sa opreasca campania in maximum un lot, nu abia la
       // finalul rularii: re-citim starea inainte de fiecare lot urmator.
@@ -561,14 +594,30 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       if (gate.stoppedByAdmin) { stoppedByAdmin = gate.stoppedByAdmin; break; }
       if (gate.health) { healthStop = gate.health; break; }
     }
-    const batchIds = ids.slice(cursor, cursor + Math.min(BATCH_SIZE, remainingToday));
     const payloads = [];
     const meta = [];
+    const recovering = inflight;
+    inflight = null;
+    const batchIds = recovering ? [] : ids.slice(cursor, cursor + Math.min(BATCH_SIZE, remainingToday));
+    const span = recovering ? Math.max(1, Number(recovering.span) || recovering.contact_ids.length) : batchIds.length;
+    if (recovering) {
+      // Exact aceiasi destinatari, in aceeasi ordine, fara filtrare din nou: intre timp cineva se
+      // poate fi dezabonat chiar din emailul primit, iar un lot diferit ar primi alta cheie si ar
+      // pleca a doua oara catre ceilalti.
+      for (const contactId of recovering.contact_ids) {
+        const contact = await loadContact(svc, contactId);
+        if (!contact) continue;
+        const email = normalizeEmail(contact.normalized_email || contact.email);
+        payloads.push(await buildPayload(contact, email));
+        meta.push({ contact, email });
+        seenEmails.add(email);
+      }
+    }
 
     const batchContacts = [];
     for (const contactId of batchIds) {
       if (alreadyProcessed.has(contactId)) continue; // idempotenta: deja procesat intr-o rulare anterioara
-      const contact = await svc.entities.OutreachContact.get(contactId).catch(() => null);
+      const contact = await loadContact(svc, contactId);
       if (!contact) { skippedThisRun += 1; continue; }
       batchContacts.push(contact);
     }
@@ -643,26 +692,7 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         continue;
       }
 
-      const unsub = await buildUnsubscribeUrls(email, campaign.id, { issuedAt: tokenIssuedAt });
-      // Emailul se compune per destinatar (fisa lui, subsolul potrivit sursei, dezabonarea din
-      // categoria campaniei), din acelasi loc ca testul si previzualizarea din admin.
-      const composed = composeOutreachEmail(campaign, contact, { unsubscribeUrl: unsub.publicUrl });
-
-      payloads.push({
-        from: `${campaign.from_name || 'VIASEE'} <${sender.email}>`,
-        to: [email],
-        reply_to: [campaign.reply_to_email || legalConfig().contactEmail],
-        subject: campaign.subject,
-        html: composed.html,
-        text: composed.text,
-        headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
-        // Webhook-ul leaga fiecare eveniment Resend de campania si contactul exact, chiar daca
-        // evenimentul ajunge inaintea jurnalului sau adresa apare in mai multe campanii.
-        tags: [
-          { name: 'viasee_campaign', value: tagValue(campaign.id) },
-          { name: 'viasee_contact', value: tagValue(contact.id) },
-        ],
-      });
+      payloads.push(await buildPayload(contact, email));
       meta.push({ contact, email });
       seenEmails.add(email);
     }
@@ -673,18 +703,31 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       if (gate.stoppedByAdmin) { stoppedByAdmin = gate.stoppedByAdmin; break; }
       if (gate.health) { healthStop = gate.health; break; }
 
-      const delivery = await deliverBatch(resendApiKey, campaign.id, clean(campaign.send_key_salt), cursor, payloads);
+      const key = recovering ? String(recovering.key) : await idempotencyKeyFor(campaign.id, salt, cursor, payloads);
+      // Inainte de trimitere lotul se noteaza "in aer": daca raspunsul Resend se pierde sau rularea
+      // se intrerupe inainte de jurnal, urmatoarea rulare il retrimite identic, cu aceeasi cheie.
+      // Daca notarea nu reuseste, nu se trimite nimic (eroarea opreste rularea).
+      await svc.entities.OutreachCampaign.update(campaign.id, {
+        inflight_batch: { cursor, span, key, contact_ids: meta.map((item) => item.contact.id), at: new Date().toISOString() },
+      });
+      const delivery = await deliverBatch(
+        resendApiKey,
+        payloads,
+        key,
+        (i) => singleIdempotencyKeyFor(campaign.id, salt, meta[i].contact.id, payloads[i]),
+      );
       // Ce a plecat se trece in jurnal inainte de orice alta decizie: si cand lotul s-a oprit la
       // jumatate, destinatarii care au primit deja nu mai sunt reluati.
-      const written = await writeSendLogs(svc, campaign.id, meta, delivery.perRecipient);
+      const written = await writeSendLogs(svc, campaign.id, meta, delivery.perRecipient, alreadyProcessed);
       sentThisRun += written.sent;
       skippedThisRun += written.rejected;
       remainingToday -= written.sent;
       if (delivery.failure) { batchFailure = delivery.failure; break; }
     }
 
-    cursor += batchIds.length;
+    cursor += span;
     await svc.entities.OutreachCampaign.update(campaign.id, {
+      inflight_batch: null, // lotul e trecut in jurnal: nu mai e nimic nesigur
       current_cursor: cursor,
       sent_count: baseSent + sentThisRun,
       skipped_count: baseSkipped + skippedThisRun,
@@ -729,6 +772,9 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       consecutive_send_failures: failures,
       // Refuz explicit = nimic nu a plecat: urmatoarea incercare primeste chei noi.
       ...(batchFailure.transient ? {} : { send_key_salt: crypto.randomUUID().slice(0, 8) }),
+      // Rezultat sigur (refuz, rate limit): lotul nu mai e "in aer". Rezultat nesigur (timeout, 5xx):
+      // ramane notat si se retrimite identic.
+      ...(batchFailure.ambiguous ? {} : { inflight_batch: null }),
       ...(adminStopped ? {} : { failure_message: failureMessage }),
       ...(!adminStopped && giveUp ? { status: 'failed' } : {}),
     });
@@ -759,11 +805,23 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
   };
 }
 
+// O citire esuata (jurnal, suprimari, contact) opreste rularea inainte de orice trimitere nesigura:
+// lock-ul se elibereaza fara alta schimbare, iar urmatorul ciclu de cron reia de unde a ramas.
+async function advanceOneCampaignSafely(svc, campaign, resendApiKey) {
+  try {
+    return await advanceOneCampaign(svc, campaign, resendApiKey);
+  } catch (error) {
+    console.error('outreachSendOps run aborted', campaign.id, error?.message || error);
+    await releaseOwnedLock(svc, campaign.id, campaign.execution_lock_token, {});
+    return { campaign_id: campaign.id, finished: false, retry_scheduled: true, error: `Citirea datelor a esuat, se reia la urmatorul ciclu: ${error?.message || error}` };
+  }
+}
+
 async function actionAdvanceCampaignSends(svc) {
   const campaign = await claimCampaignForSending(svc);
   if (!campaign) return Response.json({ success: true, processed: false, message: 'Nicio campanie in stare ready/sending de avansat.' });
   const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
-  const outcome = await advanceOneCampaign(svc, campaign, resendApiKey);
+  const outcome = await advanceOneCampaignSafely(svc, campaign, resendApiKey);
   return Response.json({ success: true, processed: true, outcome });
 }
 
