@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { normalizeEmail, verifyUnsubscribeToken } from '../../shared/outreachEmailPolicy.js';
-import { normalizeCategory, mergeSuppressionCategories } from '../../shared/outreachAudiencePolicy.js';
+import { normalizeEmail, verifyUnsubscribeToken, getPublicBaseUrl } from '../../shared/outreachEmailPolicy.js';
+import { normalizeCategory, mergeSuppressionCategories, shouldReplaceLogStatus } from '../../shared/outreachAudiencePolicy.js';
 
 // outreachUnsubscribeOps — dezabonare cu un click, portat din Optilun (outreachUnsubscribe/entry.ts),
 // adaptat la modelul de rute al VIASEE: apelat direct de router.ts pe baza query string-ului
@@ -10,6 +10,12 @@ import { normalizeCategory, mergeSuppressionCategories } from '../../shared/outr
 // in outreachEmailPolicy.js). Spre deosebire de Optilun, NU acceptam un fallback "legacy" fara
 // semnatura (email+campaign_id in clar) — VIASEE nu are linkuri vechi de migrat, iar a accepta
 // dezabonare pe baza unui email trimis in clar ar permite oricui sa dezaboneze adresa altcuiva.
+//
+// Cine dezaboneaza:
+// - POST one-click (RFC 8058) trimis de Gmail/Outlook din butonul lor "Dezabonare": imediat;
+// - POST din pagina /dezabonare, dupa ce omul a apasat butonul de confirmare.
+// Un GET (un scaner de linkuri al firmei, un preview) NU dezaboneaza: e redirectionat spre pagina,
+// unde e nevoie de un click. Pagina afla mai intai ce se va intampla (mode: 'inspect'), fara efect.
 
 function corsHeaders() {
   return {
@@ -87,27 +93,20 @@ async function markContactsUnsubscribed(svc, email, campaignId, source, scope) {
     }).catch((error) => console.error('outreachUnsubscribeOps contact update failed', contact.id, error?.message || error));
   }
 
-  const logs = campaignId
-    ? await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaignId }).catch(() => [])
+  // In raportul campaniei se marcheaza doar emailul care chiar a plecat catre aceasta adresa din
+  // campania din token. Intrarile nesalvate (duplicat, domeniu invalid) raman cum sunt, iar o
+  // respingere sau o reclamatie nu devine "dezabonat". Dezabonarea insasi e retinuta pe contact
+  // (consent_audit) si in lista de suprimari, nu intr-o intrare de jurnal inventata.
+  const realCampaignId = String(campaignId || '').startsWith('test:') ? '' : campaignId;
+  const logs = realCampaignId
+    ? await svc.entities.OutreachCampaignLog.filter({ campaign_id: realCampaignId, normalized_email: email }, '-created_date', 20).catch(() => [])
     : [];
-  const matchingLogs = (logs || []).filter((log) => normalizeEmail(log.normalized_email || log.email) === email);
-  for (const log of matchingLogs) {
+  for (const log of logs || []) {
+    const wasSent = !!(log.sent_at || log.resend_message_id);
+    if (!wasSent || log.unsubscribed_at) continue;
     await svc.entities.OutreachCampaignLog.update(log.id, {
-      status: 'unsubscribed',
-      reason: source,
+      ...(shouldReplaceLogStatus(log.status, 'unsubscribed') ? { status: 'unsubscribed' } : {}),
       unsubscribed_at: now,
-    }).catch(() => null);
-  }
-  if (!matchingLogs.length) {
-    await svc.entities.OutreachCampaignLog.create({
-      campaign_id: campaignId || 'global_unsubscribe',
-      email,
-      normalized_email: email,
-      status: 'unsubscribed',
-      reason: source,
-      provider: 'resend',
-      unsubscribed_at: now,
-      created_at: now,
     }).catch(() => null);
   }
 
@@ -119,10 +118,18 @@ async function markContactsUnsubscribed(svc, email, campaignId, source, scope) {
 export async function handle(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
 
+  const url = new URL(req.url);
+  if (req.method === 'GET') {
+    // Deschiderea linkului nu dezaboneaza pe nimeni: trimitem la pagina cu butonul de confirmare.
+    const token = url.searchParams.get('t') || '';
+    const target = `${getPublicBaseUrl()}/dezabonare${token ? `?t=${encodeURIComponent(token)}` : ''}`;
+    return new Response(null, { status: 302, headers: { ...corsHeaders(), Location: target } });
+  }
+  if (req.method !== 'POST') return json({ error: 'Metoda nepermisa' }, 405);
+
   try {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole;
-    const url = new URL(req.url);
 
     let body = {};
     if (req.method === 'POST') {
@@ -136,12 +143,21 @@ export async function handle(req) {
     const token = url.searchParams.get('t') || body.token || body.t || '';
     if (!token) return json({ error: 'Link de dezabonare invalid: lipseste tokenul.' }, 400);
 
-    const oneClick = req.method === 'POST' || req.headers.get('List-Unsubscribe-Post') === 'List-Unsubscribe=One-Click';
     const verified = await verifyUnsubscribeToken(token);
     const email = verified.email;
     const campaignId = verified.campaign_id || '';
-    const source = oneClick ? 'one_click_signed_token' : 'signed_unsubscribe_link';
-    const scope = body.scope === 'all' ? 'all' : await scopeForCampaign(svc, campaignId);
+    const campaignScope = await scopeForCampaign(svc, campaignId);
+
+    if (body.mode === 'inspect') {
+      // Pagina de dezabonare afla ce va face butonul (adresa si categoria), fara niciun efect.
+      return json({ ok: true, inspect: true, email, scope: campaignScope });
+    }
+
+    // Formularul one-click al clientilor de email trimite `List-Unsubscribe=One-Click`; pagina
+    // noastra trimite JSON dupa click pe buton.
+    const oneClick = body['List-Unsubscribe'] === 'One-Click' || req.headers.get('List-Unsubscribe-Post') === 'List-Unsubscribe=One-Click';
+    const source = oneClick ? 'one_click_signed_token' : 'unsubscribe_page_confirmed';
+    const scope = body.scope === 'all' ? 'all' : campaignScope;
 
     const result = await markContactsUnsubscribed(svc, email, campaignId, source, scope);
     return json({ ok: true, email, campaign_id: campaignId || null, scope, ...result });
