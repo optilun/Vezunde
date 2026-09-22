@@ -51,7 +51,7 @@ export default function AdminBillingCenter() {
             {row.amount_remaining > 0 && <p className="mt-1 text-xs text-muted-foreground">Rest: {money(row.amount_remaining,row.currency)}</p>}
             {row.amount_refunded > 0 && <p className="mt-1 text-xs text-muted-foreground">Rambursat: {money(row.amount_refunded,row.currency)}</p>}
           </td>
-          <td className="px-4 py-4"><div className="flex flex-wrap gap-3"><a className="inline-flex items-center gap-1 underline" href={row.dashboard_url} target="_blank" rel="noreferrer">Stripe <ExternalLink className="h-3 w-3" /></a>{row.invoice_pdf && <a className="underline" href={row.invoice_pdf} target="_blank" rel="noreferrer">PDF Stripe</a>}{row.hosted_invoice_url && <a className="underline" href={row.hosted_invoice_url} target="_blank" rel="noreferrer">Factură</a>}</div></td>
+          <td className="px-4 py-4"><div className="flex flex-wrap gap-3"><a className="inline-flex items-center gap-1 underline" href={row.dashboard_url} target="_blank" rel="noreferrer">Stripe <ExternalLink className="h-3 w-3" /></a>{row.invoice_pdf && <a className="underline" href={row.invoice_pdf} target="_blank" rel="noreferrer">PDF Stripe</a>}{row.hosted_invoice_url && <a className="underline" href={row.hosted_invoice_url} target="_blank" rel="noreferrer">Document Stripe</a>}</div></td>
         </tr>)}</tbody>
       </table>{!filtered.length && <p className="p-6 text-sm text-muted-foreground">Nu există înregistrări VIASEE care corespund filtrelor în această pagină. Poți continua cu pagina următoare.</p>}
     </div>}
