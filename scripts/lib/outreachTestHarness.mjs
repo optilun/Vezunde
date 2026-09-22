@@ -39,6 +39,8 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
     onDns: null,
   };
   const idempotencyCache = new Map();
+  // Fiecare test porneste cu un Resend "curat" (id-urile din baza in memorie se repeta intre teste).
+  state.clearIdempotency = () => idempotencyCache.clear();
   const unreachable = new Set(dnsUnreachable);
   const headerOf = (options, name) => {
     const headers = options.headers || {};
