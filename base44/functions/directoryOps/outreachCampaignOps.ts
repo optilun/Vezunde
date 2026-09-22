@@ -440,8 +440,11 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     listAllContacts(svc),
     listAllOrganizationsById(svc),
   ]);
-  const byNormalizedEmail = new Map(existingContacts.map((c) => [normalizeEmail(c.normalized_email || c.email), c]));
-  const byLocationId = new Map(existingContacts.filter((c) => c.location_id).map((c) => [c.location_id, c]));
+  // Doar contactele din director: un furnizor cu cont are propriul contact (sincronizat separat),
+  // chiar daca adresa lui e si adresa publica a locatiei.
+  const directoryContacts = (existingContacts || []).filter((c) => contactKind(c) === 'directory');
+  const byNormalizedEmail = new Map(directoryContacts.map((c) => [normalizeEmail(c.normalized_email || c.email), c]));
+  const byLocationId = new Map(directoryContacts.filter((c) => c.location_id).map((c) => [c.location_id, c]));
 
   const now = new Date().toISOString();
   let created = 0;
@@ -508,6 +511,7 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     } else {
       const createdContact = await svc.entities.OutreachContact.create({
         ...descriptive,
+        contact_kind: 'directory',
         tags: autoTags,
         ...(domainFields.email_domain_status ? { email_domain_checked_at: now } : {}),
         status: 'new',
