@@ -29,6 +29,13 @@ import {
   domainStatusMessage,
   DOMAIN_STATUSES,
 } from '../../shared/outreachSendSafety.js';
+import {
+  buildSuppressionMap,
+  isSuppressedFor,
+  normalizeCategory,
+  contactKind,
+} from '../../shared/outreachAudiencePolicy.js';
+import { composeOutreachEmail } from '../../shared/outreachComposer.js';
 
 // outreachSendOps — trimiterea efectiva a campaniilor de outreach, in loturi mici, apelata de
 // pe cron (`Outreach Campaign Scheduler`, la 5 minute) exact ca `directoryAutoImportOps` /
@@ -81,14 +88,11 @@ async function requireAdmin(base44) {
   return { user, svc: base44.asServiceRole };
 }
 
-async function getSuppressionSet(svc) {
+// Adresa -> categoriile blocate ('all' sau marketing / announcement). O dezabonare de la
+// prezentari nu opreste anunturile; o respingere sau o reclamatie opreste tot.
+async function getSuppressionMap(svc) {
   const rows = await svc.entities.OutreachSuppression.list('-updated_at', 20000).catch(() => []);
-  const set = new Set();
-  for (const row of rows || []) {
-    const email = normalizeEmail(row.normalized_email || row.email);
-    if (email && row.is_active !== false) set.add(email);
-  }
-  return set;
+  return buildSuppressionMap(rows || []);
 }
 
 // Idempotenta rularilor: ce a fost deja procesat intr-un ciclu anterior nu se mai trimite o data.
@@ -238,7 +242,8 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
   const processed = await getAlreadyProcessedContactIds(svc, campaign.id);
   const alreadyProcessed = processed.contactIds;
   const seenEmails = new Set(processed.emails);
-  const suppressionSet = await getSuppressionSet(svc);
+  const suppressionMap = await getSuppressionMap(svc);
+  const category = normalizeCategory(campaign.category);
 
   // Limita zilnica: cat mai are voie campania sa trimita azi (ora Romaniei).
   const dailyLimit = effectiveDailyLimit(campaign, processed.sends.priorSendingDays);
@@ -287,8 +292,17 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         skippedThisRun += 1;
         continue;
       }
-      if (isContactSuppressed(contact) || suppressionSet.has(email)) {
+      if (isContactSuppressed(contact) || isSuppressedFor(suppressionMap, email, category)) {
         await safeCampaignLog(svc, { campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email, status: 'skipped', reason: 'suppressed_at_send_time' });
+        skippedThisRun += 1;
+        continue;
+      }
+      if ((Array.isArray(contact.unsubscribed_categories) && contact.unsubscribed_categories.includes(category))
+        || (contactKind(contact) === 'provider_account' && contact.account_active === false)) {
+        // Dezabonat doar din categoria acestei campanii, sau un cont de furnizor inchis intre
+        // aprobare si trimitere.
+        const reason = contact.account_active === false ? 'inactive_account' : 'unsubscribed_category';
+        await safeCampaignLog(svc, { campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email, status: 'skipped', reason });
         skippedThisRun += 1;
         continue;
       }
@@ -334,32 +348,17 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       }
 
       const unsub = await buildUnsubscribeUrls(email, campaign.id);
-      const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
-      let bodyHtml = textToHtml(campaign.body_html || '');
-      bodyHtml = renderTemplateMergeFields(bodyHtml, contact).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
-      // Blocul vizual poarta datele REALE ale destinatarului: fiecare primeste fisa lui, cu numele
-      // si orasul lui, nu o ilustratie generica. De aceea se construieste aici, per contact.
-      const ctaOptions = {
-        ctaLabel: campaign.cta_label,
-        ctaUrl: campaign.cta_url,
-        showcase: campaign.show_listing_preview === false ? null : {
-          name: contact.company_name,
-          providerType: contact.provider_type,
-          city: contact.city,
-          county: contact.county,
-          chip: listingChipFor(contact.profile_control_status),
-          emailScope: contact.email_scope || 'location',
-        },
-      };
-      const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, campaign.subject || 'VIASEE', ctaOptions);
+      // Emailul se compune per destinatar (fisa lui, subsolul potrivit sursei, dezabonarea din
+      // categoria campaniei), din acelasi loc ca testul si previzualizarea din admin.
+      const composed = composeOutreachEmail(campaign, contact, { unsubscribeUrl: unsub.publicUrl });
 
       payloads.push({
         from: `${campaign.from_name || 'VIASEE'} <${sender.email}>`,
         to: [email],
         reply_to: [campaign.reply_to_email || legalConfig().contactEmail],
         subject: campaign.subject,
-        html: finalHtml,
-        text: buildPlainText(bodyHtml, unsub.publicUrl, ctaOptions),
+        html: composed.html,
+        text: composed.text,
         headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
       });
       meta.push({ contact, email });
