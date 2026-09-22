@@ -45,14 +45,19 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
     const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
     return key ? headers[key] : '';
   };
-  const replayOr = (key, produce) => {
+  // Ca Resend: aceeasi cheie + acelasi continut => raspunsul initial; aceeasi cheie + alt continut
+  // => 409 invalid_idempotent_request.
+  const replayOr = (key, requestBody, produce) => {
     if (key && idempotencyCache.has(key)) {
-      state.idempotentReplays += 1;
       const cached = idempotencyCache.get(key);
+      if (cached.requestBody !== requestBody) {
+        return new Response(JSON.stringify({ statusCode: 409, name: 'invalid_idempotent_request', message: 'Same idempotency key used with a different request payload.' }), { status: 409 });
+      }
+      state.idempotentReplays += 1;
       return new Response(cached.body, { status: cached.status });
     }
     const produced = produce();
-    if (key && produced.status < 500) idempotencyCache.set(key, produced);
+    if (key && produced.status < 500) idempotencyCache.set(key, { ...produced, requestBody });
     return new Response(produced.body, { status: produced.status });
   };
 
@@ -73,7 +78,7 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
         const failure = state.failNextBatches.shift();
         return new Response(JSON.stringify({ message: failure.message || 'fail' }), { status: failure.status });
       }
-      const response = replayOr(key, () => {
+      const response = replayOr(key, options.body, () => {
         const payloads = JSON.parse(options.body);
         if (state.rejectAll) return { status: 422, body: JSON.stringify({ name: 'validation_error', message: state.rejectAll }) };
         if (payloads.some((payload) => state.rejectAddresses.has(payload.to[0]))) {
@@ -90,7 +95,7 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
     }
     if (target.hostname === 'api.resend.com' && target.pathname === '/emails') {
       const key = headerOf(options, 'Idempotency-Key');
-      return replayOr(key, () => {
+      return replayOr(key, options.body, () => {
         const payload = JSON.parse(options.body);
         if (state.rejectAll) return { status: 422, body: JSON.stringify({ name: 'validation_error', message: state.rejectAll }) };
         if (state.rejectAddresses.has(payload.to[0])) {
