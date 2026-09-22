@@ -70,7 +70,8 @@ function routedRequest(req: Request, payload: unknown) {
 export async function handleDirectoryRequest(req: Request) {
   // Doua rute publice, fara autentificare Base44, verificate ATAT de devreme incat corpul
   // cererii nu e nici macar parsat ca JSON __function/payload: Resend (webhook, semnat Svix) si
-  // linkul de dezabonare cu un click (query string, poate fi si un simplu GET din browser).
+  // linkul de dezabonare (query string; POST one-click dezaboneaza, un GET doar redirectioneaza
+  // spre pagina /dezabonare, unde e nevoie de un click).
   // Niciuna nu apare in DIRECTORY_FUNCTION_ROUTES / DIRECTORY_FUNCTION_HANDLERS — nu pot fi
   // atinse prin __function, doar prin aceste doua verificari explicite.
   if (req.headers.get('svix-signature')) return outreachWebhookOpsHandle(req);
