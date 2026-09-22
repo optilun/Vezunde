@@ -8,10 +8,6 @@ import {
   validateSenderEmail,
   buildUnsubscribeUrls,
   buildListUnsubscribeHeaders,
-  buildEmailHtml,
-  buildPlainText,
-  renderTemplateMergeFields,
-  textToHtml,
   sendBatchViaResend,
   sendViaResend,
   legalConfig,
@@ -73,13 +69,7 @@ function clean(value) {
   return String(value ?? '').trim();
 }
 
-// Eticheta din fisa afisata in email. Un profil deja revendicat nu trebuie sa primeasca un email
-// care ii spune ca e nerevendicat.
-function listingChipFor(controlStatus) {
-  if (controlStatus === 'claimed') return 'Profil revendicat';
-  if (controlStatus === 'verified') return 'Profil verificat';
-  return 'Profil nerevendicat';
-}
+// Eticheta fisei din email (listingChipFor) si compunerea emailului: shared/outreachComposer.js.
 
 async function requireAdmin(base44) {
   const user = await base44.auth.me().catch(() => null);
