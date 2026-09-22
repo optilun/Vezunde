@@ -378,10 +378,6 @@ async function singleIdempotencyKeyFor(campaignId, salt, contactId, payload) {
   return `${keyPrefix(campaignId, salt)}c-${contactId}-${await hashHex(payload)}`;
 }
 
-// Cand Resend refuza lotul intreg (422) din cauza unei singure adrese, emailurile se trimit pe rand
-// ca adresa problema sa fie gasita si trecuta in raport, iar ceilalti destinatari sa primeasca
-// emailul. Daca nu trece NICIUNUL, problema e a campaniei (expeditor, continut), nu a unei adrese:
-// se opreste trimiterea fara sa marcheze vreun destinatar.
 // Cand Resend refuza lotul intreg (422), emailurile se trimit pe rand ca adresa problema sa fie
 // gasita si trecuta in raport, iar ceilalti destinatari sa primeasca emailul. Un refuz care numeste
 // destinatarul (`to`) e al adresei. Un refuz fara destinatar e al adresei doar daca altele au trecut;
