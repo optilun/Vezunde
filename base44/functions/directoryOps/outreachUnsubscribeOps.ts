@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { normalizeEmail, verifyUnsubscribeToken } from '../../shared/outreachEmailPolicy.js';
+import { normalizeCategory, mergeSuppressionCategories } from '../../shared/outreachAudiencePolicy.js';
 
 // outreachUnsubscribeOps — dezabonare cu un click, portat din Optilun (outreachUnsubscribe/entry.ts),
 // adaptat la modelul de rute al VIASEE: apelat direct de router.ts pe baza query string-ului
@@ -22,15 +23,28 @@ function json(data, status = 200) {
   return Response.json(data, { status, headers: corsHeaders() });
 }
 
-async function upsertSuppression(svc, email, source, campaignId) {
+// Dezabonarea e pe categorii: linkul dintr-un email de prezentare scoate adresa doar din
+// prezentari, cel dintr-un anunt doar din anunturi. Pagina ofera apoi si "de la tot" (scope=all).
+// Campania se afla din token; un token fara campanie cunoscuta dezaboneaza de la tot.
+async function scopeForCampaign(svc, campaignId) {
+  const id = String(campaignId || '').replace(/^test:/, '');
+  if (!id) return 'all';
+  const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
+  return campaign ? normalizeCategory(campaign.category) : 'all';
+}
+
+async function upsertSuppression(svc, email, source, campaignId, scope) {
   const normalized = normalizeEmail(email);
   if (!normalized) return;
   const now = new Date().toISOString();
   const existing = await svc.entities.OutreachSuppression.filter({ normalized_email: normalized }).catch(() => []);
+  const previous = existing?.[0] || null;
   const payload = {
     email: normalized,
     normalized_email: normalized,
-    status: 'unsubscribed',
+    // O respingere sau o reclamatie anterioara ramane motivul principal al suprimarii.
+    status: ['bounced', 'complained'].includes(previous?.status) ? previous.status : 'unsubscribed',
+    categories: mergeSuppressionCategories(previous, [scope]),
     reason: source,
     source,
     campaign_id: campaignId || '',
@@ -49,22 +63,27 @@ async function upsertSuppression(svc, email, source, campaignId) {
   });
 }
 
-async function markContactsUnsubscribed(svc, email, campaignId, source) {
+async function markContactsUnsubscribed(svc, email, campaignId, source, scope) {
   const now = new Date().toISOString();
   let contacts = await svc.entities.OutreachContact.filter({ normalized_email: email }).catch(() => []);
   if (!contacts?.length) contacts = await svc.entities.OutreachContact.filter({ email }).catch(() => []);
 
   for (const contact of contacts || []) {
+    const audit = [
+      ...(Array.isArray(contact.consent_audit) ? contact.consent_audit : []),
+      { action: 'unsubscribed', scope, source, at: now, campaign_id: campaignId || null },
+    ].slice(-25);
+    // De la tot: ca pana acum, adresa iese din orice campanie. Dintr-o categorie: ramane activa
+    // pentru celelalte.
+    const patch = scope === 'all'
+      ? { email_status: 'unsubscribed', status: 'unsubscribed' }
+      : { unsubscribed_categories: [...new Set([...(Array.isArray(contact.unsubscribed_categories) ? contact.unsubscribed_categories : []), scope])] };
     await svc.entities.OutreachContact.update(contact.id, {
+      ...patch,
       normalized_email: email,
-      email_status: 'unsubscribed',
-      status: 'unsubscribed',
       unsubscribe_reason: source,
       last_status_change_at: now,
-      consent_audit: [
-        ...(Array.isArray(contact.consent_audit) ? contact.consent_audit : []),
-        { action: 'unsubscribed', source, at: now, campaign_id: campaignId || null },
-      ].slice(-25),
+      consent_audit: audit,
     }).catch((error) => console.error('outreachUnsubscribeOps contact update failed', contact.id, error?.message || error));
   }
 
@@ -92,7 +111,7 @@ async function markContactsUnsubscribed(svc, email, campaignId, source) {
     }).catch(() => null);
   }
 
-  await upsertSuppression(svc, email, source, campaignId);
+  await upsertSuppression(svc, email, source, campaignId, scope);
 
   return { contacts_updated: contacts?.length || 0 };
 }
@@ -122,9 +141,10 @@ export async function handle(req) {
     const email = verified.email;
     const campaignId = verified.campaign_id || '';
     const source = oneClick ? 'one_click_signed_token' : 'signed_unsubscribe_link';
+    const scope = body.scope === 'all' ? 'all' : await scopeForCampaign(svc, campaignId);
 
-    const result = await markContactsUnsubscribed(svc, email, campaignId, source);
-    return json({ ok: true, email, campaign_id: campaignId || null, ...result });
+    const result = await markContactsUnsubscribed(svc, email, campaignId, source, scope);
+    return json({ ok: true, email, campaign_id: campaignId || null, scope, ...result });
   } catch (error) {
     console.error('outreachUnsubscribeOps failed', error?.message || error);
     return json({ error: error?.message || 'Dezabonarea a esuat' }, 400);
