@@ -2,6 +2,30 @@
   "name": "OutreachContact",
   "type": "object",
   "properties": {
+    "contact_kind": {
+      "type": "string",
+      "enum": [
+        "directory",
+        "provider_account"
+      ],
+      "default": "directory",
+      "description": "De unde vine contactul: directory = adresa publica a unei locatii/organizatii din director; provider_account = utilizator cu cont de furnizor pe VIASEE (membru activ al unei organizatii). Campaniile aleg sursele in audience_sources."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Doar pentru provider_account: utilizatorul VIASEE."
+    },
+    "account_active": {
+      "type": "boolean",
+      "description": "Doar pentru provider_account: false cand utilizatorul nu mai are niciun acces activ la o organizatie. Contul inactiv nu mai primeste campanii."
+    },
+    "unsubscribed_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Categoriile din care s-a dezabonat (marketing / announcement). Dezabonarea totala ramane email_status = unsubscribed."
+    },
     "location_id": {
       "type": "string",
       "description": "ProviderLocation asociata, daca a fost materializat din director. Pentru o adresa de organizatie: prima locatie alfabetic dintre cele care folosesc adresa."
@@ -105,7 +129,7 @@
     },
     "source": {
       "type": "string",
-      "description": "public_directory, manual, import, referral, partner, event, other"
+      "description": "public_directory, provider_account, manual, import, referral, partner, event, other"
     },
     "tags": {
       "type": "array",
@@ -139,10 +163,11 @@
       "type": "string",
       "enum": [
         "legitimate_interest",
-        "consent"
+        "consent",
+        "contract"
       ],
       "default": "legitimate_interest",
-      "description": "Temeiul legal pentru trimitere B2B (interes legitim pentru contacte publice de afaceri, sau consimtamant explicit)"
+      "description": "Temeiul legal: legitimate_interest pentru adrese publice de afaceri din director, contract pentru utilizatorii cu cont de furnizor, consent pentru consimtamant explicit"
     },
     "source_url": {
       "type": "string",
@@ -155,7 +180,7 @@
     },
     "source_type": {
       "type": "string",
-      "description": "public_directory, manual, import, referral, partner, event, other"
+      "description": "public_directory, provider_account, manual, import, referral, partner, event, other"
     },
     "lia_notes": {
       "type": "string",
