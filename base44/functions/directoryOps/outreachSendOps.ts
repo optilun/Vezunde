@@ -560,7 +560,7 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       }
       if (domainStatus === 'dns_error') {
         // Serverul DNS al domeniului a raspuns cu eroare (nu noi n-am putut intreba): adresa nu
-        // primeste in aceasta campanie. Nu se reincearca; apare in raport ca \"Eroare DNS la domeniu\".
+        // primeste in aceasta campanie. Nu se reincearca; apare in raport ca 'Eroare DNS la domeniu'.
         await safeCampaignLog(svc, {
           campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
           status: 'skipped', reason: 'domain_dns_error', error: domainStatusMessage(domainStatus),
