@@ -218,7 +218,9 @@ assert.match(campaignOpsSource, /AUTO_TAG_PREFIXES/, 'Tag-urile automate trebuie
   assert.match(scopeBody, /sharedLocationCount > 1 \? 'organization' : 'location'/);
   const segmentBody = extractFunctionBody(campaignOpsSource, /function contactMatchesSegment\(/);
   assert.match(segmentBody, /filters\.target_email_scope/, 'Campaniile pot tinti separat adresele de organizatie');
-  assert.match(campaignOpsSource, /'target_tags', 'target_email_scope'\]/, 'Tipul adresei trebuie sa fie editabil pe campanie');
+  assert.match(campaignOpsSource, /const editable = \[[^\]]*'target_email_scope'/, 'Tipul adresei trebuie sa fie editabil pe campanie');
+  // Ritmul de trimitere (limita zilnica) se alege in ciorna, pe langa segment.
+  assert.match(campaignOpsSource, /const editable = \[[^\]]*'daily_send_limit', 'daily_send_ramp'/, 'Limita zilnica trebuie sa fie editabila pe campanie');
   const syncBodyScope = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
   for (const field of ['email_scope: scope.emailScope', 'shared_location_count: scope.sharedLocationCount', 'shared_city_count: scope.sharedCityCount']) {
     assert.ok(syncBodyScope.includes(field), `Sincronizarea trebuie sa scrie ${field}`);
