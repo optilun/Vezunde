@@ -103,12 +103,29 @@ function isTransientBatchFailure(result) {
   return !isPermanentEmailError(status, text);
 }
 
+// `ambiguous`: nu stim daca emailurile au plecat (raspuns pierdut, eroare 5xx, cerere simultana cu
+// aceeasi cheie). Lotul ramane notat ca "in aer" (inflight_batch) si se retrimite identic.
 function failureFrom(result) {
+  const status = Number(result?.status) || 0;
   return {
     transient: isTransientBatchFailure(result),
+    ambiguous: !result || status === 0 || status >= 500 || status === 409,
     message: result?.json?.message || result?.text || 'Eroare de retea la trimiterea lotului catre Resend',
-    status: result?.status || 0,
+    status,
   };
+}
+
+// Resend refuza adresa destinatarului (nu expeditorul, nu continutul).
+function isRecipientRejection(result) {
+  const text = `${result?.json?.message || ''} ${result?.text || ''}`;
+  return /`to`|\bto field|recipient|destinatar/i.test(text);
+}
+
+// Aceeasi cheie folosita cu un continut diferit: cererea initiala a ajuns la Resend, deci lotul a
+// plecat la prima incercare.
+function isKeyAlreadyUsed(result) {
+  const text = `${result?.json?.name || ''} ${result?.json?.message || ''} ${result?.text || ''}`;
+  return Number(result?.status) === 409 && /invalid_idempotent_request|different (request )?payload/i.test(text);
 }
 
 function clean(value) {
@@ -148,9 +165,27 @@ async function automationServiceRole(base44, req) {
 
 // Adresa -> categoriile blocate ('all' sau marketing / announcement). O dezabonare de la
 // prezentari nu opreste anunturile; o respingere sau o reclamatie opreste tot.
+// O citire esuata NU devine o lista goala: fara lista de suprimari o adresa respinsa ar primi
+// din nou. Eroarea opreste rularea (lock-ul se elibereaza), iar urmatorul ciclu reincearca.
 async function getSuppressionMap(svc) {
-  const rows = await svc.entities.OutreachSuppression.list('-updated_at', 20000).catch(() => []);
+  const rows = await svc.entities.OutreachSuppression.list('-updated_at', 20000);
   return buildSuppressionMap(rows || []);
+}
+
+function isNotFound(error) {
+  const status = Number(error?.status || error?.statusCode || error?.response?.status) || 0;
+  return status === 404 || /not found|nu exista|does not exist/i.test(String(error?.message || ''));
+}
+
+// Un contact sters intre aprobare si trimitere se sare; orice alta eroare de citire opreste rularea
+// (altfel contactul ar fi sarit definitiv, desi nu i s-a trimis nimic).
+async function loadContact(svc, contactId) {
+  try {
+    return await svc.entities.OutreachContact.get(contactId);
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    throw error;
+  }
 }
 
 // Idempotenta rularilor: ce a fost deja procesat intr-un ciclu anterior nu se mai trimite o data.
@@ -159,8 +194,10 @@ async function getSuppressionMap(svc) {
 // aceeasi persoana nu trebuie sa primeasca aceeasi campanie de doua ori.
 // Din acelasi jurnal ies si cat s-a trimis azi (limita zilnica) si contoarele reale ale campaniei
 // (protectia la respingeri): nicio citire in plus.
+// Si aici o citire esuata opreste rularea: un jurnal "gol" ar trimite din nou tuturor si ar
+// reseta limita zilei.
 async function loadCampaignProgress(svc, campaign) {
-  const logs = await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaign.id }, '-created_date', 20000).catch(() => []);
+  const logs = await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaign.id }, '-created_date', 20000);
   const contactIds = new Set();
   const emails = new Set();
   for (const log of logs || []) {
@@ -322,58 +359,89 @@ async function checkBeforeSend(svc, campaignId, lockToken, logCounts) {
 // Cheia unui lot = campania + pozitia + continutul exact al emailurilor. `salt` se schimba doar dupa
 // un refuz explicit al Resend (nimic nu a plecat), ca o reluare sa nu primeasca raspunsul vechi de
 // refuz; dupa un timeout (poate ca lotul a plecat) cheia ramane aceeasi.
+async function hashHex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+function keyPrefix(campaignId, salt) {
+  return `viasee-outreach-${campaignId}-${salt ? `${salt}-` : ''}`;
+}
+
 async function idempotencyKeyFor(campaignId, salt, cursor, payloads) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payloads)));
-  const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
-  return `viasee-outreach-${campaignId}-${salt ? `${salt}-` : ''}${cursor}-${hex}`;
+  return `${keyPrefix(campaignId, salt)}${cursor}-${await hashHex(payloads)}`;
+}
+
+// Trimiterile individuale au cheie per contact, nu per lot: daca una ramane nesigura, urmatoarea
+// rulare o recompune identic (daca adresa inca poate primi) si Resend o recunoaste.
+async function singleIdempotencyKeyFor(campaignId, salt, contactId, payload) {
+  return `${keyPrefix(campaignId, salt)}c-${contactId}-${await hashHex(payload)}`;
 }
 
 // Cand Resend refuza lotul intreg (422) din cauza unei singure adrese, emailurile se trimit pe rand
 // ca adresa problema sa fie gasita si trecuta in raport, iar ceilalti destinatari sa primeasca
 // emailul. Daca nu trece NICIUNUL, problema e a campaniei (expeditor, continut), nu a unei adrese:
 // se opreste trimiterea fara sa marcheze vreun destinatar.
-async function deliverIndividually(apiKey, payloads, keyBase) {
-  const perRecipient = [];
+// Cand Resend refuza lotul intreg (422), emailurile se trimit pe rand ca adresa problema sa fie
+// gasita si trecuta in raport, iar ceilalti destinatari sa primeasca emailul. Un refuz care numeste
+// destinatarul (`to`) e al adresei. Un refuz fara destinatar e al adresei doar daca altele au trecut;
+// daca nu trece NICIUNUL, problema e a campaniei (expeditor, continut): se opreste trimiterea fara
+// sa marcheze vreun destinatar.
+async function deliverIndividually(apiKey, payloads, singleKeyFor) {
+  const perRecipient = new Array(payloads.length);
   let succeeded = 0;
-  let rejected = 0;
-  let lastRejection = null;
+  let unattributed = 0;
+  let lastUnattributed = null;
+  const settle = () => {
+    // Refuzurile fara destinatar raman in raport doar daca altele au trecut.
+    if (succeeded) {
+      return perRecipient.map((entry) => (entry?.unattributed ? { rejected: entry.rejected } : entry));
+    }
+    return perRecipient.map((entry) => (entry?.unattributed ? undefined : entry));
+  };
   for (let i = 0; i < payloads.length; i += 1) {
     if (i > 0) await sleep(singleSendSpacingMs());
     let result = null;
     try {
-      result = await sendViaResend(apiKey, payloads[i], { idempotencyKey: `${keyBase}-${i}` });
+      result = await sendViaResend(apiKey, payloads[i], { idempotencyKey: await singleKeyFor(i) });
     } catch (error) {
       console.error('outreachSendOps single send threw', error?.message || error);
       result = null;
     }
     if (result?.ok) {
-      perRecipient.push({ id: result.json?.id || '' });
+      perRecipient[i] = { id: result.json?.id || '' };
       succeeded += 1;
       continue;
     }
     if (result && (result.status === 422 || result.status === 400)) {
-      rejected += 1;
-      lastRejection = result;
-      perRecipient.push({ rejected: result.json?.message || result.text || 'Adresa refuzata de Resend' });
-      if (!succeeded && rejected >= Math.min(3, payloads.length)) break;
+      const message = result.json?.message || result.text || 'Adresa refuzata de Resend';
+      if (isRecipientRejection(result)) {
+        perRecipient[i] = { rejected: message };
+        continue;
+      }
+      unattributed += 1;
+      lastUnattributed = result;
+      perRecipient[i] = { rejected: message, unattributed: true };
+      if (!succeeded && unattributed >= Math.min(3, payloads.length)) break;
       continue;
     }
-    // Esec tranzitoriu la mijloc: ce a plecat deja se trece in jurnal, restul se reia la
-    // urmatorul ciclu (cheile de idempotenta impiedica o a doua trimitere a celor plecate).
-    return { perRecipient: succeeded ? perRecipient : [], failure: failureFrom(result) };
+    // Esec tranzitoriu la mijloc: ce a plecat deja se trece in jurnal, restul se reia la urmatorul
+    // ciclu (cheile per contact impiedica o a doua trimitere a celor plecate).
+    return { perRecipient: settle(), failure: { ...failureFrom(result), ambiguous: false } };
   }
-  if (!succeeded) return { perRecipient: [], failure: { ...failureFrom(lastRejection), transient: false } };
-  return { perRecipient, failure: null };
+  if (!succeeded && unattributed) {
+    return { perRecipient: settle(), failure: { ...failureFrom(lastUnattributed), transient: false, ambiguous: false } };
+  }
+  return { perRecipient: settle(), failure: null };
 }
 
-async function deliverBatch(apiKey, campaignId, salt, cursor, payloads) {
-  const idempotencyKey = await idempotencyKeyFor(campaignId, salt, cursor, payloads);
+async function deliverBatch(apiKey, payloads, idempotencyKey, singleKeyFor) {
   let batch = null;
   try {
     batch = await sendBatchViaResend(apiKey, payloads, { idempotencyKey });
   } catch (error) {
-    console.error('outreachSendOps batch threw', campaignId, error?.message || error);
-    batch = null; // exceptie de retea: tratata mai jos ca esec tranzitoriu
+    console.error('outreachSendOps batch threw', idempotencyKey, error?.message || error);
+    batch = null; // exceptie de retea: nu stim daca a plecat, tratat mai jos ca nesigur
   }
   if (batch?.ok) {
     // La succes Resend intoarce rezultatele in ordinea payload-urilor. Daca lungimile nu se
@@ -382,21 +450,28 @@ async function deliverBatch(apiKey, campaignId, salt, cursor, payloads) {
     const aligned = Array.isArray(batch.results) && batch.results.length === payloads.length;
     return { perRecipient: payloads.map((_, i) => ({ id: aligned ? (batch.results[i]?.id || '') : '' })), failure: null };
   }
-  if (batch && batch.status === 422 && payloads.length > 1) {
-    return deliverIndividually(apiKey, payloads, idempotencyKey);
+  if (isKeyAlreadyUsed(batch)) {
+    // Doar la retrimiterea unui lot nesigur: continutul s-a schimbat intre timp (ex. numele firmei
+    // resincronizat), dar cheia arata ca prima trimitere a ajuns la Resend. Nu mai trimitem nimic.
+    return { perRecipient: payloads.map(() => ({ id: '' })), failure: null, assumed_sent: true };
+  }
+  if (batch && batch.status === 422) {
+    return deliverIndividually(apiKey, payloads, singleKeyFor);
   }
   // Esecul e al lotului intreg, nu al unui destinatar anume: NU marcam contactele si NU avansam
   // cursorul. Altfel o eroare trecatoare (rate limit, 5xx) ar arde definitiv 25 de destinatari.
   return { perRecipient: [], failure: failureFrom(batch) };
 }
 
-async function writeSendLogs(svc, campaignId, meta, perRecipient) {
+async function writeSendLogs(svc, campaignId, meta, perRecipient, alreadyLogged) {
   let sent = 0;
   let rejected = 0;
   const work = [];
   for (let i = 0; i < meta.length; i += 1) {
     const entry = perRecipient[i];
     if (!entry) continue; // neincercat (lotul s-a oprit inainte)
+    // La retrimiterea unui lot nesigur, contactele trecute deja in jurnal nu se mai scriu o data.
+    if (alreadyLogged.has(meta[i].contact.id)) continue;
     work.push({ ...meta[i], entry });
     if (entry.rejected) rejected += 1;
     else sent += 1;
