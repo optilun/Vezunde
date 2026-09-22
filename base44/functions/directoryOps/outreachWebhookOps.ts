@@ -99,6 +99,9 @@ async function upsertSuppression(svc, log, email, status, event, errorMessage) {
     email: normalized,
     normalized_email: normalized,
     status,
+    // O adresa respinsa sau o reclamatie de spam blocheaza orice categorie, nu doar pe cea a
+    // campaniei din care a venit.
+    categories: ['all'],
     reason: errorMessage || (status === 'complained' ? 'Plangere de spam via webhook Resend' : 'Livrare permanent esuata via webhook Resend'),
     source: 'resend_webhook',
     campaign_id: log?.campaign_id || event?.data?.tags?.campaign_id || '',
