@@ -226,19 +226,29 @@ async function eligibleContactsForSegment(svc, filters) {
   return (await computeAudience(svc, audienceSpecFrom(filters))).eligible;
 }
 
+// null = jurnalul nu a putut fi citit (nu "jurnal gol").
 async function campaignLogs(svc, campaignId) {
-  return (await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaignId }, '-created_date', 20000).catch(() => [])) || [];
+  try {
+    return (await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaignId }, '-created_date', 20000)) || [];
+  } catch (error) {
+    console.error('outreachCampaignOps log read failed', campaignId, error?.message || error);
+    return null;
+  }
 }
 
 // Cifrele afisate (trimise, livrate, respinse) se calculeaza din jurnal, nu din contoarele salvate
-// pe campanie: acelea se scriu din zeci de webhook-uri simultane si pot ramane in urma.
+// pe campanie: acelea se scriu din zeci de webhook-uri simultane si pot ramane in urma. Cand
+// jurnalul unei campanii nu poate fi citit, raman contoarele salvate (nu zerouri). Citirile merg
+// cate cateva deodata, nu toate odata.
 async function logCountsByCampaign(svc, campaigns) {
   const result = new Map();
-  await Promise.all((campaigns || [])
-    .filter((campaign) => campaign.status !== 'draft')
-    .map(async (campaign) => {
-      result.set(campaign.id, summarizeCampaignLogs(await campaignLogs(svc, campaign.id), campaign.recipient_count).counts);
+  const pending = (campaigns || []).filter((campaign) => campaign.status !== 'draft');
+  for (let i = 0; i < pending.length; i += 4) {
+    await Promise.all(pending.slice(i, i + 4).map(async (campaign) => {
+      const logs = await campaignLogs(svc, campaign.id);
+      if (logs) result.set(campaign.id, summarizeCampaignLogs(logs, campaign.recipient_count).counts);
     }));
+  }
   return result;
 }
 
@@ -965,11 +975,15 @@ async function actionApproveCampaign(svc, user, payload) {
 // trimitere trece campania din 'ready' in 'sending' printr-o citire urmata de o scriere: daca
 // adminul apasa exact intre ele, scrierea cronului ar acoperi oprirea. Dupa o clipa verificam si,
 // daca e cazul, scriem oprirea din nou (trimiterea verifica starea inaintea fiecarui lot).
+// O anulare se rescrie peste orice stare in afara de 'sent' (o pauza automata sau un esec scris
+// intre timp nu au voie sa o transforme intr-o oprire care se poate relua); o pauza doar peste
+// 'ready' / 'sending' (o alta oprire ramane cum e).
 async function confirmStopStatus(svc, id, to, patch) {
   await sleep(stopConfirmDelayMs());
   const current = await svc.entities.OutreachCampaign.get(id).catch(() => null);
-  if (!current || current.status === to) return current;
-  if (!['ready', 'sending'].includes(current.status)) return current; // terminata intre timp
+  if (!current || current.status === to || current.status === 'sent') return current;
+  const overwritable = to === 'cancelled' ? true : ['ready', 'sending'].includes(current.status);
+  if (!overwritable) return current;
   return svc.entities.OutreachCampaign.update(id, patch).catch(() => current);
 }
 
@@ -996,7 +1010,9 @@ async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, ac
 async function resumePatch(campaign, svc) {
   const patch = { pause_reason: '', failure_message: '', consecutive_send_failures: 0 };
   if (HEALTH_PAUSE_REASONS.has(campaign.pause_reason)) {
-    const counts = summarizeCampaignLogs(await campaignLogs(svc, campaign.id), campaign.recipient_count).counts;
+    const logs = await campaignLogs(svc, campaign.id);
+    if (!logs) throw new Error('Jurnalul campaniei nu a putut fi citit. Incearca din nou.');
+    const counts = summarizeCampaignLogs(logs, campaign.recipient_count).counts;
     patch.health_baseline = healthBaselineFrom(withLogHealthCounters(campaign, counts));
   }
   return patch;
