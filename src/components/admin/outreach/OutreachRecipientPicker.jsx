@@ -72,17 +72,21 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
   const manualOnly = spec.audience_mode === "manual";
 
   const rows = data?.rows || [];
+  // Bifele reflecta imediat alegerea locala; lista de la server se reincarca dupa o clipa si
+  // confirma (numerele din rezumat vin de acolo).
+  const isExcluded = (row) => excluded.includes(row.id) || (row.added_manually && !included.includes(row.id));
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (view === "receives" && (row.excluded || row.reason)) return false;
-      if (view === "excluded" && !row.excluded) return false;
-      if (view === "blocked" && (!row.reason || row.excluded)) return false;
+      const out = isExcluded(row);
+      if (view === "receives" && (out || row.reason)) return false;
+      if (view === "excluded" && !out) return false;
+      if (view === "blocked" && (!row.reason || out)) return false;
       if (!term) return true;
       return [row.company_name, row.contact_name, row.email, row.city, row.county]
         .some((value) => String(value || "").toLowerCase().includes(term));
     });
-  }, [rows, search, view]);
+  }, [rows, search, view, excluded, included]);
 
   const toggleSource = (value) => {
     const next = sources.includes(value) ? sources.filter((item) => item !== value) : [...sources, value];
@@ -196,7 +200,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
         {addResults.length > 0 && (
           <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
             {addResults.map((contact) => {
-              const already = included.includes(contact.id) || rows.some((row) => row.id === contact.id && !row.excluded);
+              const already = included.includes(contact.id) || rows.some((row) => row.id === contact.id && !isExcluded(row));
               return (
                 <li key={contact.id} className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
                   <span className="min-w-0">
@@ -283,9 +287,10 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
             </thead>
             <tbody>
               {filteredRows.slice(0, limit).map((row) => {
-                const receives = !row.excluded && !row.reason;
+                const out = isExcluded(row);
+                const receives = !out && !row.reason;
                 return (
-                  <tr key={row.id} className={`border-t border-border ${row.excluded || row.reason ? "text-muted-foreground" : ""}`}>
+                  <tr key={row.id} className={`border-t border-border ${out || row.reason ? "text-muted-foreground" : ""}`}>
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
@@ -308,7 +313,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                     <td className="px-3 py-2">
                       {row.reason ? (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">{BLOCK_REASON_LABELS[row.reason] || row.reason}</span>
-                      ) : row.excluded ? (
+                      ) : out ? (
                         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">Scos de tine</span>
                       ) : (
                         <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-800">Primeste</span>
