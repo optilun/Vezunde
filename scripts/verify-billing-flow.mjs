@@ -282,5 +282,5 @@ const panel = await readFile('src/components/workspace/provider/leads/ProviderBi
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));
 assert.match(panel, /request !== sequence.current/);
 assert.match(panel, /if \(!profileInitialized.current\)/, "Pagination must preserve unsaved billing details");
-assert.match(panel, /if \(lock.current\) return/);
+assert.match(panel, /if \(lock.current \|\| !mounted.current\) return/);
 console.log('Billing flow: authorization, duplicate protection, retry, return validation, recovery, history and fiscal input checks passed (mock Stripe only).');
