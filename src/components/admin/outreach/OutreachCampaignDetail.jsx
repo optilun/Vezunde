@@ -254,8 +254,9 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
 
   const isDraft = campaign.status === "draft";
   const canPause = ["ready", "sending"].includes(campaign.status);
-  const canResume = campaign.status === "paused";
-  const canCancel = ["draft", "ready", "sending", "paused"].includes(campaign.status);
+  const canResume = ["paused", "failed"].includes(campaign.status);
+  const canCancel = ["draft", "ready", "sending", "paused", "failed"].includes(campaign.status);
+  const retryingAfterFailure = campaign.status === "sending" && !!campaign.failure_message;
   const isAutoPaused = campaign.status === "paused" && HEALTH_PAUSE_REASONS.includes(campaign.pause_reason);
   const waitingUntil = campaign.next_send_after && new Date(campaign.next_send_after).getTime() > Date.now()
     ? new Date(campaign.next_send_after)
@@ -286,7 +287,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
           )}
           {canResume && (
             <button type="button" disabled={busy} onClick={resumeCampaign} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
-              {isAutoPaused ? "Reia oricum" : "Reia"}
+              {isAutoPaused ? "Reia oricum" : campaign.status === "failed" ? "Reia trimiterea" : "Reia"}
             </button>
           )}
           {canCancel && (
@@ -312,7 +313,9 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
 
       {campaign.failure_message && !isAutoPaused && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <span className="font-semibold">Motivul opririi trimiterii: </span>
+          <span className="font-semibold">
+            {retryingAfterFailure ? "Ultimul lot nu a plecat, se reincearca automat in cateva minute: " : "Motivul opririi trimiterii: "}
+          </span>
           {campaign.failure_message}
           {campaign.status === "failed" && (
             <span className="block pt-1 text-amber-800">
