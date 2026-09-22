@@ -222,8 +222,7 @@ assert.match(campaignOpsSource, /AUTO_TAG_PREFIXES/, 'Tag-urile automate trebuie
   assert.match(campaignOpsSource, /const AUTO_TAG_PREFIXES = \[[^\]]*'adresa:'/, 'Tag-ul adresa: e automat si se reimprospateaza la sincronizare');
   const scopeBody = extractFunctionBody(campaignOpsSource, /function groupAddressScope\(/);
   assert.match(scopeBody, /sharedLocationCount > 1 \? 'organization' : 'location'/);
-  const segmentBody = extractFunctionBody(campaignOpsSource, /function contactMatchesSegment\(/);
-  assert.match(segmentBody, /filters\.target_email_scope/, 'Campaniile pot tinti separat adresele de organizatie');
+  assert.match(audiencePolicySource, /filters\.target_email_scope/, 'Campaniile pot tinti separat adresele de organizatie');
   assert.match(campaignOpsSource, /const editable = \[[^\]]*'target_email_scope'/, 'Tipul adresei trebuie sa fie editabil pe campanie');
   // Ritmul de trimitere (limita zilnica) se alege in ciorna, pe langa segment.
   assert.match(campaignOpsSource, /const editable = \[[^\]]*'daily_send_limit', 'daily_send_ramp'/, 'Limita zilnica trebuie sa fie editabila pe campanie');
