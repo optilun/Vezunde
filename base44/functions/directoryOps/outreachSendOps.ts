@@ -319,10 +319,13 @@ async function checkBeforeSend(svc, campaignId, lockToken, logCounts) {
   return { live };
 }
 
-async function idempotencyKeyFor(campaignId, cursor, payloads) {
+// Cheia unui lot = campania + pozitia + continutul exact al emailurilor. `salt` se schimba doar dupa
+// un refuz explicit al Resend (nimic nu a plecat), ca o reluare sa nu primeasca raspunsul vechi de
+// refuz; dupa un timeout (poate ca lotul a plecat) cheia ramane aceeasi.
+async function idempotencyKeyFor(campaignId, salt, cursor, payloads) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payloads)));
   const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
-  return `viasee-outreach-${campaignId}-${cursor}-${hex}`;
+  return `viasee-outreach-${campaignId}-${salt ? `${salt}-` : ''}${cursor}-${hex}`;
 }
 
 // Cand Resend refuza lotul intreg (422) din cauza unei singure adrese, emailurile se trimit pe rand
@@ -363,8 +366,8 @@ async function deliverIndividually(apiKey, payloads, keyBase) {
   return { perRecipient, failure: null };
 }
 
-async function deliverBatch(apiKey, campaignId, cursor, payloads) {
-  const idempotencyKey = await idempotencyKeyFor(campaignId, cursor, payloads);
+async function deliverBatch(apiKey, campaignId, salt, cursor, payloads) {
+  const idempotencyKey = await idempotencyKeyFor(campaignId, salt, cursor, payloads);
   let batch = null;
   try {
     batch = await sendBatchViaResend(apiKey, payloads, { idempotencyKey });
@@ -599,7 +602,7 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       if (gate.stoppedByAdmin) { stoppedByAdmin = gate.stoppedByAdmin; break; }
       if (gate.health) { healthStop = gate.health; break; }
 
-      const delivery = await deliverBatch(resendApiKey, campaign.id, cursor, payloads);
+      const delivery = await deliverBatch(resendApiKey, campaign.id, clean(campaign.send_key_salt), cursor, payloads);
       // Ce a plecat se trece in jurnal inainte de orice alta decizie: si cand lotul s-a oprit la
       // jumatate, destinatarii care au primit deja nu mai sunt reluati.
       const written = await writeSendLogs(svc, campaign.id, meta, delivery.perRecipient);
@@ -653,6 +656,8 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
     await releaseOwnedLock(svc, campaign.id, lockToken, {
       ...progressPatch,
       consecutive_send_failures: failures,
+      // Refuz explicit = nimic nu a plecat: urmatoarea incercare primeste chei noi.
+      ...(batchFailure.transient ? {} : { send_key_salt: crypto.randomUUID().slice(0, 8) }),
       ...(adminStopped ? {} : { failure_message: failureMessage }),
       ...(!adminStopped && giveUp ? { status: 'failed' } : {}),
     });
