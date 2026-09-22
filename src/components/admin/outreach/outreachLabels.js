@@ -1,5 +1,6 @@
 import { base44 } from "@/api/base44Client";
 import { ONBOARDING_PROVIDER_TYPES } from "@/lib/providerTaxonomy";
+import { buildCsv } from "./csv";
 
 // Etichete si ajutoare comune modulului de comunicare cu furnizorii. Valorile tehnice
 // (marketing / announcement, directory / provider_account) sunt cele din
@@ -80,6 +81,7 @@ export const NOT_SENT_REASON_LABELS = {
   missing_compliance: "Lipsesc temeiul legal sau sursa",
   invalid_email: "Adresa invalida",
   inactive_account: "Contul nu mai e activ",
+  rejected_by_provider: "Adresa refuzata de serviciul de email",
   other: "Alt motiv",
 };
 
@@ -103,14 +105,9 @@ export function formatDateTime(value) {
   return date.toLocaleString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-// CSV pentru Excel: separator ';' (setarea regionala romaneasca) si BOM UTF-8.
+// CSV pentru Excel: separator ';', BOM UTF-8 si celule protejate impotriva formulelor (vezi csv.js).
 export function downloadCsv(filename, header, rows) {
-  const escape = (value) => {
-    const text = String(value ?? "");
-    return /[;"\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  const lines = [header, ...rows].map((row) => row.map(escape).join(";"));
-  const blob = new Blob([`﻿${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([buildCsv(header, rows)], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
