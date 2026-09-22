@@ -6,6 +6,8 @@ import {
   isContactSuppressed,
   complianceMissing,
   getPublicBaseUrl,
+  DEFAULT_FROM_EMAIL,
+  DEFAULT_CONTACT_EMAIL,
 } from '../../shared/outreachEmailPolicy.js';
 import {
   normalizeCategory,
@@ -561,6 +563,217 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
 // O campanie noua porneste din categorie + (optional) un sablon din aceeasi categorie: subiectul,
 // textul si butonul se copiaza din sablon; tot ce vine explicit in payload are prioritate.
 // Anunturile pleaca implicit si catre furnizorii cu cont, fara fisa din director.
+// ── Furnizorii cu cont ca destinatari ──
+// Fiecare utilizator cu acces activ la o organizatie devine un contact de tip provider_account
+// (unul per utilizator, nu per adresa din director). Temeiul e relatia contractuala (contul);
+// dezabonarea ramane pe categorii. Cine nu mai are acces activ ramane in lista, dar nu mai
+// primeste campanii (account_active: false).
+const ACCOUNT_COMPARED_FIELDS = [
+  'organization_id', 'company_name', 'contact_name', 'email', 'normalized_email', 'city', 'county',
+  'provider_type', 'profile_control_status', 'organization_location_count', 'shared_location_count',
+  'shared_city_count', 'email_domain_status', 'account_active',
+];
+
+async function actionSyncProviderAccounts(svc) {
+  const memberships = await svc.entities.ProviderMembership.filter({ status: 'active' }, '-created_date', 5000).catch(() => []);
+  const orgIdsByUser = new Map();
+  for (const membership of memberships || []) {
+    if (!membership.user_id || !membership.organization_id) continue;
+    if (!orgIdsByUser.has(membership.user_id)) orgIdsByUser.set(membership.user_id, []);
+    orgIdsByUser.get(membership.user_id).push(membership.organization_id);
+  }
+
+  const [organizationsById, everyLocation, contacts] = await Promise.all([
+    listAllOrganizationsById(svc),
+    listAllLocations(svc),
+    listAllContacts(svc),
+  ]);
+  const locationsByOrg = new Map();
+  for (const location of everyLocation || []) {
+    if (!location.organization_id) continue;
+    if (!locationsByOrg.has(location.organization_id)) locationsByOrg.set(location.organization_id, []);
+    locationsByOrg.get(location.organization_id).push(location);
+  }
+  const accountContacts = (contacts || []).filter((contact) => contactKind(contact) === 'provider_account');
+  const byUserId = new Map(accountContacts.filter((c) => c.user_id).map((c) => [c.user_id, c]));
+
+  const users = [];
+  for (const userId of orgIdsByUser.keys()) {
+    const account = await svc.entities.User.get(userId).catch(() => null);
+    if (account) users.push(account);
+  }
+  const domainCache = await lookupEmailDomains(users.map((account) => emailDomain(normalizeEmail(account.email))));
+
+  const now = new Date().toISOString();
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+  let skipped = 0;
+  let deactivated = 0;
+  const activeUserIds = new Set();
+
+  for (const account of users) {
+    const email = normalizeEmail(account.email);
+    if (!email || !isValidEmail(email)) { skipped++; continue; }
+    activeUserIds.add(account.id);
+    const organizationId = orgIdsByUser.get(account.id)[0];
+    const organization = organizationsById.get(organizationId);
+    const locations = (locationsByOrg.get(organizationId) || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ro'));
+    const first = locations[0] || {};
+    const domainStatus = domainCache.get(emailDomain(email)) || 'lookup_failed';
+    const descriptive = {
+      contact_kind: 'provider_account',
+      user_id: account.id,
+      account_active: true,
+      organization_id: organizationId,
+      company_name: organization?.public_display_name || organization?.name || first.name || '',
+      contact_name: account.full_name || '',
+      email,
+      normalized_email: email,
+      city: first.locality_name || first.city || '',
+      county: first.county_name || first.county || '',
+      provider_type: first.provider_type || '',
+      profile_control_status: first.profile_control_status || 'claimed',
+      organization_location_count: locations.length,
+      email_scope: 'organization',
+      shared_location_count: Math.max(1, locations.length),
+      shared_city_count: new Set(locations.map((row) => row.locality_name || row.city || '').filter(Boolean)).size || 1,
+      ...(DOMAIN_STATUSES.includes(domainStatus) ? { email_domain_status: domainStatus } : {}),
+    };
+    const existing = byUserId.get(account.id);
+    if (existing) {
+      const changed = ACCOUNT_COMPARED_FIELDS.some((field) => field in descriptive && String(existing[field] ?? '') !== String(descriptive[field] ?? ''));
+      if (!changed) { unchanged++; continue; }
+      await svc.entities.OutreachContact.update(existing.id, {
+        ...descriptive,
+        ...(descriptive.email_domain_status && descriptive.email_domain_status !== existing.email_domain_status ? { email_domain_checked_at: now } : {}),
+      });
+      updated++;
+    } else {
+      await svc.entities.OutreachContact.create({
+        ...descriptive,
+        ...(descriptive.email_domain_status ? { email_domain_checked_at: now } : {}),
+        tags: [],
+        status: 'new',
+        email_status: 'active',
+        source: 'provider_account',
+        lawful_basis: 'contract',
+        source_url: `${getPublicBaseUrl()}/contul-meu`,
+        collection_date: account.created_date || now,
+        source_type: 'provider_account',
+        lia_notes: 'Utilizator cu cont de furnizor VIASEE: anunturi despre platforma si comunicari legate de profil, cu dezabonare pe categorii.',
+        consent_audit: [{ at: now, source: 'sync_provider_accounts', action: 'created' }],
+        last_status_change_at: now,
+      });
+      created++;
+    }
+  }
+
+  for (const contact of accountContacts) {
+    if (!contact.user_id || activeUserIds.has(contact.user_id) || contact.account_active === false) continue;
+    await svc.entities.OutreachContact.update(contact.id, { account_active: false, last_status_change_at: now }).catch(() => null);
+    deactivated++;
+  }
+
+  return Response.json({ created, updated, unchanged, skipped, deactivated, active_accounts: activeUserIds.size });
+}
+
+// ── Raport ──
+
+// Raportul unei campanii se calculeaza din jurnalul complet (nu din ultimele intrari), iar
+// destinatarii la care inca nu s-a ajuns apar ca "in asteptare".
+async function actionCampaignReport(svc, payload) {
+  const id = clean(payload.id);
+  if (!id) return Response.json({ error: 'id este obligatoriu' }, { status: 400 });
+  const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
+  if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
+  const [logs, contacts] = await Promise.all([
+    svc.entities.OutreachCampaignLog.filter({ campaign_id: id }, '-created_date', 20000).catch(() => []),
+    listAllContacts(svc),
+  ]);
+  const contactsById = new Map((contacts || []).map((contact) => [contact.id, contact]));
+  const summary = summarizeCampaignLogs(logs || [], campaign.recipient_count);
+  const describe = (contactId) => {
+    const contact = contactsById.get(contactId) || {};
+    return { company_name: contact.company_name || '', city: contact.city || '', kind: contactKind(contact) };
+  };
+  const loggedContactIds = new Set();
+  const rows = (logs || []).map((log) => {
+    if (log.contact_id) loggedContactIds.add(log.contact_id);
+    const outcome = logOutcome(log);
+    return {
+      id: log.id,
+      contact_id: log.contact_id || '',
+      email: normalizeEmail(log.normalized_email || log.email),
+      ...describe(log.contact_id),
+      outcome,
+      reason: outcome === 'not_sent' ? notSentReason(log) : '',
+      error: log.error || '',
+      sent_at: log.sent_at || '',
+      delivered_at: log.delivered_at || '',
+      bounced_at: log.bounced_at || '',
+    };
+  });
+  for (const contactId of Array.isArray(campaign.recipient_contact_ids) ? campaign.recipient_contact_ids : []) {
+    if (loggedContactIds.has(contactId)) continue;
+    const contact = contactsById.get(contactId) || {};
+    rows.push({
+      id: `queued:${contactId}`,
+      contact_id: contactId,
+      email: normalizeEmail(contact.normalized_email || contact.email),
+      ...describe(contactId),
+      outcome: 'queued',
+      reason: '', error: '', sent_at: '', delivered_at: '', bounced_at: '',
+    });
+  }
+  return Response.json({
+    campaign: {
+      id: campaign.id, name: campaign.name, category: normalizeCategory(campaign.category), status: campaign.status,
+      subject: campaign.subject, approved_at: campaign.approved_at || '', sent_at: campaign.sent_at || '',
+    },
+    summary,
+    rows,
+  });
+}
+
+// Imaginea de ansamblu din lista de campanii: cat s-a trimis si livrat pe fiecare categorie, cati
+// destinatari sunt disponibili pe fiecare sursa si cati s-au dezabonat.
+async function actionOutreachOverview(svc) {
+  const [campaigns, contacts, suppressions] = await Promise.all([
+    svc.entities.OutreachCampaign.list('-created_date', 500).catch(() => []),
+    listAllContacts(svc),
+    svc.entities.OutreachSuppression.list('-updated_at', 20000).catch(() => []),
+  ]);
+  const byCategory = {};
+  for (const category of ['marketing', 'announcement']) {
+    byCategory[category] = { campaigns: 0, active: 0, sent: 0, delivered: 0, bounced: 0, complained: 0 };
+  }
+  for (const campaign of campaigns || []) {
+    const bucket = byCategory[normalizeCategory(campaign.category)];
+    bucket.campaigns += 1;
+    if (['ready', 'sending', 'paused'].includes(campaign.status)) bucket.active += 1;
+    bucket.sent += Number(campaign.sent_count) || 0;
+    bucket.delivered += Number(campaign.delivered_count) || 0;
+    bucket.bounced += Number(campaign.bounced_count) || 0;
+    bucket.complained += Number(campaign.complained_count) || 0;
+  }
+  const unsubscribed = { marketing: 0, announcement: 0, all: 0 };
+  for (const [, categories] of buildSuppressionMap(suppressions || [])) {
+    if (categories.has('all')) { unsubscribed.all += 1; continue; }
+    if (categories.has('marketing')) unsubscribed.marketing += 1;
+    if (categories.has('announcement')) unsubscribed.announcement += 1;
+  }
+  const list = contacts || [];
+  return Response.json({
+    by_category: byCategory,
+    contacts: {
+      directory: list.filter((contact) => contactKind(contact) === 'directory').length,
+      provider_account: list.filter((contact) => contactKind(contact) === 'provider_account' && contact.account_active !== false).length,
+    },
+    suppressed: unsubscribed,
+  });
+}
+
 async function actionCreateCampaign(svc, user, payload) {
   const name = clean(payload.name);
   const category = normalizeCategory(payload.category);
@@ -594,8 +807,8 @@ async function actionCreateCampaign(svc, user, payload) {
     cta_url: pick('cta_url'),
     show_listing_preview: showListingPreview,
     from_name: clean(payload.from_name) || 'VIASEE',
-    from_email: clean(payload.from_email),
-    reply_to_email: clean(payload.reply_to_email),
+    from_email: clean(payload.from_email) || DEFAULT_FROM_EMAIL,
+    reply_to_email: clean(payload.reply_to_email) || DEFAULT_CONTACT_EMAIL,
     audience_sources: spec.audience_sources,
     audience_mode: spec.audience_mode,
     included_contact_ids: spec.included_contact_ids,
@@ -786,6 +999,12 @@ export async function handle(req: Request) {
       case 'update_template': return await actionUpdateTemplate(svc, payload);
       case 'delete_template': return await actionDeleteTemplate(svc, payload);
       case 'preview_segment': return await actionPreviewSegment(svc, payload);
+      case 'list_recipients': return await actionListRecipients(svc, payload);
+      case 'search_contacts': return await actionSearchContacts(svc, payload);
+      case 'render_preview': return await actionRenderPreview(svc, payload);
+      case 'sync_provider_accounts': return await actionSyncProviderAccounts(svc);
+      case 'campaign_report': return await actionCampaignReport(svc, payload);
+      case 'outreach_overview': return await actionOutreachOverview(svc);
       case 'sync_contacts_from_directory': return await actionSyncContactsFromDirectory(svc, user, payload);
       case 'create_campaign': return await actionCreateCampaign(svc, user, payload);
       case 'update_campaign': return await actionUpdateCampaign(svc, payload);
