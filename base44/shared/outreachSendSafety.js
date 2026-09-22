@@ -161,6 +161,20 @@ export function evaluateCampaignHealth(campaign = {}, limits = CAMPAIGN_HEALTH_L
   return { healthy: true, reason: '', sent, bounced, complained, bounceRate, message: '' };
 }
 
+// Contoarele de pe campanie se scriu din mai multe locuri deodata (trimiterea si zeci de webhook-uri
+// aproape simultane), deci pot ramane in urma. Jurnalul campaniei e sursa de adevar: pentru
+// protectie se ia maximul dintre contorul salvat si ce arata jurnalul, ca o respingere pierduta
+// dintr-un contor sa nu lase campania sa trimita mai departe.
+export function withLogHealthCounters(campaign = {}, logCounts = null) {
+  if (!logCounts) return campaign;
+  return {
+    ...campaign,
+    sent_count: Math.max(nonNegative(campaign.sent_count), nonNegative(logCounts.sent)),
+    bounced_count: Math.max(nonNegative(campaign.bounced_count), nonNegative(logCounts.bounced)),
+    complained_count: Math.max(nonNegative(campaign.complained_count), nonNegative(logCounts.complained)),
+  };
+}
+
 export function healthPausePatch(health, now = new Date()) {
   return {
     status: 'paused',
