@@ -105,8 +105,10 @@ const resetResend = () => {
   state.rejectAddresses = new Set();
   state.failNextBatches = [];
   state.loseNextResponse = false;
+  state.rejectAll = '';
   state.onBatch = null;
   state.onDns = null;
+  state.clearIdempotency();
 };
 const sentRecipients = () => [...state.resendBatches.flat(), ...state.resendSingles].map((payload) => payload.to[0]);
 
@@ -423,6 +425,69 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   assert.equal(new Set(sentRecipients()).size, 4);
   assert.ok(store.rows('OutreachCampaignLog').every((log) => log.resend_message_id), 'jurnalul are id-urile primei trimiteri');
   assert.equal(store.row('OutreachCampaign', campaign.id).consecutive_send_failures, 0);
+  assert.equal(store.row('OutreachCampaign', campaign.id).inflight_batch, null, 'lotul nu mai e "in aer"');
+}
+{
+  // Raspuns pierdut, apoi intre doua rulari un destinatar se dezaboneaza chiar din emailul primit,
+  // iar jurnalul unui alt destinatar apucase sa fie scris. Lotul se retrimite IDENTIC (fara
+  // refiltrare), deci Resend il recunoaste: nimeni nu primeste de doua ori.
+  const store = createStore();
+  resetResend();
+  const contacts = [];
+  for (let i = 0; i < 4; i += 1) contacts.push(await seedContact(store, `aer${i}@firma${i}.ro`));
+  const campaign = await seedCampaign(store, contacts.map((c) => c.id));
+  state.loseNextResponse = true;
+  const firstTry = await runSender(store);
+  assert.equal(firstTry.outcome.retry_scheduled, true, JSON.stringify(firstTry));
+  const inflight = store.row('OutreachCampaign', campaign.id).inflight_batch;
+  assert.deepEqual(inflight.contact_ids, contacts.map((c) => c.id), 'lotul nesigur e notat pe campanie');
+  await store.svc.entities.OutreachSuppression.create({ email: contacts[0].email, normalized_email: contacts[0].email, status: 'unsubscribed', categories: ['all'], is_active: true });
+  await seedSentLog(store, campaign, contacts[1], { resend_message_id: '' });
+  state.dns && null;
+  const retry = await runSender(store);
+  assert.equal(retry.outcome.finished, true, JSON.stringify(retry));
+  assert.equal(state.resendBatches.length, 1, 'lotul a plecat o singura data');
+  assert.equal(state.idempotentReplays, 1);
+  const logsFor = (contact) => store.rows('OutreachCampaignLog').filter((log) => log.contact_id === contact.id);
+  assert.equal(logsFor(contacts[1]).length, 1, 'jurnalul scris deja nu se dubleaza');
+  assert.equal(logsFor(contacts[0])[0].status, 'sent', 'cel dezabonat a primit emailul la prima incercare si asa apare');
+  assert.equal(store.row('OutreachCampaign', campaign.id).inflight_batch, null);
+}
+{
+  // Lot nesigur, iar intre timp datele unui destinatar s-au schimbat (resincronizare): alt
+  // continut sub aceeasi cheie => Resend spune ca cheia a fost folosita, deci lotul plecase.
+  const store = createStore();
+  resetResend();
+  const contacts = [];
+  for (let i = 0; i < 3; i += 1) contacts.push(await seedContact(store, `schimbat${i}@firma${i}.ro`));
+  const campaign = await seedCampaign(store, contacts.map((c) => c.id), { body_html: 'Buna ziua, [FIRMA].' });
+  state.loseNextResponse = true;
+  await runSender(store);
+  store.row('OutreachContact', contacts[2].id).company_name = 'Nume nou dupa sincronizare';
+  const retry = await runSender(store);
+  assert.equal(retry.outcome.finished, true, JSON.stringify(retry));
+  assert.equal(state.resendBatches.length, 1, 'nu se trimite a doua oara');
+  assert.equal(store.rows('OutreachCampaignLog').filter((log) => log.status === 'sent').length, 3);
+}
+{
+  // O citire esuata (jurnal sau suprimari) nu devine o lista goala: rularea se opreste inainte de
+  // orice trimitere, lock-ul se elibereaza, iar ciclul urmator continua normal.
+  const store = createStore();
+  resetResend();
+  const contacts = [];
+  for (let i = 0; i < 2; i += 1) contacts.push(await seedContact(store, `citire${i}@firma${i}.ro`));
+  const campaign = await seedCampaign(store, contacts.map((c) => c.id));
+  for (const entity of ['OutreachCampaignLog', 'OutreachSuppression']) {
+    store.hooks.failReads = new Set([entity]);
+    const aborted = await runSender(store);
+    assert.equal(aborted.outcome.retry_scheduled, true, `${entity}: ${JSON.stringify(aborted)}`);
+    assert.equal(state.resendBatches.length, 0, `${entity}: nimic nu pleaca fara datele complete`);
+    assert.equal(store.row('OutreachCampaign', campaign.id).execution_lock_token, '', 'lock-ul e eliberat');
+  }
+  store.hooks.failReads = new Set();
+  const recovered = await runSender(store);
+  assert.equal(recovered.outcome.finished, true);
+  assert.equal(new Set(sentRecipients()).size, 2);
 }
 
 // ── 9. Adresa refuzata de Resend, campanie esuata, reluare ─────────────────────────────────────
@@ -444,6 +509,20 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   assert.equal(report.summary.counts.sent, 4);
 }
 {
+  // Ultimul destinatar, singur in lot, e refuzat: se trece in raport si campania se incheie, nu
+  // ramane blocata in 'failed'.
+  const store = createStore();
+  resetResend();
+  const contacts = [];
+  for (let i = 0; i < 26; i += 1) contacts.push(await seedContact(store, `ultim${i}@firma${i}.ro`));
+  const campaign = await seedCampaign(store, contacts.map((c) => c.id));
+  state.rejectAddresses = new Set(['ultim25@firma25.ro']);
+  const result = await runSender(store);
+  assert.equal(result.outcome.finished, true, JSON.stringify(result));
+  assert.equal(store.row('OutreachCampaign', campaign.id).status, 'sent');
+  assert.equal(store.rows('OutreachCampaignLog').find((log) => log.email === 'ultim25@firma25.ro').reason, 'rejected_by_provider');
+}
+{
   // Resend refuza TOT (ex. expeditor gresit): nicio adresa nu e marcata, campania se opreste, iar
   // dupa remediere adminul o reia din acelasi punct.
   const store = createStore();
@@ -451,7 +530,7 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   const contacts = [];
   for (let i = 0; i < 3; i += 1) contacts.push(await seedContact(store, `toate${i}@firma${i}.ro`));
   const campaign = await seedCampaign(store, contacts.map((c) => c.id));
-  state.rejectAddresses = new Set(contacts.map((c) => c.email));
+  state.rejectAll = 'Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.';
   const failed = await runSender(store);
   assert.match(failed.outcome.error, /eroare permanenta/, JSON.stringify(failed));
   const afterFail = store.row('OutreachCampaign', campaign.id);
@@ -459,12 +538,14 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   assert.equal(afterFail.current_cursor, 0);
   assert.equal(store.rows('OutreachCampaignLog').length, 0, 'nicio adresa nu e trecuta ca refuzata cand problema e a campaniei');
 
+  assert.ok(store.row('OutreachCampaign', campaign.id).send_key_salt, 'dupa un refuz explicit, cheile se schimba');
+  assert.equal(store.row('OutreachCampaign', campaign.id).inflight_batch, null);
   const resumed = await callCampaignOps(store, { action: 'resume_campaign', id: campaign.id });
   assert.ok(!resumed.error, resumed.error);
   assert.equal(store.row('OutreachCampaign', campaign.id).status, 'ready');
   assert.equal(store.row('OutreachCampaign', campaign.id).failure_message, '');
   assert.equal(store.row('OutreachCampaign', campaign.id).consecutive_send_failures, 0);
-  state.rejectAddresses = new Set();
+  state.rejectAll = '';
   const after = await runSender(store);
   assert.equal(after.outcome.finished, true);
   assert.equal(new Set(sentRecipients()).size, 3);
@@ -514,6 +595,24 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   env.OUTREACH_LOCK_CONFIRM_MS = '0';
   assert.ok(overwritten);
   assert.equal(store.row('OutreachCampaign', racing.id).status, 'paused', 'o pauza acoperita de cron e rescrisa');
+
+  // O anulare acoperita de o pauza automata (webhook) sau de un esec e rescrisa: altfel campania
+  // anulata s-ar putea relua.
+  for (const overwrittenBy of ['paused', 'failed']) {
+    const target = await seedCampaign(store, [contacts[0].id], { status: 'sending' });
+    let done = false;
+    env.OUTREACH_LOCK_CONFIRM_MS = '5';
+    store.hooks.beforeUpdate = async (entity, id, patch) => {
+      if (entity === 'OutreachCampaign' && id === target.id && patch.status === 'cancelled' && !done) {
+        done = true;
+        setTimeout(() => { store.row('OutreachCampaign', target.id).status = overwrittenBy; }, 0);
+      }
+    };
+    await callCampaignOps(store, { action: 'cancel_campaign', id: target.id });
+    store.hooks.beforeUpdate = null;
+    env.OUTREACH_LOCK_CONFIRM_MS = '0';
+    assert.equal(store.row('OutreachCampaign', target.id).status, 'cancelled', `anularea ramane dupa ${overwrittenBy}`);
+  }
 }
 
 // ── 11. Aprobare, sincronizare si schimbarea ritmului ───────────────────────────────────────────
