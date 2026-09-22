@@ -33,6 +33,8 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
     rejectAddresses: new Set(), failNextBatches: [],
     // loseNextResponse: Resend primeste si trimite lotul, dar raspunsul se pierde pe drum (timeout).
     loseNextResponse: false,
+    // rejectAll: Resend refuza orice email cu acest mesaj (problema a campaniei, ex. expeditorul).
+    rejectAll: '',
     onBatch: null,
     onDns: null,
   };
@@ -73,6 +75,7 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
       }
       const response = replayOr(key, () => {
         const payloads = JSON.parse(options.body);
+        if (state.rejectAll) return { status: 422, body: JSON.stringify({ name: 'validation_error', message: state.rejectAll }) };
         if (payloads.some((payload) => state.rejectAddresses.has(payload.to[0]))) {
           return { status: 422, body: JSON.stringify({ name: 'validation_error', message: 'Invalid `to` field.' }) };
         }
@@ -89,6 +92,7 @@ export function installOutreachEnvironment({ dns = {}, dnsUnreachable = [] } = {
       const key = headerOf(options, 'Idempotency-Key');
       return replayOr(key, () => {
         const payload = JSON.parse(options.body);
+        if (state.rejectAll) return { status: 422, body: JSON.stringify({ name: 'validation_error', message: state.rejectAll }) };
         if (state.rejectAddresses.has(payload.to[0])) {
           return { status: 422, body: JSON.stringify({ name: 'validation_error', message: `Invalid \`to\` field: ${payload.to[0]}` }) };
         }
@@ -110,7 +114,8 @@ export function createStore() {
     return tables.get(name);
   };
   const clone = (value) => (value === undefined ? value : structuredClone(value));
-  const hooks = { beforeUpdate: null };
+  // failReads: numele entitatilor ale caror citiri de liste (filter / list) esueaza.
+  const hooks = { beforeUpdate: null, failReads: new Set() };
   const entities = new Proxy({}, {
     get: (_target, name) => ({
       async get(id) {
@@ -119,9 +124,11 @@ export function createStore() {
         return clone(row);
       },
       async filter(query = {}) {
+        if (hooks.failReads.has(name)) throw new Error(`503 citire ${name} esuata`);
         return [...table(name).values()].filter((row) => Object.entries(query).every(([key, value]) => row[key] === value)).map(clone);
       },
       async list() {
+        if (hooks.failReads.has(name)) throw new Error(`503 citire ${name} esuata`);
         return [...table(name).values()].map(clone);
       },
       async create(data) {
