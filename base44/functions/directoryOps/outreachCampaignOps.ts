@@ -73,15 +73,10 @@ function locationMatchesSegment(location, filters = {}) {
   return true;
 }
 
-// Segmentarea reala a destinatarilor. Se aplica pe campurile contactului, nu ale locatiei: contactul
+// Segmentarea reala a destinatarilor se aplica pe campurile contactului, nu ale locatiei: contactul
 // e entitatea catre care se trimite, si el poarta judetul, tipul si starea profilului, copiate la
-// materializare. Fara asta, filtrele de judet/tip de pe campanie erau acceptate in interfata dar
-// ignorate la calculul listei — o campanie "doar Cluj, doar optici" ar fi plecat catre toata tara.
-// Regulile (judet, tip, stare profil, tipul adresei, etichete) stau in
-// shared/outreachAudiencePolicy.js, folosite la fel de lista de destinatari, aprobare si test.
-function contactMatchesSegment(contact, filters = {}) {
-  return contactMatchesFilters(contact, filters);
-}
+// materializare. Regulile (contactMatchesFilters) stau in shared/outreachAudiencePolicy.js si sunt
+// folosite la fel de lista de destinatari, previzualizare si aprobare (computeAudience mai jos).
 
 // ── Clasificarea contactelor materializate din director ──
 // Prefixele sunt stabile, ca segmentarea sa poata tinti direct ("tip:optica", "retea:lant").
