@@ -494,27 +494,27 @@ async function actionSendTestEmail(svc, payload) {
   const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
   if (!resendApiKey) return Response.json({ error: 'RESEND_API_KEY nu este configurat' }, { status: 500 });
 
-  const unsub = await buildUnsubscribeUrls(toEmail, `test:${campaignId}`);
-  const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
-  let bodyHtml = textToHtml(campaign.body_html || '');
-  bodyHtml = renderTemplateMergeFields(bodyHtml, { company_name: 'Firma Test', city: 'Bucuresti', county: 'Bucuresti' }).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
-  const testCtaOptions = {
-    ctaLabel: campaign.cta_label,
-    ctaUrl: campaign.cta_url,
-    showcase: campaign.show_listing_preview === false ? null : {
-      name: 'Optica Exemplu', providerType: 'optica_medicala', city: 'Bucuresti', county: 'Bucuresti',
-      chip: listingChipFor('directory'),
-    },
+  // Testul poate arata emailul exact asa cum il primeste un destinatar ales din lista (numele,
+  // orasul, fisa lui), dar pleaca doar la adresa de test.
+  const sampleContactId = clean(payload.sample_contact_id);
+  const sample = sampleContactId ? await svc.entities.OutreachContact.get(sampleContactId).catch(() => null) : null;
+  const contact = sample || {
+    company_name: 'Optica Exemplu', provider_type: 'optica_medicala', city: 'Bucuresti', county: 'Bucuresti',
+    profile_control_status: 'directory',
   };
-  const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, `[TEST] ${campaign.subject || 'VIASEE'}`, testCtaOptions);
+  const unsub = await buildUnsubscribeUrls(toEmail, `test:${campaignId}`);
+  const composed = composeOutreachEmail(campaign, contact, {
+    unsubscribeUrl: unsub.publicUrl,
+    subject: `[TEST] ${campaign.subject || 'VIASEE'}`,
+  });
 
   const result = await sendViaResend(resendApiKey, {
     from: `${campaign.from_name || 'VIASEE'} <${sender.email}>`,
     to: [toEmail],
     reply_to: [campaign.reply_to_email || legalConfig().contactEmail],
-    subject: `[TEST] ${campaign.subject || 'VIASEE'}`,
-    html: finalHtml,
-    text: buildPlainText(bodyHtml, unsub.publicUrl, testCtaOptions),
+    subject: composed.subject,
+    html: composed.html,
+    text: composed.text,
     // Aceleasi antete ca la trimiterea reala: un test trebuie sa arate exact ca emailul livrat,
     // inclusiv butonul de dezabonare afisat de Gmail/Outlook langa numele expeditorului.
     headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
