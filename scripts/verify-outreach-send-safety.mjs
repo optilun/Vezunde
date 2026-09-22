@@ -223,9 +223,11 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   assert.equal(store.row('OutreachCampaign', other.id).pause_reason, 'admin');
   await callCampaignOps(store, { action: 'resume_campaign', id: other.id });
   assert.equal(store.row('OutreachCampaign', other.id).health_baseline, undefined);
-
+}
+{
   // Contoarele salvate raman in urma (webhook-uri simultane), jurnalul arata 3 respinse din 50:
   // campania se opreste oricum.
+  const store = createStore();
   const stale = [];
   for (let i = 0; i < 51; i += 1) stale.push(await seedContact(store, `stale${i}@firma${i}.ro`));
   const staleCampaign = await seedCampaign(store, stale.map((c) => c.id), { status: 'sending', sent_count: 50, bounced_count: 0, current_cursor: 50 });
@@ -499,14 +501,18 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   // Pauza data chiar cand cronul preia campania (citire, apoi scriere 'sending'): Pauza verifica
   // dupa o clipa si scrie oprirea din nou.
   const racing = await seedCampaign(store, [contacts[0].id], { status: 'ready' });
+  let overwritten = false;
+  env.OUTREACH_LOCK_CONFIRM_MS = '5';
   store.hooks.beforeUpdate = async (entity, id, patch) => {
-    if (entity === 'OutreachCampaign' && id === racing.id && patch.status === 'paused' && !racing.__overwritten) {
-      racing.__overwritten = true;
+    if (entity === 'OutreachCampaign' && id === racing.id && patch.status === 'paused' && !overwritten) {
+      overwritten = true;
       setTimeout(() => { store.row('OutreachCampaign', racing.id).status = 'sending'; }, 0);
     }
   };
   await callCampaignOps(store, { action: 'pause_campaign', id: racing.id });
   store.hooks.beforeUpdate = null;
+  env.OUTREACH_LOCK_CONFIRM_MS = '0';
+  assert.ok(overwritten);
   assert.equal(store.row('OutreachCampaign', racing.id).status, 'paused', 'o pauza acoperita de cron e rescrisa');
 }
 
