@@ -86,7 +86,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Contacte scoase manual (debifate) din lista rezultata din filtre"
+      "description": "Contacte scoase manual (debifate) din lista rezultata din filtre. Scoaterea se aplica adresei: randurile cu aceeasi adresa sunt scoase si ele."
     },
     "target_counties": {
       "type": "array",
@@ -150,6 +150,10 @@
     "health_baseline": {
       "type": "object",
       "description": "{sent, bounced, complained, at}: contoarele in momentul in care adminul a reluat o campanie oprita automat. Oprirea automata se calculeaza doar pe ce s-a trimis dupa acest moment."
+    },
+    "send_key_salt": {
+      "type": "string",
+      "description": "Parte din cheia de idempotenta Resend a loturilor. Se schimba doar dupa ce Resend a refuzat explicit un lot (nimic nu a plecat), ca reluarea sa nu primeasca raspunsul vechi de refuz; o reincercare dupa timeout pastreaza cheia si nu trimite a doua oara."
     },
     "status": {
       "type": "string",
