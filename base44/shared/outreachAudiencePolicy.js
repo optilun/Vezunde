@@ -246,19 +246,20 @@ export function logOutcome(log = {}) {
   return 'awaiting';
 }
 
-// Ordinea starilor unui email trimis: un eveniment mai slab venit tarziu nu il coboara pe unul mai
-// grav (un "delivered" intarziat nu sterge un "bounced", un "sent" nu sterge un "delivered").
+// Ordinea starilor unui email trimis (aceeasi ca in logOutcome): un eveniment mai slab venit tarziu
+// nu il coboara pe unul mai grav (un "delivered" intarziat nu sterge un "bounced", un "sent" nu
+// sterge un "delivered", o dezabonare nu ascunde o respingere).
 export const LOG_STATUS_RANK = Object.freeze({
   unknown: 0,
   pending: 0,
   sent: 1,
   delivery_delayed: 2,
   delivered: 3,
-  failed: 4,
-  bounced: 5,
+  replied: 4,
   unsubscribed: 5,
-  replied: 5,
-  complained: 6,
+  failed: 6,
+  bounced: 7,
+  complained: 8,
 });
 
 export function shouldReplaceLogStatus(current, next) {
