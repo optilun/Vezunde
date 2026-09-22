@@ -238,7 +238,8 @@ export function notSentReason(log = {}) {
   if (log.status === 'duplicate') return 'duplicate';
   if (reason.startsWith('undeliverable_domain')) return 'undeliverable_domain';
   if (reason === 'domain_dns_error') return 'domain_dns_error';
-  if (reason === 'suppressed_at_send_time') return 'suppressed';
+  if (reason === 'suppressed_at_send_time' || reason === 'unsubscribed_category') return 'suppressed';
+  if (reason === 'inactive_account') return 'inactive_account';
   if (reason.startsWith('missing_compliance')) return 'missing_compliance';
   if (log.status === 'invalid') return 'invalid_email';
   return 'other';
@@ -251,6 +252,7 @@ export const NOT_SENT_REASON_LABELS = {
   suppressed: 'Dezabonat / suprimat',
   missing_compliance: 'Lipsesc temeiul legal sau sursa',
   invalid_email: 'Adresa invalida',
+  inactive_account: 'Contul nu mai e activ',
   other: 'Alt motiv',
 };
 
