@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { PROVIDER_TYPE_LABELS } from "./outreachLabels";
 
@@ -13,15 +13,39 @@ function toList(value) {
     .filter(Boolean);
 }
 
+// Textul se editeaza liber (virgula, spatiu, o valoare pe jumatate scrisa) si se transforma in lista
+// doar la iesirea din camp sau la Enter. Transformarea la fiecare tasta stergea virgula imediat ce
+// era scrisa, deci nu se putea introduce a doua valoare.
 function ListField({ label, hint, value, onChange, disabled, placeholder }) {
+  const external = Array.isArray(value) ? value.join(", ") : "";
+  const [text, setText] = useState(external);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setText(external);
+  }, [external, editing]);
+  const commit = () => {
+    setEditing(false);
+    const next = toList(text);
+    const current = Array.isArray(value) ? value : [];
+    if (next.join("\u0000") !== current.join("\u0000")) onChange(next);
+    setText(next.join(", "));
+  };
   return (
     <label className="block">
       <span className="text-xs font-semibold text-foreground">{label}</span>
       <input
         type="text"
         disabled={disabled}
-        value={Array.isArray(value) ? value.join(", ") : ""}
-        onChange={(event) => onChange(toList(event.target.value))}
+        value={text}
+        onFocus={() => setEditing(true)}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          }
+        }}
         placeholder={placeholder}
         className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
       />
