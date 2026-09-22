@@ -443,7 +443,6 @@ async function seedSentLog(store, campaign, contact, extra = {}) {
   assert.deepEqual(inflight.contact_ids, contacts.map((c) => c.id), 'lotul nesigur e notat pe campanie');
   await store.svc.entities.OutreachSuppression.create({ email: contacts[0].email, normalized_email: contacts[0].email, status: 'unsubscribed', categories: ['all'], is_active: true });
   await seedSentLog(store, campaign, contacts[1], { resend_message_id: '' });
-  state.dns && null;
   const retry = await runSender(store);
   assert.equal(retry.outcome.finished, true, JSON.stringify(retry));
   assert.equal(state.resendBatches.length, 1, 'lotul a plecat o singura data');
