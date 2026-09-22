@@ -386,7 +386,8 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
     + `<tr><td bgcolor="${CREAM}" style="background:${CREAM};padding:22px 32px 26px;" class="vs-pad">`
     + `<p style="margin:0 0 8px;font-family:${FONT_SANS};color:${WARM_GREY};font-size:12px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(legal.brand)}</strong> &mdash; director national pentru servicii de sanatate vizuala.</p>`
     + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:${WARM_GREY};font-size:12px;line-height:1.6;">Contact: <a href="mailto:${escapeHtml(legal.contactEmail)}" style="color:${INK};text-decoration:underline;">${escapeHtml(legal.contactEmail)}</a> &nbsp;&middot;&nbsp; <a href="${safeHttpUrl(legal.website) || '#'}" style="color:${INK};text-decoration:underline;">${escapeHtml(String(legal.website).replace(/^https?:\/\//, ''))}</a></p>`
-    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#8a857d;font-size:11px;line-height:1.55;">${escapeHtml(legal.reason)}</p>`
+    // De ce primeste emailul: difera pentru un furnizor cu cont fata de o adresa din director.
+    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#8a857d;font-size:11px;line-height:1.55;">${escapeHtml(options.reason || legal.reason)}</p>`
     + `<p style="margin:0;font-family:${FONT_SANS};color:#8a857d;font-size:11px;line-height:1.55;">${unsubscribeHtml}</p>`
     + `<p style="margin:12px 0 0;font-family:${FONT_SANS};color:#b8b0a3;font-size:10px;">&copy; ${year} ${escapeHtml(legal.legalCompany)}</p>`
     + '</td></tr>'
@@ -405,7 +406,7 @@ export function buildPlainText(bodyHtml, unsubscribeUrl, options = {}) {
     `${legal.brand}`,
     `Contact: ${legal.contactEmail}`,
     `Website: ${legal.website}`,
-    `De ce primesti acest email: ${legal.reason}`,
+    `De ce primesti acest email: ${options.reason || legal.reason}`,
     `Dezabonare: ${unsubscribeUrl}`,
   ]).join('\n');
 }
