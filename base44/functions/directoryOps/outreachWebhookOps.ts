@@ -186,6 +186,10 @@ async function autoPauseIfUnhealthy(svc, campaign, counts, nextStatus) {
   if (!['ready', 'sending'].includes(campaign.status)) return;
   const health = evaluateCampaignHealth(withLogHealthCounters(campaign, counts));
   if (health.healthy) return;
+  // Starea se re-citeste chiar inainte de scriere: o anulare sau o pauza data de admin intre timp
+  // nu are voie sa fie inlocuita de o pauza automata (care s-ar putea relua).
+  const current = await svc.entities.OutreachCampaign.get(campaign.id).catch(() => null);
+  if (!current || !['ready', 'sending'].includes(current.status)) return;
   await svc.entities.OutreachCampaign.update(campaign.id, healthPausePatch(health)).catch((error) => {
     console.error('outreachWebhookOps auto-pause failed', campaign.id, error?.message || error);
   });
