@@ -93,7 +93,9 @@ assert.match(sendOpsSource, /sendBatchViaResend/);
 
 const advanceBody = extractFunctionBody(sendOpsSource, /async function advanceOneCampaign\(/);
 assert.doesNotMatch(advanceBody, /\bsendViaResend\(/, 'Trimiterea reala a campaniei trebuie sa foloseasca Resend Batch API, nu trimitere sincrona per destinatar');
-const suppressionCheckIndex = advanceBody.search(/isContactSuppressed\(contact\)\s*\|\|\s*suppressionSet\.has\(email\)/);
+// Suprimarea e pe categorii (marketing / anunturi); 'all' (respingeri, reclamatii, dezabonare
+// totala) blocheaza orice campanie. Vezi shared/outreachAudiencePolicy.js.
+const suppressionCheckIndex = advanceBody.search(/isContactSuppressed\(contact\)\s*\|\|\s*isSuppressedFor\(suppressionMap, email, category\)/);
 const batchSendIndex = advanceBody.indexOf('sendBatchViaResend(');
 assert.ok(suppressionCheckIndex !== -1, 'Verificarea de suprimare per-destinatar lipseste din advanceOneCampaign');
 assert.ok(suppressionCheckIndex < batchSendIndex, 'Suprimarea trebuie verificata inainte de trimiterea efectiva a lotului');
