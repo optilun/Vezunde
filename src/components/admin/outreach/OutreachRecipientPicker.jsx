@@ -72,9 +72,19 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
   const manualOnly = spec.audience_mode === "manual";
 
   const rows = data?.rows || [];
-  // Bifele reflecta imediat alegerea locala; lista de la server se reincarca dupa o clipa si
-  // confirma (numerele din rezumat vin de acolo).
-  const isExcluded = (row) => excluded.includes(row.id) || (row.added_manually && !included.includes(row.id));
+  // Debifarea scoate ADRESA: aceeasi adresa poate aparea pe mai multe randuri (cont de furnizor si
+  // director, doua locatii), iar toate raman scoase, altfel duplicatul ar primi emailul in locul
+  // randului debifat. Bifele reflecta imediat alegerea locala; lista de la server se reincarca dupa
+  // o clipa si confirma (numerele din rezumat vin de acolo).
+  const excludedEmails = useMemo(() => {
+    const ids = new Set(excluded);
+    return new Set(rows.filter((row) => ids.has(row.id) && row.email).map((row) => row.email));
+  }, [rows, excluded]);
+  const idsForEmail = (email) => rows.filter((row) => row.email && row.email === email).map((row) => row.id);
+  const isExcluded = (row) => excluded.includes(row.id)
+    || (!!row.email && excludedEmails.has(row.email))
+    || (row.added_manually && !included.includes(row.id));
+  const excludedByAddress = (row) => !excluded.includes(row.id) && !!row.email && excludedEmails.has(row.email);
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((row) => {
@@ -86,7 +96,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
       return [row.company_name, row.contact_name, row.email, row.city, row.county]
         .some((value) => String(value || "").toLowerCase().includes(term));
     });
-  }, [rows, search, view, excluded, included]);
+  }, [rows, search, view, excluded, included, excludedEmails]);
 
   const toggleSource = (value) => {
     const next = sources.includes(value) ? sources.filter((item) => item !== value) : [...sources, value];
@@ -98,7 +108,9 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
   // trece la \"scosi\".
   const setReceives = (row, receives) => {
     if (receives) {
-      onChange({ excluded_contact_ids: excluded.filter((id) => id !== row.id) });
+      // Readucerea unei adrese le readuce pe toate randurile ei; lista alege apoi un singur rand.
+      const sameAddress = new Set([row.id, ...idsForEmail(row.email)]);
+      onChange({ excluded_contact_ids: excluded.filter((id) => !sameAddress.has(id)) });
     } else if (row.added_manually) {
       onChange({ included_contact_ids: included.filter((id) => id !== row.id) });
     } else {
@@ -107,9 +119,11 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
   };
 
   const setAllVisible = (receives) => {
-    const ids = filteredRows.filter((row) => !row.reason).map((row) => row.id);
+    const ids = filteredRows.filter((row) => !row.reason || excludedByAddress(row)).map((row) => row.id);
     if (receives) {
-      onChange({ excluded_contact_ids: excluded.filter((id) => !ids.includes(id)) });
+      const emails = new Set(filteredRows.filter((row) => ids.includes(row.id) && row.email).map((row) => row.email));
+      const sameAddress = new Set([...ids, ...rows.filter((row) => row.email && emails.has(row.email)).map((row) => row.id)]);
+      onChange({ excluded_contact_ids: excluded.filter((id) => !sameAddress.has(id)) });
     } else {
       const manual = filteredRows.filter((row) => row.added_manually).map((row) => row.id);
       onChange({
@@ -119,10 +133,12 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
     }
   };
 
-  const addManually = (contactId) => {
+  const addManually = (contact) => {
+    const email = String(contact.email || "").trim().toLowerCase();
+    const sameAddress = new Set([contact.id, ...(email ? idsForEmail(email) : [])]);
     onChange({
-      included_contact_ids: [...new Set([...included, contactId])],
-      excluded_contact_ids: excluded.filter((id) => id !== contactId),
+      included_contact_ids: [...new Set([...included, contact.id])],
+      excluded_contact_ids: excluded.filter((id) => !sameAddress.has(id)),
     });
   };
 
@@ -210,7 +226,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                   <button
                     type="button"
                     disabled={disabled || already}
-                    onClick={() => addManually(contact.id)}
+                    onClick={() => addManually(contact)}
                     className="shrink-0 rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50"
                   >
                     {already ? "In lista" : "Adauga"}
@@ -288,6 +304,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
             <tbody>
               {filteredRows.slice(0, limit).map((row) => {
                 const out = isExcluded(row);
+                const byAddress = excludedByAddress(row);
                 const receives = !out && !row.reason;
                 return (
                   <tr key={row.id} className={`border-t border-border ${out || row.reason ? "text-muted-foreground" : ""}`}>
@@ -295,7 +312,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                       <input
                         type="checkbox"
                         aria-label={`Trimite catre ${row.email}`}
-                        disabled={disabled || !!row.reason}
+                        disabled={disabled || (!!row.reason && !byAddress)}
                         checked={receives}
                         onChange={(e) => setReceives(row, e.target.checked)}
                       />
@@ -311,7 +328,9 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                     <td className="px-3 py-2">{[row.city, row.county].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-3 py-2">{SOURCE_LABELS[row.kind] || row.kind}{row.added_manually ? " · adaugat de mana" : ""}</td>
                     <td className="px-3 py-2">
-                      {row.reason ? (
+                      {byAddress ? (
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">Scos de tine (aceeasi adresa)</span>
+                      ) : row.reason ? (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">{BLOCK_REASON_LABELS[row.reason] || row.reason}</span>
                       ) : out ? (
                         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">Scos de tine</span>
