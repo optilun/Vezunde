@@ -154,11 +154,15 @@ assert.match(campaignOpsSource, /source_url: location\.source_url/);
 // Filtrele campaniei (judet / tip / stare profil) trebuie aplicate pe CONTACTE cand se calculeaza
 // lista de destinatari. Cand se filtra doar dupa tag-uri, o campanie tintita pe un judet pleca
 // catre toata tara, fara niciun semn in interfata.
-assert.match(campaignOpsSource, /function contactMatchesSegment\(/);
+// Regulile stau in shared/outreachAudiencePolicy.js (contactMatchesFilters), folosite la fel de
+// lista de destinatari din interfata, previzualizare si aprobare.
+const audiencePolicySource = source('base44/shared/outreachAudiencePolicy.js');
+assert.match(audiencePolicySource, /export function contactMatchesFilters\(/);
+assert.ok(audiencePolicySource.includes('contactMatchesFilters(contact, spec)'), 'Audienta trebuie filtrata pe segmentul complet, nu doar pe tag-uri');
 const eligibleBody = extractFunctionBody(campaignOpsSource, /async function eligibleContactsForSegment\(/);
-assert.match(eligibleBody, /contactMatchesSegment\(contact, filters\)/, 'Lista de destinatari trebuie filtrata pe segmentul complet, nu doar pe tag-uri');
-for (const field of ['counties.includes(contact.county)', 'providerTypes.includes(contact.provider_type)', 'controlStatuses.includes(contact.profile_control_status']) {
-  assert.ok(campaignOpsSource.includes(field), `contactMatchesSegment trebuie sa filtreze si dupa ${field}`);
+assert.match(eligibleBody, /computeAudience\(svc, audienceSpecFrom\(filters\)\)/, 'Aprobarea foloseste aceeasi audienta ca lista din interfata');
+for (const field of ['counties.includes(contact.county)', 'providerTypes.includes(contact.provider_type)', 'controlStatuses.includes(contact.profile_control_status', 'emailScopes.includes(contact.email_scope']) {
+  assert.ok(audiencePolicySource.includes(field), `contactMatchesFilters trebuie sa filtreze si dupa ${field}`);
 }
 
 // Clasificarea automata a contactelor materializate (tip / marime retea / stare profil).
@@ -364,10 +368,13 @@ for (const value of ['#e8e0ea', '#d4c6d8', '#345bc8']) {
 }
 
 // Fisa se construieste per destinatar, nu o data pe campanie.
-const sendPreviewIndex = sendOpsSource.indexOf('showcase:');
-assert.ok(sendPreviewIndex !== -1, 'Trimiterea trebuie sa alimenteze fisa din email');
-assert.match(sendOpsSource, /name: contact\.company_name/, 'Fisa trebuie construita din datele contactului curent');
-assert.match(sendOpsSource, /campaign\.show_listing_preview === false/, 'Fisa trebuie sa poata fi dezactivata per campanie');
+// Compunerea emailului sta intr-un singur loc (shared/outreachComposer.js), folosit de trimitere,
+// de test si de previzualizarea din admin.
+const composerSource = source('base44/shared/outreachComposer.js');
+assert.ok(composerSource.indexOf('showcase:') !== -1, 'Trimiterea trebuie sa alimenteze fisa din email');
+assert.match(composerSource, /name: contact\.company_name/, 'Fisa trebuie construita din datele contactului curent');
+assert.match(composerSource, /campaign\.show_listing_preview === false/, 'Fisa trebuie sa poata fi dezactivata per campanie');
+assert.match(advanceBody, /composeOutreachEmail\(campaign, contact, \{ unsubscribeUrl: unsub\.publicUrl \}\)/, 'Fiecare destinatar primeste emailul compus pentru el');
 
 // --- Entitati: toate cele 5 raman admin-only (RLS) ------------------------------------------------
 for (const entityName of ['OutreachContact', 'OutreachCampaign', 'OutreachCampaignLog', 'OutreachSuppression', 'OutreachTemplate']) {
