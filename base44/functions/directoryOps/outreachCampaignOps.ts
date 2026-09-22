@@ -558,45 +558,61 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   });
 }
 
+// O campanie noua porneste din categorie + (optional) un sablon din aceeasi categorie: subiectul,
+// textul si butonul se copiaza din sablon; tot ce vine explicit in payload are prioritate.
+// Anunturile pleaca implicit si catre furnizorii cu cont, fara fisa din director.
 async function actionCreateCampaign(svc, user, payload) {
   const name = clean(payload.name);
-  const subject = clean(payload.subject);
-  if (!name || !subject) return Response.json({ error: 'name si subject sunt obligatorii' }, { status: 400 });
+  const category = normalizeCategory(payload.category);
+  const templateId = clean(payload.template_id);
+  const template = templateId ? await svc.entities.OutreachTemplate.get(templateId).catch(() => null) : null;
+  if (templateId && !template) return Response.json({ error: 'Sablonul ales nu mai exista' }, { status: 404 });
+  if (template && normalizeCategory(template.category) !== category) {
+    return Response.json({ error: 'Sablonul e din alta categorie decat campania' }, { status: 400 });
+  }
+  const pick = (key, templateKey = key) => (payload[key] !== undefined && clean(payload[key]) !== '' ? clean(payload[key]) : clean(template?.[templateKey]));
+  const subject = pick('subject');
+  if (!name || !subject) return Response.json({ error: 'Numele campaniei si subiectul (sau un sablon) sunt obligatorii' }, { status: 400 });
 
-  const filters = {
-    target_counties: payload.target_counties,
-    target_provider_types: payload.target_provider_types,
-    target_profile_control_status: payload.target_profile_control_status,
-    target_tags: payload.target_tags,
-    target_email_scope: payload.target_email_scope,
-  };
-  const eligible = await eligibleContactsForSegment(svc, filters);
+  const defaults = category === 'announcement'
+    ? { audience_sources: ['provider_account', 'directory'], show_listing_preview: false }
+    : { audience_sources: ['directory'], show_listing_preview: true };
+  const showListingPreview = payload.show_listing_preview !== undefined
+    ? payload.show_listing_preview !== false
+    : (template ? template.show_listing_preview !== false && category === 'marketing' : defaults.show_listing_preview);
+  const spec = audienceSpecFrom({ ...payload, category, audience_sources: payload.audience_sources || defaults.audience_sources });
+  const audience = await computeAudience(svc, spec);
 
   const campaign = await svc.entities.OutreachCampaign.create({
     name,
-    campaign_type: ['claim_notice', 'marketing'].includes(payload.campaign_type) ? payload.campaign_type : 'marketing',
-    template_id: clean(payload.template_id),
+    category,
+    campaign_type: ['claim_notice', 'marketing'].includes(payload.campaign_type) ? payload.campaign_type : (template?.campaign_type || 'marketing'),
+    template_id: template?.id || '',
     subject,
-    body_html: clean(payload.body_html),
-    cta_label: clean(payload.cta_label),
-    cta_url: clean(payload.cta_url),
-    show_listing_preview: payload.show_listing_preview !== false,
+    body_html: pick('body_html', 'body'),
+    cta_label: pick('cta_label'),
+    cta_url: pick('cta_url'),
+    show_listing_preview: showListingPreview,
     from_name: clean(payload.from_name) || 'VIASEE',
     from_email: clean(payload.from_email),
     reply_to_email: clean(payload.reply_to_email),
-    target_counties: Array.isArray(payload.target_counties) ? payload.target_counties : [],
-    target_provider_types: Array.isArray(payload.target_provider_types) ? payload.target_provider_types : [],
-    target_profile_control_status: Array.isArray(payload.target_profile_control_status) ? payload.target_profile_control_status : [],
-    target_tags: Array.isArray(payload.target_tags) ? payload.target_tags : [],
-    target_email_scope: Array.isArray(payload.target_email_scope) ? payload.target_email_scope : [],
+    audience_sources: spec.audience_sources,
+    audience_mode: spec.audience_mode,
+    included_contact_ids: spec.included_contact_ids,
+    excluded_contact_ids: spec.excluded_contact_ids,
+    target_counties: spec.target_counties,
+    target_provider_types: spec.target_provider_types,
+    target_profile_control_status: spec.target_profile_control_status,
+    target_tags: spec.target_tags,
+    target_email_scope: spec.target_email_scope,
     daily_send_limit: normalizeDailySendLimit(payload.daily_send_limit),
     daily_send_ramp: payload.daily_send_ramp !== false,
     status: 'draft',
-    recipient_count: eligible.length,
+    recipient_count: audience.counts.eligible,
     created_by_user_id: user.id,
   });
 
-  await writeAudit(svc, user, { entityId: campaign.id, actionType: 'outreach_campaign_created', note: `Campanie creata, ${eligible.length} destinatari eligibili estimati`, next: { name, recipient_count: eligible.length } });
+  await writeAudit(svc, user, { entityId: campaign.id, actionType: 'outreach_campaign_created', note: `Campanie creata (${category}), ${audience.counts.eligible} destinatari eligibili estimati`, next: { name, category, template_id: template?.id || '', recipient_count: audience.counts.eligible } });
   return Response.json({ campaign });
 }
 
@@ -607,9 +623,15 @@ async function actionUpdateCampaign(svc, payload) {
   if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
   if (campaign.status !== 'draft') return Response.json({ error: 'Doar campaniile in stare draft pot fi editate' }, { status: 409 });
 
-  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags', 'target_email_scope', 'daily_send_limit', 'daily_send_ramp'];
+  const editable = ['name', 'category', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'audience_sources', 'audience_mode', 'included_contact_ids', 'excluded_contact_ids', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags', 'target_email_scope', 'daily_send_limit', 'daily_send_ramp'];
   const patch = {};
   for (const key of editable) if (payload[key] !== undefined) patch[key] = payload[key];
+  if (patch.category !== undefined) patch.category = normalizeCategory(patch.category);
+  if (patch.audience_sources !== undefined) patch.audience_sources = normalizeAudienceSources(patch.audience_sources);
+  if (patch.audience_mode !== undefined) patch.audience_mode = patch.audience_mode === 'manual' ? 'manual' : 'filters';
+  for (const key of ['included_contact_ids', 'excluded_contact_ids']) {
+    if (patch[key] !== undefined) patch[key] = [...new Set((Array.isArray(patch[key]) ? patch[key] : []).filter(Boolean))];
+  }
   if (patch.daily_send_limit !== undefined) patch.daily_send_limit = normalizeDailySendLimit(patch.daily_send_limit);
   if (patch.daily_send_ramp !== undefined) patch.daily_send_ramp = patch.daily_send_ramp !== false;
   const updated = await svc.entities.OutreachCampaign.update(id, patch);
@@ -653,14 +675,8 @@ async function actionApproveCampaign(svc, user, payload) {
     return Response.json({ error: 'Campania trebuie sa aiba from_email si body_html completate inainte de aprobare' }, { status: 400 });
   }
 
-  const filters = {
-    target_counties: campaign.target_counties,
-    target_provider_types: campaign.target_provider_types,
-    target_profile_control_status: campaign.target_profile_control_status,
-    target_tags: campaign.target_tags,
-    target_email_scope: campaign.target_email_scope,
-  };
-  const eligible = await eligibleContactsForSegment(svc, filters);
+  // Exact lista din pasul "Destinatari": filtre, surse, bife si adaugari manuale, categoria.
+  const eligible = await eligibleContactsForSegment(svc, campaign);
   const expectedConfirmation = `TRIMITE ${campaign.name} ${eligible.length}`;
 
   if (!confirmationText) {
