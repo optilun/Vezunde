@@ -24,6 +24,7 @@ import {
   effectiveDailyLimit,
   summarizeSendsByDay,
   healthBaselineFrom,
+  withLogHealthCounters,
   HEALTH_PAUSE_REASONS,
   emailDomain,
   lookupEmailDomains,
@@ -51,6 +52,18 @@ const DEFAULT_LOCATION_LIST_LIMIT = 20000;
 
 function clean(value) {
   return String(value ?? '').trim();
+}
+
+function sleep(ms) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+
+// Cat asteapta Pauza/Anuleaza inainte sa verifice ca oprirea a ramas scrisa (vezi
+// confirmStopStatus). Configurabil doar pentru teste.
+function stopConfirmDelayMs() {
+  const raw = Deno.env.get('OUTREACH_LOCK_CONFIRM_MS');
+  const value = raw === undefined || raw === null || raw === '' ? NaN : Number(raw);
+  return Number.isFinite(value) && value >= 0 ? value : 1500;
 }
 
 function isPlainObject(value) {
@@ -210,6 +223,36 @@ async function computeAudience(svc, spec) {
 
 async function eligibleContactsForSegment(svc, filters) {
   return (await computeAudience(svc, audienceSpecFrom(filters))).eligible;
+}
+
+async function campaignLogs(svc, campaignId) {
+  return (await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaignId }, '-created_date', 20000).catch(() => [])) || [];
+}
+
+// Cifrele afisate (trimise, livrate, respinse) se calculeaza din jurnal, nu din contoarele salvate
+// pe campanie: acelea se scriu din zeci de webhook-uri simultane si pot ramane in urma.
+async function logCountsByCampaign(svc, campaigns) {
+  const result = new Map();
+  await Promise.all((campaigns || [])
+    .filter((campaign) => campaign.status !== 'draft')
+    .map(async (campaign) => {
+      result.set(campaign.id, summarizeCampaignLogs(await campaignLogs(svc, campaign.id), campaign.recipient_count).counts);
+    }));
+  return result;
+}
+
+function withDisplayCounts(campaign, counts) {
+  if (!counts) return campaign;
+  return {
+    ...campaign,
+    sent_count: counts.sent,
+    delivered_count: counts.delivered,
+    bounced_count: counts.bounced,
+    complained_count: counts.complained,
+    failed_count: counts.failed,
+    unsubscribed_count: counts.unsubscribed,
+    skipped_count: counts.not_sent,
+  };
 }
 
 async function writeAudit(svc, user, { entityId, actionType, note, previous, next }) {
@@ -737,10 +780,12 @@ async function actionOutreachOverview(svc) {
   for (const category of ['marketing', 'announcement']) {
     byCategory[category] = { campaigns: 0, active: 0, sent: 0, delivered: 0, bounced: 0, complained: 0 };
   }
-  for (const campaign of campaigns || []) {
+  const countsById = await logCountsByCampaign(svc, campaigns || []);
+  for (const raw of campaigns || []) {
+    const campaign = withDisplayCounts(raw, countsById.get(raw.id));
     const bucket = byCategory[normalizeCategory(campaign.category)];
     bucket.campaigns += 1;
-    if (['ready', 'sending', 'paused'].includes(campaign.status)) bucket.active += 1;
+    if (['ready', 'sending', 'paused', 'failed'].includes(campaign.status)) bucket.active += 1;
     bucket.sent += Number(campaign.sent_count) || 0;
     bucket.delivered += Number(campaign.delivered_count) || 0;
     bucket.bounced += Number(campaign.bounced_count) || 0;
@@ -839,13 +884,21 @@ async function actionUpdateCampaign(svc, payload) {
   }
   if (patch.daily_send_limit !== undefined) patch.daily_send_limit = normalizeDailySendLimit(patch.daily_send_limit);
   if (patch.daily_send_ramp !== undefined) patch.daily_send_ramp = patch.daily_send_ramp !== false;
+  // Numarul de destinatari din lista de campanii urmeaza ciorna: orice schimbare de categorie,
+  // surse, filtre sau bife il recalculeaza exact ca la aprobare.
+  const audienceKeys = ['category', 'audience_sources', 'audience_mode', 'included_contact_ids', 'excluded_contact_ids', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags', 'target_email_scope'];
+  if (audienceKeys.some((key) => patch[key] !== undefined)) {
+    const audience = await computeAudience(svc, audienceSpecFrom({ ...campaign, ...patch }));
+    patch.recipient_count = audience.counts.eligible;
+  }
   const updated = await svc.entities.OutreachCampaign.update(id, patch);
   return Response.json({ campaign: updated });
 }
 
 async function actionListCampaigns(svc) {
   const campaigns = await svc.entities.OutreachCampaign.list('-created_date', 200);
-  return Response.json({ campaigns });
+  const countsById = await logCountsByCampaign(svc, campaigns || []);
+  return Response.json({ campaigns: (campaigns || []).map((campaign) => withDisplayCounts(campaign, countsById.get(campaign.id))) });
 }
 
 async function actionGetCampaign(svc, payload) {
@@ -907,7 +960,19 @@ async function actionApproveCampaign(svc, user, payload) {
   return Response.json({ campaign: updated });
 }
 
-async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, actionType, extraPatch = () => ({}) }) {
+// Pauza si anularea trebuie sa ramana scrise. Base44 nu are scriere conditionata, iar cronul de
+// trimitere trece campania din 'ready' in 'sending' printr-o citire urmata de o scriere: daca
+// adminul apasa exact intre ele, scrierea cronului ar acoperi oprirea. Dupa o clipa verificam si,
+// daca e cazul, scriem oprirea din nou (trimiterea verifica starea inaintea fiecarui lot).
+async function confirmStopStatus(svc, id, to, patch) {
+  await sleep(stopConfirmDelayMs());
+  const current = await svc.entities.OutreachCampaign.get(id).catch(() => null);
+  if (!current || current.status === to) return current;
+  if (!['ready', 'sending'].includes(current.status)) return current; // terminata intre timp
+  return svc.entities.OutreachCampaign.update(id, patch).catch(() => current);
+}
+
+async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, actionType, extraPatch = () => ({}), confirmStop = false }) {
   const id = clean(payload.id);
   if (!id) return Response.json({ error: 'id este obligatoriu' }, { status: 400 });
   const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
@@ -915,18 +980,24 @@ async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, ac
   if (!allowedFrom.includes(campaign.status)) {
     return Response.json({ error: `Campania trebuie sa fie in una din starile: ${allowedFrom.join(', ')}` }, { status: 409 });
   }
-  const patch = { status: to, ...extraPatch(campaign) };
-  const updated = await svc.entities.OutreachCampaign.update(id, patch);
+  const patch = { status: to, ...(await extraPatch(campaign, svc)) };
+  let updated = await svc.entities.OutreachCampaign.update(id, patch);
+  if (confirmStop) updated = (await confirmStopStatus(svc, id, to, patch)) || updated;
   await writeAudit(svc, user, { entityId: id, actionType, previous: { status: campaign.status, pause_reason: campaign.pause_reason || '' }, next: patch });
   return Response.json({ campaign: updated });
 }
 
-// Reluarea unei campanii oprite automat: adminul a vazut motivul si a decis sa continue. Oprirea
-// automata porneste de la zero de aici (health_baseline), altfel s-ar declansa imediat din nou pe
-// aceleasi respingeri. O pauza pusa de admin nu reseteaza nimic.
-function resumePatch(campaign) {
-  const patch = { pause_reason: '', failure_message: '' };
-  if (HEALTH_PAUSE_REASONS.has(campaign.pause_reason)) patch.health_baseline = healthBaselineFrom(campaign);
+// Reluarea unei campanii oprite (pauza, oprire automata sau esec): adminul a vazut motivul si a
+// decis sa continue; trimiterea porneste de unde a ramas cursorul. Dupa o oprire automata,
+// protectia porneste de la zero (health_baseline), altfel s-ar declansa imediat din nou pe aceleasi
+// respingeri; reperul se ia din jurnal, sursa de adevar pentru respinse. O pauza pusa de admin nu
+// reseteaza nimic.
+async function resumePatch(campaign, svc) {
+  const patch = { pause_reason: '', failure_message: '', consecutive_send_failures: 0 };
+  if (HEALTH_PAUSE_REASONS.has(campaign.pause_reason)) {
+    const counts = summarizeCampaignLogs(await campaignLogs(svc, campaign.id), campaign.recipient_count).counts;
+    patch.health_baseline = healthBaselineFrom(withLogHealthCounters(campaign, counts));
+  }
   return patch;
 }
 
@@ -1003,10 +1074,10 @@ export async function handle(req: Request) {
       case 'list_campaigns': return await actionListCampaigns(svc);
       case 'get_campaign': return await actionGetCampaign(svc, payload);
       case 'approve_campaign': return await actionApproveCampaign(svc, user, payload);
-      case 'pause_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['ready', 'sending'], to: 'paused', actionType: 'outreach_campaign_paused', extraPatch: () => ({ pause_reason: 'admin' }) });
-      case 'resume_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['paused'], to: 'ready', actionType: 'outreach_campaign_resumed', extraPatch: resumePatch });
+      case 'pause_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['ready', 'sending'], to: 'paused', actionType: 'outreach_campaign_paused', extraPatch: () => ({ pause_reason: 'admin' }), confirmStop: true });
+      case 'resume_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['paused', 'failed'], to: 'ready', actionType: 'outreach_campaign_resumed', extraPatch: resumePatch });
       case 'set_daily_send_limit': return await actionSetDailySendLimit(svc, user, payload);
-      case 'cancel_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['draft', 'ready', 'sending', 'paused'], to: 'cancelled', actionType: 'outreach_campaign_cancelled' });
+      case 'cancel_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['draft', 'ready', 'sending', 'paused', 'failed'], to: 'cancelled', actionType: 'outreach_campaign_cancelled', confirmStop: true });
       case 'mark_replied': return await actionMarkReplied(svc, payload);
       default:
         return Response.json({ error: `Actiune necunoscuta: ${action}` }, { status: 400 });
