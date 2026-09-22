@@ -19,6 +19,13 @@
         "invalid"
       ]
     },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ce blocheaza: 'all' (orice email de campanie) sau categoriile din care s-a dezabonat ('marketing', 'announcement'). Gol = 'all' (inregistrarile vechi). Respingerile si reclamatiile de spam sunt mereu 'all'."
+    },
     "reason": {
       "type": "string"
     },
@@ -48,7 +55,7 @@
     "is_active": {
       "type": "boolean",
       "default": true,
-      "description": "Cand e true, blocheaza orice trimitere promotionala viitoare"
+      "description": "Cand e true, blocheaza trimiterile din categoriile din 'categories'"
     },
     "created_at": {
       "type": "string",
