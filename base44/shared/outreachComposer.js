@@ -27,7 +27,9 @@ export function composeOutreachEmail(campaign = {}, contact = {}, { unsubscribeU
   const category = normalizeCategory(campaign.category);
   const unsubHtml = `<a href="${unsubscribeUrl}" style="color:#6b6b6b;text-decoration:underline;">${unsubscribeLabelFor(category)}</a>`;
   let bodyHtml = textToHtml(campaign.body_html || '');
-  bodyHtml = renderTemplateMergeFields(bodyHtml, contact).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
+  // Numele firmei, orasul etc. vin din director si se scapa ("Ochi & Lentile <Premium>");
+  // versiunea text le decodeaza la loc prin stripHtml.
+  bodyHtml = renderTemplateMergeFields(bodyHtml, contact, { escape: true }).replace(/\[UNSUBSCRIBE_LINK\]/g, () => unsubHtml);
   // Blocul vizual poarta datele REALE ale destinatarului: fiecare primeste fisa lui, cu numele
   // si orasul lui, nu o ilustratie generica. De aceea se construieste aici, per contact.
   const options = {
