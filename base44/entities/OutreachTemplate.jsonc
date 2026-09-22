@@ -6,6 +6,15 @@
       "type": "string",
       "description": "Numele sablonului (intern, pentru admin)"
     },
+    "category": {
+      "type": "string",
+      "enum": [
+        "marketing",
+        "announcement"
+      ],
+      "default": "marketing",
+      "description": "marketing = prezentari si invitatii (ex. revendicarea profilului); announcement = anunturi despre VIASEE (functii noi, reguli, mentenanta). Campania isi alege sabloanele din aceeasi categorie, iar dezabonarea e separata pe categorii."
+    },
     "subject": {
       "type": "string",
       "description": "Subiectul emailului. Poate contine [NUME] pentru numele contactului."
@@ -14,6 +23,19 @@
       "type": "string",
       "description": "Continutul emailului (text simplu sau HTML). Poate contine [NUME] si [UNSUBSCRIBE_LINK]."
     },
+    "cta_label": {
+      "type": "string",
+      "description": "Textul butonului din email. Gol = fara buton."
+    },
+    "cta_url": {
+      "type": "string",
+      "description": "Linkul butonului (http/https)."
+    },
+    "show_listing_preview": {
+      "type": "boolean",
+      "default": true,
+      "description": "Arata in email fisa destinatarului din director."
+    },
     "campaign_type": {
       "type": "string",
       "enum": [
@@ -21,7 +43,7 @@
         "marketing"
       ],
       "default": "marketing",
-      "description": "claim_notice = notificare informativa (revendica profilul), marketing = reclama propriu-zisa"
+      "description": "Camp vechi, pastrat pentru compatibilitate: claim_notice = invitatie la revendicare, marketing = reclama propriu-zisa. Categoria reala e in 'category'."
     }
   },
   "required": [
