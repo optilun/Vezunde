@@ -284,10 +284,11 @@ assert.equal(audience.logOutcome(logFor('a@optica-a.ro')), 'bounced');
 assert.equal(store.rows('OutreachSuppression').find((row) => row.normalized_email === 'a@optica-a.ro').status, 'bounced', 'motivul suprimarii ramane respingerea');
 
 // Un token de test (emailul de test al campaniei) nu atinge jurnalul campaniei.
-const testToken = await policy.createUnsubscribeToken('owner@cont.ro', `test:${announcement.id}`);
+const testToken = await policy.createUnsubscribeToken('b@optica-b.ro', `test:${announcement.id}`);
 const testUnsub = await callHandler(unsubscribeOps, store, {}, { user: null, url: `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(testToken)}` });
 assert.equal(testUnsub.scope, 'announcement');
-assert.equal(logFor('owner@cont.ro').status, 'delivered');
+assert.equal(logFor('b@optica-b.ro').status, 'sent');
+assert.ok(!logFor('b@optica-b.ro').unsubscribed_at);
 assert.equal(store.rows('OutreachCampaignLog').length, logsBefore);
 const everything = await callHandler(unsubscribeOps, store, { scope: 'all' }, { user: null, url: `https://viasee.test/api?outreach_action=unsubscribe&t=${encodeURIComponent(token)}` });
 assert.equal(everything.scope, 'all');
