@@ -127,7 +127,14 @@ const gateIndex = advanceBody.lastIndexOf('checkBeforeSend(', batchSendIndex);
 assert.ok(gateIndex !== -1 && gateIndex < batchSendIndex, 'Verificarea lock-ului trebuie facuta chiar inainte de trimiterea lotului');
 assert.match(extractFunctionBody(sendOpsSource, /async function checkBeforeSend\(/), /live\.execution_lock_token !== lockToken/);
 const batchFailureIndex = advanceBody.indexOf('batchFailure = delivery.failure');
-const cursorAdvanceIndex = advanceBody.indexOf('cursor += batchIds.length');
+const cursorAdvanceIndex = advanceBody.indexOf('cursor += span');
+// Lotul se noteaza "in aer" inainte de trimitere, ca un raspuns pierdut sa fie retrimis identic.
+const inflightIndex = advanceBody.indexOf('inflight_batch: { cursor, span, key');
+assert.ok(inflightIndex !== -1 && inflightIndex < batchSendIndex, 'Lotul trebuie notat ca nesigur inainte de trimitere');
+// Citirile de care depinde idempotenta nu au voie sa devina liste goale la o eroare.
+for (const name of ['loadCampaignProgress', 'getSuppressionMap']) {
+  assert.doesNotMatch(extractFunctionBody(sendOpsSource, new RegExp(`async function ${name}\\(`)), /\.catch\(\(\) => \[\]\)/, `${name}: o citire esuata nu poate deveni o lista goala`);
+}
 assert.ok(batchFailureIndex !== -1 && cursorAdvanceIndex !== -1);
 assert.ok(
   advanceBody.slice(batchFailureIndex, cursorAdvanceIndex).includes('break;'),
