@@ -17,6 +17,7 @@ import {
   summarizeCampaignLogs,
   logOutcome,
   notSentReason,
+  shouldReplaceLogStatus,
 } from '../../shared/outreachAudiencePolicy.js';
 import { composeOutreachEmail } from '../../shared/outreachComposer.js';
 import {
@@ -1009,7 +1010,7 @@ async function actionSetDailySendLimit(svc, user, payload) {
   if (!id) return Response.json({ error: 'id este obligatoriu' }, { status: 400 });
   const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
   if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
-  if (!['draft', 'ready', 'sending', 'paused'].includes(campaign.status)) {
+  if (!['draft', 'ready', 'sending', 'paused', 'failed'].includes(campaign.status)) {
     return Response.json({ error: 'Limita se poate schimba doar la o campanie care nu s-a incheiat' }, { status: 409 });
   }
   const patch = {
@@ -1033,7 +1034,14 @@ async function actionMarkReplied(svc, payload) {
   const now = new Date().toISOString();
 
   if (logId) {
-    await svc.entities.OutreachCampaignLog.update(logId, { status: 'replied', replied_at: now }).catch(() => null);
+    // Un raspuns nu acopera o respingere sau o reclamatie deja inregistrata pe acelasi email.
+    const log = await svc.entities.OutreachCampaignLog.get(logId).catch(() => null);
+    if (log) {
+      await svc.entities.OutreachCampaignLog.update(logId, {
+        ...(shouldReplaceLogStatus(log.status, 'replied') ? { status: 'replied' } : {}),
+        replied_at: now,
+      }).catch(() => null);
+    }
   }
   if (contactId) {
     const contact = await svc.entities.OutreachContact.get(contactId).catch(() => null);
