@@ -27,7 +27,7 @@ for (const file of used) {
   assert.doesNotMatch(source, /from ["']framer-motion["']/, `${file}: primul ecran nu trebuie sa astepte framer-motion`);
   assert.doesNotMatch(source, /backdrop-blur/, `${file}: backdrop-blur redeseneaza fundalul la fiecare cadru de derulare`);
   assert.doesNotMatch(source, /drop-shadow-\[/, `${file}: filtrul drop-shadow pe blocuri mari se redeseneaza; foloseste box-shadow`);
-  assert.doesNotMatch(source, /\bblur-(?:sm|md|lg|xl|2xl|3xl|\[)/, `${file}: halourile se deseneaza cu box-shadow, nu cu filtru blur`);
+  assert.doesNotMatch(source, /\bblur-(?:sm|md|lg|xl|2xl|3xl|\[)/, `${file}: halourile se deseneaza cu gradient (softGlow.js), nu cu filtru blur`);
   assert.doesNotMatch(source, /mix-blend-/, `${file}: textura se suprapune normal (diferenta sub un nivel de culoare), fara strat de amestec`);
 }
 
