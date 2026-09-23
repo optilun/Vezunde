@@ -31,6 +31,16 @@ for (const file of used) {
   assert.doesNotMatch(source, /mix-blend-/, `${file}: textura se suprapune normal (diferenta sub un nivel de culoare), fara strat de amestec`);
 }
 
+// Halourile colorate raman, desenate ca gradient (aproape gratuit la derulare), nu ca filtru blur.
+for (const file of ['src/components/home/CategoryShowcase.jsx', 'src/components/home/HowItWorks.jsx']) {
+  const source = stripComments(homeSources[file]);
+  assert.match(source, /import \{ softGlowBackground \} from "@\/lib\/softGlow"/, `${file}: halourile folosesc softGlowBackground`);
+  assert.match(source, /style=\{\{ backgroundImage: (?:category|step)\.glow \}\}/, `${file}: haloul e un gradient`);
+}
+const softGlow = await read('src/lib/softGlow.js');
+assert.match(softGlow, /SOFT_GLOW_BLEED_PX = 128/);
+assert.match(softGlow, /radial-gradient\(closest-side/);
+
 // Antetul fix nu mai estompeaza continutul de dedesubt la derulare, pe nicio pagina.
 const layout = stripComments(await read('src/components/Layout.jsx'));
 const headers = layout.match(/function (?:Desktop|Mobile)Header[\s\S]*?\n}\n/g) || [];
