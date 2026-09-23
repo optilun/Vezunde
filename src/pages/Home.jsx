@@ -135,17 +135,16 @@ export default function Home() {
   return (
     <div className="home-scroll-takeover relative">
       <DevelopmentBanner />
-      <div
-        ref={stageRef}
-        className="relative"
-        style={pinActive ? { paddingBottom: PIN_DISTANCE } : undefined}
-      >
+      <div ref={stageRef} className="relative">
         <div
           ref={heroRef}
           className={pinActive ? "sticky top-20 z-0 will-change-[opacity]" : "relative"}
         >
           <Hero onStartedChange={setStarted} />
         </div>
+        {/* Drumul pe care primul ecran ramane fixat. Trebuie sa fie continut, nu padding: sticky
+            se opreste la marginea continutului parintelui. */}
+        {pinActive && <div aria-hidden="true" data-home-pin-track="" style={{ height: PIN_DISTANCE }} />}
       </div>
 
       {showCanvas && (
