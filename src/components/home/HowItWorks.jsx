@@ -13,7 +13,7 @@ const STEPS = [
     kind: "input",
     accent: "#345bc8",
     tone: "bg-[#dce5e9]",
-    ambient: "bg-[#a9c6d7]/35",
+    glow: "rgb(169 198 215 / 0.35)",
     placement: "lg:col-span-4 lg:mt-14",
     shape: "rounded-[1.75rem_1.75rem_0.55rem_1.75rem]",
   },
@@ -25,7 +25,7 @@ const STEPS = [
     kind: "choices",
     accent: "#a97825",
     tone: "bg-[#eadcba]",
-    ambient: "bg-[#d3b565]/32",
+    glow: "rgb(211 181 101 / 0.32)",
     placement: "lg:col-span-3 lg:-mt-3",
     shape: "rounded-[0.55rem_1.75rem_1.75rem_1.75rem]",
   },
@@ -37,7 +37,7 @@ const STEPS = [
     kind: "results",
     accent: "#735c80",
     tone: "bg-[#e8e0ea]",
-    ambient: "bg-[#bea9c8]/34",
+    glow: "rgb(190 169 200 / 0.34)",
     placement: "lg:col-span-5 lg:mt-8",
     shape: "rounded-[1.75rem_0.55rem_1.75rem_1.75rem]",
   },
@@ -171,9 +171,12 @@ export default function HowItWorks() {
               delay={index * 70}
               className={`relative ${step.placement}`}
             >
+              {/* Halou: aceeasi forma ca vechiul blur-3xl (-inset-5, colt 2.5rem, estompare 64px),
+                  desenat ca box-shadow de 128px, fara strat filtrat la derulare. */}
               <span
                 aria-hidden="true"
-                className={`pointer-events-none absolute -inset-5 -z-10 rounded-[2.5rem] opacity-70 blur-3xl ${step.ambient}`}
+                className="pointer-events-none absolute inset-4 -z-10 rounded-[4px] opacity-70"
+                style={{ boxShadow: `0 0 128px 36px ${step.glow}` }}
               />
               <span
                 aria-hidden="true"
@@ -183,7 +186,7 @@ export default function HowItWorks() {
               <div className={`relative overflow-hidden border border-black/[0.11] ${step.shape} ${step.tone}`}>
                 <span
                   aria-hidden="true"
-                  className="absolute inset-0 opacity-25 mix-blend-multiply"
+                  className="absolute inset-0 opacity-25"
                   style={{
                     backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
                     backgroundSize: "180px 180px",
