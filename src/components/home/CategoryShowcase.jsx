@@ -11,7 +11,7 @@ const CATEGORIES = [
     to: "/cauta",
     artwork: "/images/home/viasee-artwork-medici-clinici.svg",
     tone: "border-[#d4c6d8]/80 bg-[#e8e0ea]/90",
-    glow: "rgb(190 169 200 / 0.32)",
+    glow: softGlowBackground("190 169 200", 0.32),
     artworkScale: "lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
     desktopPlacement: "lg:col-[1/4] lg:row-[1/4]",
     desktopLabel: "lg:text-xl",
@@ -21,7 +21,7 @@ const CATEGORIES = [
     to: "/cerere?categorie=control_vedere",
     artwork: "/images/home/viasee-artwork-control-vedere.svg",
     tone: "border-[#c6d3da]/80 bg-[#dce5e9]/90",
-    glow: "rgb(169 198 215 / 0.3)",
+    glow: softGlowBackground("169 198 215", 0.3),
     artworkScale: "lg:scale-[1.12] lg:group-hover:scale-[1.15] lg:group-focus-visible:scale-[1.15]",
     desktopPlacement: "lg:col-[4/6] lg:row-[2/4]",
     desktopLabel: "lg:text-[1.05rem]",
@@ -31,7 +31,7 @@ const CATEGORIES = [
     to: "/cerere?categorie=investigatii",
     artwork: "/images/home/viasee-artwork-investigatii.svg",
     tone: "border-[#ccd2ba]/80 bg-[#dfe3d2]/90",
-    glow: "rgb(189 200 164 / 0.28)",
+    glow: softGlowBackground("189 200 164", 0.28),
     artworkScale: "lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
     desktopPlacement: "lg:col-[6/8] lg:row-[1/4]",
     desktopLabel: "lg:text-lg",
@@ -41,7 +41,7 @@ const CATEGORIES = [
     to: "/cerere?categorie=ochelari_lentile",
     artwork: "/images/home/viasee-artwork-ochelari-lentile.svg",
     tone: "border-[#e1bda8]/80 bg-[#efd5c5]/90",
-    glow: "rgb(228 167 134 / 0.28)",
+    glow: softGlowBackground("228 167 134", 0.28),
     artworkScale: "lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
     desktopPlacement: "lg:col-[8/11] lg:row-[1/4]",
     desktopLabel: "lg:text-lg",
@@ -51,7 +51,7 @@ const CATEGORIES = [
     to: "/cerere?categorie=reparatii_ochelari",
     artwork: "/images/home/viasee-artwork-reparatii-reglaje.svg",
     tone: "border-[#dac69b]/80 bg-[#eadcba]/90",
-    glow: "rgb(211 181 101 / 0.28)",
+    glow: softGlowBackground("211 181 101", 0.28),
     artworkScale: "lg:scale-[1.12] lg:group-hover:scale-[1.15] lg:group-focus-visible:scale-[1.15]",
     desktopPlacement: "lg:col-[11/13] lg:row-[2/4]",
     desktopLabel: "lg:text-base xl:text-[1.05rem]",
@@ -163,13 +163,11 @@ export default function CategoryShowcase() {
               delay={index * 60}
               className={`group relative z-10 ${category.desktopPlacement}`}
             >
-              {/* Halou colorat: aceeasi forma ca vechiul blur-3xl (dreptunghi rotunjit cu 12px/20px
-                  mai mare decat cardul, estompat cu 64px), dar desenat ca box-shadow. Umbra de 128px
-                  are aceeasi estompare, se deseneaza o singura data si nu mai cere un strat filtrat
-                  la fiecare cadru de derulare. Elementul sta sub card (opac), deci interiorul lui,
-                  unde umbra lipseste, nu se vede. Tot pentru derulare, cardul nu mai are
-                  backdrop-blur: pe fundalul aproape opac nu se vedea. */}
-              <span aria-hidden="true" className="pointer-events-none absolute inset-x-5 inset-y-3 z-0 rounded-[8px] opacity-70 transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `0 0 128px 32px ${category.glow}` }} />
+              {/* Halou: acelasi aspect ca vechiul blur-3xl (forma cu 12px/20px mai mare decat cardul),
+                  desenat ca gradient (vezi softGlow.js): 12px + 128px = 140px, 20px + 128px = 148px.
+                  Tot pentru derulare, cardul nu mai are backdrop-blur: pe fundalul aproape opac nu se
+                  vedea, dar obliga browserul sa redeseneze ce e in spate la fiecare cadru. */}
+              <span aria-hidden="true" className="pointer-events-none absolute -inset-x-[140px] -inset-y-[148px] z-0 opacity-70 transition-opacity duration-300 group-hover:opacity-100" style={{ backgroundImage: category.glow }} />
               <Link
                 to={category.to}
                 aria-label={category.title}
