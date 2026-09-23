@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import Reveal from "@/components/common/Reveal";
+import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 const STEPS = [
   {
@@ -120,20 +121,12 @@ function StepGraphic({ kind, accent }) {
 }
 
 export default function HowItWorks() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
     <section
       aria-labelledby="how-viasee-works-title"
       className="mx-auto mt-28 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
     >
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 22 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.35 }}
-        transition={{ duration: 0.55 }}
-        className="grid gap-8 lg:grid-cols-[1.55fr_0.75fr] lg:items-end lg:gap-16"
-      >
+      <Reveal className="grid gap-8 lg:grid-cols-[1.55fr_0.75fr] lg:items-end lg:gap-16">
         <div>
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground/70 sm:text-[11px]">
             Cum funcționează
@@ -153,7 +146,8 @@ export default function HowItWorks() {
           </p>
           <Link
             to="/cerere"
-            className="group mt-6 inline-flex min-h-14 items-center gap-6 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:text-base"
+            {...prefetchOnIntent("/cerere")}
+            className="group mt-6 inline-flex min-h-14 items-center gap-6 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:text-base"
           >
             Începe căutarea
             <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F8F4EC] text-[#171717]">
@@ -161,7 +155,7 @@ export default function HowItWorks() {
             </span>
           </Link>
         </div>
-      </motion.div>
+      </Reveal>
 
       <div className="relative mt-14 sm:mt-16 lg:mt-24">
         <span
@@ -171,12 +165,10 @@ export default function HowItWorks() {
 
         <div className="relative grid gap-5 lg:grid-cols-12 lg:items-start lg:gap-4">
           {STEPS.map((step, index) => (
-            <motion.article
+            <Reveal
+              as="article"
               key={step.number}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.25 }}
-              transition={{ duration: 0.5, delay: prefersReducedMotion ? 0 : index * 0.08 }}
+              delay={index * 70}
               className={`relative ${step.placement}`}
             >
               <span
@@ -217,18 +209,12 @@ export default function HowItWorks() {
                   </p>
                 </div>
               </div>
-            </motion.article>
+            </Reveal>
           ))}
         </div>
       </div>
 
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.35 }}
-        transition={{ duration: 0.5 }}
-        className="mt-24 border-y-[3px] border-[#171717] sm:mt-28"
-      >
+      <Reveal className="mt-24 border-y-[3px] border-[#171717] sm:mt-28">
         <div className="grid lg:grid-cols-[1.1fr_2fr]">
           <div className="border-b border-black/20 px-1 py-7 lg:border-b-0 lg:border-r lg:px-0 lg:py-9 lg:pr-10">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/65 sm:text-[11px]">
@@ -259,7 +245,7 @@ export default function HowItWorks() {
           </div>
         </div>
 
-      </motion.div>
+      </Reveal>
     </section>
   );
 }
