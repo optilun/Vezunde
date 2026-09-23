@@ -21,9 +21,9 @@ function DesktopHeader({ scrolled, opaque }) {
   return (
     <header
       style={opaque ? { backgroundColor: "hsl(var(--background))", backdropFilter: "none" } : undefined}
-      className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 lg:block ${
+      className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color] duration-300 lg:block ${
         scrolled
-          ? "border-border/70 bg-background/88 backdrop-blur-sm"
+          ? "border-border/70 bg-background/[0.96]"
           : "border-transparent bg-background"
       }`}
     >
@@ -74,10 +74,10 @@ function MobileHeader({ scrolled, onMenuOpen, onMenuPreload, opaque }) {
   return (
     <header
       style={opaque ? { backgroundColor: "hsl(var(--background))", backdropFilter: "none" } : undefined}
-      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 safe-area-top lg:hidden ${
+      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-300 safe-area-top lg:hidden ${
         scrolled
           ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
-          : "border-transparent bg-white/85 backdrop-blur-sm"
+          : "border-transparent bg-white/85"
       }`}
     >
       <div className="mx-auto flex h-16 items-center justify-between gap-2 px-4 sm:px-8">
