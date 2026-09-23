@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import Reveal from "@/components/common/Reveal";
+import { useInViewport, usePrefersReducedMotion } from "@/lib/motion";
+import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 const ROLES = [
   {
@@ -78,8 +80,8 @@ export default function SituationExplainer() {
   const [active, setActive] = useState(1);
   const [hasUserSelected, setHasUserSelected] = useState(false);
   const sectionRef = useRef(null);
-  const prefersReducedMotion = useReducedMotion();
-  const isInView = useInView(sectionRef, { amount: 0.35 });
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const isInView = useInViewport(sectionRef, { threshold: 0.35 });
   const current = ROLES[active];
 
   useEffect(() => {
@@ -119,12 +121,7 @@ export default function SituationExplainer() {
       aria-labelledby="specialist-guide-title"
       className="mx-auto mt-24 max-w-[84rem] px-5 sm:mt-32 lg:mt-36"
     >
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.35 }}
-        transition={{ duration: 0.55 }}
-      >
+      <Reveal threshold={0.1}>
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground/75 sm:text-[11px]">
           Ghid VIASEE · Cine te poate ajuta
         </p>
@@ -239,7 +236,8 @@ export default function SituationExplainer() {
           <div className="mt-8 flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
             <Link
               to={current.to}
-              className="group inline-flex min-h-14 items-center gap-7 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-16 sm:pl-9 sm:text-base"
+              {...prefetchOnIntent(current.to)}
+              className="group inline-flex min-h-14 items-center gap-7 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-16 sm:pl-9 sm:text-base"
             >
               {current.cta}
               <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F8F4EC] text-[#171717] sm:h-12 sm:w-12">
@@ -255,7 +253,7 @@ export default function SituationExplainer() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </Reveal>
     </section>
   );
 }
