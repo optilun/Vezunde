@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import MobileCategoryShowcase from "@/components/home/MobileCategoryShowcase";
 import Reveal from "@/components/common/Reveal";
 import { prefetchOnIntent } from "@/lib/routePrefetch";
+import { softGlowBackground } from "@/lib/softGlow";
 
 const CATEGORIES = [
   {
