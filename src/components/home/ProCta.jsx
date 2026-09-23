@@ -1,25 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
-
-function useDesktopLayout() {
-  const [isDesktop, setIsDesktop] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
-  );
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-    const updateLayout = (event) => setIsDesktop(event.matches);
-
-    setIsDesktop(mediaQuery.matches);
-    mediaQuery.addEventListener("change", updateLayout);
-
-    return () => mediaQuery.removeEventListener("change", updateLayout);
-  }, []);
-
-  return isDesktop;
-}
+import Reveal from "@/components/common/Reveal";
+import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 function ProfileBlueprint() {
   return (
@@ -157,20 +140,16 @@ function ProfileBlueprint() {
 }
 
 export default function ProCta() {
-  const prefersReducedMotion = useReducedMotion();
-  const isDesktop = useDesktopLayout();
-
   return (
     <section
       aria-labelledby="professional-profile-title"
       className="mx-auto mt-28 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
     >
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.08 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative grid transform-gpu overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent drop-shadow-[0_22px_30px_rgba(23,23,23,0.10)] will-change-transform lg:grid-cols-[1.3fr_0.9fr]"
+      {/* Umbra e box-shadow (nu filtru drop-shadow) si fara will-change permanent: filtrul pe un
+          bloc atat de mare se redesena la fiecare pas al animatiei si al derularii. */}
+      <Reveal
+        threshold={0.08}
+        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent shadow-[0_22px_30px_rgba(23,23,23,0.10)] lg:grid-cols-[1.3fr_0.9fr]"
       >
         <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
           <span
@@ -199,7 +178,8 @@ export default function ProCta() {
           <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               to="/adauga-sau-revendica"
-              className="group inline-flex min-h-14 items-center justify-between gap-5 rounded-full bg-[#F8F4EC] py-2 pl-6 pr-2 text-sm font-semibold text-[#171717] outline-none transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.24)] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:w-auto sm:pl-7 sm:text-base"
+              {...prefetchOnIntent("/adauga-sau-revendica")}
+              className="group inline-flex min-h-14 items-center justify-between gap-5 rounded-full bg-[#F8F4EC] py-2 pl-6 pr-2 text-sm font-semibold text-[#171717] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-[0_16px_34px_rgba(0,0,0,0.24)] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:w-auto sm:pl-7 sm:text-base"
             >
               Adaugă sau revendică un profil
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#171717] text-[#F8F4EC]">
@@ -212,41 +192,25 @@ export default function ProCta() {
 
             <Link
               to="/pentru-specialisti"
-              className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#F8F4EC]/25 px-6 text-sm font-semibold text-[#F8F4EC]/80 outline-none transition-[border-color,color,transform] hover:-translate-y-0.5 hover:border-[#F8F4EC]/55 hover:text-[#F8F4EC] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:px-7 sm:text-base"
+              {...prefetchOnIntent("/pentru-specialisti")}
+              className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#F8F4EC]/25 px-6 text-sm font-semibold text-[#F8F4EC]/80 outline-none transition-[border-color,color,transform] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:border-[#F8F4EC]/55 hover:text-[#F8F4EC] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:px-7 sm:text-base"
             >
               Vezi cum funcționează
             </Link>
           </div>
         </div>
 
-        <motion.div
-          initial={
-            prefersReducedMotion
-              ? false
-              : isDesktop
-                ? { x: "-100%" }
-                : { opacity: 0, y: 12 }
-          }
-          whileInView={
-            isDesktop
-              ? { x: 0 }
-              : { opacity: 1, y: 0 }
-          }
-          viewport={{ once: true, amount: 0.08 }}
-          transition={
-            prefersReducedMotion
-              ? { duration: 0 }
-              : {
-                  duration: isDesktop ? 1.75 : 0.35,
-                  delay: isDesktop ? 0.3 : 0,
-                  ease: [0.4, 0, 0.2, 1],
-                }
-          }
-          className="relative z-10 transform-gpu will-change-transform border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
+        {/* Pe desktop panoul iese de sub blocul negru (0,8 s, nu 1,75 s cu pauza); pe telefon apare
+            ca restul sectiunilor. */}
+        <Reveal
+          variant="slide-in-left"
+          delay={100}
+          threshold={0.08}
+          className="relative z-10 border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
         >
           <ProfileBlueprint />
-        </motion.div>
-      </motion.div>
+        </Reveal>
+      </Reveal>
     </section>
   );
 }
