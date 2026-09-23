@@ -56,6 +56,9 @@ assert.equal((home.match(/<HomeCanvas\b/g) || []).length, 1, 'HomeCanvas trebuie
 assert.doesNotMatch(home, /useScroll|useTransform/, 'Efectul de pe desktop foloseste derularea nativa (sticky), nu transformari pe fiecare cadru');
 assert.match(home, /sticky top-20/, 'Primul ecran ramane fixat prin CSS sticky');
 assert.match(home, /PIN_DISTANCE = "45svh"/, 'Primul ecran sta fixat cam jumatate din cat statea inainte (70svh)');
+assert.match(home, /pinActive && <div aria-hidden="true" data-home-pin-track="" style=\{\{ height: PIN_DISTANCE \}\} \/>/,
+  'Drumul pentru sticky e un element in parinte (padding-ul nu conteaza pentru sticky)');
+assert.doesNotMatch(home, /paddingBottom: PIN_DISTANCE/, 'Padding-ul parintelui nu lasa loc pentru sticky');
 
 // Animatia de scris: fara re-randare la fiecare litera, oprita cand nu se vede.
 const hero = homeSources['src/components/home/Hero.jsx'];
