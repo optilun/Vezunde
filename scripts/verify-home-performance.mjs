@@ -5,6 +5,11 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+// Comentariile pot explica de ce un efect a fost scos; verificarile se fac doar pe cod.
+const stripComments = (source) => source
+  .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
 
 const homeFiles = ['src/pages/Home.jsx', ...(await readdir(new URL('../src/components/home/', import.meta.url)))
   .filter((name) => name.endsWith('.jsx'))
@@ -17,12 +22,20 @@ const used = ['src/pages/Home.jsx', 'src/components/home/Hero.jsx', 'src/compone
   'src/components/home/MobileCategoryShowcase.jsx', 'src/components/home/SituationExplainer.jsx',
   'src/components/home/HowItWorks.jsx', 'src/components/home/ProCta.jsx'];
 for (const file of used) {
-  const source = homeSources[file];
-  assert.ok(source, `${file} lipseste`);
+  assert.ok(homeSources[file], `${file} lipseste`);
+  const source = stripComments(homeSources[file]);
   assert.doesNotMatch(source, /from ["']framer-motion["']/, `${file}: primul ecran nu trebuie sa astepte framer-motion`);
   assert.doesNotMatch(source, /backdrop-blur/, `${file}: backdrop-blur redeseneaza fundalul la fiecare cadru de derulare`);
   assert.doesNotMatch(source, /drop-shadow-\[/, `${file}: filtrul drop-shadow pe blocuri mari se redeseneaza; foloseste box-shadow`);
+  assert.doesNotMatch(source, /\bblur-(?:sm|md|lg|xl|2xl|3xl|\[)/, `${file}: halourile se deseneaza cu box-shadow, nu cu filtru blur`);
+  assert.doesNotMatch(source, /mix-blend-/, `${file}: textura se suprapune normal (diferenta sub un nivel de culoare), fara strat de amestec`);
 }
+
+// Antetul fix nu mai estompeaza continutul de dedesubt la derulare, pe nicio pagina.
+const layout = stripComments(await read('src/components/Layout.jsx'));
+const headers = layout.match(/function (?:Desktop|Mobile)Header[\s\S]*?\n}\n/g) || [];
+assert.equal(headers.length, 2, 'Antetele desktop si mobil trebuie gasite in Layout.jsx');
+for (const header of headers) assert.doesNotMatch(header, /backdrop-blur|backdrop-filter\]/, 'Antetul nu foloseste backdrop-blur');
 for (const [file, source] of Object.entries(homeSources)) {
   if (!used.includes(file)) continue;
   assert.doesNotMatch(source, /\bwill-change-transform\b/, `${file}: will-change permanent pe blocuri mari tine memorie video ocupata`);
@@ -45,7 +58,10 @@ assert.match(hero, /preloadConversationalCard/, 'Formularul conversational se de
 // Aparitia la derulare respecta „reducere miscare” si nu ascunde continutul fara JavaScript.
 const reveal = await read('src/components/common/Reveal.jsx');
 assert.match(reveal, /prefersReducedMotion\(\)/);
-assert.match(reveal, /useState\("static"\)/, 'Continutul e vizibil pana cand efectul confirma ca poate anima');
+assert.doesNotMatch(reveal, /useState\(/, 'Aparitia schimba doar atributul elementului, fara re-randare React la derulare');
+assert.match(reveal, /node\.dataset\.reveal = "pending"/, 'Continutul e ascuns doar dupa ce efectul a pornit (vizibil fara JavaScript)');
+assert.match(reveal, /node\.dataset\.reveal = "shown"/);
+assert.match(reveal, /if \(node\.dataset\.reveal === "pending"\) node\.dataset\.reveal = "shown"/, 'La demontare nimic nu ramane ascuns');
 const css = await read('src/index.css');
 assert.match(css, /\[data-reveal="pending"\] \{\s*opacity: 0;/);
 assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\[data-reveal="pending"\] \{\s*opacity: 1;/);
