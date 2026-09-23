@@ -11,7 +11,7 @@ assert.match(home, /aria-label="Informație despre stadiul platformei"/);
 assert.match(home, /<DevelopmentBanner \/>/);
 
 const bannerPosition = home.indexOf('<DevelopmentBanner />');
-const takeoverPosition = home.indexOf('{prefersReducedMotion || !supportsPinnedTakeover');
+const takeoverPosition = home.indexOf('<Hero ');
 assert.ok(bannerPosition >= 0 && takeoverPosition >= 0 && bannerPosition < takeoverPosition, 'Bannerul trebuie afișat înaintea hero-ului');
 
 console.log('Homepage development banner checks passed.');
