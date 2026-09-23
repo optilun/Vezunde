@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import Reveal from "@/components/common/Reveal";
+import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 const MOBILE_CATEGORIES = [
   {
@@ -44,23 +45,20 @@ const MOBILE_CATEGORIES = [
   },
 ];
 
-export default function MobileCategoryShowcase({ preview = false }) {
-  const prefersReducedMotion = useReducedMotion();
-
+export default function MobileCategoryShowcase() {
   return (
     <div className="mt-8 grid grid-cols-2 gap-3 lg:hidden">
       {MOBILE_CATEGORIES.map((category, index) => (
-        <motion.article
+        <Reveal
+          as="article"
           key={category.title}
-          initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.42, delay: index * 0.04 }}
+          delay={index * 40}
           className={`${category.featured || category.wide ? "col-span-2" : ""}`}
         >
           <Link
             to={category.to}
-            className={`group relative grid min-h-[9.5rem] overflow-hidden rounded-[1.25rem] border p-4 shadow-[0_10px_28px_rgba(34,30,24,0.035)] outline-none transition-transform active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-3 focus-visible:ring-offset-[#F8F4EC] ${category.tone} ${
+            {...prefetchOnIntent(category.to)}
+            className={`group relative grid min-h-[9.5rem] overflow-hidden rounded-[1.25rem] border p-4 shadow-[0_10px_28px_rgba(34,30,24,0.035)] outline-none transition-transform duration-150 active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-3 focus-visible:ring-offset-[#F8F4EC] ${category.tone} ${
               category.featured
                 ? "grid-cols-[minmax(0,1fr)_8.5rem] items-center min-[390px]:grid-cols-[minmax(0,1fr)_10rem]"
                 : category.wide
@@ -111,11 +109,11 @@ export default function MobileCategoryShowcase({ preview = false }) {
               />
             </span>
 
-            <span className="absolute right-3 top-3 z-20 grid h-8 w-8 place-items-center rounded-full border border-black/10 bg-white/45 text-[#171717] backdrop-blur-sm">
+            <span className="absolute right-3 top-3 z-20 grid h-8 w-8 place-items-center rounded-full border border-black/10 bg-white/60 text-[#171717]">
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </span>
           </Link>
-        </motion.article>
+        </Reveal>
       ))}
     </div>
   );
