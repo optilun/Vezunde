@@ -1,8 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
 import MobileCategoryShowcase from "@/components/home/MobileCategoryShowcase";
+import Reveal from "@/components/common/Reveal";
+import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 const CATEGORIES = [
   {
@@ -57,7 +58,7 @@ const CATEGORIES = [
   },
 ];
 
-function ShapeTile({ type, className = "", preview, reducedMotion }) {
+function ShapeTile({ type, className = "" }) {
   const palette = {
     gear: "border-[#274bac] bg-[#345bc8] text-[#f6f1e8]",
     flower: "border-[#cc5522] bg-[#e86827] text-[#f8e7d5]",
@@ -65,12 +66,11 @@ function ShapeTile({ type, className = "", preview, reducedMotion }) {
   };
 
   return (
-    <motion.div
+    <Reveal
       aria-hidden="true"
-      initial={preview || reducedMotion ? false : { opacity: 0, scale: 0.92 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true, amount: 0.65 }}
-      transition={{ duration: 0.45, delay: 0.12 }}
+      variant="scale"
+      delay={120}
+      threshold={0.5}
       className={`relative hidden overflow-hidden rounded-[1.25rem] border shadow-[0_12px_32px_rgba(20,20,20,0.06)] lg:grid lg:place-items-center ${palette[type]} ${className}`}
     >
       <span className="absolute left-3 top-3 h-3 w-3 border-l border-t border-current opacity-35" />
@@ -107,7 +107,7 @@ function ShapeTile({ type, className = "", preview, reducedMotion }) {
           <path d="M20 45H50M130 45H160" stroke="currentColor" strokeWidth="2" opacity="0.45" />
         </svg>
       )}
-    </motion.div>
+    </Reveal>
   );
 }
 
@@ -125,20 +125,13 @@ function SageMark() {
   );
 }
 
-export default function CategoryShowcase({ preview = false }) {
-  const prefersReducedMotion = useReducedMotion();
-  const headingId = preview ? "home-categories-preview-title" : "home-categories-title";
+export default function CategoryShowcase() {
+  const headingId = "home-categories-title";
 
   return (
     <section aria-labelledby={headingId} className="relative pb-8 pt-10 sm:pb-10 sm:pt-12 lg:pb-14 lg:pt-12">
       <div className="relative z-10 mx-auto max-w-[84rem] px-5">
-        <motion.div
-          initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.55 }}
-          className="text-center"
-        >
+        <Reveal className="text-center">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
             Servicii și specialiști
           </p>
@@ -149,9 +142,9 @@ export default function CategoryShowcase({ preview = false }) {
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Medici, clinici, controale, investigații, ochelari și reparații.
           </p>
-        </motion.div>
+        </Reveal>
 
-        <MobileCategoryShowcase preview={preview} />
+        <MobileCategoryShowcase />
 
         <div className="relative mt-10 hidden grid-cols-12 grid-rows-[6rem_10.5rem_4.5rem] items-stretch gap-3.5 lg:grid xl:gap-4">
           <span aria-hidden="true" className="pointer-events-none absolute -left-8 -right-8 top-[58%] z-0 h-px bg-[#9a8668]/45" />
@@ -159,56 +152,52 @@ export default function CategoryShowcase({ preview = false }) {
             <span key={position} aria-hidden="true" className="pointer-events-none absolute top-[calc(58%_-_4px)] z-20 h-[9px] w-[9px] -translate-x-1/2 rounded-full border border-[#8d7658] bg-[#f8f4ec]" style={{ left: `${position}%` }} />
           ))}
 
-          <ShapeTile type="gear" className="lg:col-[4/5] lg:row-[1/2]" preview={preview} reducedMotion={prefersReducedMotion} />
-          <ShapeTile type="flower" className="lg:col-[5/6] lg:row-[1/2]" preview={preview} reducedMotion={prefersReducedMotion} />
-          <ShapeTile type="pupil" className="lg:col-[11/13] lg:row-[1/2]" preview={preview} reducedMotion={prefersReducedMotion} />
+          <ShapeTile type="gear" className="lg:col-[4/5] lg:row-[1/2]" />
+          <ShapeTile type="flower" className="lg:col-[5/6] lg:row-[1/2]" />
+          <ShapeTile type="pupil" className="lg:col-[11/13] lg:row-[1/2]" />
 
           {CATEGORIES.map((category, index) => (
-            <motion.article
+            <Reveal
+              as="article"
               key={category.title}
-              initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.55, delay: preview || prefersReducedMotion ? 0 : index * 0.06 }}
+              delay={index * 60}
               className={`group relative z-10 ${category.desktopPlacement}`}
             >
-              <span aria-hidden="true" className={`pointer-events-none absolute -inset-x-3 -inset-y-5 z-0 rounded-[2.5rem] opacity-70 blur-3xl transition-opacity duration-500 group-hover:opacity-100 ${category.ambient}`} />
+              <span aria-hidden="true" className={`pointer-events-none absolute -inset-x-3 -inset-y-5 z-0 rounded-[2.5rem] opacity-70 blur-3xl transition-opacity duration-300 group-hover:opacity-100 ${category.ambient}`} />
+              {/* Fara backdrop-blur: pe fundalul aproape opac nu se vedea, dar obliga browserul sa
+                  redeseneze tot ce e in spatele cardului la fiecare cadru de derulare. */}
               <Link
                 to={category.to}
                 aria-label={category.title}
-                className={`group relative z-10 grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.65rem] border shadow-[0_10px_30px_rgba(34,30,24,0.028)] backdrop-blur-[2px] outline-none transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(34,30,24,0.06)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none ${category.tone}`}
+                {...prefetchOnIntent(category.to)}
+                className={`group relative z-10 grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.65rem] border shadow-[0_10px_30px_rgba(34,30,24,0.028)] outline-none transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(34,30,24,0.06)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none ${category.tone}`}
               >
                 <span aria-hidden="true" className="absolute inset-0 opacity-35 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
                 <span aria-hidden="true" className="relative z-10 min-h-0 overflow-hidden p-2">
-                  <img src={category.artwork} width="214" height="150" alt="" loading="lazy" decoding="async" className={`h-full w-full object-contain object-center transition-transform duration-700 ease-out motion-reduce:transform-none motion-reduce:transition-none ${category.artworkScale}`} />
+                  <img src={category.artwork} width="214" height="150" alt="" loading="lazy" decoding="async" className={`h-full w-full object-contain object-center transition-transform duration-500 ease-out motion-reduce:transform-none motion-reduce:transition-none ${category.artworkScale}`} />
                 </span>
                 <span className="relative z-20 flex min-h-[4.5rem] items-center gap-3 border-t border-black/[0.07] bg-white/[0.045] px-4 py-3 text-left text-[#1c1c1c] xl:px-5">
                   {index === 4 && <SageMark />}
                   <span className={`font-heading font-bold leading-[1.08] tracking-[-0.025em] ${category.desktopLabel}`}>{category.title}</span>
                 </span>
               </Link>
-            </motion.article>
+            </Reveal>
           ))}
         </div>
 
-        <motion.div
-          initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.65 }}
-          transition={{ duration: 0.55, delay: preview || prefersReducedMotion ? 0 : 0.18 }}
-          className="mt-8 flex justify-center sm:mt-10 lg:mt-11"
-        >
+        <Reveal delay={120} className="mt-8 flex justify-center sm:mt-10 lg:mt-11">
           <Link
             to="/cerere"
             aria-label="Alege ce cauți și trimite o cerere"
-            className="group inline-flex min-h-14 items-center gap-5 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-white shadow-[0_16px_38px_rgba(18,18,18,0.15)] outline-none transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(18,18,18,0.2)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-8 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-[4.5rem] sm:gap-8 sm:pl-10"
+            {...prefetchOnIntent("/cerere")}
+            className="group inline-flex min-h-14 items-center gap-5 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-white shadow-[0_16px_38px_rgba(18,18,18,0.15)] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(18,18,18,0.2)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-8 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-[4.5rem] sm:gap-8 sm:pl-10"
           >
             <span aria-hidden="true" className="order-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f8f4ec] text-[#171717] sm:h-14 sm:w-14">
               <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none sm:h-7 sm:w-7" />
             </span>
             <span className="font-heading text-2xl font-bold leading-none tracking-[-0.035em] sm:text-[2rem]">Alege ce cauți</span>
           </Link>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
