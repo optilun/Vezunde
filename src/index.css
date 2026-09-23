@@ -401,9 +401,83 @@
   animation: role-content-fade 0.2s ease-out;
 }
 
+/* Aparitia la derulare (src/components/common/Reveal.jsx): doar opacity si transform, pe care
+   browserul le anima fara sa redeseneze pagina. */
+[data-reveal] {
+  transition-property: opacity, transform;
+  transition-duration: var(--reveal-duration, 450ms);
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+[data-reveal="pending"] {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+}
+
+[data-reveal="pending"][data-reveal-variant="fade"] {
+  transform: none;
+}
+
+[data-reveal="pending"][data-reveal-variant="scale"] {
+  transform: scale(0.94);
+}
+
+@media (min-width: 1024px) {
+  [data-reveal][data-reveal-variant="slide-in-left"] {
+    --reveal-duration: 800ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  [data-reveal="pending"][data-reveal-variant="slide-in-left"] {
+    opacity: 1;
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+/* Intrarea primului ecran de pe home: scurta, ca formularul sa fie gata de folosit imediat.
+   Titlul (cel mai mare element) nu porneste transparent, ca sa fie afisat din primul cadru. */
+@keyframes home-rise {
+  from {
+    transform: translate3d(0, 10px, 0);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes home-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.home-rise {
+  animation: home-rise 0.5s ease-out both;
+}
+
+.home-fade-up {
+  animation: home-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--home-delay, 0ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .role-content-fade {
+  .role-content-fade,
+  .home-rise,
+  .home-fade-up {
     animation: none;
+  }
+
+  [data-reveal="pending"] {
+    opacity: 1;
+    transform: none;
   }
 
   *,
