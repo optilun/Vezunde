@@ -9,7 +9,7 @@ function ProfileBlueprint() {
     <div className="relative min-h-[23rem] overflow-hidden bg-[#dce5e9] sm:min-h-[27rem] lg:h-full lg:min-h-[34rem]">
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-35 mix-blend-multiply"
+        className="pointer-events-none absolute inset-0 opacity-35"
         style={{
           backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
           backgroundSize: "180px 180px",

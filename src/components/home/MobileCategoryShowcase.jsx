@@ -68,7 +68,7 @@ export default function MobileCategoryShowcase() {
           >
             <span
               aria-hidden="true"
-              className="absolute inset-0 opacity-25 mix-blend-multiply"
+              className="absolute inset-0 opacity-25"
               style={{
                 backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
                 backgroundSize: "180px 180px",
