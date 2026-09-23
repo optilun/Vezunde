@@ -1,15 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
 import Hero from "@/components/home/Hero";
 import CategoryShowcase from "@/components/home/CategoryShowcase";
 import SituationExplainer from "@/components/home/SituationExplainer";
 import HowItWorks from "@/components/home/HowItWorks";
 import ProCta from "@/components/home/ProCta";
+import { useMediaQuery, usePrefersReducedMotion } from "@/lib/motion";
 
 function DevelopmentBanner() {
   return (
@@ -71,158 +66,95 @@ function HomeCanvasBackground() {
   );
 }
 
-function HomeCanvas({ preview = false }) {
+function HomeCanvas() {
   return (
     <>
       <HomeCanvasBackground />
       <div className="relative z-10">
-        <CategoryShowcase preview={preview} />
-        {!preview && (
-          <>
-            <SituationExplainer />
-            <HowItWorks />
-            <ProCta />
-          </>
-        )}
+        <CategoryShowcase />
+        <SituationExplainer />
+        <HowItWorks />
+        <ProCta />
       </div>
     </>
   );
 }
 
-function PinnedTakeover() {
-  const sceneRef = useRef(null);
-  const [started, setStarted] = useState(false);
-  const { scrollYProgress } = useScroll({
-    target: sceneRef,
-    offset: ["start 80px", "end end"],
-  });
+// Efectul de pe desktop: primul ecran ramane pe loc cat timp foaia cu sectiuni urca peste el, apoi
+// pagina se deruleaza normal. Totul e derulare nativa (CSS sticky): foaia urca exact cat derulezi,
+// fara JavaScript pe fiecare cadru si fara o a doua copie a sectiunilor. Singurul lucru calculat
+// la derulare e estomparea usoara a primului ecran (opacity, fara redesenare).
+const PIN_DISTANCE = "45svh";
+const HEADER_OFFSET_PX = 80;
 
-  const sheetY = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["calc(100% - 5rem)", "0%"],
-  );
-  const previewContentOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.12, 0.22],
-    [0, 0, 1],
-  );
-  const heroScale = useTransform(
-    scrollYProgress,
-    [0, 0.55, 1],
-    [1, 0.99, 0.965],
-  );
-  const heroOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.45, 0.9, 1],
-    [1, 1, 0.5, 0],
-  );
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, -18]);
-  const heroPointerEvents = useTransform(scrollYProgress, (value) =>
-    value > 0.96 ? "none" : "auto",
-  );
-  const stageVisibility = useTransform(scrollYProgress, (value) =>
-    value >= 0.999 ? "hidden" : "visible",
-  );
-
-  return (
-    <>
-      <section
-        ref={sceneRef}
-        aria-label="Tranziție către conținutul homepage-ului"
-        className={started ? "relative z-30" : "pointer-events-none relative z-30 h-[calc(170svh-5rem)]"}
-      >
-        <motion.div
-          style={started ? undefined : { visibility: stageVisibility }}
-          className={
-            started
-              ? "relative bg-[#F7F2E8]"
-              : "sticky top-20 h-[calc(100svh-5rem)] overflow-hidden bg-[#F7F2E8]"
-          }
-        >
-          <motion.div
-            className={started ? "relative" : "absolute inset-0 origin-top will-change-transform"}
-            style={
-              started
-                ? undefined
-                : {
-                    scale: heroScale,
-                    opacity: heroOpacity,
-                    y: heroY,
-                    pointerEvents: heroPointerEvents,
-                  }
-            }
-          >
-            <Hero onStartedChange={setStarted} />
-          </motion.div>
-
-          {!started && (
-            <motion.div
-              style={{ y: sheetY }}
-              className="pointer-events-none absolute inset-0 z-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] shadow-[0_-18px_65px_rgba(28,24,18,0.13)] will-change-transform sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]"
-            >
-              <motion.div
-                aria-hidden="true"
-                inert=""
-                style={{ opacity: previewContentOpacity }}
-                className="pointer-events-none min-h-full"
-              >
-                <HomeCanvas preview />
-              </motion.div>
-            </motion.div>
-          )}
-        </motion.div>
-      </section>
-
-      {!started && (
-        <div className="relative z-20 mt-[calc(-100svh+5rem)] isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
-          <HomeCanvas />
-        </div>
-      )}
-    </>
-  );
-}
-
-function StaticTakeover() {
-  return (
-    <>
-      <Hero />
-      <div className="relative z-20 -mt-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:-mt-24 sm:rounded-t-[2.75rem] lg:-mt-28 lg:rounded-t-[3.25rem]">
-        <HomeCanvas />
-      </div>
-    </>
-  );
-}
-
-function usePinnedTakeoverSupport() {
-  const mediaQuery = "(min-width: 1024px) and (min-height: 600px)";
-  const [supported, setSupported] = useState(
-    () =>
-      typeof window !== "undefined" && window.matchMedia(mediaQuery).matches,
-  );
-
+function useHeroCoverFade(stageRef, heroRef, enabled) {
   useEffect(() => {
-    const media = window.matchMedia(mediaQuery);
-    const onChange = (event) => setSupported(event.matches);
-    setSupported(media.matches);
-    media.addEventListener?.("change", onChange);
-    return () => media.removeEventListener?.("change", onChange);
-  }, []);
+    const stage = stageRef.current;
+    const hero = heroRef.current;
+    if (!enabled || !stage || !hero) return undefined;
 
-  return supported;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const pinPx = hero.offsetHeight ? stage.offsetHeight - hero.offsetHeight : 0;
+      if (pinPx <= 0) return;
+      const progress = Math.min(1, Math.max(0, (HEADER_OFFSET_PX - stage.getBoundingClientRect().top) / pinPx));
+      hero.style.opacity = String(1 - 0.45 * progress);
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+      hero.style.opacity = "";
+    };
+  }, [stageRef, heroRef, enabled]);
 }
 
 export default function Home() {
-  const prefersReducedMotion = useReducedMotion();
-  const supportsPinnedTakeover = usePinnedTakeoverSupport();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const supportsPinnedTakeover = useMediaQuery("(min-width: 1024px) and (min-height: 600px)");
+  const pinned = supportsPinnedTakeover && !prefersReducedMotion;
+  const [started, setStarted] = useState(false);
+  const stageRef = useRef(null);
+  const heroRef = useRef(null);
+  const pinActive = pinned && !started;
+  // Dupa trimiterea cererii din primul ecran, pe desktop ramane doar conversatia.
+  const showCanvas = !(pinned && started);
 
+  useHeroCoverFade(stageRef, heroRef, pinActive);
+
+  // Aceeasi structura in toate cazurile: Hero nu se remonteaza (si nu-si pierde textul sau
+  // conversatia) cand se schimba dimensiunea ferestrei sau cand incepe cererea.
   return (
     <div className="home-scroll-takeover relative">
       <DevelopmentBanner />
-      {prefersReducedMotion || !supportsPinnedTakeover ? (
-        <StaticTakeover />
-      ) : (
-        <PinnedTakeover />
+      <div
+        ref={stageRef}
+        className="relative"
+        style={pinActive ? { paddingBottom: PIN_DISTANCE } : undefined}
+      >
+        <div
+          ref={heroRef}
+          className={pinActive ? "sticky top-20 z-0 will-change-[opacity]" : "relative"}
+        >
+          <Hero onStartedChange={setStarted} />
+        </div>
+      </div>
+
+      {showCanvas && (
+        <div
+          className="relative z-20 -mt-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:-mt-24 sm:rounded-t-[2.75rem] lg:-mt-28 lg:rounded-t-[3.25rem]"
+          style={pinActive ? { marginTop: `calc(-1 * (${PIN_DISTANCE} + 7rem))` } : undefined}
+        >
+          <HomeCanvas />
+        </div>
       )}
     </div>
   );
