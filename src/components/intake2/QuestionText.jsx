@@ -26,8 +26,12 @@ function assessmentForChoice(answerValue) {
 // incepe sa foloseasca intrebarea din catalog.
 const SYMPTOM_TEXT_QUESTION_KEYS = new Set(["descriere", "symptom_description"]);
 
-export default function QuestionText({ question, onSubmit, onPhaseChange, onSafetyCleared }) {
-  const [value, setValue] = useState("");
+export default function QuestionText({ question, onSubmit, onPhaseChange, onSafetyCleared, initialValue = "" }) {
+  // 2026-09-24: pacientul care si-a descris deja problema pe prima pagina nu mai primeste un
+  // camp gol cu aceeasi intrebare. Textul lui e precompletat; il poate completa sau trimite.
+  // Ecranul de siguranta de mai jos ramane primul pas, neschimbat.
+  const prefilled = String(initialValue || "").trim().slice(0, 800);
+  const [value, setValue] = useState(prefilled);
   const [screeningCleared, setScreeningCleared] = useState(!SYMPTOM_TEXT_QUESTION_KEYS.has(question.key));
   const [urgentChoice, setUrgentChoice] = useState("");
   const [textAssessment, setTextAssessment] = useState(null);
@@ -114,7 +118,11 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
 
   return (
     <div className="mt-6">
-      {question.helper && (
+      {prefilled ? (
+        <p className="-mt-2 mb-3 text-sm leading-relaxed text-muted-foreground">
+          Am preluat ce ai scris deja. Poți adăuga detalii utile: care ochi, de când, ce ai observat.
+        </p>
+      ) : question.helper && (
         <p className="-mt-2 mb-3 text-sm leading-relaxed text-muted-foreground">{question.helper}</p>
       )}
       <textarea
