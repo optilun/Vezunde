@@ -39,6 +39,7 @@ export default function LocationsWithMap({
     return () => { media.removeEventListener("change", apply); root.style.overflow = rootOverflow; };
   }, [fixedDesktop]);
   const listRef = useRef(null);
+  const lastListTop = useRef(0);
   const restoredListKey = useRef(null);
   const listSignature = (listResults || []).slice(0, 2).map(row => row.id).join("|");
   useEffect(() => {
@@ -58,14 +59,16 @@ export default function LocationsWithMap({
     const previous = readSearchSession().listScroll || {};
     // A bounded, tab-local cache; no device coordinates or analytics.
     const entries = Object.entries(previous).filter(([key]) => key !== storageKey).slice(-7);
-    writeSearchSession({ listScroll: { ...Object.fromEntries(entries), [storageKey]: { top: listRef.current?.scrollTop || 0, signature: listSignature } } });
+    writeSearchSession({ listScroll: { ...Object.fromEntries(entries), [storageKey]: { top: lastListTop.current, signature: listSignature } } });
   };
   // 2026-09-24. Pozitia listei se salveaza dupa ce derularea se opreste, nu la fiecare eveniment
   // (fiecare salvare rescrie toata sesiunea de cautare). La plecarea de pe pagina se salveaza imediat.
+  // Ultima pozitie se tine la fiecare eveniment: la demontare lista nu mai exista.
   const rememberTimer = useRef(0);
   const rememberLatest = useRef(rememberListNow);
   rememberLatest.current = rememberListNow;
   const rememberList = () => {
+    lastListTop.current = listRef.current?.scrollTop || 0;
     clearTimeout(rememberTimer.current);
     rememberTimer.current = setTimeout(() => { rememberTimer.current = 0; rememberLatest.current(); }, 200);
   };
