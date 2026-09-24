@@ -21,10 +21,18 @@ import {
   writePatientIntakeSession,
 } from "@/lib/patientIntakeSession";
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
-import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
+import { buildDeterministicIntentProposal, buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { buildPatientSafetyAssessment, deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
-import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
+import {
+  INTENTS,
+  CATEGORY_QUESTION,
+  detectIntentFromText,
+  detectPatientContextHints,
+  detectSubIntentPrefill,
+  mergePatientContextHints,
+  suggestedOptionKeyForQuestion,
+} from "@/lib/intentRegistry";
 import {
   PATIENT_GUIDANCE_QUESTION_CATALOG,
   getApprovedPatientGuidanceQuestion,
@@ -43,12 +51,25 @@ function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   return [...new Set([...currentKeys, ...optionKeys])];
 }
 
-const initState = (initialIntent, initialMessage) => {
-  const intent = (initialIntent && INTENTS[initialIntent])
+// 2026-09-24, audit LLM cautare/recomandare. Serverul afla intentia pacientului dintr-un
+// singur loc: raspunsul controlat la `categorie` (controlledCategoryIntent in
+// matchProvidersSemantic/entry.ts). Pana acum, acest raspuns exista doar cand pacientul
+// alegea un card in interiorul chestionarului. Pe toate celelalte intrari - textul liber
+// confirmat dupa interpretarea AI si cele 25 de linkuri /cerere?categorie=... din site -
+// planificatorul primea intentia "unknown" si intreba "Ce te aduce la noi? Control /
+// Problema aparuta recent". Cine cauta o reparatie sau ochelari noi primea deci o
+// intrebare fara varianta potrivita, iar raspunsul "Un control" ii rescria nevoia in
+// control de vedere. Acum orice alegere explicita a pacientului (link de categorie,
+// "Da, continua", alegerea manuala) se inregistreaza ca raspuns la `categorie`.
+const initState = (initialIntent, initialMessage, { recordCategory = false } = {}) => {
+  const explicitIntent = Boolean(initialIntent && INTENTS[initialIntent]);
+  const intent = explicitIntent
     ? initialIntent
     : detectIntentFromText(initialMessage);
 
-  const answers = [];
+  const answers = recordCategory && explicitIntent
+    ? [{ question_key: "categorie", answer_value: intent }]
+    : [];
   let serviceKeys = intent ? [...INTENTS[intent].service_keys] : [];
   let explicitServiceKeys = [];
 
@@ -92,6 +113,61 @@ const PATIENT_FREE_TEXT_QUESTION_KEYS = [
   "symptom_description",
   "investigation_reference_text",
 ];
+
+// Intrebarile in care pacientul isi descrie nevoia cu cuvintele lui.
+const PATIENT_DESCRIPTION_QUESTION_KEYS = new Set(["descriere", "symptom_description"]);
+
+function hasPatientDescription(answers = []) {
+  return (Array.isArray(answers) ? answers : [])
+    .some((answer) => PATIENT_DESCRIPTION_QUESTION_KEYS.has(answer?.question_key));
+}
+
+function comparableText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+// Starea dupa ce pacientul a confirmat sau a ales explicit o nevoie. Cand vine din
+// re-interpretarea descrierii (ramura "Nu sunt sigur"), pastram ce a raspuns deja
+// (verificarea de siguranta, descrierea, localitatea) si inlocuim doar categoria.
+function stateForConfirmedIntent(intentKey, {
+  text = "",
+  aiServiceKeys = [],
+  previousState = null,
+} = {}) {
+  const fresh = initState(intentKey, text, { recordCategory: true });
+  const aiKeys = (Array.isArray(aiServiceKeys) ? aiServiceKeys : []).filter(Boolean);
+  // Serviciile propuse de AI sunt adesea mai precise decat lista generica a categoriei (ex:
+  // consult oftalmologic fata de consult optometric). Le pastram, impreuna cu cele aduse de
+  // un raspuns precompletat din text (ex: "s-a rupt rama" -> reparatie rama).
+  if (aiKeys.length > 0) {
+    fresh.serviceKeys = [...new Set([...aiKeys, ...fresh.explicitServiceKeys])];
+    fresh.explicitServiceKeys = [...new Set([...aiKeys, ...fresh.explicitServiceKeys])];
+  }
+  if (!previousState) return fresh;
+
+  const keptAnswers = (previousState.answers || [])
+    .filter((answer) => answer.question_key !== "categorie");
+  const keptKeys = new Set(keptAnswers.map((answer) => answer.question_key));
+  const prefillAnswers = fresh.answers
+    .filter((answer) => answer.question_key !== "categorie" && !keptKeys.has(answer.question_key));
+  return {
+    ...previousState,
+    intent: intentKey,
+    answers: [{ question_key: "categorie", answer_value: intentKey }, ...keptAnswers, ...prefillAnswers],
+    questionHistory: [...new Set([
+      "categorie",
+      ...(previousState.questionHistory || []),
+      ...prefillAnswers.map((answer) => answer.question_key),
+    ])],
+    serviceKeys: fresh.serviceKeys,
+    explicitServiceKeys: fresh.explicitServiceKeys,
+  };
+}
 
 function patientLanguageText(initialMessage, answers) {
   const values = [
@@ -140,6 +216,9 @@ function controlledQuestionSelection(response, state) {
 }
 
 const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
+// Versiunea fluxului de intake din 2026-09-24 (categorie inregistrata, sugestii, re-interpretare).
+// Permite compararea analiticelor inainte/dupa, fara sa atinga versiunile persistate ale cererii.
+const PATIENT_INTAKE_FLOW_VERSION = "patient-intake-v2";
 
 function textLengthBand(value) {
   const length = String(value || "").trim().length;
@@ -155,6 +234,7 @@ function trackPatientSearchEvent(eventName, properties = {}) {
       eventName,
       properties: {
         analytics_version: PATIENT_SEARCH_ANALYTICS_VERSION,
+        intake_flow_version: PATIENT_INTAKE_FLOW_VERSION,
         ...properties,
       },
     });
