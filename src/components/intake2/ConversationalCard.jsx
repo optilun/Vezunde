@@ -264,7 +264,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const shouldInterpretInitialMessage = Boolean(String(initialMessage || "").trim() && !initialIntent);
   const initialPhase = restoredSession?.phase || (shouldInterpretInitialMessage ? "interpreting" : "questions");
   const [state, setState] = useState(() => (
-    restoredSession ? patientIntakeStateFromSnapshot(restoredSession) : initState(initialIntent, initialMessage)
+    restoredSession
+      ? patientIntakeStateFromSnapshot(restoredSession)
+      : initState(initialIntent, initialMessage, { recordCategory: Boolean(initialIntent) })
   ));
   const [history, setHistory] = useState(() => restoredSession?.history || []);
   const [phase, setPhase] = useState(initialPhase);
@@ -272,6 +274,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [results, setResults] = useState(null);
   const [matchMeta, setMatchMeta] = useState(null);
   const [intentProposal, setIntentProposal] = useState(null);
+  // Ce text interpretam si de unde vine: mesajul initial sau descrierea ceruta in ramura
+  // "Nu sunt sigur". Fiecare cerere are un id propriu, ca aceeasi faza "interpreting" sa poata
+  // rula de doua ori in aceeasi sesiune fara sa reia un raspuns vechi.
+  const [interpretationRequest, setInterpretationRequest] = useState(() => (
+    initialPhase === "interpreting" && shouldInterpretInitialMessage
+      ? { id: "initial", text: initialMessage, source: "initial" }
+      : null
+  ));
+  // Indiciile extrase de model (pentru cine, varsta, termen, localitate). Folosite doar ca
+  // sugestii marcate in intrebari, niciodata ca raspunsuri.
+  const [aiContextFacts, setAiContextFacts] = useState(null);
   const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
   const [questionSelection, setQuestionSelection] = useState(() => (
     state.intent ? { status: "pending", question: null } : { status: "idle", question: null }
@@ -289,7 +302,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     [initialMessage],
   );
   const showInitialSafetyBlock = initialSafetyFlags.length > 0 && !initialSafetyAcknowledged;
-  const interpretationAttemptedRef = useRef(false);
+  const handledInterpretationRef = useRef(null);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const questionSelectionRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
@@ -300,6 +313,20 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     intent: null,
     answeredCount: 0,
   });
+
+  // 2026-09-24: indiciile din mesajul pacientului (determinist) completate cu cele extrase de
+  // model. Marcheaza varianta probabila in intrebari; pacientul alege tot el.
+  const contextHints = useMemo(() => mergePatientContextHints(
+    detectPatientContextHints(patientLanguageText(initialMessage, state.answers)),
+    aiContextFacts,
+  ), [initialMessage, state.answers, aiContextFacts]);
+  // Descrierea precompletata cu mesajul initial - dar nu cand mesajul a declansat deja ecranul
+  // de urgenta: pacientul a spus ca nu e o urgenta, iar acelasi text l-ar bloca din nou.
+  const descriptionPrefill = (question) => (
+    question && PATIENT_DESCRIPTION_QUESTION_KEYS.has(question.key) && initialSafetyFlags.length === 0
+      ? String(initialMessage || "").trim()
+      : ""
+  );
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
