@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { readFile } from 'node:fs/promises';
+import { resolveProviderEntitlement } from '../base44/shared/providerEntitlementPolicy.js';
 
 const files = [
   'createProviderCheckoutSession', 'syncProviderStripeSubscription', 'providerBillingOps',
@@ -277,6 +278,66 @@ for (const handler of ['providerBillingOps', 'createProviderCheckoutSession', 'c
 {
   const s = state(); s.user.email = 'changed-email@example.test';
   assert.equal((await call('createProviderBillingPortalSession')).status, 200, 'An authenticated active owner keeps access after changing email');
+}
+// Exercise the real sync handler and effective entitlement together. Stripe responses are
+// fixtures: this does not execute payments, 3DS, card updates or portal actions at Stripe.
+{
+  const s = state();
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const periodEnd = nowSeconds + 30 * 24 * 60 * 60;
+  s.returnSession = { mode: 'subscription', customer: 'cus_location', client_reference_id: 'loc_a', status: 'complete', subscription: 'sub_current' };
+  const lifecycle = [
+    { label: 'Initial payment declined', status: 'incomplete', payment: 'requires_payment_method', plan: 'free', checkout: true },
+    { label: 'Initial payment awaiting 3DS', status: 'incomplete', payment: 'requires_action', plan: 'free', checkout: true },
+    { label: 'Successful initial payment', status: 'active', payment: 'succeeded', plan: 'pro', checkout: true },
+    { label: 'Successful renewal extends access', status: 'active', payment: 'succeeded', plan: 'pro', periodEnd: periodEnd + 30 * 24 * 60 * 60 },
+    { label: 'Failed renewal removes Pro', status: 'past_due', payment: 'requires_payment_method', plan: 'free' },
+    { label: 'Exhausted payment retries keep Pro blocked', status: 'unpaid', payment: 'requires_payment_method', plan: 'free' },
+    { label: 'Payment recovery restores Pro', status: 'active', payment: 'succeeded', plan: 'pro' },
+    { label: 'End-of-period cancellation keeps current access', status: 'active', plan: 'pro', cancel: true },
+    { label: 'Resuming before period end clears cancellation', status: 'active', plan: 'pro', cancel: false },
+    { label: 'Completed cancellation removes Pro', status: 'canceled', plan: 'free' },
+  ];
+  for (const scenario of lifecycle) {
+    s.remoteSubscriptions = [subscription({
+      status: scenario.status,
+      current_period_start: nowSeconds - 60,
+      current_period_end: scenario.periodEnd || periodEnd,
+      cancel_at_period_end: scenario.cancel === true,
+      latest_invoice: { payment_intent: { status: scenario.payment } },
+    })];
+    const result = await call('syncProviderStripeSubscription', scenario.checkout ? { session_id: 'cs_test' } : {});
+    assert.equal(result.status, 200, scenario.label);
+    assert.equal(s.rows.length, 1, scenario.label + ': preserve one row for the same subscription');
+    const entitlement = resolveProviderEntitlement(s.rows, new Date(nowSeconds * 1000));
+    assert.equal(entitlement.plan_code, scenario.plan, scenario.label);
+    if (scenario.plan === 'pro') {
+      assert.equal(entitlement.cancel_at_period_end, scenario.cancel === true, scenario.label);
+      assert.equal(entitlement.current_period_end, new Date((scenario.periodEnd || periodEnd) * 1000).toISOString());
+    } else {
+      assert.deepEqual(entitlement.feature_keys, [], scenario.label + ': no Pro features');
+    }
+  }
+  // Another independently granted entitlement must survive Stripe cancellation.
+  s.rows.push({ id: 'manual_grant', location_id: 'loc_a', billing_mode: 'manual', plan_code: 'pro', status: 'active', current_period_end: new Date(periodEnd * 1000).toISOString() });
+  await call('syncProviderStripeSubscription');
+  assert.equal(resolveProviderEntitlement(s.rows).billing_mode, 'manual');
+  assert.equal(s.rows.find(row => row.id === 'manual_grant').status, 'active');
+  console.log('Billing lifecycle: 10 subscription transitions and independent manual access passed (Stripe fixtures only).');
+}
+{
+  const s = state();
+  s.remoteSubscriptions = [subscription({ default_payment_method: 'pm_new' })];
+  s.stripe.paymentMethods.list = async () => page([
+    { id: 'pm_old', card: { brand: 'visa', last4: '4242', exp_month: 12, exp_year: 2030 }, billing_details: { name: 'Not needed in card response' } },
+    { id: 'pm_new', card: { brand: 'mastercard', last4: '4444', exp_month: 1, exp_year: 2031 }, billing_details: { name: 'Not needed in card response' } },
+  ]);
+  const result = await call('providerBillingOps');
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.methods, [
+    { id: 'pm_old', brand: 'visa', last4: '4242', exp_month: 12, exp_year: 2030, is_default: false },
+    { id: 'pm_new', brand: 'mastercard', last4: '4444', exp_month: 1, exp_year: 2031, is_default: true },
+  ], 'Refresh after a card change exposes only masked card details and the current default');
 }
 const panel = await readFile('src/components/workspace/provider/leads/ProviderBillingPanel.jsx', 'utf8');
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));
