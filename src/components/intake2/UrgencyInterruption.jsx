@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, PhoneCall, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldAlert } from "lucide-react";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 import { APPROVED_PATIENT_SAFETY_COPY } from "../../../shared/patientGuidanceQuestionCatalog.js";
 
@@ -27,6 +27,11 @@ const COPY = APPROVED_PATIENT_SAFETY_COPY;
 // destinatiei (sectiunea 3), spitalul inaintea lui 112, iar 112 conditionat si niciodata ca
 // actiune principala (sectiunea 5). Precedenta din sectiunea 3 e implementata mai jos:
 // traumatismul penetrant suprima instructiunea de clatire.
+//
+// 2026-09-24, decizie explicita a owner-ului: fara semne mari "Suna la 112". Butonul separat
+// cu telefon a disparut; 112 ramane un singur rand mic, conditionat, sub indicatia spre
+// urgenta - exact ce cere sectiunea 5 (fallback de transport, nu actiune principala). Titlul
+// e mai mic, ca ecranul sa informeze calm. Textele clinice raman cele aprobate.
 const ACCENT = "#b4573a";
 
 function flagLabels(assessment) {
@@ -69,7 +74,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             </p>
           </div>
 
-          <h2 className="mt-3.5 font-heading text-[1.45rem] font-extrabold leading-[1.08] tracking-[-0.04em] text-[#1c1c1c] sm:text-[1.75rem]">
+          <h2 className="mt-3 font-heading text-lg font-bold leading-snug tracking-[-0.02em] text-[#1c1c1c] sm:text-xl">
             {blocking ? COPY.blocking_title : COPY.advisory_title}
           </h2>
 
@@ -116,6 +121,10 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
                 </li>
               ))}
             </ul>
+            <p className="mt-2.5 text-[12px] leading-relaxed text-black/45">
+              Doar dacă nu te poți deplasa în siguranță sau starea generală se agravează rapid, sună la{" "}
+              <a href="tel:112" className="font-semibold text-black/60 underline underline-offset-2">112</a>.
+            </p>
           </div>
         </div>
 
@@ -127,12 +136,6 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             Găsește clinici și cabinete oftalmologice lângă tine <ArrowRight className="h-4 w-4" />
           </Link>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <a
-              href="tel:112"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#ddd6c7] px-5 py-2.5 text-left font-heading text-[12.5px] font-bold tracking-[-0.01em] text-[#1c1c1c] transition-colors hover:bg-[#faf7f0]"
-            >
-              <PhoneCall className="h-3.5 w-3.5" style={{ color: ACCENT }} /> Sună la 112 (dacă nu te poți deplasa singur sau starea se agravează)
-            </a>
             {onCorrect && (
               <button
                 type="button"
