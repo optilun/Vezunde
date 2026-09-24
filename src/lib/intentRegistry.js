@@ -428,7 +428,7 @@ function normalize(text) {
   let t = String(text || "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, " ");
   t = t.replace(/\bam nevoie de\b/g, " ");
   const words = t.split(/\s+/).filter((w) => w && !CONNECTOR_WORDS.includes(w));
