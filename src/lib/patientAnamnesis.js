@@ -178,15 +178,27 @@ export function patientAnamnesisQuestions(variant) {
 }
 
 // Normalizeaza selectiile din ecran. Valorile multiple se salveaza ca o singura valoare, cu
-// cheile separate prin virgula, in ordinea din catalog; varianta exclusiva ("Niciuna") le
-// inlocuieste pe celelalte.
+// cheile separate prin virgula, in ordinea din catalog. Ecranul nu permite "Niciuna" impreuna
+// cu o afectiune; daca totusi ajung amandoua, pastram afectiunile - e mai sigur sa nu pierdem
+// o afectiune declarata decat sa pierdem un "Niciuna".
 export function normalizeAnamnesisSelection(question, selected) {
   if (!question) return [];
   const allowed = new Set(question.options.map((option) => option.key));
   const values = [...new Set((Array.isArray(selected) ? selected : [selected]).filter((value) => allowed.has(value)))];
   if (question.type !== "multi") return values.slice(0, 1);
-  if (question.exclusive_option && values.includes(question.exclusive_option)) return [question.exclusive_option];
-  return question.options.map((option) => option.key).filter((key) => values.includes(key));
+  const exclusive = question.exclusive_option;
+  const specific = values.filter((value) => value !== exclusive);
+  if (exclusive && values.includes(exclusive) && specific.length === 0) return [exclusive];
+  return question.options.map((option) => option.key).filter((key) => specific.includes(key));
+}
+
+// Comutarea unei variante in ecran: varianta exclusiva le goleste pe celelalte si invers.
+export function toggleAnamnesisSelection(question, current = [], optionKey) {
+  const values = Array.isArray(current) ? current : [];
+  if (question?.type !== "multi") return values[0] === optionKey ? [] : [optionKey];
+  if (values.includes(optionKey)) return values.filter((value) => value !== optionKey);
+  if (optionKey === question.exclusive_option) return [optionKey];
+  return [...values.filter((value) => value !== question.exclusive_option), optionKey];
 }
 
 export function buildPatientAnamnesisAnswers(variant, selections = {}, { skipped = false } = {}) {
