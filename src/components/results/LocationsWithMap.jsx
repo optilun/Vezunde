@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
@@ -98,6 +98,17 @@ export default function LocationsWithMap({
     }
   }, [selectedId, mobileView, fixedDesktop]);
   const hasPositions = (results || []).some((location) => mapPointFromResult(location) !== null);
+  // 2026-09-24. Pe telefon, dupa ce harta a fost aratata o data, trecerea pe lista nu o mai scoate din
+  // pagina (display: none), ci o ascunde pastrandu-i marimea. La revenire nu mai trebuie
+  // redimensionata si redesenata de la zero (750-2.900 ms in test). Pana la prima afisare ramane
+  // scoasa din pagina, ca cine incepe cu lista sa nu descarce fundalul hartii degeaba.
+  const [mapShownOnce, setMapShownOnce] = useState(mobileView === "map");
+  useEffect(() => { if (mobileView === "map") setMapShownOnce(true); }, [mobileView]);
+  const mobileMapClass = mobileView === "map"
+    ? "relative block"
+    : mapShownOnce
+      ? `absolute inset-x-0 top-0 invisible pointer-events-none lg:visible lg:pointer-events-auto ${fixedDesktop ? "lg:relative" : ""}`
+      : "relative hidden lg:block";
 
   return (
     <>
@@ -114,7 +125,7 @@ export default function LocationsWithMap({
         </div>
       )}
 
-      <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8" : "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8" : "mt-4")}>
+      <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "relative mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8" : "relative mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8" : "mt-4")}>
         <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
           {listHeader}
           <div className={hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
@@ -141,7 +152,7 @@ export default function LocationsWithMap({
         </div>
 
         {hasPositions && (
-          <aside className={`relative isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky"} ${mobileView === "map" ? "block" : "hidden lg:block"}`} style={fixedDesktop ? undefined : { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
+          <aside className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={results || []}
               selectedId={selectedId}
