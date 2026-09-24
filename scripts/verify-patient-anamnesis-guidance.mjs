@@ -169,7 +169,7 @@ check('every anamnesis summary is safety-neutral', () => {
     for (const selections of variants) {
       const message = buildPatientAnamnesisMessage(buildPatientAnamnesisAnswers(variant, selections));
       assert.deepEqual(deterministicSafetyFlagsFromText(message), [], `rezumatul declanseaza verificarea de urgenta: ${message}`);
-      assert.doesNotMatch(message, /112|UPU|spital/i);
+      assert.doesNotMatch(message, /\b112\b|\bUPU\b|\bspital/i);
     }
   }
   assert.equal(buildPatientAnamnesisMessage([{ question_key: PATIENT_ANAMNESIS_MARKER_KEY, answer_value: 'sarita' }]), '');
@@ -202,7 +202,8 @@ check('guidance for every intent and condition stays informational', () => {
       assert.ok(guidance.notes.length <= 3);
       assert.equal(guidance.disclaimer, PATIENT_VISIT_GUIDANCE_DISCLAIMER);
       const allText = [guidance.where, ...guidance.prepare, ...guidance.notes.flatMap((note) => [note.title, ...note.points]), guidance.safety_net].join(' ');
-      assert.doesNotMatch(allText, /112|UPU|spital|tel:/i, `${intent}/${text}: fara destinatii de urgenta in afara ecranului de urgenta`);
+      // Limite de cuvant: "UPU" nu trebuie sa se potriveasca in "presupun".
+      assert.doesNotMatch(allText, /\b112\b|\bUPU\b|\bspital|tel:/i, `${intent}/${text}: fara destinatii de urgenta in afara ecranului de urgenta`);
       assert.doesNotMatch(allText, /\bmg\b|doz[aă]|antibiotic|cortizon|diagnosticul este|ai glaucom|ai cataract/i, `${intent}/${text}: fara doze, tratamente sau diagnostic`);
       assert.deepEqual(deterministicSafetyFlagsFromText(allText.replace(guidance.safety_net, '')), [], `${intent}/${text}`);
     }
