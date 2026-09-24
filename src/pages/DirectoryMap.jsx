@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MapPin, LocateFixed, ChevronDown } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { loadNationalDirectoryMap, NATIONAL_MAP_ERROR_MESSAGE } from "@/lib/nationalDirectoryMap";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
@@ -69,28 +69,28 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   useEffect(() => {
     let active = true;
     setState({ status: "loading", points: [], meta: null, error: "" });
-    base44.functions
-      .invoke("browseDirectoryProviders", { map_scope: "national" })
-      .then((response) => {
+    // Incarcatorul comun reincearca singur la erori trecatoare (limita de trafic, 5xx) si tine
+    // harta cateva minute; vizitatorul vede un mesaj clar, nu textul tehnic al erorii.
+    loadNationalDirectoryMap({ force: retry > 0 })
+      .then((data) => {
         if (!active) return;
-        if (response.data?.error) throw new Error(response.data.error);
         setState({
           status: "ready",
-          points: Array.isArray(response.data?.results) ? response.data.results : [],
+          points: Array.isArray(data?.results) ? data.results : [],
           meta: {
-            total: Number(response.data?.total_published) || 0,
-            withoutPosition: Number(response.data?.without_position) || 0,
+            total: Number(data?.total_published) || 0,
+            withoutPosition: Number(data?.without_position) || 0,
           },
           error: "",
         });
       })
-      .catch((reason) => {
+      .catch(() => {
         if (!active) return;
         setState({
           status: "error",
           points: [],
           meta: null,
-          error: reason?.message || "Harta directorului nu a putut fi încărcată.",
+          error: NATIONAL_MAP_ERROR_MESSAGE,
         });
       });
     return () => { active = false; };
