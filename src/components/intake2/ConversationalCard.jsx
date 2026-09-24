@@ -751,16 +751,45 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   }, [phase, results, matchMeta, navigate]);
 
   useEffect(() => {
-    if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
-    interpretationAttemptedRef.current = true;
+    if (phase !== "interpreting" || !interpretationRequest) return;
+    if (handledInterpretationRef.current === interpretationRequest.id) return;
+    handledInterpretationRef.current = interpretationRequest.id;
     const requestId = interpretationRequestRef.current.begin();
+    const interpretationText = interpretationRequest.text;
+    const trigger = interpretationRequest.source;
+    const allowedIntents = Object.keys(INTENTS);
+    // Ipoteza determinista pentru textul interpretat acum (mesajul initial sau descrierea),
+    // calculata exact ca la intrarea in chestionar: intentie + servicii precompletate din text.
+    const deterministicState = initState(null, interpretationText);
+    const deterministicIntent = deterministicState.intent;
+    const startedAt = Date.now();
+
+    const resolveProposal = (proposal) => {
+      trackPatientSearchEvent("patient_search_ai_interpretation_resolved", {
+        outcome: proposal?.status || "fallback",
+        interpretation_source: proposal?.source || "none",
+        interpretation_trigger: trigger,
+        proposed_intent: proposal?.intent || "unknown",
+        confidence_band: proposal?.confidence_band || "low",
+        agreement_status: proposal?.agreement_status || "not_comparable",
+        safety_flag_count: proposal?.possible_safety_flags?.length || 0,
+        duration_ms: Date.now() - startedAt,
+      });
+      if (!proposal || proposal.status === "fallback") {
+        setPhase("questions");
+        return;
+      }
+      if (proposal.source === "ai") setAiContextFacts(proposal.candidate_facts || null);
+      setIntentProposal(proposal);
+      setPhase("confirm_intent");
+    };
 
     (async () => {
       const interpretationResponse = await interpretPatientNeedForConfirmation({
-        search_text: initialMessage,
-        deterministic_intent: state.intent || "unknown",
-        service_keys: state.serviceKeys,
-        explicit_confirmed_service_keys: state.explicitServiceKeys,
+        search_text: interpretationText,
+        deterministic_intent: deterministicIntent || "unknown",
+        service_keys: deterministicState.serviceKeys,
+        explicit_confirmed_service_keys: deterministicState.explicitServiceKeys,
         answers: [],
       }, {
         timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
@@ -769,30 +798,21 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       if (!interpretationRequestRef.current.isCurrent(requestId)) return;
 
       const proposal = buildIntentConfirmationProposal(interpretationResponse, {
-        allowedIntents: Object.keys(INTENTS),
-        deterministicIntent: state.intent,
+        allowedIntents,
+        deterministicIntent,
+        text: interpretationText,
       });
-
-      trackPatientSearchEvent("patient_search_ai_interpretation_resolved", {
-        outcome: proposal.status,
-        proposed_intent: proposal.intent || "unknown",
-        confidence_band: proposal.confidence_band,
-        agreement_status: proposal.agreement_status,
-        safety_flag_count: proposal.possible_safety_flags?.length || 0,
-      });
-
-      if (proposal.status === "fallback") {
-        setPhase("questions");
-        return;
-      }
-
-      setIntentProposal(proposal);
-      setPhase("confirm_intent");
+      // 2026-09-24: cand modelul nu raspunde (timeout, credit epuizat, eroare), propunem
+      // detectia determinista - tot cu confirmare. Inainte era aplicata tacit si nu ajungea la
+      // server ca raspuns controlat, deci planificatorul nu o cunostea.
+      resolveProposal(proposal.status === "fallback"
+        ? (buildDeterministicIntentProposal(deterministicIntent, { allowedIntents }) || proposal)
+        : proposal);
     })().catch(() => {
       if (!interpretationRequestRef.current.isCurrent(requestId)) return;
-      setPhase("questions");
+      resolveProposal(buildDeterministicIntentProposal(deterministicIntent, { allowedIntents }));
     });
-  }, [phase, initialMessage, state.intent, state.serviceKeys]);
+  }, [phase, interpretationRequest]);
 
   useEffect(() => {
     if (
@@ -804,7 +824,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     const draft = buildPatientRequestDraft({
       state,
       originalMessage: initialMessage,
-      interpretation: intentProposal,
+      // Doar o interpretare AI se salveaza in cerere. O propunere determinista (modelul nu a
+      // raspuns) nu are versiune, incredere sau semnale de raportat.
+      interpretation: intentProposal?.source === "ai" ? intentProposal : null,
     });
     setRequestDraft(draft);
     trackPatientSearchEvent("patient_search_request_review_opened", {
