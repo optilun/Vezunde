@@ -100,6 +100,11 @@ const SAFETY_RULES = Object.freeze([
   'A possible safety flag is advisory only. Never conclude that a case is safe or non-urgent.',
   'Romanian patients commonly describe refractive problems as "nu vad bine la distanta" (myopia), "nu vad bine la aproape" (presbyopia/hyperopia), "nu vad la tabla". These are ordinary, long-standing vision problems: map them to routine optometry services and do NOT set safety flags for them.',
   'Only set possible_safety_flags when the text describes something acute and recent (sudden onset in hours or days, trauma, chemicals, severe pain). A long-standing or gradual complaint is never a safety flag.',
+  // 2026-09-24, test live: "am tensiune oculara mare si as vrea un control" primea uneori
+  // other_possible_urgent_eye_problem, deci pacientul vedea caseta de avertizare pentru o
+  // afectiune cronica si o cerere de control.
+  'A known chronic condition mentioned without a new, sudden symptom (glaucoma, high eye pressure, cataract, diabetes, an earlier diagnosis or treatment) is never a safety flag: the patient is asking for a check or a follow-up.',
+  'other_possible_urgent_eye_problem is only for new and sudden symptoms, such as flashes, a shadow or curtain over the vision, sudden double vision or a sudden severe drop in vision.',
 ]);
 
 function exampleOutput(overrides) {
@@ -183,6 +188,16 @@ export const PATIENT_NEED_INTERPRETATION_EXAMPLES = Object.freeze([
       for_whom: 'other_adult',
       age_group: 'adult',
       evidence_phrases: ['trimitere pentru camp vizual', 'mama mea'],
+    }),
+  },
+  {
+    text: 'am tensiune oculara mare si as vrea un control',
+    output: exampleOutput({
+      intent: 'simptome_oftalmologice',
+      service_keys: ['glaucoma_consultation', 'tonometry'],
+      for_whom: 'adult',
+      age_group: 'adult',
+      evidence_phrases: ['tensiune oculara mare', 'un control'],
     }),
   },
   {
