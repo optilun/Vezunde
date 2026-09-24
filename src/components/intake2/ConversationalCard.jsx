@@ -24,11 +24,13 @@ import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempot
 import { buildDeterministicIntentProposal, buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import {
+  buildAnamnesisPrefill,
   buildPatientAnamnesisAnswers,
   isPatientAnamnesisKey,
   patientAnamnesisVariant,
   patientNeedsAnamnesis,
 } from "@/lib/patientAnamnesis";
+import { detectPatientConditionsFromText } from "@/lib/patientVisitGuidance";
 import { buildPatientSafetyAssessment, deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import {
   INTENTS,
@@ -618,6 +620,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   // Raspunsurile se adauga la cerere ca raspunsuri obisnuite; un marcaj `anamneza` retine ca
   // pasul a fost parcurs sau sarit, ca sa nu apara din nou.
   const anamnesisVariant = patientAnamnesisVariant({ intent: state.intent, answers: state.answers });
+  // Afectiunile spuse deja in mesaj pornesc bifate (vezi buildAnamnesisPrefill).
+  const anamnesisPrefill = buildAnamnesisPrefill(
+    anamnesisVariant,
+    detectPatientConditionsFromText(patientLanguageText(initialMessage, state.answers)),
+  );
+  const safetyCheckCleared = state.answers.some((answer) => (
+    answer.question_key === "safety_targeted_check" && answer.answer_value === "niciuna"
+  ));
 
   const handleAnamnesis = (selections, { skipped = false } = {}) => {
     matchingRequestRef.current.invalidate();
@@ -1113,6 +1123,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
                   onPhaseChange={setQuestionPhase}
                   onSafetyCleared={handleSafetyCleared}
                   initialValue={descriptionPrefill(current)}
+                  safetyAlreadyCleared={safetyCheckCleared}
                 />
               )}
               {current.type === "location" && (
@@ -1134,6 +1145,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         <PatientAnamnesis
           key={`${state.intent || "unknown"}-${anamnesisVariant}`}
           variant={anamnesisVariant}
+          initialSelections={anamnesisPrefill}
           onSubmit={(selections) => handleAnamnesis(selections)}
           onSkip={() => handleAnamnesis({}, { skipped: true })}
           onBack={history.length > 0 ? handleAnamnesisBack : undefined}
