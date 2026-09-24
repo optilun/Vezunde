@@ -71,6 +71,9 @@ const CONDITION_NOTES = Object.freeze({
 // Ordinea de afisare cand sunt mai multe afectiuni.
 const CONDITION_ORDER = ["glaucom", "glaucom_familie", "cataracta", "operat_cataracta", "diabet", "hipertensiune", "ochi_uscat"];
 
+// Glaucomul unei rude nu e glaucomul pacientului: "am glaucom in familie", "mama are glaucom".
+const FAMILY_GLAUCOMA_PATTERN = /\bglaucom (?:in|din) famili\w*|\brud\w* cu glaucom|\b(?:mama|mamei|tata|tatal|tatalui|parintii|parintilor|bunica|bunicul|bunicii|fratele|sora)\b(?: \w+){0,2} (?:are|au|a avut|au avut) glaucom/;
+
 const TEXT_CONDITION_RULES = [
   { condition: "cataracta", pattern: /\bcataract/ },
   { condition: "glaucom", pattern: /\bglaucom|\btensiune(?:a)? oculara|\bpresiune(?:a)? oculara|\btensiune(?:a)? (?:in|la) ochi/ },
@@ -105,9 +108,13 @@ function answerMap(answers = []) {
 
 export function detectPatientConditionsFromText(text) {
   const normalized = normalize(text);
-  return new Set(TEXT_CONDITION_RULES
-    .filter((rule) => rule.pattern.test(normalized))
-    .map((rule) => rule.condition));
+  const conditions = new Set();
+  const withoutFamily = normalized.replace(new RegExp(FAMILY_GLAUCOMA_PATTERN.source, "g"), " ");
+  if (withoutFamily !== normalized) conditions.add("glaucom_familie");
+  for (const rule of TEXT_CONDITION_RULES) {
+    if (rule.pattern.test(withoutFamily)) conditions.add(rule.condition);
+  }
+  return conditions;
 }
 
 function whereToGo(intent, byKey, conditions) {
