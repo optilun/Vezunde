@@ -55,15 +55,20 @@ export default function ResultsMap({
 
   // Dreptunghiul vizibil se raporteaza in sus ca lista sa poata fi filtrata la ce se vede.
   // Se trimit ID-URI, nu un criteriu de cautare: serverul nu este intrebat nimic din nou.
+  // 2026-09-24: semnatura (toate punctele, sortate) se calculeaza o data per set de puncte, nu la
+  // fiecare mutare a hartii (pe harta nationala sunt ~1.300 de puncte).
+  const fitSignature = useMemo(
+    () => fitModel.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|"),
+    [fitModel.points],
+  );
   const reportViewport = useCallback((next) => {
     setViewport(next);
     if (storageKey) {
       const maps = readSearchSession().maps || {};
-      const signature = fitModel.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
-      writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds, camera: next.camera } } });
+      writeSearchSession({ maps: { ...maps, [storageKey]: { signature: fitSignature, bounds: next.bounds, camera: next.camera } } });
     }
 
-  }, [fitModel.points, storageKey]);
+  }, [fitSignature, storageKey]);
 
   // Marker data can arrive without camera movement (national directory, coordinate overlay).
   useEffect(() => {
