@@ -5,6 +5,7 @@ import PatientRequestSubmission from "@/components/intake2/PatientRequestSubmiss
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
+import { preloadVectorCanvas } from "@/components/results/vectorCanvasLoader";
 import { loadNationalDirectoryMap } from "@/lib/nationalDirectoryMap";
 import { boundsForPoints, mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { recommendationMapContext } from "../../shared/recommendationMapContext.js";
@@ -31,6 +32,8 @@ import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 // doar filtreaza vizual lista deja primita - si spune cate optiuni a ascuns.
 
 export default function RequestMatches() {
+  // Harta vectoriala se descarca in paralel, fara sa blocheze rezultatele.
+  useEffect(() => { preloadVectorCanvas(); }, []);
   const location = useLocation();
   const navigate = useNavigate();
   const { results, meta } = location.state || {};
