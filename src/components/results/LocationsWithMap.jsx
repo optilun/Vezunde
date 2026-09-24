@@ -52,7 +52,7 @@ export default function LocationsWithMap({
     });
     return () => cancelAnimationFrame(frame);
   }, [fixedDesktop, storageKey, listSignature]);
-  const rememberList = () => {
+  const rememberListNow = () => {
     if (!fixedDesktop || !storageKey || !window.matchMedia("(min-width: 1024px)").matches) return;
     restoredListKey.current = storageKey;
     const previous = readSearchSession().listScroll || {};
@@ -60,6 +60,21 @@ export default function LocationsWithMap({
     const entries = Object.entries(previous).filter(([key]) => key !== storageKey).slice(-7);
     writeSearchSession({ listScroll: { ...Object.fromEntries(entries), [storageKey]: { top: listRef.current?.scrollTop || 0, signature: listSignature } } });
   };
+  // 2026-09-24. Pozitia listei se salveaza dupa ce derularea se opreste, nu la fiecare eveniment
+  // (fiecare salvare rescrie toata sesiunea de cautare). La plecarea de pe pagina se salveaza imediat.
+  const rememberTimer = useRef(0);
+  const rememberLatest = useRef(rememberListNow);
+  rememberLatest.current = rememberListNow;
+  const rememberList = () => {
+    clearTimeout(rememberTimer.current);
+    rememberTimer.current = setTimeout(() => { rememberTimer.current = 0; rememberLatest.current(); }, 200);
+  };
+  useEffect(() => () => {
+    if (!rememberTimer.current) return;
+    clearTimeout(rememberTimer.current);
+    rememberTimer.current = 0;
+    rememberLatest.current();
+  }, []);
   const cardRefs = useRef(new Map());
   const previousSelection = useRef({ id: selectedId, view: mobileView });
   useEffect(() => {
