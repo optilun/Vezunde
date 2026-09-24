@@ -213,3 +213,11 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Recomandari pentru vizita pe ecranul de verificare (src/lib/patientVisitGuidance.js): cataracta, glaucom/tensiune oculara, diabet, tensiune arteriala, ochi uscati, pregatirea consultului.
 - Verificari: verify-patient-anamnesis-guidance (nou), test:services OK, verify-all 143 OK / 3 preexistente, lint, build, typecheck fara erori noi. Detalii: docs/audit-ai-cautare-recomandare-2026-09-24.md, sectiunea 9.
 - Alt agent lucreaza simultan (facturare, harta, layout, ProviderProfile); fara fisiere comune in afara de package.json (modificari compatibile).
+
+### 2026-09-24 (noaptea) — pregatire decizii, fara cod
+
+- Fisierele AI sunt identice cu checkpoint-ul 6ab58138. test:services OK, verify-all 143 OK / 3 preexistente, ESLint si build OK.
+- Retest live NEFACUT: publicarea v2.1 neconfirmata; sesiunea nu avea Claude in Chrome, iar politica de retea a mediului bloca viasee.ro. Fragment gata de rulat in consola: audit, sectiunea 11.1.
+- Zgomotul din cheile de servicii (asteapta "da"): pe 65 de formulari, reparatiile primesc 10 chei de vanzare (in simulare, o optica fara reparatii iese #1 in Top 3), iar cumpararea de lentile de contact devine specialized_medical (Top 3 doar verificati, fallback fara optici, distribuire blocata pentru opticile revendicate). Regula propusa si efectul masurat: sectiunea 11.2.
+- Re-sincronizarea bundle-urilor (asteapta "da"): comportament identic in matchProviders, browseDirectoryProviders, getPublicProviderProfile; in matchProvidersSemantic se schimba doar cautarea semantica de pe server, adica semantic_fit (0 -> ~23 puncte) in 11 din 58 de formulari, fara alte chei in potrivire. Sectiunea 11.3.
+- De semnalat: revizuire medicala (texte de recomandare, fraze de siguranta; stratul determinist nu prinde "vad dublu de azi dimineata" si "vad ca o umbra"), acord nou si verificare juridica pentru anamneza trimisa structurat.
