@@ -99,15 +99,17 @@ export default function LocationsWithMap({
   }, [selectedId, mobileView, fixedDesktop]);
   const hasPositions = (results || []).some((location) => mapPointFromResult(location) !== null);
   // 2026-09-24. Pe telefon, dupa ce harta a fost aratata o data, trecerea pe lista nu o mai scoate din
-  // pagina (display: none), ci o ascunde pastrandu-i marimea. La revenire nu mai trebuie
-  // redimensionata si redesenata de la zero (750-2.900 ms in test). Pana la prima afisare ramane
-  // scoasa din pagina, ca cine incepe cu lista sa nu descarce fundalul hartii degeaba.
+  // pagina (display: none), ci o ascunde pastrandu-i marimea: iese din flux (absolute), devine
+  // invizibila si nu primeste atingeri. La revenire nu mai trebuie redimensionata si redesenata de la
+  // zero (750-2.900 ms in test). Atributia hartii (MapLibre o face vizibila explicit cand e extinsa)
+  // se ascunde si ea. Pana la prima afisare harta ramane scoasa din pagina, ca cine incepe cu lista sa
+  // nu descarce fundalul hartii degeaba. Pe desktop (lg) nimic nu se schimba.
   const [mapShownOnce, setMapShownOnce] = useState(mobileView === "map");
   useEffect(() => { if (mobileView === "map") setMapShownOnce(true); }, [mobileView]);
   const mobileMapClass = mobileView === "map"
     ? "relative block"
     : mapShownOnce
-      ? `absolute inset-x-0 top-0 invisible pointer-events-none lg:visible lg:pointer-events-auto ${fixedDesktop ? "lg:relative" : ""}`
+      ? "relative max-lg:absolute max-lg:inset-x-0 max-lg:top-0 max-lg:invisible max-lg:pointer-events-none max-lg:[&_.maplibregl-ctrl-attrib]:!invisible"
       : "relative hidden lg:block";
 
   return (
