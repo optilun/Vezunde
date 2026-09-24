@@ -401,6 +401,23 @@
   animation: role-content-fade 0.2s ease-out;
 }
 
+/* 2026-09-24. Continutul paginilor (in afara de home) are cel putin inaltimea ecranului sub antet.
+   Cat timp pagina se incarca, continutul e scurt; fara regula asta subsolul aparea in ecran si era
+   impins in jos cand venea continutul. Google socoteste saritura (CLS): pe profiluri ajungea la
+   0,995 pe telefon, iar „cel mai mare element” masurat era paragraful din subsol. `vh` e rezerva
+   pentru browserele fara `svh`. Antet: 4rem pe telefon, 5rem pe desktop (Layout.jsx). */
+.page-main-min {
+  min-height: calc(100vh - 4rem);
+  min-height: calc(100svh - 4rem);
+}
+
+@media (min-width: 1024px) {
+  .page-main-min {
+    min-height: calc(100vh - 5rem);
+    min-height: calc(100svh - 5rem);
+  }
+}
+
 /* Aparitia la derulare (src/components/common/Reveal.jsx): doar opacity si transform, pe care
    browserul le anima fara sa redeseneze pagina. */
 [data-reveal] {
