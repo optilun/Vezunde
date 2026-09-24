@@ -26,13 +26,19 @@ function assessmentForChoice(answerValue) {
 // incepe sa foloseasca intrebarea din catalog.
 const SYMPTOM_TEXT_QUESTION_KEYS = new Set(["descriere", "symptom_description"]);
 
-export default function QuestionText({ question, onSubmit, onPhaseChange, onSafetyCleared, initialValue = "" }) {
+export default function QuestionText({ question, onSubmit, onPhaseChange, onSafetyCleared, initialValue = "", safetyAlreadyCleared = false }) {
   // 2026-09-24: pacientul care si-a descris deja problema pe prima pagina nu mai primeste un
   // camp gol cu aceeasi intrebare. Textul lui e precompletat; il poate completa sau trimite.
   // Ecranul de siguranta de mai jos ramane primul pas, neschimbat.
   const prefilled = String(initialValue || "").trim().slice(0, 800);
   const [value, setValue] = useState(prefilled);
-  const [screeningCleared, setScreeningCleared] = useState(!SYMPTOM_TEXT_QUESTION_KEYS.has(question.key));
+  // 2026-09-24, test live: dupa "Niciuna dintre acestea", raspunsul salvat pornea o noua
+  // selectie de intrebare, componenta se remonta si pacientul vedea verificarea a doua oara.
+  // Parintele ne spune acum daca raspunsul exista deja; revenirea cu "Inapoi" inainte de el il
+  // sterge, deci verificarea reapare exact cand trebuie.
+  const [screeningCleared, setScreeningCleared] = useState(
+    !SYMPTOM_TEXT_QUESTION_KEYS.has(question.key) || safetyAlreadyCleared,
+  );
   const [urgentChoice, setUrgentChoice] = useState("");
   const [textAssessment, setTextAssessment] = useState(null);
   const urgentAssessment = useMemo(
