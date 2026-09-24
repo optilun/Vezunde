@@ -4,19 +4,26 @@ import {
   assignRecommendationBuckets,
   buildRecommendationExplanations,
   buildRecommendationScore,
-  buildPatientNeedPrompt,
   evaluateServicePrerequisites,
   getCanonicalServiceDefinition,
   getFreshAvailability,
   getRecommendationConfidence,
   getServiceOperationalContext,
-  getPatientNeedResponseSchema,
   isServiceMatchingEligible,
   normalizeServiceKey,
   recommendationBucketForProfile,
   resolveServiceSearchQuery,
-  sanitizePatientNeedInterpretation,
 } from './sharedDependencies.js';
+// 2026-09-24, audit LLM cautare/recomandare: interpretarea se importa direct din
+// base44/shared, nu din bundle-ul local. Copia din sharedDependencies.js ramasese la
+// versiunea din 2026-08-06 (etichete vechi pentru raspunsuri), desi sursa fusese
+// actualizata - testele verificau sursa, nu bundle-ul. Bundle-ul ramane neatins, deci
+// potrivirea, scorul si Top 3 folosesc exact acelasi cod ca inainte.
+import {
+  buildPatientNeedPrompt,
+  getPatientNeedResponseSchema,
+  sanitizePatientNeedInterpretation,
+} from '../../shared/patientNeedInterpretation.js';
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
@@ -506,6 +513,7 @@ async function interpretPatientNeed(
     const interpretation = sanitizePatientNeedInterpretation(raw, {
       deterministicIntent,
       deterministicServiceKeys,
+      text: searchText,
     });
     const liveResult = {
       mode: 'shadow',
