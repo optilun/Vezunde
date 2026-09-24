@@ -195,7 +195,9 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-3">
-      <div className="min-h-[24rem]">
+      {/* 2026-09-24. Pe telefon, cat se incarca directorul, locul are deja inaltimea hartii (70vh +
+          spatiul de deasupra ei), ca nota de sub harta sa nu fie impinsa in jos cand apare harta. */}
+      <div className="min-h-[max(24rem,calc(70vh+0.75rem))] lg:min-h-[24rem]">
         {state.status === "loading" && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Se încarcă directorul...
