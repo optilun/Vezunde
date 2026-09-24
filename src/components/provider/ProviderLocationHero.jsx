@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Image as ImageIcon, MapPin, Phone } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { loadPublicOrganizationBrand } from "@/lib/publicProfilePrefetch";
 import TrustBadge from "@/components/results/TrustBadge";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
@@ -46,7 +46,8 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
       return () => { cancelled = true; };
     }
 
-    base44.functions.invoke("getPublicOrganizationBrand", { location_id: profile.id })
+    // Cererea porneste deja cand sosesc datele profilului (src/lib/publicProfilePrefetch.js).
+    loadPublicOrganizationBrand(profile.id)
       .then((response) => {
         if (!cancelled) setPublicBrand(response.data?.brand || {});
       })
