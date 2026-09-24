@@ -206,6 +206,11 @@ for (const file of ['ResultsMap.jsx', 'LegacyResultsMap.jsx']) {
 console.log('Empty basemap and structural disclosure guards: PASS');
 
 
-assert.ok(pageSource.includes('invoke("browseDirectoryProviders", { map_scope: "national" })'), 'National map must load the complete public projection');
+// 2026-09-23: harta nationala trece prin incarcatorul comun (reincercare, harta tinuta cateva minute).
+assert.ok(pageSource.includes('loadNationalDirectoryMap({ force: directoryRetry > 0 })'), 'National map must load the complete public projection');
+const mapLoaderSource = await readFile(new URL("../src/lib/nationalDirectoryMap.js", import.meta.url), "utf8");
+assert.ok(mapLoaderSource.includes('invoke("browseDirectoryProviders", payload)'), 'The shared loader must call the national projection');
+const mapLoaderCore = await readFile(new URL("../src/lib/nationalDirectoryMapLoader.js", import.meta.url), "utf8");
+assert.ok(mapLoaderCore.includes('invoke({ map_scope: "national" })'), 'The shared loader must request the complete public projection');
 const viewportHandler = pageSource.slice(pageSource.indexOf('const handleViewport'), pageSource.indexOf('const selectFromList'));
 assert.ok(!viewportHandler.includes('invoke('), 'Moving the map must not rerun recommendation matching');
