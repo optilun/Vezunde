@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -309,6 +309,36 @@ function TeamCard({ team }) {
   );
 }
 
+// 2026-09-24. Harta Google (iframe) aduce ~430 KB de cod. `loading="lazy"` nu ajuta pe telefon: harta
+// e destul de aproape de ecran ca browserul sa o incarce oricum. Acum iframe-ul se creeaza cand
+// cardul hartii ajunge la ~400 px de ecran (pe desktop, unde se vede de la inceput, imediat) sau la
+// apasarea butonului. Pana atunci ramane fundalul cardului.
+function DeferredMapEmbed({ src, title }) {
+  const holder = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (visible) return undefined;
+    const node = holder.current;
+    if (!node || typeof IntersectionObserver === "undefined") { setVisible(true); return undefined; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
+    }, { rootMargin: "400px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible]);
+  return (
+    <div ref={holder} className="h-full w-full">
+      {visible ? (
+        <iframe title={title} src={src} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+      ) : (
+        <button type="button" onClick={() => setVisible(true)} className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/40">
+          Afișează harta
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ProviderProfile() {
   const route = useLocation();
   const resultsReturn = route.state?.resultsReturn;
@@ -486,7 +516,7 @@ export default function ProviderProfile() {
             </div>
             {hasMapLocation(profile) && embedUrl ? (
               <div className="h-60 border-t border-border bg-secondary">
-                <iframe title={`Harta ${profile.name}`} src={embedUrl} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                <DeferredMapEmbed title={`Harta ${profile.name}`} src={embedUrl} />
               </div>
             ) : (
               <div className="border-t border-border bg-secondary/40 p-5 text-sm text-muted-foreground">Harta va fi afișată după publicarea adresei sau a pinului verificat.</div>
