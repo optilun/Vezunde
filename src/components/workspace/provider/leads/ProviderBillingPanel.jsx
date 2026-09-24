@@ -174,7 +174,7 @@ function BillingCenter({ locationId, onSynced }) {
         </form>}
       </Panel></div>
       <Panel title="Istoric plăți și documente Stripe" icon={FileText} tone="amber">
-        <p className="mb-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat prin KEEZ. Mai jos găsești documentele Stripe asociate plăților; acestea nu confirmă emiterea facturii KEEZ.</p>
+        <p className="mb-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat. Mai jos găsești documentele Stripe asociate plăților.</p>
         <InvoiceTable invoices={data.invoices} />
         {(page > 0 || data.has_more) && <div className="mt-4 flex items-center justify-between gap-2"><button className={button} disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Mai recente</button><span className="text-xs text-muted-foreground">Pagina {page + 1}</span><button className={button} disabled={!data.has_more || loading} onClick={() => { setCursors(c => [...c.slice(0,page + 1), data.next_cursor]); setPage(p => p + 1); }}>Mai vechi</button></div>}
       </Panel>
