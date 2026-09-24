@@ -384,6 +384,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent || option.key);
+    // Masuram cat de des sugestia din mesaj e si raspunsul ales. O rata mica ar insemna ca
+    // indiciile deterministe sau cele ale modelului trebuie revizuite.
+    const suggestedKey = suggestedOptionKeyForQuestion(question, contextHints);
+    if (suggestedKey) {
+      trackPatientSearchEvent("patient_search_answer_suggestion_resolved", {
+        intent: state.intent || "unknown",
+        question_key: question.key,
+        accepted: suggestedKey === option.key,
+      });
+    }
     pushHistory();
     prepareAdaptiveSelection();
     if (!state.intent) {
@@ -444,6 +454,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     });
   };
 
+  const requestInterpretation = (text, source) => {
+    interpretationRequestRef.current.invalidate();
+    setInterpretationRequest({ id: `${source}:${Date.now()}`, text, source });
+    setPhase("interpreting");
+  };
+
   const handleText = (question, value) => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
@@ -455,11 +471,23 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     });
     pushHistory();
     prepareAdaptiveSelection();
+    const nextAnswers = [...state.answers, { question_key: question.key, answer_value: value }];
     setState((s) => ({
       ...s,
       answers: [...s.answers, { question_key: question.key, answer_value: value }],
       questionHistory: [...new Set([...(s.questionHistory || []), question.key])],
     }));
+    // 2026-09-24: in ramura "Nu sunt sigur", descrierea e exact informatia care lipsea. O
+    // interpretam (determinist, apoi AI) si propunem nevoia potrivita, ca pacientul sa ajunga la
+    // chestionarul ei in loc de doua intrebari generice. Daca textul e identic cu mesajul deja
+    // interpretat fara succes, nu repetam apelul.
+    if (
+      state.intent === "unknown"
+      && PATIENT_DESCRIPTION_QUESTION_KEYS.has(question.key)
+      && comparableText(value) !== comparableText(initialMessage)
+    ) {
+      requestInterpretation(patientLanguageText(initialMessage, nextAnswers), "description");
+    }
   };
 
   // 2026-09-01: pana acum, raspunsul "Niciuna dintre acestea" de la ecranul de siguranta
@@ -494,19 +522,21 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     }));
   };
 
+  const interpretationFromDescription = interpretationRequest?.source === "description";
+
   const handleConfirmInterpretation = () => {
     interpretationRequestRef.current.invalidate();
     if (!intentProposal?.intent || !INTENTS[intentProposal.intent]) return;
-    const confirmedState = initState(intentProposal.intent, initialMessage);
-    // Acelasi fix ca la handleCorrectInterpretation: nu lasam categoria generica sa
-    // suprascrie lista precisa de servicii pe care AI-ul a identificat-o deja (ex:
+    // Confirmarea se inregistreaza ca raspuns controlat la `categorie` (vezi initState), iar
+    // serviciile precise propuse de AI nu sunt inlocuite de lista generica a categoriei (ex:
     // ophthalmology_consultation vs optometry_consultation - medic vs optometrist).
-    if (Array.isArray(intentProposal?.service_keys) && intentProposal.service_keys.length > 0) {
-      confirmedState.serviceKeys = [...intentProposal.service_keys];
-      confirmedState.explicitServiceKeys = [...intentProposal.service_keys];
-    }
+    const confirmedState = stateForConfirmedIntent(intentProposal.intent, {
+      text: interpretationFromDescription ? interpretationRequest.text : initialMessage,
+      aiServiceKeys: intentProposal.source === "ai" ? intentProposal.service_keys : [],
+      previousState: interpretationFromDescription ? state : null,
+    });
     setState(confirmedState);
-    setHistory([]);
+    if (!interpretationFromDescription) setHistory([]);
     setRequestDraft(null);
     prepareAdaptiveSelection();
     markSearchStarted(intentProposal.intent);
@@ -515,6 +545,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       confidence_band: intentProposal.confidence_band,
       agreement_status: intentProposal.agreement_status,
       interpretation_version: intentProposal.version || "unknown",
+      interpretation_source: intentProposal.source || "ai",
+      interpretation_trigger: interpretationRequest?.source || "initial",
       safety_flag_count: intentProposal.possible_safety_flags?.length || 0,
     });
     setPhase("questions");
