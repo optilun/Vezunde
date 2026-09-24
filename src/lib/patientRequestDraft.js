@@ -1,4 +1,4 @@
-import { CATEGORY_QUESTION, INTENTS } from "./intentRegistry.js";
+import { CATEGORY_QUESTION, INTENTS, intentDisplayLabel } from "./intentRegistry.js";
 import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../shared/patientGuidanceQuestionCatalog.js";
 
 export const PATIENT_QUESTIONNAIRE_VERSION = "patient-questionnaire-v1";
@@ -34,6 +34,13 @@ const QUESTIONS_BY_KEY = questionCatalog();
 
 function answerLabel(question, answerValue) {
   if (!question) return clean(answerValue, 240);
+  // 2026-09-24: `categorie` se inregistreaza acum si cand nevoia vine din confirmarea AI sau
+  // dintr-un link de categorie, inclusiv pentru intentii care nu sunt carduri in chestionar
+  // (control pentru copil, lentile de contact). Eticheta vine din lista de afisare a intentiilor,
+  // ca furnizorul sa nu vada o cheie tehnica.
+  if (question.key === CATEGORY_QUESTION.key) {
+    return clean(intentDisplayLabel(answerValue) || answerValue, 240);
+  }
   if (question.type === "location" || question.type === "text") return clean(answerValue, 240);
   const option = (question.options || []).find((item) => item.key === answerValue);
   return clean(option?.label || answerValue, 240);
