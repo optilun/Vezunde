@@ -24,7 +24,13 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   const fitted = useRef(null);
   const skipInitialSelection = useRef(false);
   const restoredCamera = useRef(null);
+  // 2026-09-24. Doua momente distincte:
+  // - `ready`: harta exista, deci camera si markerele (elemente HTML) pot fi puse. Punctele apar
+  //   imediat, peste fundalul simplu, fara sa astepte fundalul hartii;
+  // - `styleReady`: fundalul (stil, texte, dale) s-a incarcat; abia atunci se pot atinge straturile
+  //   (cladiri, 3D). Inainte, totul astepta `load`: 6-8 s pe desktop in test, mai mult pe telefon.
   const [ready, setReady] = useState(false);
+  const [styleReady, setStyleReady] = useState(false);
   const [threeD, setThreeD] = useState(false);
   const [zoom, setZoom] = useState(6);
   useEffect(() => {
@@ -51,7 +57,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
         clearTimeout(timer);
         if (map.getLayer("building")) map.setLayerZoomRange("building",13,24);
         if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility","none");
-        setReady(true);
+        setStyleReady(true);
       });
       map.on("webglcontextlost",() => latest.current.onFailure("webgl"));
       map.on("error", event => { if (event.error) console.warn("VIASEE vector map resource failed:", event.error.message); });
@@ -64,6 +70,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
         map.resize();
       });
       observer.observe(container.current);
+      setReady(true);
     } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(/webgl/i.test(String(error?.message)) ? "webgl" : "initialization"); }
     const currentMarkers = markers.current;
     return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); map?.remove(); mapRef.current=null; };
@@ -104,7 +111,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     if (point) mapRef.current.easeTo({center:[point.lng,point.lat],duration:350});
   },[selectedId,ready]);
   useEffect(() => {
-    if (!ready) return;
+    if (!styleReady) return;
     const map=mapRef.current;
     if (restoredCamera.current) {
       const camera = restoredCamera.current;
@@ -115,7 +122,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     }
     if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility",threeD?"visible":"none");
     map.easeTo({pitch:threeD?50:0,bearing:threeD?map.getBearing():0,duration:450});
-  },[threeD,ready]);
+  },[threeD,styleReady]);
   useEffect(() => {
     if (!ready) return;
     const map=mapRef.current;
@@ -184,10 +191,11 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     });
   },[selectedId,hoveredId,ready]);
   return <>
-    <div ref={container} className="h-full w-full" aria-label="Harta detaliată a locațiilor" />
+    <div ref={container} className="h-full w-full bg-secondary" aria-label="Harta detaliată a locațiilor" />
     {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-secondary text-sm">Se încarcă harta detaliată...</div>}
+    {ready && !styleReady && <p role="status" className="pointer-events-none absolute bottom-3 left-3 z-40 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm">Se încarcă fundalul hărții...</p>}
     <div className="absolute left-3 top-32 z-40 flex flex-col items-start gap-2">
-      <button type="button" disabled={!ready} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-md hover:bg-secondary disabled:opacity-50">{threeD?"2D":"3D"}</button>
+      <button type="button" disabled={!styleReady} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-md hover:bg-secondary disabled:opacity-50">{threeD?"2D":"3D"}</button>
       {threeD && zoom<14 && <span className="max-w-40 rounded-xl bg-card p-2 text-xs shadow">Apropie harta pentru a vedea clădirile 3D.</span>}
     </div>
   </>;
