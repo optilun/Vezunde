@@ -121,6 +121,9 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       return;
     }
     if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility",threeD?"visible":"none");
+    // La incarcarea fundalului harta e deja plata: nu pornim o animatie care ar opri o mutare facuta
+    // intre timp de vizitator (sau centrarea pe un marker apasat).
+    if (!threeD && map.getPitch() === 0 && map.getBearing() === 0) return;
     map.easeTo({pitch:threeD?50:0,bearing:threeD?map.getBearing():0,duration:450});
   },[threeD,styleReady]);
   useEffect(() => {
