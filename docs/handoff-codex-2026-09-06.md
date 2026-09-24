@@ -221,3 +221,9 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Zgomotul din cheile de servicii (asteapta "da"): pe 65 de formulari, reparatiile primesc 10 chei de vanzare (in simulare, o optica fara reparatii iese #1 in Top 3), iar cumpararea de lentile de contact devine specialized_medical (Top 3 doar verificati, fallback fara optici, distribuire blocata pentru opticile revendicate). Regula propusa si efectul masurat: sectiunea 11.2.
 - Re-sincronizarea bundle-urilor (asteapta "da"): comportament identic in matchProviders, browseDirectoryProviders, getPublicProviderProfile; in matchProvidersSemantic se schimba doar cautarea semantica de pe server, adica semantic_fit (0 -> ~23 puncte) in 11 din 58 de formulari, fara alte chei in potrivire. Sectiunea 11.3.
 - De semnalat: revizuire medicala (texte de recomandare, fraze de siguranta; stratul determinist nu prinde "vad dublu de azi dimineata" si "vad ca o umbra"), acord nou si verificare juridica pentru anamneza trimisa structurat.
+
+### 2026-09-24 (21:40 UTC) — retest live v2.1 trecut, fara cod
+
+- Publicare confirmata (bundle-urile live contin fixurile din faza 3). Endpoint: `patient-need-ai-v2.1` pe toate cele 3 cazuri, 2,3 s; "am tensiune oculara mare si as vrea un control" fara semnal; "vad dublu de azi dimineata" si "de ieri vad ca o umbra la ochiul stang" cu other_possible_urgent_eye_problem.
+- Interfata: verificarea de siguranta o singura data, anamneza pre-bifata (glaucom), recomandari corecte, fara 112/UPU. Oprit inainte de "Cauta rezultate". Detalii: audit, sectiunea 12.
+- Deciziile 11.2 (zgomot chei), 11.3 (bundle-uri) si 11.4 (revizuire medicala, acord anamneza) asteapta owner-ul.
