@@ -13,6 +13,7 @@ import {
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { getNationalMap } from '../../shared/nationalMapCache.js';
+import { loadDirectoryDetailOverlayForMap, loadPublishedLocationsForMap } from '../../shared/nationalMapSources.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Read-only locality browse. It does not score or match by service.
@@ -38,15 +39,18 @@ function normalizedName(location) {
 //
 // Campurile sunt putine intentionat: 900+ locatii inseamna ca fiecare camp in plus se
 // inmulteste cu 900. Detaliile se citesc pe profil, nu aici.
+//
+// 2026-09-24. Datele vin din shared/nationalMapSources.js: aceleasi locatii si aceeasi stare de
+// director, citite pe pagini de 500 (~7 citiri) in loc de o interogare pe fiecare judet (~100).
 async function computeNationalMap(svc) {
-  const allLocations = await loadAllPublicLocationsByCounty(svc, { failOnError: true });
+  const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
   const visible = allLocations.filter((loc) => {
     if (loc.public_visibility_status !== 'approved') return false;
     if (loc.active_status === 'inactiva') return false;
     if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) return false;
     return true;
   });
-  const overlay = await loadDirectoryDetailOverlay(svc, visible.map((loc) => loc.id));
+  const { overlay } = await loadDirectoryDetailOverlayForMap(svc, visible.map((loc) => loc.id));
 
   const points = [];
   let totalPublished = 0;
