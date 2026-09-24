@@ -137,7 +137,9 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
       <ContinueButton
         onClick={submit}
         disabled={!value.trim()}
-      />
+      >
+        Continuă
+      </ContinueButton>
       {/* 2026-09-01: unele intrebari libere nu pot fi raspunse de toata lumea. Cine nu are
           trimiterea la el ramanea blocat: campul nu accepta raspuns gol si nu exista nicio
           iesire. Raspunsul de ocolire e un text real, nu unul gol, ca sa fie inregistrat
