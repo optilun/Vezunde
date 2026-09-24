@@ -206,6 +206,15 @@ for (const surfacePath of advisorySurfaces) {
 }
 
 assert(interruptionSource.includes('href="tel:112"'));
-assert(interruptionSource.includes('PhoneCall'));
+// 2026-09-24, decizie explicita a owner-ului: fara semne mari "Suna la 112". Nu mai exista
+// un buton separat cu telefon; 112 apare o singura data, intr-un rand mic, conditionat, dupa
+// indicatia spre spital/urgenta - sectiunea 5 a politicii (fallback, niciodata actiune principala).
+assert(!interruptionSource.includes('PhoneCall'), 'ecranul de urgenta nu mai are buton separat de telefon pentru 112');
+assert.equal((interruptionSource.match(/tel:112/g) || []).length, 1, '112 apare o singura data pe ecranul de urgenta');
+assert(
+  interruptionSource.indexOf('COPY.primary_instruction') < interruptionSource.indexOf('href="tel:112"'),
+  '112 trebuie sa apara dupa indicatia spre spital/urgenta',
+);
+assert.match(interruptionSource, /Doar dacă nu te poți deplasa în siguranță sau starea generală se agravează rapid/);
 
 console.log('Patient emergency guidance policy verified: approved injury-specific first aid survives the canonical boundary and untrusted variants fail closed.');
