@@ -11,6 +11,14 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   const markers = useRef(new Map());
   const latest = useRef({});
   latest.current = {points, reportViewport, onFailure};
+  // 2026-09-24. Selectia si hover-ul nu mai reconstruiesc markerele: efectul de mai jos le citeste
+  // de aici, iar efectul separat schimba doar markerele atinse. Inainte, fiecare hover pe un card din
+  // lista rescria HTML-ul tuturor markerelor si le re-aseza (100-220 ms pe desktop, sacadat).
+  const markerState = useRef({ selectedId, hoveredId });
+  markerState.current = { selectedId, hoveredId };
+  const handlers = useRef({});
+  handlers.current = { onSelect, onHover, onCluster };
+  const clusterByKey = useRef(new Map());
   const fitted = useRef(null);
   const skipInitialSelection = useRef(false);
   const restoredCamera = useRef(null);
@@ -46,7 +54,13 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       map.on("webglcontextlost",() => latest.current.onFailure("webgl"));
       map.on("error", event => { if (event.error) console.warn("VIASEE vector map resource failed:", event.error.message); });
       timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
-      observer = new ResizeObserver(() => map.resize());
+      observer = new ResizeObserver(() => {
+        // Harta ascunsa (lista pe telefon) are 0 px: nu o redimensionam si nu o redesenam degeaba.
+        // Cand reapare, observatorul se declanseaza din nou cu marimea reala.
+        const element = container.current;
+        if (!element || element.clientWidth === 0 || element.clientHeight === 0) return;
+        map.resize();
+      });
       observer.observe(container.current);
     } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(/webgl/i.test(String(error?.message)) ? "webgl" : "initialization"); }
     const currentMarkers = markers.current;
@@ -103,8 +117,10 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   useEffect(() => {
     if (!ready) return;
     const map=mapRef.current;
+    const { selectedId: activeId, hoveredId: hoverId } = markerState.current;
     const keys=new Set(clusters.map(c=>c.key));
     markers.current.forEach((marker,key)=>{if(!keys.has(key)){marker.remove();markers.current.delete(key);}});
+    clusterByKey.current = new Map(clusters.map(c=>[c.key,c]));
     clusters.forEach(cluster=>{
       let marker=markers.current.get(cluster.key);
       if (!marker) {
@@ -116,27 +132,51 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       }
       marker.setLngLat([cluster.lng,cluster.lat]);
       const el=marker.getElement();
-      const active=cluster.points.some(p=>p.id===selectedId);
-      const hovered=cluster.points.some(p=>p.id===hoveredId);
+      const active=cluster.points.some(p=>p.id===activeId);
+      const hovered=cluster.points.some(p=>p.id===hoverId);
       el.innerHTML=pillHtml(cluster,{active,hovered});
       el.style.zIndex=active?"30":hovered?"20":"1";
       el.setAttribute("aria-label",cluster.count>1?`Explorează grupul de ${cluster.count} locații`:cluster.lead.name);
       el.setAttribute("aria-pressed",String(active));
       el.title = cluster.count > 1 ? `${cluster.count} locații — apasă pentru a le explora` : cluster.lead.name;
       el.onclick=()=>{
+        const {onSelect:select,onCluster:openCluster}=handlers.current;
         if(cluster.count>1) {
-          if(map.getZoom()>=15 || clusterSharesPosition(cluster)){onSelect?.(null);onCluster(cluster.key);}
-          else {onCluster(null);const bounds=new maplibregl.LngLatBounds();cluster.points.forEach(p=>bounds.extend([p.lng,p.lat]));map.fitBounds(bounds,{padding:60,maxZoom:17});}
-        } else {onCluster(null);onSelect?.(cluster.lead.id);}
+          if(map.getZoom()>=15 || clusterSharesPosition(cluster)){select?.(null);openCluster(cluster.key);}
+          else {openCluster(null);const bounds=new maplibregl.LngLatBounds();cluster.points.forEach(p=>bounds.extend([p.lng,p.lat]));map.fitBounds(bounds,{padding:60,maxZoom:17});}
+        } else {openCluster(null);select?.(cluster.lead.id);}
       };
-      el.onmouseenter=()=>{if(cluster.count===1)onHover?.(cluster.lead.id);};
-      el.onmouseleave=()=>onHover?.(null);
+      el.onmouseenter=()=>{if(cluster.count===1)handlers.current.onHover?.(cluster.lead.id);};
+      el.onmouseleave=()=>handlers.current.onHover?.(null);
       el.onfocus=el.onmouseenter;
       el.onblur=el.onmouseleave;
     });
     const frame = requestAnimationFrame(() => layoutMapMarkers(container.current));
     return () => cancelAnimationFrame(frame);
-  },[clusters,selectedId,hoveredId,ready,pillHtml,onSelect,onHover,onCluster]);
+  },[clusters,ready,pillHtml]);
+  // Selectia si hover-ul: doar markerele a caror stare se schimba primesc atributele noi (aceleasi pe
+  // care le scrie pillHtml), apoi etichetele se re-aseaza o singura data.
+  useEffect(() => {
+    if (!ready) return;
+    let changed=false;
+    markers.current.forEach((marker,key)=>{
+      const cluster=clusterByKey.current.get(key);
+      const el=marker.getElement();
+      const pill=el.querySelector("[data-map-marker]");
+      if (!cluster || !pill) return;
+      const active=cluster.points.some(p=>p.id===selectedId);
+      const hovered=cluster.points.some(p=>p.id===hoveredId);
+      if (pill.dataset.active===String(active) && pill.dataset.hovered===String(hovered)) return;
+      pill.dataset.active=String(active);
+      pill.dataset.hovered=String(hovered);
+      el.style.zIndex=active?"30":hovered?"20":"1";
+      el.setAttribute("aria-pressed",String(active));
+      changed=true;
+    });
+    if (!changed) return;
+    const frame = requestAnimationFrame(() => layoutMapMarkers(container.current));
+    return () => cancelAnimationFrame(frame);
+  },[selectedId,hoveredId,ready]);
   return <>
     <div ref={container} className="h-full w-full" aria-label="Harta detaliată a locațiilor" />
     {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-secondary text-sm">Se încarcă harta detaliată...</div>}
