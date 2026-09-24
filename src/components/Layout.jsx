@@ -201,7 +201,8 @@ export default function Layout() {
         className={
           isHome
             ? "min-w-0 flex-1 overflow-visible outline-none"
-            : "min-w-0 flex-1 overflow-x-clip outline-none"
+            // page-main-min (index.css): subsolul ramane sub ecran cat timp pagina se incarca.
+            : "page-main-min min-w-0 flex-1 overflow-x-clip outline-none"
         }
       >
         <Suspense
