@@ -1,5 +1,10 @@
 import { CATEGORY_QUESTION, INTENTS, intentDisplayLabel } from "./intentRegistry.js";
 import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../shared/patientGuidanceQuestionCatalog.js";
+import {
+  PATIENT_ANAMNESIS_MARKER_KEY,
+  PATIENT_ANAMNESIS_QUESTIONS,
+  patientAnamnesisAnswerLabel,
+} from "./patientAnamnesis.js";
 
 export const PATIENT_QUESTIONNAIRE_VERSION = "patient-questionnaire-v1";
 export const PATIENT_REQUEST_DRAFT_CONTRACT_VERSION = "patient-request-draft-v1";
@@ -27,6 +32,18 @@ function questionCatalog() {
   for (const question of Object.values(PATIENT_GUIDANCE_QUESTION_CATALOG)) {
     entries.set(question.key, question);
   }
+  for (const question of PATIENT_ANAMNESIS_QUESTIONS) {
+    entries.set(question.key, question);
+  }
+  entries.set(PATIENT_ANAMNESIS_MARKER_KEY, {
+    key: PATIENT_ANAMNESIS_MARKER_KEY,
+    title: "Anamneză",
+    type: "choice",
+    options: [
+      { key: "completata", label: "Completată" },
+      { key: "sarita", label: "Sărită" },
+    ],
+  });
   return entries;
 }
 
@@ -40,6 +57,10 @@ function answerLabel(question, answerValue) {
   // ca furnizorul sa nu vada o cheie tehnica.
   if (question.key === CATEGORY_QUESTION.key) {
     return clean(intentDisplayLabel(answerValue) || answerValue, 240);
+  }
+  // Raspunsurile din anamneza pot avea mai multe valori ("diabet,glaucom").
+  if (question.type === "single" || question.type === "multi") {
+    return clean(patientAnamnesisAnswerLabel(question.key, answerValue) || answerValue, 240);
   }
   if (question.type === "location" || question.type === "text") return clean(answerValue, 240);
   const option = (question.options || []).find((item) => item.key === answerValue);
