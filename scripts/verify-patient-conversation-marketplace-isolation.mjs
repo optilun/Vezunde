@@ -149,6 +149,18 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // fallbackul structural raman neschimbate; buildRecommendationScore,
     // assignRecommendationBuckets si selectia Top 3 raman identice.
     '568fba7abcb3d23ef4cca82a6b6dd8fae05db181',
+    // 2026-09-24, audit LLM cautare/recomandare (cerut explicit de owner: imbunatatirea
+    // interpretarii LLM). Doua schimbari, ambele in afara ramurii de potrivire:
+    //  - buildPatientNeedPrompt, getPatientNeedResponseSchema si
+    //    sanitizePatientNeedInterpretation se importa din base44/shared/patientNeedInterpretation.js,
+    //    nu din bundle-ul local, a carui copie ramasese la versiunea din 2026-08-06;
+    //  - interpretPatientNeed trimite si `text: searchText` la sanitizare, ca localitatea si
+    //    frazele-dovada propuse de model sa fie pastrate doar daca apar in textul pacientului.
+    // sharedDependencies.js ramane byte-identic (blob-ul de mai sus), iar amprenta ramurii de
+    // potrivire (verify-patient-guidance-adaptive-question-selection, 'f33a9859') nu se
+    // schimba: buildRecommendationScore, assignRecommendationBuckets si selectia Top 3 raman
+    // identice.
+    'ac39252e941d1046fe608ac1da17633be013cf8e',
   ]),
 });
 
