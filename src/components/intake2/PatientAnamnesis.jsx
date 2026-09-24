@@ -8,9 +8,13 @@ import {
 // 2026-09-24: scurta anamneza pentru cererile de consult (vezi src/lib/patientAnamnesis.js).
 // Un singur ecran, toate intrebarile optionale. Nimic de aici nu schimba potrivirea sau ordinea
 // rezultatelor si nimic nu ajunge automat la furnizori.
-export default function PatientAnamnesis({ variant = "adult", onSubmit, onSkip, onBack }) {
+export default function PatientAnamnesis({ variant = "adult", initialSelections = {}, onSubmit, onSkip, onBack }) {
   const questions = patientAnamnesisQuestions(variant);
-  const [selections, setSelections] = useState({});
+  const [selections, setSelections] = useState(() => ({ ...initialSelections }));
+  // Ce a pornit bifat din mesajul pacientului, afisat ca sa nu para o alegere facuta de noi.
+  const prefilledLabels = questions.flatMap((question) => (initialSelections[question.key] || [])
+    .map((key) => question.options.find((option) => option.key === key)?.label)
+    .filter(Boolean));
   const answeredCount = questions.filter((question) => (selections[question.key] || []).length > 0).length;
 
   const toggle = (question, optionKey) => {
@@ -44,6 +48,12 @@ export default function PatientAnamnesis({ variant = "adult", onSubmit, onSkip, 
           ? "Ajută medicul să se pregătească pentru consultul copilului. Durează sub un minut și poți sări peste orice întrebare."
           : "Ajută medicul să se pregătească pentru consult. Durează sub un minut și poți sări peste orice întrebare."}
       </p>
+
+      {prefilledLabels.length > 0 && (
+        <p className="mt-3 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-xs leading-relaxed text-foreground/80">
+          Am bifat din mesajul tău: {prefilledLabels.join(", ")}. Poți debifa oricând.
+        </p>
+      )}
 
       <div className="mt-6 space-y-5">
         {questions.map((question) => {
