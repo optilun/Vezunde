@@ -247,7 +247,9 @@ function clock(start = Date.parse('2026-09-23T20:00:00Z')) {
   assert.match(entry, /import \{ getNationalMap \} from '\.\.\/\.\.\/shared\/nationalMapCache\.js'/);
   assert.match(entry, /getNationalMap\(\{ svc, compute: \(\) => computeNationalMap\(svc\) \}\)/);
   assert.match(entry, /async function computeNationalMap\(svc\)/);
-  assert.match(entry, /loadAllPublicLocationsByCounty\(svc, \{ failOnError: true \}\)/, 'aceeasi citire a locatiilor');
+  // 2026-09-24: aceleasi locatii, citite pe pagini (vezi verify-national-map-sources.mjs).
+  assert.match(entry, /loadPublishedLocationsForMap\(svc\)/, 'aceleasi locatii, din cateva citiri');
+  assert.match(entry, /loadDirectoryDetailOverlayForMap\(svc, /, 'aceeasi stare de director, din cateva citiri');
   for (const field of ['map_scope', 'results', 'total_published', 'without_position']) assert.match(entry, new RegExp(`${field}`));
   assert.match(entry, /status: 503/);
   assert.match(entry, /generated_at/);
