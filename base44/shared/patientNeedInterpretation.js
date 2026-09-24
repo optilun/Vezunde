@@ -17,7 +17,9 @@ import { getApprovedPatientGuidanceQuestion } from './patientGuidanceQuestionCat
 // clarification_required la ambiguitatea reala de intentie, adauga alternative_intent si
 // exemple scurte. Contractul de autoritate NU se schimba: modelul propune, pacientul
 // confirma, codul VIASEE alege intrebarile, potrivirea si ordinea rezultatelor.
-export const PATIENT_NEED_INTERPRETATION_VERSION = 'patient-need-ai-v2';
+// v2.1 (2026-09-24, dupa testul live): regula pentru afectiunile cronice fara simptom nou si
+// exemplul pentru tensiunea oculara; versiunea separata face vizibila intrarea in productie.
+export const PATIENT_NEED_INTERPRETATION_VERSION = 'patient-need-ai-v2.1';
 
 export const PATIENT_INTENT_KEYS = Object.freeze([
   'control_vedere',
