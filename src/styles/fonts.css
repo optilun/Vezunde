@@ -1,0 +1,68 @@
+/*
+ * Fonturile VIASEE, servite de pe viasee.ro (public/fonts), nu de la Google Fonts.
+ *
+ * 2026-09-24. Inainte, pagina cerea intai CSS-ul de la fonts.googleapis.com si apoi fisierele de la
+ * fonts.gstatic.com: doua conexiuni noi (pe telefon, sute de ms) inainte de primul font. Cu
+ * `display=optional`, fontul ajungea de obicei prea tarziu la prima vizita si pagina ramanea pe
+ * fontul sistemului. In plus, fiecare vizita trimitea adresa IP a vizitatorului catre Google.
+ *
+ * Aceleasi familii si aceleasi axe ca in cererea veche (Manrope 400-800; Fraunces cu opsz si wght,
+ * normal si italic), variabile, doar subseturile latin si latin-ext (acopera romana: ă, â, î, ș, ț).
+ * Surse: @fontsource-variable/manrope 5.3.0 si @fontsource-variable/fraunces 5.3.0, licenta SIL OFL
+ * 1.1 (public/fonts/OFL-*.txt). `font-display: optional` ramane ca inainte: fara saritura de text.
+ * Fisierele Manrope sunt preincarcate in index.html; Fraunces se descarca doar unde e folosit.
+ */
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-display: optional;
+  font-weight: 200 800;
+  src: url("/fonts/manrope-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-display: optional;
+  font-weight: 200 800;
+  src: url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-display: optional;
+  font-weight: 100 900;
+  src: url("/fonts/fraunces-latin-ext-opsz-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-display: optional;
+  font-weight: 100 900;
+  src: url("/fonts/fraunces-latin-opsz-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-display: optional;
+  font-weight: 100 900;
+  src: url("/fonts/fraunces-latin-ext-opsz-italic.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-display: optional;
+  font-weight: 100 900;
+  src: url("/fonts/fraunces-latin-opsz-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
