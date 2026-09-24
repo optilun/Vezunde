@@ -350,9 +350,9 @@ Cautarea semantica pe textul liber adauga chei de serviciu peste nevoia confirma
 in browser (`matchProvidersWithSemanticFallback`, `src/lib/providerSemanticSearch.js`) si pe server
 (`requestedKeys` in `matchProvidersSemantic/entry.ts`). Cheia se adauga si cand nu are legatura cu
 nevoia: orice serviciu cu un cuvant cheie cuprins in mesaj primeste scorul 0,88, iar "ochelari" si
-"lentile de contact" sunt cuvinte cheie comune pentru 10, respectiv 15 servicii. Masurat pe 65 de formulari cu intentie (corpusul din
-`verify-patient-need-identification` si 7 formulari din testul live): 47 primesc chei in plus
-(271 in total).
+"lentile de contact" sunt cuvinte cheie comune pentru 10, respectiv 15 servicii. Masurat pe 65 de
+formulari cu intentie (corpusul din `verify-patient-need-identification` si 7 formulari din testul
+live): 47 primesc chei in plus (271 in total).
 
 Efecte concrete:
 
