@@ -16,7 +16,7 @@ import {
   getOrCreatePatientRequestIdempotency,
 } from "@/lib/patientRequestIdempotency";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
-import { buildPatientAnamnesisMessage } from "@/lib/patientAnamnesis";
+import { buildPatientAnamnesisMessage, isPatientAnamnesisKey } from "@/lib/patientAnamnesis";
 import UrgencyInterruption from "./UrgencyInterruption";
 
 function track(eventName, properties = {}) {
@@ -382,7 +382,9 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
               </span>
             )}
             {(storedDraft.answers || [])
+              // Anamneza nu ajunge la locatii decat prin mesajul de mai jos, deci nu apare aici.
               .filter((answer) => !["categorie", "locatie", "locality", "descriere"].includes(answer.question_key))
+              .filter((answer) => !isPatientAnamnesisKey(answer.question_key))
               .slice(0, 4)
               .map((answer) => (
                 <span key={answer.question_key} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
