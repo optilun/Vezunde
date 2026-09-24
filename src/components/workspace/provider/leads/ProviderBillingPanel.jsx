@@ -48,12 +48,12 @@ export function InvoiceTable({ invoices }) {
     <FileText aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[#75634b]" /><div><p className="text-sm font-semibold">Niciun document în această pagină</p><p className="mt-1 text-sm text-muted-foreground">Documentele asociate abonamentului apar aici după generarea lor în Stripe.</p></div>
   </div>;
   return <div className="overflow-x-auto"><table className="w-full min-w-[580px] text-left text-sm">
-    <thead className="bg-[#f1ecdf] text-xs text-[#665b4a]"><tr>{["Dată / Factură","Stare","Total","Rest de plată","Document"].map(t => <th key={t} className="border-b border-border px-2 py-3 font-medium">{t}</th>)}</tr></thead>
+    <thead className="bg-[#f1ecdf] text-xs text-[#665b4a]"><tr>{["Dată / Document Stripe","Stare","Total","Rest de plată","Document"].map(t => <th key={t} className="border-b border-border px-2 py-3 font-medium">{t}</th>)}</tr></thead>
     <tbody>{invoices.map(invoice => <tr key={invoice.id} className="border-b border-border transition hover:bg-[#f8f4ec] last:border-0">
       <td className="px-2 py-4">{date(invoice.created)}<p className="text-xs text-muted-foreground">{invoice.number || "Număr nealocat"}</p></td>
       <td className="px-2 py-4"><BillingStatus status={invoice.status} />{invoice.status === "open" && invoice.attempted && <p className="mt-1 text-xs text-muted-foreground">{invoice.attempt_count} încercări de încasare</p>}</td>
       <td className="px-2 py-4">{money(invoice.total, invoice.currency)}</td><td className="px-2 py-4">{money(invoice.amount_remaining, invoice.currency)}</td>
-      <td className="px-2 py-4"><div className="flex gap-3">{invoice.hosted_invoice_url && <a href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer" className="underline underline-offset-4">{invoice.status === "open" ? "Vezi / plătește" : "Vezi"}</a>}{invoice.invoice_pdf && <a href={invoice.invoice_pdf} target="_blank" rel="noreferrer" className="underline underline-offset-4" aria-label={`Descarcă factura ${invoice.number || ""} PDF`}>PDF Stripe</a>}</div></td>
+      <td className="px-2 py-4"><div className="flex gap-3">{invoice.hosted_invoice_url && <a href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer" className="underline underline-offset-4">{invoice.status === "open" ? "Vezi / plătește" : "Vezi"}</a>}{invoice.invoice_pdf && <a href={invoice.invoice_pdf} target="_blank" rel="noreferrer" className="underline underline-offset-4" aria-label={`Descarcă documentul Stripe ${invoice.number || ""} PDF`}>PDF Stripe</a>}</div></td>
     </tr>)}</tbody>
   </table></div>;
 }
