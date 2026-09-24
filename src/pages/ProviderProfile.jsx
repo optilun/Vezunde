@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { loadPublicProviderProfile } from "@/lib/publicProfilePrefetch";
 import { useEntitySeo } from "@/lib/useEntitySeo";
 import {
   SITE_URL,
@@ -350,7 +350,8 @@ export default function ProviderProfile() {
 
   useEffect(() => {
     setLoading(true);
-    base44.functions.invoke("getPublicProviderProfile", { location_id: id }).then((res) => setProfile(res.data?.profile || null)).catch(() => setProfile(null)).finally(() => setLoading(false));
+    // Cererea poate fi deja pornita la deschiderea paginii (src/lib/publicProfilePrefetch.js).
+    loadPublicProviderProfile(id).then((res) => setProfile(res.data?.profile || null)).catch(() => setProfile(null)).finally(() => setLoading(false));
   }, [id]);
 
   const services = useMemo(() => profile?.services || [], [profile?.services]);
