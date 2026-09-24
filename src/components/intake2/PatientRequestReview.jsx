@@ -1,14 +1,30 @@
 import React from "react";
 import { ArrowLeft, CheckCircle2, MapPin, Search } from "lucide-react";
 import { storePatientRequestDraft } from "@/lib/patientRequestPersistenceClient";
+import { intentDisplayLabel } from "@/lib/intentRegistry";
+import { getCanonicalServiceDefinition, normalizeServiceKey } from "../../../shared/canonicalServiceRegistryExtended.js";
 
 function detailRows(draft) {
   const excluded = new Set(["categorie", "locatie"]);
   return (draft?.answers || []).filter((answer) => !excluded.has(answer.question_key));
 }
 
+// 2026-09-24: pacientul vede si ce servicii vom cauta, cu etichetele din registrul canonic.
+// Cheile vechi (ex. control_vedere_adulti) sunt traduse in serviciul canonic echivalent.
+function serviceLabels(draft, limit = 4) {
+  const labels = [];
+  for (const key of draft?.service_keys || []) {
+    const canonicalKey = normalizeServiceKey(key).canonicalKey;
+    const label = canonicalKey ? getCanonicalServiceDefinition(canonicalKey)?.label : null;
+    if (label && !labels.includes(label)) labels.push(label);
+    if (labels.length >= limit) break;
+  }
+  return labels;
+}
+
 export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
   const rows = detailRows(draft);
+  const services = serviceLabels(draft);
   const handleConfirm = () => {
     storePatientRequestDraft(draft);
     onConfirm?.();
@@ -31,7 +47,14 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
       <div className="mt-6 rounded-2xl border border-border bg-secondary/35 p-4 sm:p-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Nevoie</p>
-          <p className="mt-1 text-base font-semibold text-foreground">{draft?.intent_label || "Nu sunt sigur"}</p>
+          <p className="mt-1 text-base font-semibold text-foreground">
+            {intentDisplayLabel(draft?.intent) || draft?.intent_label || "Nu sunt sigur"}
+          </p>
+          {services.length > 0 && (
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              Căutăm: {services.join(" · ")}
+            </p>
+          )}
         </div>
 
         {draft?.city && (
