@@ -153,6 +153,10 @@ export function patientAnamnesisDone(answers = []) {
   return Object.hasOwn(answerMap(answers), PATIENT_ANAMNESIS_MARKER_KEY);
 }
 
+/**
+ * @param {{ intent?: string | null, answers?: any[] }} [input]
+ * @returns {boolean}
+ */
 export function patientNeedsAnamnesis({ intent, answers = [] } = {}) {
   if (patientAnamnesisDone(answers)) return false;
   if (CONSULT_INTENTS.has(intent)) return true;
@@ -167,6 +171,10 @@ export function patientNeedsAnamnesis({ intent, answers = [] } = {}) {
   return false;
 }
 
+/**
+ * @param {{ intent?: string | null, answers?: any[] }} [input]
+ * @returns {"adult" | "child"}
+ */
 export function patientAnamnesisVariant({ intent, answers = [] } = {}) {
   const byKey = answerMap(answers);
   if (intent === "control_copil" || byKey.for_whom === "child" || byKey.pentru_cine === "copil") return "child";
