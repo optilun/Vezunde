@@ -31,6 +31,8 @@ export async function handle(req: Request) {
         synced++;
       } catch (_error) { failed++; }
     }
-    return Response.json({ success: failed === 0, checked, synced, failed });
+    const summary = { success: failed === 0, checked, synced, failed };
+    console.info(`[VIASEE] provider Stripe reconciliation ${JSON.stringify({ checked, synced, failed })}`);
+    return Response.json(summary, { status: failed > 0 ? 502 : 200 });
   } catch (_error) { return Response.json({ error: 'Resincronizarea abonamentelor a eșuat.' }, { status: 502 }); }
 }
