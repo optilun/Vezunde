@@ -5,7 +5,7 @@ import PatientRequestSubmission from "@/components/intake2/PatientRequestSubmiss
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
-import { base44 } from "@/api/base44Client";
+import { loadNationalDirectoryMap } from "@/lib/nationalDirectoryMap";
 import { boundsForPoints, mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { recommendationMapContext } from "../../shared/recommendationMapContext.js";
 import { INTENTS } from "@/lib/intentRegistry";
@@ -78,13 +78,15 @@ export default function RequestMatches() {
     let active = true;
     let timer;
     setDirectoryStatus("loading");
+    // Aceeasi harta ca pe /cauta, prin incarcatorul comun (reincercare la limita de trafic, harta
+    // tinuta cateva minute): venind din /cauta, punctele nu se mai cer inca o data.
     Promise.race([
-      base44.functions.invoke("browseDirectoryProviders", { map_scope: "national" }),
+      loadNationalDirectoryMap({ force: directoryRetry > 0 }),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 25000); }),
-    ]).then(response => {
+    ]).then(data => {
       if (!active) return;
-      if (response.data?.error || !Array.isArray(response.data?.results)) throw new Error("directory unavailable");
-      setNationalDirectory(response.data.results);
+      if (!Array.isArray(data?.results)) throw new Error("directory unavailable");
+      setNationalDirectory(data.results);
       setDirectoryStatus("ready");
     }).catch(() => { if (active) setDirectoryStatus("error"); })
       .finally(() => clearTimeout(timer));
