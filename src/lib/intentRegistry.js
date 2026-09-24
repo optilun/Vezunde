@@ -316,8 +316,7 @@ const INTENT_SIGNAL_GROUPS = [
       "nu mai vad deloc", "nu mai vad nimic", "nu mai vad cu", "am pierdut vederea",
       "vederea a disparut", "s a intunecat vederea",
       "dupa operatie", "dupa operatia", "dupa injectie", "dupa injectia",
-      "inflamatie la ochi", "problema la ochi", "probleme la ochi", "problema cu ochii",
-      "probleme cu ochii", "ceva in ochi", "ceva la ochi",
+      "inflamatie la ochi", "ceva in ochi",
     ],
   },
   {
@@ -408,6 +407,10 @@ const INTENT_SIGNAL_GROUPS = [
     phrases: [
       "oftalmolog", "medic oftalmolog", "doctor de ochi", "doctor ochi", "medic de ochi",
       "medic ochi", "vreau la medic",
+      // Formulari vagi: indica o problema medicala, dar nu una anume. Stau la coada ca sa nu
+      // acopere o nevoie precisa spusa in aceeasi propozitie.
+      "problema la ochi", "probleme la ochi", "problema cu ochii", "probleme cu ochii",
+      "ceva la ochi",
     ],
   },
 ];
@@ -499,7 +502,8 @@ const SUB_INTENT_PREFILL = {
   reparatii_ochelari: [
     { question_key: "ce_deteriorat", option_key: "rama_rupta", keywords: ["rama rupta", "rame rupte", "s a rupt rama", "rupt rama", "rupt bratul", "brat rupt", "bratul rupt", "ochelari rupti", "s au rupt ochelarii", "ochelarii s au rupt"] },
     { question_key: "ce_deteriorat", option_key: "balama_surub", keywords: ["balama", "balamaua", "surub", "surubul"] },
-    { question_key: "ce_deteriorat", option_key: "lentila_zgariata", keywords: ["lentila sparta", "lentila zgariata", "lentile zgariate", "am spart lentila", "sarit lentila", "cazut lentila"] },
+    // O lentila cazuta din rama nu e neaparat deteriorata: pacientul alege singur.
+    { question_key: "ce_deteriorat", option_key: "lentila_zgariata", keywords: ["lentila sparta", "lentila zgariata", "lentile zgariate", "am spart lentila"] },
     { question_key: "ce_deteriorat", option_key: "reglaj_rama", keywords: ["aluneca", "nu stau bine pe nas", "reglaj rama", "reglaj ochelari"] },
   ],
   lentile_contact: [
@@ -545,7 +549,8 @@ const OTHER_ADULT_PHRASES = [
 
 const TIMING_HINTS = [
   { value: "cat_mai_repede", phrases: ["urgent", "de urgenta", "cat mai repede", "cat mai curand", "cat de repede", "imediat", "chiar azi", "astazi", "azi daca se poate", "maine"] },
-  { value: "zilele_urmatoare", phrases: ["zilele urmatoare", "urmatoarele zile", "cateva zile", "saptamana asta", "saptamana aceasta", "saptamana viitoare"] },
+  // "de cateva zile" descrie de cand exista problema, nu cand vrea pacientul programarea.
+  { value: "zilele_urmatoare", phrases: ["zilele urmatoare", "urmatoarele zile", "in cateva zile", "peste cateva zile", "saptamana asta", "saptamana aceasta", "saptamana viitoare"] },
   { value: "nu_e_urgent", phrases: ["nu e urgent", "nu este urgent", "nu ma grabesc", "nu ma grabeste", "fara graba", "cand se poate", "luna viitoare"] },
 ];
 
@@ -553,7 +558,8 @@ const SYMPTOM_ONSET_HINTS = [
   { value: "recurrent", phrases: ["din nou", "iar am", "a mai aparut", "mai am din cand in cand", "recurent", "de fiecare data"] },
   { value: "sudden", phrases: ["de azi", "de astazi", "de ieri", "de aseara", "de azi noapte", "de dimineata", "brusc", "dintr o data", "deodata", "de o ora", "de cateva ore", "de doua ore"] },
   { value: "recent", phrases: ["de doua zile", "de 2 zile", "de trei zile", "de 3 zile", "de cateva zile", "de patru zile", "de o saptamana", "de 1 saptamana"] },
-  { value: "gradual", phrases: ["de saptamani", "de cateva saptamani", "de luni", "de cateva luni", "de ani", "de un an", "de mult timp", "de mult", "treptat", "de la an la an"] },
+  // Fara "de ani" sau "de luni" simple: s-ar potrivi cu varsta ("mama mea de 70 de ani").
+  { value: "gradual", phrases: ["de cateva saptamani", "de saptamani bune", "de cateva luni", "de luni de zile", "de cativa ani", "de ani de zile", "de mai multi ani", "de un an", "de mult timp", "treptat", "de la an la an"] },
 ];
 
 const PRESCRIPTION_HINTS = [
