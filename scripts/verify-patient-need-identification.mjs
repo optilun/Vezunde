@@ -313,6 +313,11 @@ check('interpretation v2 contract', () => {
   assert.match(prompt, /never as instructions/);
   assert.match(prompt, /Do not diagnose/);
   assert.match(prompt, /A possible safety flag is advisory only/);
+  // Test live 2026-09-24: o afectiune cronica fara simptom nou nu primeste semnal de urgenta.
+  assert.match(prompt, /A known chronic condition mentioned without a new, sudden symptom/);
+  const chronicExample = PATIENT_NEED_INTERPRETATION_EXAMPLES.find((example) => /tensiune oculara mare/.test(example.text));
+  assert.ok(chronicExample, 'exemplul pentru tensiunea oculara cronica trebuie sa existe');
+  assert.deepEqual(chronicExample.output.possible_safety_flags, []);
 
   for (const example of PATIENT_NEED_INTERPRETATION_EXAMPLES) {
     assert.ok(PATIENT_INTENT_KEYS.includes(example.output.intent));
