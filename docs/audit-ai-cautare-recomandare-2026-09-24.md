@@ -413,11 +413,12 @@ azi, functie cu functie, pe toate cheile canonice, alias-urile si nivelurile de 
   identice. Singura schimbare reala este cautarea semantica de pe server: 20 din 73 de formulari se
   schimba, 15 trec de la nicio cheie la chei, 64 de chei adaugate, niciuna scoasa.
 - In fluxul pacientului setul de chei nu se schimba (0 din 58 de formulari), pentru ca browserul
-  trimite deja cheile din sursa noua. Se schimba doar componenta `semantic_fit` a scorului (de la 0
-  la aproximativ 23 de puncte) in 11 din 58 de formulari (ex. "vreau sa-mi verific vederea", "am
-  nevoie de OCT", "am ochiul rosu de doua zile") si eticheta de incredere "high" pentru profilurile
-  verificate in 10 formulari. Efectul: locatiile care ofera exact serviciul recunoscut urca fata de
-  cele potrivite pe chei vecine.
+  trimite deja cheile din sursa noua. Se schimba doar componenta `semantic_fit` a scorului: pentru
+  locatiile care ofera serviciul recunoscut, de la 0 la aproximativ 23 de puncte, in 11 din 58 de
+  formulari (ex. "vreau sa-mi verific vederea", "am nevoie de OCT", "am ochiul rosu de doua zile").
+  In 10 dintre ele, un profil verificat care ofera acel serviciu poate primi eticheta de incredere
+  "high". Efectul: locatiile care ofera exact serviciul recunoscut urca fata de cele potrivite pe
+  chei vecine.
 - Copia interpretarii din bundle nu mai este folosita (entry.ts o importa din `base44/shared`).
   Re-sincronizarea ar aduce si `patientGuidanceQuestionCatalog` in bundle (221 de linii), fara efect.
 - Deciziile 11.2 si 11.3 sunt independente: re-sincronizarea nu schimba zgomotul, iar corectia
