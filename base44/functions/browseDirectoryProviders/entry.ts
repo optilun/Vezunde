@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
         });
       } catch (_error) {
         // Nicio copie si calcularea a esuat (de regula limita de trafic, trecatoare). Pagina
-        // reincearca singura si arata un mesaj clar.
+        // reincearca singura (src/lib/nationalDirectoryMapLoader.js) si arata un mesaj clar.
         return Response.json({
           error: 'Harta directorului nu poate fi incarcata acum. Incearca din nou peste cateva secunde.',
           code: 'map_unavailable',
