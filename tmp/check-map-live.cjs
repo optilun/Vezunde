@@ -15,10 +15,10 @@ async function once(label) {
 
 async function main() {
   const gap = Number(process.argv[2] || 0);
-  await once('first ');
-  if (gap > 0) {
-    await new Promise((resolve) => setTimeout(resolve, gap));
-    await once('second');
+  const count = Number(process.argv[3] || 2);
+  for (let index = 0; index < count; index += 1) {
+    if (index > 0 && gap > 0) await new Promise((resolve) => setTimeout(resolve, gap));
+    await once(`call ${index + 1}`);
   }
 }
 
