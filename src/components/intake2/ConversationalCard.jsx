@@ -23,6 +23,12 @@ import {
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import { buildDeterministicIntentProposal, buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
+import {
+  buildPatientAnamnesisAnswers,
+  isPatientAnamnesisKey,
+  patientAnamnesisVariant,
+  patientNeedsAnamnesis,
+} from "@/lib/patientAnamnesis";
 import { buildPatientSafetyAssessment, deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import {
   INTENTS,
@@ -43,6 +49,7 @@ import QuestionLocation from "./QuestionLocation";
 import SearchingTransition from "./SearchingTransition";
 import PatientIntentConfirmation from "./PatientIntentConfirmation";
 import PatientRequestReview from "./PatientRequestReview";
+import PatientAnamnesis from "./PatientAnamnesis";
 import UrgencyInterruption from "./UrgencyInterruption";
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
@@ -607,6 +614,41 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setState(prev);
   };
 
+  // 2026-09-24: scurta anamneza pentru cererile de consult (cerere explicita a owner-ului).
+  // Raspunsurile se adauga la cerere ca raspunsuri obisnuite; un marcaj `anamneza` retine ca
+  // pasul a fost parcurs sau sarit, ca sa nu apara din nou.
+  const anamnesisVariant = patientAnamnesisVariant({ intent: state.intent, answers: state.answers });
+
+  const handleAnamnesis = (selections, { skipped = false } = {}) => {
+    matchingRequestRef.current.invalidate();
+    const anamnesisAnswers = buildPatientAnamnesisAnswers(anamnesisVariant, selections, { skipped });
+    trackPatientSearchEvent("patient_search_anamnesis_resolved", {
+      intent: state.intent || "unknown",
+      variant: anamnesisVariant,
+      status: anamnesisAnswers[anamnesisAnswers.length - 1]?.answer_value || "unknown",
+      answered_count: anamnesisAnswers.length - 1,
+    });
+    pushHistory();
+    prepareAdaptiveSelection();
+    setState((s) => ({
+      ...s,
+      answers: [
+        ...s.answers.filter((answer) => !isPatientAnamnesisKey(answer.question_key)),
+        ...anamnesisAnswers,
+      ],
+      questionHistory: [...new Set([
+        ...(s.questionHistory || []),
+        ...anamnesisAnswers.map((answer) => answer.question_key),
+      ])],
+    }));
+    setPhase("questions");
+  };
+
+  const handleAnamnesisBack = () => {
+    goBack();
+    setPhase("questions");
+  };
+
   const handleReviewConfirm = () => {
     if (!requestDraft) return;
     matchingRequestRef.current.invalidate();
@@ -821,6 +863,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       || current
       || ["pending", "blocked"].includes(questionSelection.status)
     ) return;
+    // Chestionarul s-a incheiat. Pentru un consult, intai scurta anamneza, apoi verificarea.
+    if (patientNeedsAnamnesis({ intent: state.intent, answers: state.answers })) {
+      setPhase("anamnesis");
+      return;
+    }
     const draft = buildPatientRequestDraft({
       state,
       originalMessage: initialMessage,
@@ -861,8 +908,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         void interpretPatientNeedInShadow({
           ...matchPayload,
           deterministic_intent: requestDraft.intent,
+          // Anamneza (date de sanatate) nu se trimite modelului AI: interpretarea din umbra nu
+          // are nevoie de ea, iar ce nu e necesar nu pleaca spre model.
           answers: requestDraft.answers
             .filter((answer) => !["locatie", "locality"].includes(answer.question_key))
+            .filter((answer) => !isPatientAnamnesisKey(answer.question_key))
             .map((answer) => ({
               question_key: answer.question_key,
               answer_value: answer.answer_value,
@@ -1078,6 +1128,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             <p className="mt-7 text-xs leading-relaxed text-muted-foreground">{intentDef.notice}</p>
           )}
         </>
+      )}
+
+      {phase === "anamnesis" && (
+        <PatientAnamnesis
+          key={`${state.intent || "unknown"}-${anamnesisVariant}`}
+          variant={anamnesisVariant}
+          onSubmit={(selections) => handleAnamnesis(selections)}
+          onSkip={() => handleAnamnesis({}, { skipped: true })}
+          onBack={history.length > 0 ? handleAnamnesisBack : undefined}
+        />
       )}
 
       {phase === "review" && requestDraft && (
