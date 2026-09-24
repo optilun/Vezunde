@@ -1,15 +1,60 @@
-import React from "react";
-import { AlertTriangle, Check, Pencil, Search, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import { AlertTriangle, ArrowLeft, Check, Pencil, Search, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import ChoiceCard from "@/components/intake/ChoiceCard";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
+import { CATEGORY_QUESTION, INTENT_DISPLAY, TIMING_OPTIONS } from "@/lib/intentRegistry";
+import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../../shared/patientGuidanceQuestionCatalog.js";
+
+// 2026-09-24 (audit LLM cautare/recomandare): toate textele de pe acest ecran vin din copia
+// aprobata a aplicatiei (INTENT_DISPLAY, catalogul de intrebari, CATEGORY_QUESTION). Modelul
+// nu scrie nimic din ce citeste pacientul: el doar propune o intentie si cateva indicii.
+
+const FOR_WHOM_LABELS = {
+  child: "Pentru copil",
+  other_adult: "Pentru altcineva",
+};
+
+function optionLabel(questionKey, optionKey) {
+  const question = PATIENT_GUIDANCE_QUESTION_CATALOG[questionKey];
+  return question?.options?.find((option) => option.key === optionKey)?.label || "";
+}
+
+function understoodDetails(hints = {}) {
+  const details = [];
+  if (FOR_WHOM_LABELS[hints.for_whom]) details.push(FOR_WHOM_LABELS[hints.for_whom]);
+  const age = hints.for_whom === "child" ? optionLabel("child_age_group", hints.child_age_group) : "";
+  if (age) details.push(`Vârsta: ${age}`);
+  const timing = TIMING_OPTIONS.find((option) => option.key === hints.timing && !option.hidden)?.label;
+  if (timing) details.push(timing);
+  if (hints.locality_query) details.push(`Localitate: ${hints.locality_query}`);
+  return details;
+}
+
+// Variantele de ales: categoriile aprobate, plus intentia propusa de model cand nu e printre
+// ele (control pentru copil, lentile de contact). Sugestiile sunt doar marcate, nu preselectate.
+function choiceOptions(proposal, { markSuggestions }) {
+  const suggested = new Set(markSuggestions
+    ? [proposal?.intent, proposal?.alternative_intent].filter(Boolean)
+    : [proposal?.alternative_intent].filter(Boolean));
+  const base = CATEGORY_QUESTION.options.map((option) => ({ key: option.key, label: option.label }));
+  const known = new Set(base.map((option) => option.key));
+  const extra = [...suggested]
+    .filter((key) => !known.has(key) && INTENT_DISPLAY[key])
+    .map((key) => ({ key, label: INTENT_DISPLAY[key].label }));
+  return [...extra, ...base].map((option) => ({ ...option, suggested: suggested.has(option.key) }));
+}
 
 export default function PatientIntentConfirmation({
   proposal,
   intentLabel,
+  contextHints = {},
   onConfirm,
   onCorrect,
 }) {
+  const [choosing, setChoosing] = useState(false);
   const requiresManualChoice = proposal?.status !== "confirm";
+  const showChoices = requiresManualChoice || choosing;
   const safetyFlags = proposal?.possible_safety_flags || [];
   const hasSafetySignal = safetyFlags.length > 0;
   // 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.3): inainte, mesajul de aici
@@ -21,25 +66,56 @@ export default function PatientIntentConfirmation({
   const safetyLabels = safetyFlags
     .map((flag) => PATIENT_SAFETY_FLAG_PRESENTATION[flag])
     .filter(Boolean);
+  const phrase = INTENT_DISPLAY[proposal?.intent]?.phrase
+    || String(intentLabel || "acest serviciu").toLowerCase();
+  const details = understoodDetails(contextHints);
+  const fromDeterministicMatch = proposal?.source === "deterministic";
 
   return (
     <div className="py-2 sm:py-4">
       <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
         <Sparkles className="h-3.5 w-3.5" />
-        Interpretare asistată
+        {fromDeterministicMatch ? "Am analizat descrierea ta" : "Interpretare asistată"}
       </div>
 
-      <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-        {requiresManualChoice
-          ? "Mai avem nevoie de o clarificare."
-          : `Am înțeles că ai nevoie de ${String(intentLabel || "acest serviciu").toLowerCase()}.`}
-      </h2>
-
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        {requiresManualChoice
-          ? "Alege categoria potrivită pentru a continua cu întrebările aprobate."
-          : "Confirmă interpretarea înainte să continuăm. AI-ul nu alege furnizorii și nu stabilește ordinea rezultatelor."}
-      </p>
+      {showChoices ? (
+        <>
+          <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Ce descrie cel mai bine nevoia ta?
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {requiresManualChoice
+              ? "Din mesaj nu reiese sigur ce cauți. Alege varianta potrivită și continuăm cu întrebările potrivite pentru ea."
+              : "Alege varianta potrivită și continuăm cu întrebările potrivite pentru ea."}
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            {`Am înțeles că ai nevoie de ${phrase}.`}
+          </h2>
+          {details.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Am reținut din mesaj
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {details.map((detail) => (
+                  <li
+                    key={detail}
+                    className="rounded-full border border-border bg-secondary/60 px-3 py-1 text-xs font-medium text-foreground"
+                  >
+                    {detail}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+            Confirmă și continuăm cu câteva întrebări scurte. Ce ai scris deja apare marcat ca sugestie, ca să nu completezi totul de la zero. AI-ul nu alege furnizorii și nu stabilește ordinea rezultatelor.
+          </p>
+        </>
+      )}
 
       {hasSafetySignal && (
         <div className="mt-5 rounded-2xl border border-amber-300/60 bg-amber-50/80 p-4 text-sm leading-relaxed text-amber-950">
@@ -77,8 +153,29 @@ export default function PatientIntentConfirmation({
         </div>
       )}
 
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-        {!requiresManualChoice && (
+      {showChoices ? (
+        <div className="mt-6 grid gap-2.5">
+          {choiceOptions(proposal, { markSuggestions: requiresManualChoice }).map((option) => (
+            <ChoiceCard
+              key={option.key}
+              label={option.label}
+              suggested={option.suggested}
+              onClick={() => onCorrect?.(option.key)}
+            />
+          ))}
+          {!requiresManualChoice && (
+            <button
+              type="button"
+              onClick={() => setChoosing(false)}
+              className="mt-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Înapoi la ce am înțeles
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onConfirm}
@@ -87,16 +184,16 @@ export default function PatientIntentConfirmation({
             <Check className="h-4 w-4" />
             Da, continuă
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onCorrect}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
-        >
-          <Pencil className="h-4 w-4" />
-          {requiresManualChoice ? "Aleg categoria" : "Aleg altă nevoie"}
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setChoosing(true)}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+          >
+            <Pencil className="h-4 w-4" />
+            Nu, aleg altă nevoie
+          </button>
+        </div>
+      )}
     </div>
   );
 }
