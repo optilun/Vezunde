@@ -388,12 +388,16 @@ const INTENT_SIGNAL_GROUPS = [
       "control de rutina", "control anual", "control periodic", "consultatie vedere",
       "consult oftalmologic", "consultatie oftalmologica", "consult oftalmolog",
       "consultatie oftalmolog", "verificare vedere", "verific vederea", "verifica vederea",
-      "verific ochii", "vad neclar", "nu vad bine", "nu mai vad bine", "nu vad distanta",
+      "verific ochii", "vad neclar", "nu vad bine", "nu mai vad bine", "nu vede bine",
+      "nu mai vede bine", "vede neclar", "vede incetosat", "nu vad distanta",
       "nu vad aproape", "nu vad departe", "vad incetosat", "vad in ceata", "vedere incetosata",
       "incetoseaza vederea", "a scazut vederea", "scade vederea", "dioptrii", "dioptriile",
       "miopie", "miop", "miopa", "hipermetropie", "astigmatism", "prezbiopie", "presbiopie",
       "cred ca ochelari", "permis de conducere", "permisul de conducere", "permis auto",
       "permisul auto", "fisa medicala", "adeverinta",
+      // "control" singur ("vreau un control la un doctor"): in contextul VIASEE inseamna un
+      // control al ochilor. Sta ultimul in grup, dupa nevoile precise de mai sus.
+      "control",
     ],
   },
   {
