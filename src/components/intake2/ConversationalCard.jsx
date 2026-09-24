@@ -974,18 +974,22 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               apar "Reincearca" si cautarea de localitate scrise cu. Pacientul vedea doua
               conventii deodata. Textul citit de pacient se scrie corect romaneste. */}
           <h2 className="mt-5 font-heading text-xl font-bold text-foreground sm:text-2xl">
-            Înțelegem ce cauți
+            {interpretationFromDescription ? "Analizăm ce ai descris" : "Înțelegem ce cauți"}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Interpretăm cererea, apoi îți cerem confirmarea înainte de chestionar.
+            {interpretationFromDescription
+              ? "Alegem întrebările potrivite pentru nevoia ta, apoi îți cerem confirmarea."
+              : "Interpretăm cererea, apoi îți cerem confirmarea înainte de chestionar."}
           </p>
         </div>
       )}
 
       {phase === "confirm_intent" && intentProposal && (
         <PatientIntentConfirmation
+          key={interpretationRequest?.id || "initial"}
           proposal={intentProposal}
           intentLabel={intentProposal.intent ? INTENTS[intentProposal.intent]?.label : ""}
+          contextHints={contextHints}
           onConfirm={handleConfirmInterpretation}
           onCorrect={handleCorrectInterpretation}
         />
@@ -1045,17 +1049,27 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               <h2 className={`font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl ${current.type === "text" && questionPhase === "safety" ? "sr-only" : ""}`}>
                 {current.title}
               </h2>
-              {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
+              {current.type === "choice" && (
+                <QuestionChoice
+                  question={current}
+                  onSelect={handleChoice}
+                  suggestedOptionKey={suggestedOptionKeyForQuestion(current, contextHints)}
+                />
+              )}
               {current.type === "text" && (
                 <QuestionText
                   question={current}
                   onSubmit={handleText}
                   onPhaseChange={setQuestionPhase}
                   onSafetyCleared={handleSafetyCleared}
+                  initialValue={descriptionPrefill(current)}
                 />
               )}
               {current.type === "location" && (
-                <QuestionLocation onAnswer={(answer) => handleLocation(current, answer)} />
+                <QuestionLocation
+                  initialQuery={contextHints.locality_query || ""}
+                  onAnswer={(answer) => handleLocation(current, answer)}
+                />
               )}
             </motion.div>
           </AnimatePresence>
