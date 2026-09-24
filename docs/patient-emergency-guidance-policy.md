@@ -77,6 +77,13 @@ Confirmed emergency fixtures may allow the fixed conditional fallback while forb
 
 Any broader emergency-number behavior requires a separate product decision, medical safety review and legal/content review.
 
+2026-09-24, owner product decision: no large "call 112" signage. The confirmed-emergency screen
+no longer has a separate telephone button. `112` appears once, as a small conditional sentence
+placed after the hospital / emergency-department instruction ("Doar dacă nu te poți deplasa în
+siguranță sau starea generală se agravează rapid, sună la 112."). The heading is smaller. The
+approved clinical wording (first aid, destination, transport) is unchanged. Removing the
+conditional 112 sentence entirely would be a broader change and still requires the review above.
+
 ## 6. Technical authority
 
 The versioned contract is:
