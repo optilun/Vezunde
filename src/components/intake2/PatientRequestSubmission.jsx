@@ -16,6 +16,7 @@ import {
   getOrCreatePatientRequestIdempotency,
 } from "@/lib/patientRequestIdempotency";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
+import { buildPatientAnamnesisMessage } from "@/lib/patientAnamnesis";
 import UrgencyInterruption from "./UrgencyInterruption";
 
 function track(eventName, properties = {}) {
@@ -52,7 +53,12 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   const [isDistributing, setIsDistributing] = useState(false);
   const [distributionError, setDistributionError] = useState("");
   const [distributionResult, setDistributionResult] = useState(null);
-  const [detailedMessage, setDetailedMessage] = useState("");
+  // 2026-09-24: cand pacientul a completat scurta anamneza, rezumatul ei porneste in mesajul
+  // de mai jos. Acordul de distribuire acopera exact acest mesaj (locatiile Pro din Top 3), iar
+  // pacientul il vede integral, il poate modifica sau sterge inainte de trimitere. Raspunsurile
+  // din anamneza nu ajung altfel la furnizori.
+  const [anamnesisMessage] = useState(() => buildPatientAnamnesisMessage(readPatientRequestDraft()?.answers || []));
+  const [detailedMessage, setDetailedMessage] = useState(anamnesisMessage);
   // 2026-09-01: "Descrie mai detaliat ce ai nevoie" este cea mai lunga caseta libera din
   // tot fluxul (obligatorie, pana la 2000 de caractere) si singura scrisa chiar inainte ca
   // cererea sa plece spre furnizori - dar nu trecea prin nicio verificare de siguranta,
@@ -414,6 +420,11 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
           placeholder="Ex: am deja o programare în octombrie, sau copilul se sperie de aparate, sau prefer o locație aproape de metrou."
           className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal outline-none transition-colors focus:border-primary"
         />
+        {anamnesisMessage && detailedMessage.includes(anamnesisMessage) && (
+          <span className="mt-1 block text-[11px] font-normal leading-relaxed text-foreground/80">
+            Am adăugat răspunsurile din anamneză, ca medicul să le vadă înainte de consult. Le poți modifica sau șterge.
+          </span>
+        )}
         <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Acest mesaj este vizibil numai locațiilor Pro din Top 3.</span>
       </label>
 
