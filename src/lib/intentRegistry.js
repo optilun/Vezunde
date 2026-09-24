@@ -709,8 +709,15 @@ const INTERPRETATION_TIMING = {
 // de pacient. Indiciul determinist are prioritate cand exista; modelul umple doar golurile.
 // Localitatea vine din model numai daca a trecut verificarea ca apare in textul pacientului
 // (vezi sanitizePatientNeedInterpretation si buildIntentConfirmationProposal).
+/**
+ * @param {Record<string, any> | null} [deterministicHints]
+ * @param {Record<string, any> | null} [interpretationHints]
+ * @returns {Record<string, any>}
+ */
 export function mergePatientContextHints(deterministicHints = {}, interpretationHints = null) {
+  /** @type {Record<string, any>} */
   const base = { ...(deterministicHints || {}) };
+  /** @type {Record<string, any>} */
   const candidate = interpretationHints || {};
   const forWhom = INTERPRETATION_FOR_WHOM[candidate.for_whom] || null;
   const ageGroup = INTERPRETATION_AGE_GROUP[candidate.age_group] || null;
@@ -730,6 +737,11 @@ const LEGACY_AGE_OPTION = { under_3: "sub_3_ani", "3_6": "3_6_ani", "7_12": "7_1
 
 // Cheia optiunii de marcat ca sugestie pentru o intrebare (catalog sau lista veche), sau
 // null. Intoarce doar chei care exista si sunt vizibile in intrebarea respectiva.
+/**
+ * @param {any} question
+ * @param {Record<string, any> | null} [hints]
+ * @returns {string | null}
+ */
 export function suggestedOptionKeyForQuestion(question, hints = {}) {
   if (!question || question.type !== "choice" || !hints) return null;
   if (["safety_targeted_check", "safety_screening", "categorie"].includes(question.key)) return null;
