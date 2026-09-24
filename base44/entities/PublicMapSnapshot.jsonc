@@ -1,0 +1,68 @@
+{
+  "name": "PublicMapSnapshot",
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "description": "Ce harta tine copia. Deocamdata doar 'national' (harta din /cauta si din pagina de rezultate)."
+    },
+    "format": {
+      "type": "string",
+      "description": "Versiunea formatului (national-map-v1). O copie in alt format e ignorata."
+    },
+    "encoding": {
+      "type": "string",
+      "description": "gzip-base64: harta JSON comprimata si codata base64, apoi impartita in bucati."
+    },
+    "version": {
+      "type": "string",
+      "description": "Identificatorul generarii; toate bucatile unei copii au aceeasi versiune."
+    },
+    "slot": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b"
+      ],
+      "description": "Setul de inregistrari. Copiile noi se scriu alternativ in a si b, ca o scriere intrerupta sa nu strice copia buna."
+    },
+    "chunk_index": {
+      "type": "number"
+    },
+    "chunk_count": {
+      "type": "number"
+    },
+    "payload": {
+      "type": "string",
+      "description": "O bucata din harta comprimata (cel mult 12.000 de caractere)."
+    },
+    "payload_length": {
+      "type": "number",
+      "description": "Lungimea totala a hartii comprimate; o copie cu alta lungime e ignorata."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Cand a fost calculata harta din director."
+    }
+  },
+  "required": [
+    "scope",
+    "version",
+    "chunk_index",
+    "chunk_count",
+    "payload"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
