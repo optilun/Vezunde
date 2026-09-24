@@ -19,6 +19,8 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   const handlers = useRef({});
   handlers.current = { onSelect, onHover, onCluster };
   const clusterByKey = useRef(new Map());
+  const stateLayoutFrame = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(stateLayoutFrame.current), []);
   const fitted = useRef(null);
   const skipInitialSelection = useRef(false);
   const restoredCamera = useRef(null);
@@ -174,8 +176,12 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       changed=true;
     });
     if (!changed) return;
-    const frame = requestAnimationFrame(() => layoutMapMarkers(container.current));
-    return () => cancelAnimationFrame(frame);
+    // Un singur cadru in asteptare; o schimbare fara efect pe markere nu il anuleaza.
+    cancelAnimationFrame(stateLayoutFrame.current);
+    stateLayoutFrame.current = requestAnimationFrame(() => {
+      stateLayoutFrame.current = 0;
+      if (container.current) layoutMapMarkers(container.current);
+    });
   },[selectedId,hoveredId,ready]);
   return <>
     <div ref={container} className="h-full w-full" aria-label="Harta detaliată a locațiilor" />
