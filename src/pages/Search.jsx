@@ -13,6 +13,7 @@ import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
+import { preloadVectorCanvas } from "@/components/results/vectorCanvasLoader";
 import SearchFilters from "@/components/results/SearchFilters";
 import DirectoryMap from "@/pages/DirectoryMap";
 import { browsePublicProfessionals, matchProfessionalsForRequest } from "@/lib/professionalSearch";
@@ -42,6 +43,8 @@ function useDebouncedValue(value, delay) {
 // pe doua coloane, ca inainte - o coloana goala langa carduri nu ajuta pe nimeni.
 
 export default function Search() {
+  // Harta vectoriala se descarca in paralel cu datele, fara sa blocheze pagina si lista.
+  useEffect(() => { preloadVectorCanvas(); }, []);
   const [urlParams] = useState(
     () => new URLSearchParams(window.location.search),
   );
