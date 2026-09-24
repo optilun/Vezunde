@@ -5,7 +5,6 @@ import {
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import {
-  loadAllPublicLocationsByCounty,
   loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
