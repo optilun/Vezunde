@@ -134,7 +134,7 @@ export const INTENTS = {
   reparatii_ochelari: {
     label: "Reparatii sau reglaje",
     service_keys: ["reparatii_ochelari", "reglaj_rame"],
-    notice: "Un specialist poate evalua daca reparatia este posibila. VIASEE nu poate garanta reparatia doar pe baza informatiilor oferite.",
+    notice: "Un specialist poate evalua dacă reparația este posibilă. VIASEE nu poate garanta reparația doar pe baza informațiilor oferite.",
     questions: [
       {
         // "Ce s-a deteriorat?" avea printre optiuni "Reglaj rama" - o ajustare nu e o
@@ -157,7 +157,7 @@ export const INTENTS = {
   simptome_oftalmologice: {
     label: "O problema la ochi",
     service_keys: ["consult_oftalmologic"],
-    notice: "VIASEE nu ofera diagnostic medical. Te ajutam sa gasesti unde poti merge pentru evaluare.",
+    notice: "VIASEE nu oferă diagnostic medical. Te ajutăm să găsești unde poți merge pentru evaluare.",
     questions: [
       {
         key: "descriere", type: "text", title: "Spune-ne pe scurt ce se întâmplă.",
