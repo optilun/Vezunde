@@ -209,6 +209,30 @@ export function toggleAnamnesisSelection(question, current = [], optionKey) {
   return [...values.filter((value) => value !== question.exclusive_option), optionKey];
 }
 
+// 2026-09-24, test live: pacientul scrisese "am tensiune oculara mare", iar anamneza pornea
+// goala. Afectiunile deja spuse in mesaj pornesc bifate; ecranul spune asta explicit, iar
+// pacientul le poate debifa. Primeste setul de afectiuni detectat de
+// detectPatientConditionsFromText (src/lib/patientVisitGuidance.js), ca sa evitam un import
+// circular intre cele doua module.
+const CONDITION_TO_AFFECTION = Object.freeze({
+  diabet: "diabet",
+  hipertensiune: "hipertensiune",
+  glaucom: "glaucom",
+  cataracta: "cataracta",
+});
+
+export function buildAnamnesisPrefill(variant, conditions = new Set()) {
+  if (variant !== "adult") return {};
+  const values = new Set(conditions instanceof Set ? conditions : []);
+  const selections = {};
+  const affections = Object.entries(CONDITION_TO_AFFECTION)
+    .filter(([condition]) => values.has(condition))
+    .map(([, option]) => option);
+  if (affections.length > 0) selections.anamneza_afectiuni = affections;
+  if (values.has("glaucom_familie")) selections.anamneza_familie = ["da"];
+  return selections;
+}
+
 export function buildPatientAnamnesisAnswers(variant, selections = {}, { skipped = false } = {}) {
   const answers = [];
   if (!skipped) {
