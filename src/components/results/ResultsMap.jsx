@@ -1,6 +1,6 @@
 import { pillHtml } from "../../../shared/mapMarkerPresentation.js";
 import "./mapMarkers.css";
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapLocationCard from "./MapLocationCard";
 import {
   FALLBACK_ZOOM,
@@ -10,8 +10,25 @@ import {
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
-import VectorResultsCanvas from "./VectorResultsCanvas";
+import { loadVectorCanvas } from "./vectorCanvasLoader";
 const LegacyResultsMap = lazy(() => import("./LegacyResultsMap"));
+
+// 2026-09-24. Harta vectoriala (MapLibre) se incarca separat de pagina (vezi vectorCanvasLoader.js):
+// lista si restul paginii nu o mai asteapta. Daca fisierul hartii nu se poate descarca, pagina nu
+// cade: trecem pe harta 2D, ca la orice alta problema a hartii vectoriale.
+function VectorCanvasUnavailable({ onFailure }) {
+  const reported = useRef(false);
+  const report = useRef(onFailure);
+  report.current = onFailure;
+  useEffect(() => {
+    if (reported.current) return;
+    reported.current = true;
+    report.current?.("unavailable");
+  }, []);
+  return null;
+}
+const VectorResultsCanvas = lazy(() => loadVectorCanvas().catch(() => ({ default: VectorCanvasUnavailable })));
+const VECTOR_LOADING = <div role="status" className="absolute inset-0 flex items-center justify-center bg-secondary text-sm">Se încarcă harta detaliată...</div>;
 
 const SHORT_TYPE_LABELS = {
   optica_medicala: "Optică",
@@ -94,7 +111,9 @@ export default function ResultsMap({
 
   return (
     <div className={`relative isolate ${className}`}>
-      <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} />
+      <Suspense fallback={VECTOR_LOADING}>
+        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} />
+      </Suspense>
 
       {openCluster && !selectedPoint && (
         <section aria-label="Locații din grup"
