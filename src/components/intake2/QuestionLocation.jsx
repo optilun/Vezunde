@@ -2,8 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { SearchIcon } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-export default function QuestionLocation({ onAnswer }) {
-  const [query, setQuery] = useState("");
+// 2026-09-24: cand pacientul a scris deja orasul ("...in Cluj"), campul porneste completat si
+// lista oficiala apare imediat. Selectia ramane explicita: nu alegem noi localitatea.
+export default function QuestionLocation({ onAnswer, initialQuery = "" }) {
+  const prefilled = String(initialQuery || "").trim().slice(0, 80);
+  const [query, setQuery] = useState(prefilled);
   const [results, setResults] = useState(null);
   const reqId = useRef(0);
 
@@ -46,6 +49,11 @@ export default function QuestionLocation({ onAnswer }) {
           className="min-w-0 w-full bg-transparent text-base outline-none placeholder:text-[#9B968D]"
         />
       </div>
+      {prefilled && query.trim() === prefilled && (
+        <p className="mt-2 text-xs font-medium leading-relaxed text-foreground/80">
+          Am căutat după localitatea din mesajul tău. Alege varianta corectă din listă.
+        </p>
+      )}
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         Selectează localitatea din lista oficială. VIASEE caută mai întâi numai în localitatea aleasă și extinde aria doar dacă soliciți explicit acest lucru.
       </p>
