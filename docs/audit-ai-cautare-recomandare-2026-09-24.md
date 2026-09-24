@@ -234,3 +234,61 @@ si tensiune (oculara / arteriala); scurta anamneza pentru cine se programeaza la
    furnizorului si, ideal, de o verificare juridica (date de sanatate, GDPR art. 9).
 2. **Revizuire medicala** a textelor de recomandare inainte de extinderea lor.
 3. **Eliminarea completa a randului cu 112** ar contrazice politica actuala si cere revizuirea ei.
+
+## 10. Test live dupa publicare (2026-09-24, seara)
+
+Testat pe viasee.ro prin Chrome (browserul integrat avea domeniul blocat). Fara autentificare,
+fara trimiterea vreunei cereri, fara date personale. Aproximativ 25 de apeluri AI in total.
+
+### Interpretarea LLM (endpoint-ul real `matchProvidersSemantic`, mod `interpret_only`)
+
+16 formulari, versiunea `patient-need-ai-v2`, toate cu `status: completed`, HTTP 200,
+durata 2,0-2,8 s (limita clientului este 8 s).
+
+| # | Formulare | Intentie AI | Corect | Observatii |
+| --- | --- | --- | --- | --- |
+| 1 | vreau sa-mi verific vederea, nu am mai fost de 3 ani | control_vedere | da | servicii optometrice |
+| 2 | copilul meu de 5 ani se uita aproape de televizor, Cluj | control_copil | da | copil, 3-6 ani, Cluj |
+| 3 | am nevoie de ochelari noi, am reteta | ochelari_lentile | da | eyeglasses, prescription_lenses (fara zgomot) |
+| 4 | vreau sa incerc lentile de contact, port ochelari | lentile_contact | da | consult + adaptare |
+| 5 | ma dor ochii si nu vad bine de doua zile | simptome | da | consult oftalmologic |
+| 6 | am cataracta si vreau o consultatie pentru operatie | simptome | da | cataract_consultation |
+| 7 | am tensiune oculara mare si as vrea un control | simptome (alt: investigatii) | da | tonometrie; **semnal de urgenta fals** |
+| 8 | am trimitere pentru camp vizual pentru mama mea | investigatii | da | other_adult |
+| 9 | vreau o programare la ochi | control (low, clarificare, alt: simptome) | da | alegere manuala cu sugestii |
+| 10 | ochelarii imi aluneca de pe nas, cat mai repede | reparatii | da | reglaje, termen "cat mai repede" |
+| 11 | am diabet si vreau control la fundul de ochi | investigatii | acceptabil | fundus_exam |
+| 12 | vad dublu de azi dimineata | simptome | da | semnal acut (corect) |
+| 13 | mi-a sarit inalbitor in ochi | simptome | da | chemical_injury; ecranul de urgenta blocheaza oricum |
+| 14 | lentile progresive pentru tatal meu, Iasi | ochelari_lentile | da | other_adult, Iasi |
+| 15 | ajutor | unknown | da | alegere manuala |
+| 16 | nu vad bine la distanta cand conduc noaptea | control_vedere | da | fara semnal |
+
+Clarificare doar pentru cazurile cu adevarat vagi (#9, #15). Problema M1 (clarificare la incredere
+mare) nu a mai aparut.
+
+### Fluxuri in interfata
+
+- Text liber reparatie: confirmare AI -> intrebarea despre defect sarita (precompletata din text) ->
+  localitate precompletata -> termen -> verificare cu recomandari -> 12 rezultate in Brasov.
+- Tensiune oculara: confirmare -> verificare de siguranta -> descriere precompletata -> intrebari ->
+  anamneza -> recomandari pentru glaucom -> rezultate -> mesaj final precompletat cu anamneza.
+- Linkurile de categorie: copil -> "Ce varsta are copilul?"; reparatii -> "Ce s-a intamplat?"
+  (inainte: "Ce te aduce la noi?").
+- Urgenta (inalbitor): ecranul calm, 112 doar in randul mic conditionat.
+
+### Probleme gasite si corectate (sandbox; intra in productie la urmatoarea publicare)
+
+1. Semnal de urgenta fals la afectiuni cronice (#7, intermitent) -> regula noua in prompt si exemplu;
+   versiunea `patient-need-ai-v2.1`.
+2. Verificarea de siguranta aparea de doua ori (defect din 2026-09-01: raspunsul salvat pornea o noua
+   selectie si componenta se remonta) -> `QuestionText` primeste `safetyAlreadyCleared`.
+3. Anamneza nu bifa afectiunile deja scrise ("am tensiune oculara mare") -> pre-bifare cu nota vizibila.
+4. Ecranul de verificare repeta descrierea neschimbata -> ascunsa cand e identica cu "Ai descris".
+5. Notitele "VIASEE nu ofera diagnostic medical..." si cea de la reparatii erau fara diacritice.
+
+### Observatie de lansare
+
+Functiile backend NU se actualizeaza automat in aceasta configuratie: dupa 10 minute, endpoint-ul
+live raspundea tot cu `patient-need-ai-v2`. Schimbarile de backend intra in productie la publicare,
+ca si frontend-ul.
