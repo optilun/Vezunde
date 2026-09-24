@@ -3,8 +3,9 @@
 Data: 2026-09-24
 Cerere: owner (imbunatatirea LLM-ului si a fluxului de cautare/recomandare; audit, apoi
 imbunatatiri pentru raspuns, identificarea nevoii si chestionar).
-Status: implementat in sandbox. Frontend-ul si backend-ul intra in productie doar la publicare
-(vezi sectiunea 10, "Observatie de lansare"). Deciziile in asteptare: sectiunea 11.
+Status: implementat si publicat; retestul live al v2.1 a trecut (sectiunea 12). Frontend-ul si
+backend-ul intra in productie doar la publicare (sectiunea 10, "Observatie de lansare").
+Deciziile in asteptare: sectiunea 11.
 
 ## 1. Metoda
 
@@ -302,7 +303,7 @@ celuilalt agent. `test:services` trece; `verify-all`: 143 trec, aceleasi 3 esecu
 erori pe fisierele AI; `vite build` reuseste. Analizele de mai jos au rulat cu functiile reale, in
 afara aplicatiei (scripturi temporare), fara apeluri AI.
 
-### 11.1 Retestul live - inca nefacut
+### 11.1 Retestul live - facut dupa publicare, vezi sectiunea 12
 
 Publicarea versiunii v2.1 nu a fost confirmata. In plus, sesiunea nu avea Claude in Chrome, iar
 politica de retea a mediului ei bloca viasee.ro (blocajul nu a fost ocolit). Procedura ramane cea
@@ -431,3 +432,36 @@ azi, functie cu functie, pe toate cheile canonice, alias-urile si nivelurile de 
 - Daca anamneza trebuie trimisa structurat la furnizori: acord nou care enumera datele de sanatate
   si verificare juridica (date de sanatate, GDPR art. 9). Azi ajunge doar prin mesajul final,
   vizibil si editabil.
+
+## 12. Retest live dupa publicare (2026-09-24, 21:40 UTC)
+
+Facut din Claude in Chrome pe viasee.ro, fara autentificare si fara trimiterea formularului: 3
+apeluri directe la endpoint si un parcurs prin interfata (inca o interpretare AI). Fara modificari
+de cod.
+
+- Publicarea e confirmata: bundle-urile live contin fixurile din faza 3 (`safetyAlreadyCleared`,
+  `initialSelections`, nota "Am bifat din mesajul tau").
+- `matchProvidersSemantic` (`interpret_only`): toate raspunsurile au `patient-need-ai-v2.1`, in
+  2,3-2,4 s.
+
+| Text | Intentie | Semnale | Servicii |
+|---|---|---|---|
+| am tensiune oculara mare si as vrea un control | simptome_oftalmologice | niciunul (in v2 primea semnal fals) | glaucoma_consultation, eye_pressure_check, tonometry |
+| vad dublu de azi dimineata | simptome_oftalmologice | other_possible_urgent_eye_problem | ophthalmology_consultation, neuro_ophthalmology |
+| de ieri vad ca o umbra la ochiul stang | simptome_oftalmologice | other_possible_urgent_eye_problem | ophthalmology_consultation, complete_eye_exam |
+
+- Interfata, `/cerere?q=am tensiune oculara mare si as vrea un control, sunt din Cluj`:
+  - confirmare: "o evaluare pentru o problema la ochi", localitate retinuta Cluj-Napoca (intentia
+    corespunde exemplului din prompt);
+  - verificarea de siguranta apare o singura data, in pasul de descriere; descrierea e precompletata;
+  - urmeaza debutul, pentru cine, trimiterea, localitatea (Cluj-Napoca sugerat) si termenul;
+  - anamneza are pre-bifat "Glaucom sau tensiune oculara mare", cu nota "Am bifat din mesajul tau";
+  - ecranul de verificare arata "Cautam: Consult oftalmologic, Glaucom, Tonometrie, Masurarea
+    tensiunii intraoculare", blocul Anamneza si recomandarile pentru glaucom (cu diacritice), fara
+    112 sau UPU, cu disclaimer; descrierea nu mai apare ca raspuns separat.
+- Parcursul s-a oprit inainte de "Cauta rezultate": nicio cautare salvata, nicio data personala.
+  Tab-ul a fost inchis.
+- Observatie minora (optional): pe ecranul de verificare mesajul apare de doua ori, in bula "Ai
+  spus" de sus si in blocul "Ai descris".
+
+Concluzie: v2.1 si fixurile din faza 3 functioneaza live. Raman deciziile din 11.2-11.4.
