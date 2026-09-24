@@ -12,6 +12,7 @@ import {
   paginateRows,
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
+import { getNationalMap } from '../../shared/nationalMapCache.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Read-only locality browse. It does not score or match by service.
@@ -28,6 +29,52 @@ const PATIENT_FACING_PROFILE_TYPES = [
 
 function normalizedName(location) {
   return String(location?.public_display_name || location?.name || '').trim().toLocaleLowerCase('ro-RO');
+}
+
+// 2026-09-06, directorul pe harta. O singura ramura care intoarce TOATE locatiile publicate,
+// in forma minima necesara desenarii unui punct. Nu este o cautare si nu inlocuieste una:
+// nu scoreaza, nu ordoneaza dupa relevanta si nu are Top 3. Este harta directorului, din care
+// pacientul intra pe un profil.
+//
+// Campurile sunt putine intentionat: 900+ locatii inseamna ca fiecare camp in plus se
+// inmulteste cu 900. Detaliile se citesc pe profil, nu aici.
+async function computeNationalMap(svc) {
+  const allLocations = await loadAllPublicLocationsByCounty(svc, { failOnError: true });
+  const visible = allLocations.filter((loc) => {
+    if (loc.public_visibility_status !== 'approved') return false;
+    if (loc.active_status === 'inactiva') return false;
+    if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) return false;
+    return true;
+  });
+  const overlay = await loadDirectoryDetailOverlay(svc, visible.map((loc) => loc.id));
+
+  const points = [];
+  let totalPublished = 0;
+  for (const loc of visible) {
+    const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
+    if (disclosure.profile_control_status === 'suspended') continue;
+    totalPublished += 1;
+    if (disclosure.lat === null || disclosure.lng === null) continue;
+    points.push({
+      id: loc.id,
+      name: loc.public_display_name || loc.name,
+      provider_type: loc.provider_type,
+      city: loc.locality_name || loc.city || null,
+      county: loc.county_name || loc.county || null,
+      address: disclosure.address,
+      lat: disclosure.lat,
+      lng: disclosure.lng,
+      map_precision: disclosure.map_precision,
+      profile_control_status: disclosure.profile_control_status,
+    });
+  }
+
+  return {
+    map_scope: 'national',
+    results: points,
+    total_published: totalPublished,
+    without_position: totalPublished - points.length,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -47,50 +94,25 @@ Deno.serve(async (req) => {
     const offset = Math.max(0, Math.floor(Number(payload.offset) || 0));
     const includeMapResults = payload.include_map_results === true;
 
-    // 2026-09-06, directorul pe harta. O singura ramura care intoarce TOATE locatiile publicate,
-    // in forma minima necesara desenarii unui punct. Nu este o cautare si nu inlocuieste una:
-    // nu scoreaza, nu ordoneaza dupa relevanta si nu are Top 3. Este harta directorului, din care
-    // pacientul intra pe un profil.
-    //
-    // Campurile sunt putine intentionat: 900+ locatii inseamna ca fiecare camp in plus se
-    // inmulteste cu 900. Detaliile se citesc pe profil, nu aici.
+    // Harta nationala (vezi computeNationalMap). 2026-09-23: vine dintr-o copie tinuta cateva
+    // minute (shared/nationalMapCache.js). Recalcularea la fiecare vizita facea ~100 de citiri,
+    // iar a doua vizita la cateva secunde dupa prima primea „Rate limit exceeded”.
     if (String(payload.map_scope || '').trim() === 'national') {
-      const allLocations = await loadAllPublicLocationsByCounty(svc, { failOnError: true });
-      const visible = allLocations.filter((loc) => {
-        if (loc.public_visibility_status !== 'approved') return false;
-        if (loc.active_status === 'inactiva') return false;
-        if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) return false;
-        return true;
-      });
-      const overlay = await loadDirectoryDetailOverlay(svc, visible.map((loc) => loc.id));
-
-      const points = [];
-      let totalPublished = 0;
-      for (const loc of visible) {
-        const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
-        if (disclosure.profile_control_status === 'suspended') continue;
-        totalPublished += 1;
-        if (disclosure.lat === null || disclosure.lng === null) continue;
-        points.push({
-          id: loc.id,
-          name: loc.public_display_name || loc.name,
-          provider_type: loc.provider_type,
-          city: loc.locality_name || loc.city || null,
-          county: loc.county_name || loc.county || null,
-          address: disclosure.address,
-          lat: disclosure.lat,
-          lng: disclosure.lng,
-          map_precision: disclosure.map_precision,
-          profile_control_status: disclosure.profile_control_status,
+      try {
+        const map = await getNationalMap({ svc, compute: () => computeNationalMap(svc) });
+        return Response.json({
+          ...map.value,
+          generated_at: new Date(map.generatedAt).toISOString(),
+          stale: map.stale,
         });
+      } catch (_error) {
+        // Nicio copie si calcularea a esuat (de regula limita de trafic, trecatoare). Pagina
+        // reincearca singura si arata un mesaj clar.
+        return Response.json({
+          error: 'Harta directorului nu poate fi incarcata acum. Incearca din nou peste cateva secunde.',
+          code: 'map_unavailable',
+        }, { status: 503 });
       }
-
-      return Response.json({
-        map_scope: 'national',
-        results: points,
-        total_published: totalPublished,
-        without_position: totalPublished - points.length,
-      });
     }
 
     if (!sirutaCode) {
