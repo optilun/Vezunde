@@ -192,3 +192,16 @@ Cards show public address (city fallback). Recovery panel is compact for nonempt
 Validation: targeted ESLint, production build, verify-results-map, verify-recommendation-national-map, verify-map-marker-layout, verify-provider-recommendation, verify-request-workspace-ranking, verify-no-results-flow, verify-patient-request-review-contract and new verify-public-phone-link passed. Review contract test updated to assert version stays in data, not visible UI. Browser: existing published frontend, synthetic glasses-repair search in Timisoara -> 12 directory results, national map loaded with local framing (2D fallback in cloud browser), request form opens. No patient data submitted or messages sent. Latest new UI is not yet published; interactive mobile/new-version checks and authenticated post-submission messaging remain unverified.
 
 No backend schema/RLS, provider data or matching/ranking changes. User publishes frontend manually.
+
+
+## 2026-09-24 — Audit si imbunatatiri modul AI (identificarea nevoii, chestionar)
+
+Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
+
+- Corectie critica: intentia aleasa explicit (link /cerere?categorie=..., confirmarea AI, alegerea manuala) se inregistreaza acum ca raspuns controlat la `categorie`. Inainte planificatorul primea `unknown` pe toate aceste intrari si intreba "Ce te aduce la noi? Control / Problema"; raspunsul putea rescrie nevoia (ex. ochelari -> control de vedere).
+- Interpretare LLM v2 (`patient-need-ai-v2`): definitii, precedenta, exemple, clarificare doar pentru ambiguitate de intentie, `alternative_intent`, `other_adult`, localitate verificata in text. `matchProvidersSemantic/entry.ts` o importa din base44/shared (bundle-ul local ramasese la 2026-08-06; bundle-ul NU a fost modificat).
+- Detectie determinista cu precedenta: 29/68 -> 65/68 pe corpus. Prefill-uri noi, sugestii marcate din mesaj (nu raspunsuri; niciodata pe intrebarea de siguranta), localitate si descriere precompletate, re-interpretarea descrierii pe ramura "Nu sunt sigur", propunere determinista cu confirmare cand modelul nu raspunde.
+- Neatinse: potrivirea, scorul, bucket-urile, Top 3, distributia, politica de siguranta, catalogul si matricea de rutare, `questionnaire_version`.
+- Verificari: test:services OK (cu verify-patient-need-identification nou), verify-all 141 OK / 3 esecuri preexistente, ESLint 0 erori, vite build OK. Fara verificare in browser si fara apeluri LLM live.
+- Ramas: publicarea frontend-ului, pilot mic pe modelul live, aprobare pentru zgomotul din cheile de servicii la potrivire si pentru re-sincronizarea bundle-urilor, revizuire medicala pentru variantele frazelor de siguranta.
+- Coordonare: alt agent a scris simultan in sandbox (cache harta nationala); fara fisiere comune.
