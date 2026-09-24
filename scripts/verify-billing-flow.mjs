@@ -253,8 +253,33 @@ for (const metadata of [{ app: 'other', location_id: 'loc_a' }, { app: 'viasee',
   };
   const result = await call('reconcileProviderStripeSubscriptions');
   assert.equal(result.status, 200);
-  assert.equal(result.body.synced, 1);
+  assert.deepEqual(result.body, { success: true, checked: 1, synced: 1, failed: 0 });
   assert.equal(s.rows[0].status, 'suspended');
+}
+{
+  const s = state(); s.user.role = 'admin';
+  s.remoteSubscriptions = [
+    subscription({ id: 'sub_good' }),
+    subscription({ id: 'sub_orphan', metadata: { app: 'viasee', location_id: 'loc_missing', organization_id: 'org_a' } }),
+    subscription({ id: 'sub_unrelated', metadata: { app: 'another', location_id: 'loc_missing' } }),
+  ];
+  s.client.asServiceRole.entities.ProviderLocation.get = async id =>
+    id === 'loc_a' ? { id, organization_id: 'org_a', name: 'Test location' } : null;
+  const logs = [];
+  const originalInfo = console.info;
+  let result;
+  try {
+    console.info = (...parts) => logs.push(parts.join(' '));
+    result = await call('reconcileProviderStripeSubscriptions');
+  } finally {
+    console.info = originalInfo;
+  }
+  assert.equal(result.status, 502, 'A partial reconciliation failure must fail the workflow step');
+  assert.deepEqual(result.body, { success: false, checked: 2, synced: 1, failed: 1 });
+  assert.equal(s.rows.length, 1, 'Successful subscriptions remain synchronized');
+  const metricsLog = logs.find(line => line.startsWith('[VIASEE] provider Stripe reconciliation '));
+  assert.match(metricsLog, /"checked":2,"synced":1,"failed":1/);
+  assert.doesNotMatch(metricsLog, /loc_|sub_|cus_/, 'Metrics must not log customer or subscription identifiers');
 }
 assert.equal(modules.billingAccountHelpers.isViaseeSubscription(subscription(), 'price_pro', undefined), false);
 
