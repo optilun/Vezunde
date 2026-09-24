@@ -1,12 +1,37 @@
-import React from "react";
-import { ArrowLeft, CheckCircle2, MapPin, Search } from "lucide-react";
+import React, { useMemo } from "react";
+import { ArrowLeft, CheckCircle2, Lightbulb, MapPin, Search } from "lucide-react";
 import { storePatientRequestDraft } from "@/lib/patientRequestPersistenceClient";
 import { intentDisplayLabel } from "@/lib/intentRegistry";
+import { PATIENT_ANAMNESIS_KEY_PREFIX, isPatientAnamnesisKey } from "@/lib/patientAnamnesis";
+import { buildPatientVisitGuidance } from "@/lib/patientVisitGuidance";
 import { getCanonicalServiceDefinition, normalizeServiceKey } from "../../../shared/canonicalServiceRegistryExtended.js";
+
+const FREE_TEXT_KEYS = new Set(["descriere", "symptom_description", "investigation_reference_text"]);
 
 function detailRows(draft) {
   const excluded = new Set(["categorie", "locatie"]);
-  return (draft?.answers || []).filter((answer) => !excluded.has(answer.question_key));
+  return (draft?.answers || []).filter((answer) => (
+    !excluded.has(answer.question_key) && !isPatientAnamnesisKey(answer.question_key)
+  ));
+}
+
+function anamnesisRows(draft) {
+  return (draft?.answers || []).filter((answer) => answer.question_key?.startsWith(PATIENT_ANAMNESIS_KEY_PREFIX));
+}
+
+// 2026-09-24: recomandari pentru vizita (text fix, vezi src/lib/patientVisitGuidance.js),
+// alese dupa nevoie, anamneza si cuvintele pacientului.
+function visitGuidance(draft) {
+  const text = [
+    draft?.original_message,
+    ...(draft?.answers || [])
+      .filter((answer) => FREE_TEXT_KEYS.has(answer.question_key))
+      .map((answer) => answer.answer_value),
+  ].filter(Boolean).join(". ");
+  const serviceKeys = (draft?.service_keys || [])
+    .map((key) => normalizeServiceKey(key).canonicalKey)
+    .filter(Boolean);
+  return buildPatientVisitGuidance({ intent: draft?.intent, answers: draft?.answers || [], text, serviceKeys });
 }
 
 // 2026-09-24: pacientul vede si ce servicii vom cauta, cu etichetele din registrul canonic.
@@ -24,7 +49,9 @@ function serviceLabels(draft, limit = 4) {
 
 export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
   const rows = detailRows(draft);
+  const historyRows = anamnesisRows(draft);
   const services = serviceLabels(draft);
+  const guidance = useMemo(() => visitGuidance(draft), [draft]);
   const handleConfirm = () => {
     storePatientRequestDraft(draft);
     onConfirm?.();
@@ -84,7 +111,61 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
             ))}
           </dl>
         )}
+
+        {historyRows.length > 0 && (
+          <div className="mt-4 border-t border-border/70 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Anamneză</p>
+            <dl className="mt-2 space-y-2">
+              {historyRows.map((answer) => (
+                <div key={answer.question_key} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
+                  <dt className="text-xs font-medium text-muted-foreground">{answer.question_label}</dt>
+                  <dd className="text-sm font-medium text-foreground sm:text-right">{answer.answer_label}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </div>
+
+      <section className="mt-5 rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="visit-guidance-title">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-4 w-4 shrink-0 text-primary" />
+          <p id="visit-guidance-title" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Recomandări pentru vizită
+          </p>
+        </div>
+        <p className="mt-2.5 text-sm font-medium leading-relaxed text-foreground">{guidance.where}</p>
+        {guidance.prepare.length > 0 && (
+          <>
+            <p className="mt-3 text-xs font-semibold text-foreground">Cum te pregătești</p>
+            <ul className="mt-1.5 space-y-1.5">
+              {guidance.prepare.map((tip) => (
+                <li key={tip} className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
+                  <span aria-hidden="true" className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {guidance.notes.map((note) => (
+          <div key={note.key} className="mt-3 border-t border-border/70 pt-3">
+            <p className="text-xs font-semibold text-foreground">{note.title}</p>
+            <ul className="mt-1.5 space-y-1.5">
+              {note.points.map((point) => (
+                <li key={point} className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
+                  <span aria-hidden="true" className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {guidance.safety_net && (
+          <p className="mt-3 border-t border-border/70 pt-3 text-xs leading-relaxed text-foreground/80">{guidance.safety_net}</p>
+        )}
+        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{guidance.disclaimer}</p>
+      </section>
 
       <div className="mt-7 flex flex-col gap-3 sm:flex-row">
         <button
