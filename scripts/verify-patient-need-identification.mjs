@@ -182,7 +182,7 @@ check('context hints', () => {
   const child = detectPatientContextHints('copilul meu de 5 ani se uita aproape de televizor, suntem din Brasov');
   assert.equal(child.for_whom, 'child');
   assert.equal(child.child_age_group, '3_6');
-  assert.equal(child.locality_query, 'Brasov');
+  assert.equal(child.locality_query, 'Brașov');
   assert.equal(child.symptom_onset, null, '"de 5 ani" este varsta, nu durata simptomului');
 
   const parent = detectPatientContextHints('vreau un control oftalmologic pentru mama mea de 70 de ani');
