@@ -552,53 +552,43 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("questions");
   };
 
-  const handleCorrectInterpretation = () => {
-    clearPatientIntakeSession();
-    abandonAllPatientRequestIdempotency();
+  // Pacientul alege explicit nevoia: fie refuza interpretarea ("Nu, aleg alta nevoie"), fie
+  // modelul n-a fost sigur si ii aratam variantele aprobate, cu sugestia marcata.
+  //
+  // 2026-09-24: inainte, butonul unic "Aleg categoria" continua de fapt cu intentia AI, fara sa
+  // arate vreo categorie, iar dupa un refuz pacientul pornea de la zero. Acum alegerea vine
+  // direct de pe ecranul de confirmare si se inregistreaza ca raspuns la `categorie`.
+  // Serviciile propuse de AI se pastreaza doar daca pacientul a ales chiar intentia propusa.
+  const handleCorrectInterpretation = (chosenIntent) => {
+    const intentKey = INTENTS[chosenIntent] ? chosenIntent : null;
+    if (!intentKey) return;
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
-    // Nu stergem intelegerea AI-ului doar pentru ca increderea a fost medie, nu mare.
-    // Daca AI-ul a identificat o intentie (chiar daca a cerut clarificare), o pastram —
-    // acelasi tipar folosit deja la acceptarea cu incredere mare (initState mai jos,
-    // linia ~326). Motorul de intrebari aprobate va sti astfel sa sara direct la
-    // intrebarea specifica ce lipseste, in loc sa reporneasca de la intrebarea generica.
-    //
-    // 2026-09-01: dar asta era corect DOAR cand AI-ul n-a fost sigur si butonul zice
-    // "Aleg categoria". Cand AI-ul a fost sigur, butonul zice "Aleg alta nevoie" - adica
-    // pacientul tocmai a spus ca interpretarea e gresita. Pastrandu-i intentia, primea
-    // exact acelasi lucru pe care il refuzase, fara nicio cale inapoi in afara de butonul
-    // browserului. Acum, in cazul asta, pornim curat de la intrebarea de categorie.
-    const rejectedConfidentInterpretation = intentProposal?.status === "confirm";
-    const correctedState = initState(
-      rejectedConfidentInterpretation ? null : (intentProposal?.intent || null),
-      initialMessage,
-    );
-    // initState populeaza serviceKeys din lista generica a categoriei (ex: control_vedere
-    // -> control_vedere_adulti). Dar AI-ul a fost adesea mai precis (ex: distinge intre
-    // ophthalmology_consultation - un medic - si optometry_consultation - un optometrist).
-    // Cand AI-ul a dat o lista explicita de servicii, o folosim pe aceea, nu pe cea generica,
-    // ca sa nu pierdem exact distinctia pentru care AI-ul a fost util.
-    // Serviciile propuse de AI se pastreaza doar cand pastram si intentia. Daca pacientul
-    // a refuzat interpretarea, ar fi absurd sa ramanem cu serviciile ei.
-    if (
-      !rejectedConfidentInterpretation
-      && Array.isArray(intentProposal?.service_keys)
-      && intentProposal.service_keys.length > 0
-    ) {
-      correctedState.serviceKeys = [...intentProposal.service_keys];
-      correctedState.explicitServiceKeys = [...intentProposal.service_keys];
+    if (!interpretationFromDescription) {
+      clearPatientIntakeSession();
+      abandonAllPatientRequestIdempotency();
     }
+    const keepsProposal = intentKey === intentProposal?.intent;
+    const correctedState = stateForConfirmedIntent(intentKey, {
+      text: interpretationFromDescription ? interpretationRequest.text : initialMessage,
+      aiServiceKeys: keepsProposal && intentProposal?.source === "ai" ? intentProposal.service_keys : [],
+      previousState: interpretationFromDescription ? state : null,
+    });
     setState(correctedState);
-    setHistory([]);
+    if (!interpretationFromDescription) setHistory([]);
     setRequestDraft(null);
-    markSearchStarted(intentProposal?.intent || state.intent);
+    markSearchStarted(intentKey);
     trackPatientSearchEvent("patient_search_ai_intent_corrected", {
       proposed_intent: intentProposal?.intent || "unknown",
+      chosen_intent: intentKey,
+      proposal_status: intentProposal?.status || "unknown",
       confidence_band: intentProposal?.confidence_band || "low",
       agreement_status: intentProposal?.agreement_status || "unknown",
+      interpretation_source: intentProposal?.source || "unknown",
+      interpretation_trigger: interpretationRequest?.source || "initial",
     });
-    setIntentProposal(null);
-    setQuestionSelection({ status: "idle", question: null });
+    if (!keepsProposal) setIntentProposal(null);
+    prepareAdaptiveSelection();
     setPhase("questions");
   };
 
