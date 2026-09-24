@@ -77,7 +77,7 @@ export async function handle(req: Request) {
     const localRows = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
     const manual = localRows.find(row => row.billing_mode === 'manual' && ['active','trialing','grace_period'].includes(row.status) &&
       (!row.current_period_end || Date.parse(row.current_period_end) > Date.now()) && row.plan_code === 'pro');
-    const pricing = { amount: price.unit_amount, currency: price.currency, interval: price.recurring?.interval, active: price.active, issuer_vat_registered: false, fiscal_provider: 'keez', fiscal_mode: 'manual' };
+    const pricing = { amount: price.unit_amount, currency: price.currency, interval: price.recurring?.interval, active: price.active, issuer_vat_registered: false, fiscal_mode: 'manual' };
     if (!account) return Response.json({ pricing, manual: manual || null, subscription: null, customer: null, methods: [], invoices: [], has_more: false });
     assertBillingCustomer(await stripe.customers.retrieve(account.stripe_customer_id), locationId);
     const latest = await syncCustomerSubscriptions(svc, stripe, account, priceId);
