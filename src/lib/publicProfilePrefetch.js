@@ -34,9 +34,9 @@ export function createPublicProfileLoader({ invoke, now = () => Date.now(), fres
 
   function remember(cache, key, start) {
     const entry = { promise: Promise.resolve().then(start), at: now() };
-    entry.promise.catch(() => {
-      if (cache.get(key) === entry) cache.delete(key);
-    });
+    // Si o eroare se foloseste o singura data: pagina primeste acelasi raspuns ca inainte (profil
+    // negasit), fara o a doua cerere identica. Urmatoarea vizita cere din nou.
+    entry.promise.catch(() => {});
     cache.set(key, entry);
     return entry.promise;
   }
