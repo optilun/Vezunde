@@ -32,7 +32,7 @@ const bytes = (path) => readFile(new URL(`../${path}`, import.meta.url));
   });
   for (const char of 'ăâîșțĂÂÎȘȚ') {
     const codePoint = char.codePointAt(0);
-    assert.ok([...ranges.latin, ...ranges.ext].every((_, index, all) => all.some((range) => covers(range, codePoint))), `${char} acoperit`);
+    assert.ok([...ranges.latin, ...ranges.ext].some((range) => covers(range, codePoint)), `${char} acoperit`);
   }
   for (const license of ['OFL-Manrope.txt', 'OFL-Fraunces.txt']) {
     assert.match(await read(`public/fonts/${license}`), /SIL Open Font License, Version 1\.1/);
@@ -63,8 +63,7 @@ const bytes = (path) => readFile(new URL(`../${path}`, import.meta.url));
 {
   const directory = await read('src/pages/DirectoryMap.jsx');
   assert.match(directory, /className="min-h-\[max\(24rem,calc\(70vh\+0\.75rem\)\)\] lg:min-h-\[24rem\]"/);
-  const results = await read('src/components/results/ResultsMap.jsx');
-  assert.match(results, /h-\[70vh\]/, 'aceeasi inaltime ca harta de pe telefon');
+  // Aceeasi inaltime ca harta de pe telefon (clasa data de LocationsWithMap lui ResultsMap).
   const layout = await read('src/components/results/LocationsWithMap.jsx');
   assert.match(layout, /h-\[70vh\] overflow-hidden rounded-3xl/);
 }
