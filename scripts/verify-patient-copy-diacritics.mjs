@@ -31,6 +31,9 @@ const PATIENT_SURFACES = [
   // dar traiau in src/lib si scapasera primei treceri - "Substanta chimica ajunsa in ochi"
   // aparea fara diacritice sub un titlu care le avea.
   'src/lib/patientSafety.js',
+  // 2026-09-24: anamneza si recomandarile pentru vizita sunt text citit de pacient.
+  'src/lib/patientAnamnesis.js',
+  'src/lib/patientVisitGuidance.js',
 ];
 
 // Cuvinte care nu exista in romana fara diacritice. Nu includem forme ambigue
