@@ -41,7 +41,7 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
         Am pregătit cererea ta
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Verifica nevoia si localitatea, apoi cauta optiunile disponibile.
+        Verifică nevoia și localitatea, apoi caută opțiunile disponibile.
       </p>
 
       <div className="mt-6 rounded-2xl border border-border bg-secondary/35 p-4 sm:p-5">
