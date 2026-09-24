@@ -3,7 +3,8 @@
 Data: 2026-09-24
 Cerere: owner (imbunatatirea LLM-ului si a fluxului de cautare/recomandare; audit, apoi
 imbunatatiri pentru raspuns, identificarea nevoii si chestionar).
-Status: implementat in sandbox. Backend-ul se sincronizeaza automat; frontend-ul cere publicare.
+Status: implementat in sandbox. Frontend-ul si backend-ul intra in productie doar la publicare
+(vezi sectiunea 10, "Observatie de lansare"). Deciziile in asteptare: sectiunea 11.
 
 ## 1. Metoda
 
@@ -292,3 +293,140 @@ mare) nu a mai aparut.
 Functiile backend NU se actualizeaza automat in aceasta configuratie: dupa 10 minute, endpoint-ul
 live raspundea tot cu `patient-need-ai-v2`. Schimbarile de backend intra in productie la publicare,
 ca si frontend-ul.
+
+## 11. Pregatire pentru deciziile owner-ului (2026-09-24, noaptea)
+
+Sesiune fara modificari de cod. Fisierele AI sunt identice cu checkpoint-ul `6ab58138`
+("Test live AI: prompt v2.1 ..."); de atunci s-a schimbat doar documentatia de facturare a
+celuilalt agent. `test:services` trece; `verify-all`: 143 trec, aceleasi 3 esecuri vechi; ESLint 0
+erori pe fisierele AI; `vite build` reuseste. Analizele de mai jos au rulat cu functiile reale, in
+afara aplicatiei (scripturi temporare), fara apeluri AI.
+
+### 11.1 Retestul live - inca nefacut
+
+Publicarea versiunii v2.1 nu a fost confirmata. In plus, sesiunea nu avea Claude in Chrome, iar
+politica de retea a mediului ei bloca viasee.ro (blocajul nu a fost ocolit). Procedura ramane cea
+din handoff; pentru partea de endpoint, fragmentul de mai jos se ruleaza in consola unei pagini
+viasee.ro (3 apeluri AI):
+
+```js
+(async () => {
+  const cases = [
+    ['am tensiune oculara mare si as vrea un control', 'investigatii'],
+    ['vad dublu de azi dimineata', 'simptome_oftalmologice'],
+    ['de ieri vad ca o umbra la ochiul stang', 'unknown'],
+  ];
+  for (const [text, intent] of cases) {
+    const started = performance.now();
+    const res = await fetch('/api/apps/6a48cb9d04fa7f999d8a8054/functions/matchProvidersSemantic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'interpret_only', search_text: text, deterministic_intent: intent,
+        service_keys: [], answers: [], explicit_confirmed_service_keys: [],
+        deterministic_service_keys: [], deterministic_facts: {}, deterministic_safety_state: 'unchecked',
+      }),
+    });
+    const i = (await res.json()).interpretation || {};
+    console.log(text, res.status, `${Math.round(performance.now() - started)} ms`, i.version, i.intent,
+      JSON.stringify(i.possible_safety_flags || []));
+  }
+})();
+```
+
+Asteptat: `patient-need-ai-v2.1` pe toate; prima fara semnale; celelalte doua cu
+`other_possible_urgent_eye_problem`. Intentiile trimise sunt exact ce detecteaza azi stratul
+determinist (`detectIntentFromText`).
+
+Observatie pentru revizuirea medicala: stratul determinist NU prinde "vad dublu de azi dimineata"
+si "de ieri vad ca o umbra la ochiul stang" (pentru a doua nu gaseste nici intentia). Pentru ele,
+semnalul vine doar de la LLM si din intrebarea de siguranta din chestionarul de simptome.
+Adaugarea frazelor in stratul determinist cere revizuire medicala (politica proiectului), deci nu
+s-a facut.
+
+### 11.2 Zgomotul din cheile de servicii la potrivire (asteapta "da")
+
+Cautarea semantica pe textul liber adauga chei de serviciu peste nevoia confirmata, de doua ori:
+in browser (`matchProvidersWithSemanticFallback`, `src/lib/providerSemanticSearch.js`) si pe server
+(`requestedKeys` in `matchProvidersSemantic/entry.ts`). Cheia se adauga si cand nu are legatura cu
+nevoia: orice serviciu care are printre cuvintele cheie un singur cuvant din mesaj (ex. "ochelari")
+primeste scorul 0,88. Masurat pe 65 de formulari cu intentie (corpusul din
+`verify-patient-need-identification` si 7 formulari din testul live): 47 primesc chei in plus
+(271 in total).
+
+Efecte concrete:
+
+1. **Reparatii (7 din 7 formulari).** Fiecare primeste 10 chei de vanzare (ochelari de soare,
+   rame, accesorii, lentile cu dioptrii, ochelari de protectie etc.). Simulare cu scorul si
+   bucket-urile reale, pentru "mi s-a rupt bratul la ochelari" si trei locatii ipotetice
+   revendicate: o optica ce doar vinde ochelari si rame iese **#1 in Top 3** (78,1 puncte), iar
+   atelierul care repara rame iese #3 (58,9). La distribuire, optica fara reparatii nu trece
+   verificarea de eligibilitate (`no_request_service_eligible`, pe cheile salvate in cerere),
+   deci pacientul vede trei recomandari, dar cererea ajunge la mai putine locatii.
+2. **Cumpararea de lentile de contact (3 formulari:** "vreau sa-mi cumpar lentile de contact
+   lunare", "port lentile de contact si vreau altele", "lentile colorate"**).** Textul adauga
+   adaptare si consult pentru lentile, servicii `specialized_medical`, deci nivelul nevoii devine
+   `specialized_medical`, desi nevoia confirmata e `general`. Consecinte: in Top 3 intra doar
+   profilurile verificate, fallback-ul structural arata doar cabinete si clinici (fara optici),
+   iar la distribuire `matching_need_level` salvat cere profil verificat si servicii
+   `vezunde_verified`. O cumparare obisnuita de lentile nu mai ajunge la opticile revendicate.
+
+Azi, efectul e limitat de date (25 din 26 de cautari finalizate aveau
+`local_service_data_missing`), dar creste cu fiecare furnizor care isi declara serviciile.
+
+Propunere (regula):
+
+- Numai cand exista o nevoie confirmata (raspuns `categorie` si chei explicite): cheile venite din
+  text se pastreaza doar daca sunt din familia nevoii (grupuri canonice), iar pentru nevoile
+  comerciale (ochelari, lentile de contact, reparatii) nu pot ridica cererea la
+  `specialized_medical`. Cheile explicite (categorie, raspunsuri, propunerea AI confirmata) raman
+  toate.
+- Familii: reparatii -> `technical_activities`; ochelari -> `optical_retail`,
+  `lenses_and_measurements`, `technical_activities`, `optometry`, `business_attributes`; lentile
+  de contact -> `contact_lenses`, `optometry`; control, control copil, simptome, investigatii ->
+  grupurile medicale, `optometry` si `business_attributes` (consult la domiciliu).
+- Fara nevoie confirmata (text liber fara categorie): comportament neschimbat.
+
+Efect masurat: 53 din 65 de formulari raman identice; se scot 102 chei din 12 formulari (7
+reparatii, 4 lentile de contact, 1 control pentru copil). Nivelul nevoii se schimba doar la cele 3
+cumparari de lentile (`specialized_medical` -> `general`). "vreau un control oftalmologic pentru
+mama mea" ramane `specialized_medical`, ca azi. In simularea de mai sus, atelierul trece pe #1,
+optica mixta (repara si vinde) pe #2, iar optica fara reparatii ramane doar in fallback-ul
+structural.
+
+Fisiere atinse la implementare: un helper nou in `shared/` cu copie identica in `base44/shared/`;
+`src/lib/providerSemanticSearch.js` (blob aprobat); `matchProvidersSemantic/entry.ts` (blob aprobat
+si amprenta `f33a9859`, verificata in 3 teste); un test nou pe corpus. Formulele de scor, bucket-urile
+si selectia Top 3 raman neschimbate; se schimba doar cheile care intra in potrivire.
+
+### 11.3 Re-sincronizarea bundle-urilor backend (asteapta "da")
+
+Bundle-urile au fost reconstruite din surse (numai in afara aplicatiei) si comparate cu cele servite
+azi, functie cu functie, pe toate cheile canonice, alias-urile si nivelurile de confirmare:
+
+- `matchProviders`, `browseDirectoryProviders`, `getPublicProviderProfile`: comportament identic
+  (normalizare, eligibilitate publica si la potrivire, prerechizite). Diferentele sunt comentarii,
+  3 titluri de sectiuni din taxonomie si, in ultimele doua, nivelul intern al optometriei
+  (`specialized_medical` -> `technical`, reclasificarea din 2026-08-05), camp pe care aceste functii
+  nu il citesc.
+- `matchProvidersSemantic`: registrul, scorul, bucket-urile, Top 3 si prerechizitele sunt
+  identice. Singura schimbare reala este cautarea semantica de pe server: 20 din 73 de formulari se
+  schimba, 15 trec de la nicio cheie la chei, 64 de chei adaugate, niciuna scoasa.
+- In fluxul pacientului setul de chei nu se schimba (0 din 58 de formulari), pentru ca browserul
+  trimite deja cheile din sursa noua. Se schimba doar componenta `semantic_fit` a scorului (de la 0
+  la aproximativ 23 de puncte) in 11 din 58 de formulari (ex. "vreau sa-mi verific vederea", "am
+  nevoie de OCT", "am ochiul rosu de doua zile") si eticheta de incredere "high" pentru profilurile
+  verificate in 10 formulari. Efectul: locatiile care ofera exact serviciul recunoscut urca fata de
+  cele potrivite pe chei vecine.
+- Copia interpretarii din bundle nu mai este folosita (entry.ts o importa din `base44/shared`).
+  Re-sincronizarea ar aduce si `patientGuidanceQuestionCatalog` in bundle (221 de linii), fara efect.
+- Deciziile 11.2 si 11.3 sunt independente: re-sincronizarea nu schimba zgomotul, iar corectia
+  zgomotului nu depinde de bundle.
+
+### 11.4 De semnalat owner-ului
+
+- Revizuire medicala pentru textele de recomandare (`src/lib/patientVisitGuidance.js`) si pentru
+  frazele de siguranta, inclusiv cele doua din 11.1.
+- Daca anamneza trebuie trimisa structurat la furnizori: acord nou care enumera datele de sanatate
+  si verificare juridica (date de sanatate, GDPR art. 9). Azi ajunge doar prin mesajul final,
+  vizibil si editabil.
