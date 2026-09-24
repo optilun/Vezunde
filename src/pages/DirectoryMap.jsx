@@ -116,19 +116,30 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     // 2026-09-24. Pozitia se salveaza dupa ce derularea se opreste (si la plecarea de pe pagina),
     // nu la fiecare eveniment: fiecare salvare citeste si rescrie toata sesiunea de cautare, iar pe
     // telefon asta facea lista sa se deruleze sacadat.
+    // Ultima pozitie se tine la fiecare eveniment (citire ieftina), ca salvarea de la plecare sa nu
+    // citeasca pozitia paginii urmatoare.
     let timer = 0;
+    let lastY = window.scrollY;
+    let pending = false;
     const save = () => {
       clearTimeout(timer);
       timer = 0;
-      if (scrollRestored.current && !window.matchMedia("(min-width: 1024px)").matches) writeSearchSession({ nationalScroll: window.scrollY });
+      if (!pending) return;
+      pending = false;
+      if (scrollRestored.current && !window.matchMedia("(min-width: 1024px)").matches) writeSearchSession({ nationalScroll: lastY });
     };
-    const onScroll = () => { clearTimeout(timer); timer = setTimeout(save, 200); };
+    const onScroll = () => {
+      lastY = window.scrollY;
+      pending = true;
+      clearTimeout(timer);
+      timer = setTimeout(save, 200);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pagehide", save);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", save);
-      if (timer) save();
+      save();
     };
   }, []);
 
