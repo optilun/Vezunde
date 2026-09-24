@@ -135,7 +135,7 @@ async function listFiles(dir) {
     await flush();
     await assert.rejects(loader.loadPublicProviderProfile('missing'), /404/);
     await assert.rejects(loader.loadPublicProviderProfile('missing'), /404/);
-    assert.equal(calls.filter((call) => call === 'getPublicProviderProfile:missing').length, 2, 'eroarea nu e pastrata');
+    assert.equal(calls.filter((call) => call === 'getPublicProviderProfile:missing').length, 2, 'eroarea se foloseste o data (fara cerere dubla), apoi se cere din nou');
   }
 
   // Legaturile din pagina si din aplicatie.
