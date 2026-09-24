@@ -205,3 +205,11 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Verificari: test:services OK (cu verify-patient-need-identification nou), verify-all 141 OK / 3 esecuri preexistente, ESLint 0 erori, vite build OK. Fara verificare in browser si fara apeluri LLM live.
 - Ramas: publicarea frontend-ului, pilot mic pe modelul live, aprobare pentru zgomotul din cheile de servicii la potrivire si pentru re-sincronizarea bundle-urilor, revizuire medicala pentru variantele frazelor de siguranta.
 - Coordonare: alt agent a scris simultan in sandbox (cache harta nationala); fara fisiere comune.
+
+### 2026-09-24 (etapa 2) — urgenta calma, anamneza, recomandari
+
+- UrgencyInterruption: fara buton "Suna la 112"; 112 intr-un singur rand mic, conditionat, dupa indicatia spre urgenta. Politica si testul actualizate.
+- Anamneza scurta, optionala, pentru consult (src/lib/patientAnamnesis.js, PatientAnamnesis.jsx). Se salveaza in cerere, nu merge la AI, nu schimba potrivirea; ajunge la locatii doar prin mesajul final precompletat, vizibil si editabil.
+- Recomandari pentru vizita pe ecranul de verificare (src/lib/patientVisitGuidance.js): cataracta, glaucom/tensiune oculara, diabet, tensiune arteriala, ochi uscati, pregatirea consultului.
+- Verificari: verify-patient-anamnesis-guidance (nou), test:services OK, verify-all 143 OK / 3 preexistente, lint, build, typecheck fara erori noi. Detalii: docs/audit-ai-cautare-recomandare-2026-09-24.md, sectiunea 9.
+- Alt agent lucreaza simultan (facturare, harta, layout, ProviderProfile); fara fisiere comune in afara de package.json (modificari compatibile).

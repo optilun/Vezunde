@@ -177,3 +177,60 @@ In timpul sesiunii, un alt agent a scris in acelasi sandbox (cache-ul hartii nat
 `browseDirectoryProviders`, `PublicMapSnapshot`, `DirectoryMap.jsx`, `RequestMatches.jsx`,
 `verify-national-map-cache.mjs`, `verify-results-map.mjs`, `tmp/check-map-live.cjs`). Nu exista
 fisiere comune cu aceasta lucrare. Checkpoint-ul Base44 include si modificarile lui.
+
+## 9. Etapa 2 (2026-09-24, dupa confirmarea owner-ului)
+
+Cerinte: fara semne mari "Suna la 112"; recomandari pentru pacient, inclusiv pentru cataracta
+si tensiune (oculara / arteriala); scurta anamneza pentru cine se programeaza la un consult.
+
+### Ecranul de urgenta (`UrgencyInterruption.jsx`)
+
+- Butonul separat "Suna la 112" cu telefon a fost eliminat. 112 apare o singura data, intr-un
+  rand mic, conditionat, dupa indicatia spre urgenta: "Doar daca nu te poti deplasa in siguranta
+  sau starea generala se agraveaza rapid, suna la 112." - in acord cu sectiunea 5 a politicii.
+- Titlul este mai mic. Textele clinice aprobate (prim ajutor, destinatie, transport) sunt neschimbate.
+- `verify-patient-emergency-guidance-policy.mjs` verifica acum: fara buton de telefon, 112 o singura
+  data, dupa indicatia spre spital, formulare conditionata. Decizia e notata in
+  `docs/patient-emergency-guidance-policy.md`.
+
+### Scurta anamneza (`src/lib/patientAnamnesis.js`, `PatientAnamnesis.jsx`)
+
+- Un singur ecran, optional ("Sari peste"), dupa chestionar si inainte de verificare, doar pentru
+  consult: control de vedere, control pentru copil, simptome, investigatii, ochelari cand pacientul
+  nu isi stie dioptriile, prima adaptare de lentile de contact.
+- Adult (5 randuri): ochelari/lentile, afectiuni cunoscute (diabet, tensiune arteriala mare,
+  glaucom sau tensiune oculara mare, cataracta, alta boala a ochilor), operatii sau laser la ochi,
+  picaturi folosite regulat, glaucom in familie. Copil (4 randuri): poarta ochelari, ce ai observat,
+  istoric in familie, nascut prematur.
+- Raspunsurile se salveaza in cerere (acordul "datele si raspunsurile mele"). NU schimba intrebarile,
+  potrivirea sau Top 3 (verificat cu functiile reale din `entry.ts`) si NU se trimit modelului AI.
+- **Nu ajung automat la furnizori.** Acordul de distribuire enumera exact ce vad locatiile Pro din
+  Top 3 (nume, textul initial, mesajul final, email). Rezumatul anamnezei porneste precompletat in
+  mesajul final, unde pacientul il vede, il modifica sau il sterge inainte de trimitere. Toate
+  combinatiile de raspunsuri au fost verificate: rezumatul nu declanseaza verificarea de urgenta.
+
+### Recomandari pentru vizita (`src/lib/patientVisitGuidance.js`, ecranul de verificare)
+
+- Text fix, informativ, ales de cod dupa nevoie, anamneza, cuvintele pacientului si serviciile
+  cautate: unde sa mearga, cum se pregateste, note pentru cataracta, operatie de cataracta in trecut,
+  glaucom / tensiune oculara, glaucom in familie, diabet, tensiune arteriala mare, ochi uscati.
+- Fara diagnostic, doze sau tratamente noi; fara spital, UPU sau 112 (acestea raman doar pe ecranul
+  de urgenta confirmata). Pentru simptome exista o plasa de siguranta formulata ca pe ecranul de
+  confirmare ("cere o evaluare medicala fara sa astepti programarea").
+- Nota pentru copii nu contine praguri de varsta (regula `pediatric_age_to_care_path` asteapta
+  validare clinica).
+
+### Verificari etapa 2
+
+- `scripts/verify-patient-anamnesis-guidance.mjs` (nou, in `test:services`): 10 verificari.
+- `test:services` trece; `verify-all`: 143 trec, aceleasi 3 esecuri preexistente.
+- ESLint 0 erori, `vite build` reuseste, typecheck fara erori noi in fisierele atinse.
+- Randare server-side a ecranelor noi fara erori. Fara verificare in browser.
+
+### De decis
+
+1. **Anamneza direct la medic.** Daca vrei ca raspunsurile sa ajunga structurat la locatii (nu doar
+   prin mesaj), e nevoie de un acord nou care sa enumere datele de sanatate, de afisare in contul
+   furnizorului si, ideal, de o verificare juridica (date de sanatate, GDPR art. 9).
+2. **Revizuire medicala** a textelor de recomandare inainte de extinderea lor.
+3. **Eliminarea completa a randului cu 112** ar contrazice politica actuala si cere revizuirea ei.
