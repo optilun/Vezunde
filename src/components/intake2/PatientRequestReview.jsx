@@ -8,10 +8,23 @@ import { getCanonicalServiceDefinition, normalizeServiceKey } from "../../../sha
 
 const FREE_TEXT_KEYS = new Set(["descriere", "symptom_description", "investigation_reference_text"]);
 
+function comparableText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function detailRows(draft) {
   const excluded = new Set(["categorie", "locatie"]);
+  const original = comparableText(draft?.original_message);
   return (draft?.answers || []).filter((answer) => (
-    !excluded.has(answer.question_key) && !isPatientAnamnesisKey(answer.question_key)
+    !excluded.has(answer.question_key)
+    && !isPatientAnamnesisKey(answer.question_key)
+    // Descrierea precompletata si trimisa neschimbata apare deja la "Ai descris".
+    && !(FREE_TEXT_KEYS.has(answer.question_key) && original && comparableText(answer.answer_value) === original)
   ));
 }
 
