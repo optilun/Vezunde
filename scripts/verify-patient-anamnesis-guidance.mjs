@@ -16,6 +16,7 @@ import {
   ADULT_ANAMNESIS_QUESTIONS,
   CHILD_ANAMNESIS_QUESTIONS,
   PATIENT_ANAMNESIS_MARKER_KEY,
+  buildAnamnesisPrefill,
   buildPatientAnamnesisAnswers,
   buildPatientAnamnesisMessage,
   isPatientAnamnesisKey,
@@ -278,6 +279,31 @@ check('server question selection ignores anamnesis answers', () => {
     question_history: answers.map((answer) => answer.question_key),
   }, '', []).patient_guidance_question_selection?.next_question_key;
   assert.equal(select(withAnamnesis), select(base));
+});
+
+// --- 7. Corecturi din testul live din 2026-09-24 ---------------------------------------
+check('conditions already written start checked in the anamnesis', () => {
+  const prefill = buildAnamnesisPrefill('adult', detectPatientConditionsFromText('am tensiune oculara mare si diabet, mama are glaucom'));
+  assert.deepEqual(prefill, { anamneza_afectiuni: ['diabet', 'glaucom'], anamneza_familie: ['da'] });
+  assert.deepEqual(buildAnamnesisPrefill('child', new Set(['glaucom'])), {}, 'anamneza copilului nu se precompleteaza din textul parintelui');
+  assert.deepEqual(buildAnamnesisPrefill('adult', new Set()), {});
+  const screen = source('src/components/intake2/PatientAnamnesis.jsx');
+  assert.match(screen, /Am bifat din mesajul tău/, 'pre-bifarea este anuntata explicit');
+  assert.match(screen, /Poți debifa oricând/);
+  assert.match(source('src/components/intake2/ConversationalCard.jsx'), /initialSelections=\{anamnesisPrefill\}/);
+});
+
+check('safety check is not shown twice after the patient answered it', () => {
+  const text = source('src/components/intake2/QuestionText.jsx');
+  assert.match(text, /!SYMPTOM_TEXT_QUESTION_KEYS\.has\(question\.key\) \|\| safetyAlreadyCleared/);
+  const card = source('src/components/intake2/ConversationalCard.jsx');
+  assert.match(card, /safetyAlreadyCleared=\{safetyCheckCleared\}/);
+  assert.match(card, /answer\.question_key === "safety_targeted_check" && answer\.answer_value === "niciuna"/);
+});
+
+check('review does not repeat an unchanged description', () => {
+  const review = source('src/components/intake2/PatientRequestReview.jsx');
+  assert.match(review, /FREE_TEXT_KEYS\.has\(answer\.question_key\) && original && comparableText\(answer\.answer_value\) === original/);
 });
 
 console.log(`Patient anamnesis and visit guidance verified: ${checks} checks.`);
