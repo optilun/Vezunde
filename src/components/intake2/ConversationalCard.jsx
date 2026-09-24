@@ -653,7 +653,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     questionSelectionRequestRef.current.activate();
     matchingRequestRef.current.activate();
     return () => {
-      interpretationAttemptedRef.current = false;
+      handledInterpretationRef.current = null;
       interpretationRequestRef.current.dispose();
       questionSelectionRequestRef.current.dispose();
       matchingRequestRef.current.dispose();
@@ -682,6 +682,15 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   useEffect(() => {
     if (phase !== "questions" || !state.intent) return undefined;
+    // 2026-09-24: in ramura "Nu sunt sigur", planificatorul intreba doar "Ce te aduce la noi?"
+    // si localitatea; cine raspundea "Nu sunt sigur" trimitea cererea dupa doua intrebari, fara
+    // sa-si fi descris nevoia. Intai cerem descrierea (intrebarea din lista aprobata a intentiei
+    // `unknown`), apoi o interpretam si propunem nevoia potrivita (vezi handleText).
+    if (state.intent === "unknown" && !hasPatientDescription(state.answers)) {
+      questionSelectionRequestRef.current.invalidate();
+      setQuestionSelection(fallbackQuestionSelection());
+      return undefined;
+    }
     const requestId = questionSelectionRequestRef.current.begin();
     setQuestionSelection({ status: "pending", question: null });
 
