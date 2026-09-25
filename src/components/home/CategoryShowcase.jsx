@@ -59,12 +59,16 @@ const CATEGORIES = [
   },
 ];
 
+// Plăcuțele cu pictogramă stau deasupra cardului căruia îi aparțin (ochiul peste "Control de
+// vedere", rotița peste "Reparații și reglaje") și iau o nuanță mai închisă din culoarea lui,
+// ca să se citească drept eticheta categoriei, nu ca pete de culoare separate.
+const SHAPE_TILE_PALETTE = {
+  gear: { tile: "border-[#6e4d17] bg-[#8a6424] text-[#f6ecd2]", fill: "#8a6424" },
+  pupil: { tile: "border-[#3e6278] bg-[#4b7085] text-[#eef4f6]", fill: "#4b7085" },
+};
+
 function ShapeTile({ type, className = "" }) {
-  const palette = {
-    gear: "border-[#274bac] bg-[#345bc8] text-[#f6f1e8]",
-    flower: "border-[#cc5522] bg-[#e86827] text-[#f8e7d5]",
-    pupil: "border-[#584266] bg-[#684d78] text-[#f6f0e8]",
-  };
+  const colors = SHAPE_TILE_PALETTE[type];
 
   return (
     <Reveal
@@ -72,7 +76,7 @@ function ShapeTile({ type, className = "" }) {
       variant="scale"
       delay={120}
       threshold={0.5}
-      className={`relative hidden overflow-hidden rounded-[1.25rem] border shadow-[0_12px_32px_rgba(20,20,20,0.06)] lg:grid lg:place-items-center ${palette[type]} ${className}`}
+      className={`relative hidden overflow-hidden rounded-[1.25rem] border shadow-[0_12px_32px_rgba(20,20,20,0.06)] lg:grid lg:place-items-center ${colors.tile} ${className}`}
     >
       <span className="absolute left-3 top-3 h-3 w-3 border-l border-t border-current opacity-35" />
       <span className="absolute right-3 top-3 h-3 w-3 border-r border-t border-current opacity-35" />
@@ -87,17 +91,7 @@ function ShapeTile({ type, className = "" }) {
             ))}
             <circle cx="50" cy="50" r="31" />
           </g>
-          <rect x="40" y="40" width="20" height="20" rx="3" fill="#345bc8" />
-        </svg>
-      )}
-
-      {type === "flower" && (
-        <svg viewBox="0 0 100 100" className="h-[62%] w-[62%]" fill="currentColor">
-          <circle cx="50" cy="25" r="20" />
-          <circle cx="75" cy="50" r="20" />
-          <circle cx="50" cy="75" r="20" />
-          <circle cx="25" cy="50" r="20" />
-          <rect x="42" y="42" width="16" height="16" rx="2" fill="#e86827" />
+          <rect x="40" y="40" width="20" height="20" rx="3" fill={colors.fill} />
         </svg>
       )}
 
@@ -153,9 +147,8 @@ export default function CategoryShowcase() {
             <span key={position} aria-hidden="true" className="pointer-events-none absolute top-[calc(58%_-_4px)] z-20 h-[9px] w-[9px] -translate-x-1/2 rounded-full border border-[#8d7658] bg-[#f8f4ec]" style={{ left: `${position}%` }} />
           ))}
 
-          <ShapeTile type="gear" className="lg:col-[4/5] lg:row-[1/2]" />
-          <ShapeTile type="flower" className="lg:col-[5/6] lg:row-[1/2]" />
-          <ShapeTile type="pupil" className="lg:col-[11/13] lg:row-[1/2]" />
+          <ShapeTile type="pupil" className="lg:col-[4/6] lg:row-[1/2]" />
+          <ShapeTile type="gear" className="lg:col-[11/13] lg:row-[1/2]" />
 
           {CATEGORIES.map((category, index) => (
             <Reveal
