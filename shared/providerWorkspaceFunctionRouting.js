@@ -10,6 +10,7 @@ export const PROVIDER_WORKSPACE_FUNCTION_ROUTES = Object.freeze({
   getProviderProfileCompleteness: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   getProviderWorkspaceOverview: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   providerBillingOps: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
+  providerOrganizationLeadInboxOps: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   createProviderCheckoutSession: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   createProviderBillingPortalSession: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   syncProviderStripeSubscription: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
