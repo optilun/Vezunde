@@ -168,6 +168,14 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // schimba: buildRecommendationScore, assignRecommendationBuckets si selectia Top 3 raman
     // identice.
     'ac39252e941d1046fe608ac1da17633be013cf8e',
+    // 2026-09-25, cheile din text la nevoie confirmata (aprobat explicit de owner, audit AI
+    // 11.2): `requestedKeys` se calculeaza prin filterTextServiceKeysForConfirmedNeed
+    // (base44/shared/confirmedNeedServiceKeys.js). Cu `intent` cunoscut si chei explicite,
+    // cheile gasite in text raman doar din familia nevoii; fara intentie (cautarea libera,
+    // interpret_only, question_only) rezultatul e reuniunea de pana acum. Schimbarea sta
+    // inaintea ramurii de potrivire: amprenta 'f33a9859' ramane aceeasi, iar
+    // buildRecommendationScore, assignRecommendationBuckets si selectia Top 3 raman identice.
+    'abac6abab24d4ebca2a7795ca11b7dd72b7ef933',
   ]),
 });
 
