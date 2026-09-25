@@ -147,6 +147,17 @@ export default function Hero({ onStartedChange } = {}) {
           background: "linear-gradient(180deg, #DCE4F2 0%, #E9ECF4 22%, #F5F3EE 55%, #F7F2E8 100%)",
         }}
       />
+      {/* Doua pete de culoare din paleta categoriilor (lavanda + teracota), foarte estompate, ca
+          fundalul sa nu mai fie doar alb-albastrui. Stau sub grila de puncte si sub petele albe. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-70"
+        style={{
+          background:
+            "radial-gradient(ellipse 46% 38% at 14% 18%, rgba(190,169,200,0.32) 0%, transparent 68%), " +
+            "radial-gradient(ellipse 42% 34% at 87% 82%, rgba(228,167,134,0.26) 0%, transparent 68%)",
+        }}
+      />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.56]"
