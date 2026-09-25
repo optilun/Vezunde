@@ -86,5 +86,8 @@ assert.match(providerCenter, /location_id: targetLocationId/);
 assert.match(providerCenter, /onOpenTarget\(\{ \.\.\.notification, location_id: targetLocationId \}\)/);
 assert.match(genericCenter, /markNotificationRead\(notification\.id, notification\)/);
 assert.match(genericCenter, /notification\.location_name/);
+assert.match(providerCenter, /refreshIntervalMs=\{isAggregate \? 0 : 60000\}/);
+assert.match(genericCenter, /if \(refreshIntervalMs <= 0\) return undefined/);
+assert.match(genericCenter, /lastLoadedAtRef\.current > 30000/);
 
 console.log('Provider notification scope checks passed.');
