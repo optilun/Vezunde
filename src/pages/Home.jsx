@@ -4,6 +4,7 @@ import CategoryShowcase from "@/components/home/CategoryShowcase";
 import SituationExplainer from "@/components/home/SituationExplainer";
 import HowItWorks from "@/components/home/HowItWorks";
 import ProCta from "@/components/home/ProCta";
+import { OpticianFigureBody, OpticianFigureHands } from "@/components/home/HeroOpticianFigure";
 import { useMediaQuery, usePrefersReducedMotion } from "@/lib/motion";
 
 // 2026-09-25. Bannerul despre stadiul platformei (de deasupra primului ecran) a fost scos, la cererea
@@ -134,11 +135,17 @@ export default function Home() {
       </div>
 
       {showCanvas && (
+        // Invelisul urca impreuna cu foaia; figurina de optician e ancorata la marginea ei de sus:
+        // corpul sta sub foaie (z-0), mainile peste ea (z-20), ca si cum ar tine marginea.
         <div
-          className="relative z-20 -mt-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:-mt-24 sm:rounded-t-[2.75rem] lg:-mt-28 lg:rounded-t-[3.25rem]"
+          className="relative z-20 -mt-20 sm:-mt-24 lg:-mt-28"
           style={pinActive ? { marginTop: `calc(-1 * (${PIN_DISTANCE} + 1.5rem))` } : undefined}
         >
-          <HomeCanvas />
+          <OpticianFigureBody />
+          <div className="relative z-10 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
+            <HomeCanvas />
+          </div>
+          <OpticianFigureHands />
         </div>
       )}
     </div>
