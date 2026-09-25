@@ -9,9 +9,7 @@ import {
 } from "@/components/ui/sheet";
 
 const MOBILE_LINKS = [
-  { to: "/cauta", label: "Caută" },
   { to: "/ghid", label: "Ghid pentru vedere" },
-  { to: "/parteneri", label: "Parteneri" },
   { to: "/pentru-specialisti", label: "Pentru specialiști" },
   { to: "/adauga-sau-revendica", label: "Adaugă sau revendică un profil" },
 ];
@@ -54,7 +52,7 @@ export default function MobileNavigationSheet({ open, onOpenChange }) {
 
         <div className="border-t border-border px-4 py-5">
           <Link
-            to="/cerere"
+            to="/cauta"
             onClick={close}
             className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#171717] px-5 text-sm font-semibold text-white"
           >
