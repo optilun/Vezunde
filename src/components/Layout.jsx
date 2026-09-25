@@ -42,9 +42,6 @@ function DesktopHeader({ scrolled, opaque, transparent }) {
         </Link>
 
         <nav className="flex items-center gap-1.5">
-          <NavLink to="/cauta" className={desktopNavLinkClassName}>
-            Caută
-          </NavLink>
           <NavLink
             to="/ghid"
             className={({ isActive }) =>
@@ -53,15 +50,12 @@ function DesktopHeader({ scrolled, opaque, transparent }) {
           >
             Ghid
           </NavLink>
-          <NavLink to="/parteneri" className={desktopNavLinkClassName}>
-            Parteneri
-          </NavLink>
           <NavLink to="/pentru-specialisti" className={desktopNavLinkClassName}>
             Pentru specialiști
           </NavLink>
           <HeaderAccountLink />
           <Link
-            to="/cerere"
+            to="/cauta"
             className="ml-3 inline-flex min-h-12 items-center rounded-full bg-[#171717] px-6 py-2.5 text-[0.95rem] font-semibold text-white transition-colors hover:bg-[#2B2B2B]"
           >
             Găsește opțiuni
