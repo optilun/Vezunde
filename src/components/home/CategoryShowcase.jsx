@@ -198,7 +198,7 @@ export default function CategoryShowcase() {
             <span aria-hidden="true" className="order-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f8f4ec] text-[#171717] sm:h-14 sm:w-14">
               <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none sm:h-7 sm:w-7" />
             </span>
-            <span className="font-heading text-2xl font-bold leading-none tracking-[-0.035em] sm:text-[2rem]">Alege ce cauți</span>
+            <span className="font-heading text-2xl font-bold leading-none tracking-[-0.035em] sm:text-[2rem]">Vezi ghidul complet</span>
           </Link>
         </Reveal>
       </div>
