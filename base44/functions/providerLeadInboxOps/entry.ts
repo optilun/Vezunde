@@ -7,6 +7,7 @@ import {
   summarizeProviderLeadInbox,
 } from '../../shared/providerLeadInboxPolicy.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
+import { isProviderLeadInboxTarget } from '../../shared/providerLeadInboxTargetPolicy.js';
 import {
   PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION,
   buildProviderLeadFullDetails,
@@ -254,6 +255,23 @@ Deno.serve(async (req) => {
       limit: input.limit,
     });
     const leads = await Promise.all(rows.map((lead) => enrichLeadForInbox(svc, lead, user, entitlement)));
+    const requestedLeadId = clean(input.lead_id, 120);
+    let targetRow = requestedLeadId
+      ? await svc.entities.ProviderLead.get(requestedLeadId).catch(() => null)
+      : null;
+    const targetExpiresAt = Date.parse(String(targetRow?.expires_at || ''));
+    if (targetRow?.location_id === locationId
+      && targetRow.delivery_state === 'available'
+      && targetRow.request_id
+      && Number.isFinite(targetExpiresAt)
+      && targetExpiresAt <= Date.now()) {
+      await reconcilePatientRequestExpiration(svc, targetRow.request_id).catch(() => null);
+      targetRow = await svc.entities.ProviderLead.get(requestedLeadId).catch(() => null);
+    }
+    const targetLead = isProviderLeadInboxTarget(targetRow, locationId, requestedScope, requestedStatus)
+      ? (leads.find((lead) => lead.id === requestedLeadId)
+        || await enrichLeadForInbox(svc, targetRow, user, entitlement))
+      : null;
 
     return res({
       contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
@@ -265,6 +283,7 @@ Deno.serve(async (req) => {
       location: safeLocation(authorized.location),
       counters: summarizeProviderLeadInbox(allRows),
       leads,
+      target_lead: targetLead,
     });
   } catch (_error) {
     return res({ error: 'Leadurile nu au putut fi incarcate.' }, 500);
