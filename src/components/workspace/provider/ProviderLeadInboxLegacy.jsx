@@ -3,7 +3,7 @@
 // un card lung, iar chatul o cutie mica ingropata in josul lui - greu de urmarit cu mai
 // multe cereri active. Apelurile backend (providerLeadInboxOps, providerLeadResponseOps) si
 // regulile de acces rămân identice: s-a schimbat doar prezentarea.
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Inbox, Loader2, LockKeyhole, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
@@ -36,12 +36,15 @@ function responseData(response) {
   return data;
 }
 
-export default function ProviderLeadInbox({ locationId, location }) {
+export default function ProviderLeadInbox({ locationId, location, targetLeadId = "", targetHistory = false }) {
   const [data, setData] = useState(null);
   const [entitlement, setEntitlement] = useState(FREE_ENTITLEMENT);
   const [responsesByLead, setResponsesByLead] = useState({});
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(targetHistory ? "history" : "all");
   const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [targetMissing, setTargetMissing] = useState(false);
+  const [notificationTick, setNotificationTick] = useState(0);
+  const targetLeadRef = useRef(targetLeadId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [markingId, setMarkingId] = useState("");
@@ -62,6 +65,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
         location_id: locationId,
         scope: selectedFilter.scope,
         status: selectedFilter.status,
+        lead_id: targetLeadRef.current || undefined,
         limit: 100,
       }));
       setData(inboxData);
@@ -81,13 +85,28 @@ export default function ProviderLeadInbox({ locationId, location }) {
     }
   }, [filter, locationId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, notificationTick]);
 
-  const leads = useMemo(() => data?.leads || [], [data?.leads]);
+  const leads = useMemo(() => {
+    const listed = data?.leads || [];
+    const target = data?.target_lead;
+    return target && !listed.some((lead) => lead.id === target.id) ? [target, ...listed] : listed;
+  }, [data]);
 
   // Pe desktop lista si detaliul stau alaturi, deci prima cerere se deschide singura;
   // daca selectia nu mai exista in filtrul curent, revenim la prima din lista.
   useEffect(() => {
+    if (targetLeadRef.current && !loading && data) {
+      const target = leads.find((lead) => lead.id === targetLeadRef.current);
+      if (target) {
+        if (selectedLeadId !== target.id) setSelectedLeadId(target.id);
+        setTargetMissing(false);
+      } else {
+        setSelectedLeadId("");
+        setTargetMissing(true);
+      }
+      return;
+    }
     if (leads.length === 0) {
       if (selectedLeadId) setSelectedLeadId("");
       return;
@@ -97,12 +116,15 @@ export default function ProviderLeadInbox({ locationId, location }) {
     // selectie automata ar sari peste ea. Selectia stalea se curata insa pe ambele.
     const wide = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
     setSelectedLeadId(wide ? leads[0].id : "");
-  }, [leads, selectedLeadId]);
+  }, [data, leads, loading, selectedLeadId]);
 
   const openNotificationTarget = useCallback((notification) => {
     if (!notification?.action_target_id) return;
+    targetLeadRef.current = notification.action_target_id;
+    setTargetMissing(false);
     setFilter(TERMINAL_NOTIFICATION_EVENTS.has(notification.event_key) ? "history" : "all");
     setSelectedLeadId(notification.action_target_id);
+    setNotificationTick((tick) => tick + 1);
   }, []);
 
   const markViewed = async (leadId) => {
@@ -188,7 +210,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
               lead={lead}
               response={responsesByLead[lead.id] || null}
               selected={lead.id === selectedLeadId}
-              onSelect={() => setSelectedLeadId(lead.id)}
+              onSelect={() => { targetLeadRef.current = lead.id; setTargetMissing(false); setSelectedLeadId(lead.id); }}
             />
           ))}
         </div>
@@ -270,6 +292,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
       </div>
 
       {error && <p role="alert" className="rounded-[1.4rem] border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+      {targetMissing && !loading && !error && <p role="status" className="rounded-[1.4rem] border border-[#dac69b] bg-[#eadcba] p-4 text-sm text-foreground">Cererea aleasă nu a putut fi deschisă în acest filtru. Alege o cerere din listă sau actualizează pagina.</p>}
 
       {/* Pe telefon lista si detaliul nu incap alaturi, deci lista e "acasa" si intri in
           cerere, cu buton de intoarcere - acelasi tipar ca in spatiul cererii pacientului. */}
