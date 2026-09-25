@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { canShowOrganizationInbox, groupOrganizationLeads, locationPlanLabel, mergeFocusedLead, organizationLeadTarget } from "../src/lib/providerOrganizationInboxView.js";
+import { canShowOrganizationInbox, groupOrganizationLeads, locationPlanLabel, mergeFocusedLead, organizationInboxDataFor, organizationLeadTarget } from "../src/lib/providerOrganizationInboxView.js";
 
 const deliveredTwice = [
   { id: "lead-a", location_id: "loc-a", group_key: "opaque-1", preview_summary: "aceeasi descriere" },
@@ -21,6 +21,7 @@ assert.equal(groupOrganizationLeads([{ id: "x" }, { id: "y" }]).length, 2, "Ungr
 const globalOwner = { isOrganizationOwner: true, organizationId: "org", locations: [{ id: "a" }, { id: "b" }] };
 const selectiveOwner = { ...globalOwner, locations: [{ id: "a" }] };
 assert.equal(canShowOrganizationInbox(globalOwner), true, "An owner with two authorized locations gets the aggregate view");
+assert.equal(organizationInboxDataFor({ organization_id: "org-a", locations: [{ id: "a" }] }, "org-b"), null, "A previous organization's locations must never reach the next notification feed");
 assert.equal(canShowOrganizationInbox(selectiveOwner), false, "A selective owner with one location remains on its inbox");
 assert.equal(canShowOrganizationInbox({ ...globalOwner, isOrganizationOwner: false }), false, "Manager, staff and organization admin do not get the aggregate view");
 assert.equal(locationPlanLabel({ a: { plan_code: "pro" }, b: { plan_code: "free" } }, "a"), "Pro");
