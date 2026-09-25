@@ -20,13 +20,6 @@
     <path d="M40 20v240M80 20v240M120 20v240M160 20v240M200 20v240M240 20v240M280 20v240M320 20v240M360 20v240"/>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#91482F">
-    <text x="20" y="19" font-size="9" letter-spacing="1.2">FRAME / FRONT VIEW</text>
-    <text x="300" y="19" font-size="8" letter-spacing=".8">MODEL A-50</text>
-    <text x="20" y="263" font-size="8" opacity=".72">ACETATE / FULL RIM</text>
-    <text x="301" y="263" font-size="8" opacity=".72">SCALE 1:2</text>
-  </g>
-
   <path d="M43 72c31-17 84-19 117-6 17 7 25 16 40 16s23-9 40-16c33-13 86-11 117 6l-5 20c-7 38-29 76-80 76-47 0-68-34-70-68-5-5-13-8-22-8s-17 3-22 8c-2 34-23 68-70 68-51 0-73-38-80-76Z" fill="#87402F" fill-opacity=".08" transform="translate(0 6)"/>
   <path d="M43 72c31-17 84-19 117-6 17 7 25 16 40 16s23-9 40-16c33-13 86-11 117 6l-5 20c-7 38-29 76-80 76-47 0-68-34-70-68-5-5-13-8-22-8s-17 3-22 8c-2 34-23 68-70 68-51 0-73-38-80-76Z" fill="#B75B40" fill-opacity=".14" stroke="url(#acetate)" stroke-width="7" stroke-linejoin="round"/>
   <path d="M57 84c26-12 68-13 93-4 14 6 19 15 19 30 0 28-17 48-58 48-43 0-60-25-66-62ZM343 84c-26-12-68-13-93-4-14 6-19 15-19 30 0 28 17 48 58 48 43 0 60-25 66-62Z" fill="url(#lens)" stroke="#C66B4B" stroke-width="1.6"/>
@@ -39,16 +32,6 @@
   <path d="M71 119c8 22 24 31 46 31M329 119c-8 22-24 31-46 31" stroke="#E6A083" stroke-width="1.5" opacity=".58"/>
   <path d="M185 100c1 9 6 14 15 14s14-5 15-14" stroke="#763421" stroke-width="1.4"/>
 
-  <g stroke="#99513A" stroke-width=".9" fill="none">
-    <path d="M45 54v-12M169 70V42M45 47h124" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/>
-    <path d="M169 61v-19M231 61V42M169 47h62" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/>
-    <path d="M231 70V42M355 54v-12M231 47h124" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/>
-    <path d="M365 84h16M365 158h16M376 84v74" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/>
-  </g>
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7.5" fill="#8E4630">
-    <text x="94" y="40">50 mm</text><text x="185" y="40">18</text><text x="281" y="40">50 mm</text><text x="381" y="124" transform="rotate(90 381 124)">42 mm</text>
-  </g>
-
   <path d="M23 129h354" stroke="#A2573E" stroke-width=".9" stroke-dasharray="5 5" opacity=".6"/>
   <path d="M200 29v151" stroke="#A2573E" stroke-width=".8" stroke-dasharray="3 5" opacity=".48"/>
   <circle cx="200" cy="129" r="3.5" fill="#F4D5C5" stroke="#91472F"/>
@@ -57,7 +40,7 @@
     <path d="M0 26c25-15 68-16 96-3 17 8 17 24 0 32-28 13-71 12-96-3-14-8-14-18 0-26Z" fill="url(#lens)" stroke="#B85D3F" stroke-width="1.2"/>
     <path d="M7 28c22-9 57-10 80-2" stroke="#FFF8F2" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
     <path d="M0 39h96M48 8v64" stroke="#A4543A" stroke-width=".75" stroke-dasharray="3 5" opacity=".58"/>
-    <text x="3" y="73" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7" fill="#8E4630">LENS A / BEVEL</text>
+    
   </g>
   <g transform="translate(156 187)">
     <path d="M0 23h71l13 14-13 14H0Z" fill="#F4D2C1" fill-opacity=".45" stroke="#A34F35" stroke-width="1.1"/>
@@ -65,7 +48,7 @@
     <path d="M0 37h84" stroke="#A4543A" stroke-width=".8" stroke-dasharray="3 4"/>
     <path d="M89 23v28" stroke="#8F452F" stroke-width=".8"/>
     <path d="M92 26 102 37 92 48" stroke="#8F452F" stroke-width="1.1"/>
-    <text x="0" y="69" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7" fill="#8E4630">GROOVE 120° / 1.5 mm</text>
+    
   </g>
   <g transform="translate(337 211)" stroke="#8D452F" fill="none"><circle r="25" stroke-width="1.1"/><circle r="18" stroke-width=".7" opacity=".45"/><path d="M-17 0h34M0-17v34" stroke-width=".8"/><circle r="4" fill="#E5A282"/></g>
 </svg>

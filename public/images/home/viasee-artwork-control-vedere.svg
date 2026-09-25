@@ -17,14 +17,6 @@
     <path d="M40 22v235M80 22v235M120 22v235M160 22v235M200 22v235M240 22v235M280 22v235M320 22v235M360 22v235"/>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#496B80">
-    <text x="21" y="21" font-size="9" letter-spacing="1.4">REFRACTION / OD</text>
-    <text x="287" y="21" font-size="9" letter-spacing="1">AXIS 090°</text>
-    <text x="22" y="258" font-size="8" opacity=".7">D +1.50</text>
-    <text x="89" y="258" font-size="8" opacity=".7">F 0.66 m</text>
-    <text x="318" y="258" font-size="8" opacity=".7">RETINA</text>
-  </g>
-
   <path d="M20 136h360" stroke="#456A80" stroke-width="1.1" stroke-dasharray="6 6" opacity=".75"/>
   <path d="M35 128v16M48 132v8M61 128v16M74 132v8M87 128v16M100 132v8M113 128v16M126 132v8" stroke="#557588" stroke-width=".9" opacity=".58"/>
 
@@ -34,7 +26,7 @@
   <path d="M84 44h40M84 228h40" stroke="#4B7085" stroke-width="1"/>
   <path d="M88 44v184M120 44v184" stroke="#4B7085" stroke-width=".8" stroke-dasharray="3 5" opacity=".5"/>
   <path d="M78 44h-9v184h9" stroke="#4B7085" stroke-width="1.1"/>
-  <text x="59" y="141" transform="rotate(-90 59 141)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#496B80">Ø 68 mm</text>
+  
 
   <g>
     <path d="M251 49c54-23 116 15 119 80 3 69-58 111-119 84-19-8-31-25-35-47-3-16-3-44 0-60 4-26 16-47 35-57Z" fill="url(#eye)" stroke="#446A80" stroke-width="2"/>

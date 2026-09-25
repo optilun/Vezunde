@@ -21,13 +21,6 @@
     <path d="M40 20v520M80 20v520M120 20v520M160 20v520M200 20v520M240 20v520M280 20v520M320 20v520M360 20v520M400 20v520M440 20v520M480 20v520M520 20v520M560 20v520M600 20v520M640 20v520M680 20v520M720 20v520M760 20v520"/>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#6B5676">
-    <text x="27" y="27" font-size="10" letter-spacing="1.5">DIRECTORY / NEARBY</text>
-    <text x="627" y="27" font-size="9" letter-spacing="1">GRID 04 / LIVE</text>
-    <text x="28" y="450" font-size="8" opacity=".72">RADIUS 12.0 KM</text>
-    <text x="643" y="450" font-size="8" opacity=".72">46.77 N / 23.59 E</text>
-  </g>
-
   <g stroke="#76627F" stroke-width="1.15" opacity=".27">
     <path d="M22 73 170 145 273 62 398 127 541 48 771 154"/>
     <path d="M15 252 132 197 255 274 390 190 536 284 785 218"/>
@@ -65,7 +58,7 @@
     <circle cx="141" cy="173" r="37" fill="#FCF8F7" fill-opacity=".5" stroke="#AA98B1"/>
     <path d="M54 70a133 133 0 0 1 170 0" stroke="#FFF" stroke-width="5" stroke-linecap="round" opacity=".42"/>
     <g stroke="#6B5676" opacity=".55"><path d="M141-7v18M141 335v18M-39 173h18M303 173h18"/><path d="M14 46l13 13M255 287l13 13M14 300l13-13M255 59l13-13"/></g>
-    <text x="222" y="321" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#675271">OPTIC / 24 mm</text>
+    
   </g>
 
   <g>
@@ -74,30 +67,30 @@
       <rect width="285" height="102" rx="18" fill="#FFFCFA" fill-opacity=".88" stroke="#B7A8BD"/>
       <circle cx="50" cy="51" r="31" fill="#A994B2"/>
       <path d="M34 68V42l16-11 16 11v26M41 68V49h18v19M37 45h26M50 31v-7" stroke="#FFF9F6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="94" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#6D5877" letter-spacing="1">CLINICA</text>
+      
       <path d="M94 43h108M94 58h83M94 73h58" stroke="#806B89" stroke-width="5.5" stroke-linecap="round" opacity=".62"/>
       <g fill="#806B89"><circle cx="216" cy="78" r="4"/><circle cx="230" cy="78" r="4"/><circle cx="244" cy="78" r="4"/><circle cx="258" cy="78" r="4"/></g>
-      <text x="217" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7" fill="#6D5877">2.4 KM</text>
+      
     </g>
     <g transform="translate(27 184)">
       <rect y="6" width="272" height="102" rx="18" fill="#715A7B" fill-opacity=".08"/>
       <rect width="272" height="102" rx="18" fill="#FFFCFA" fill-opacity=".9" stroke="#B7A8BD"/>
       <circle cx="50" cy="51" r="31" fill="#8FA198"/>
       <path d="M43 30h14v14h14v14H57v14H43V58H29V44h14Z" stroke="#FFF9F6" stroke-width="2.4" stroke-linejoin="round"/>
-      <text x="94" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#6D5877" letter-spacing="1">OFTALMOLOG</text>
+      
       <path d="M94 43h102M94 58h77M94 73h53" stroke="#806B89" stroke-width="5.5" stroke-linecap="round" opacity=".6"/>
       <g fill="#806B89"><circle cx="204" cy="78" r="4"/><circle cx="218" cy="78" r="4"/><circle cx="232" cy="78" r="4"/><circle cx="246" cy="78" r="4"/></g>
-      <text x="205" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7" fill="#6D5877">3.1 KM</text>
+      
     </g>
     <g transform="translate(55 304)">
       <rect y="6" width="262" height="102" rx="18" fill="#715A7B" fill-opacity=".08"/>
       <rect width="262" height="102" rx="18" fill="#FFFCFA" fill-opacity=".9" stroke="#B7A8BD"/>
       <circle cx="50" cy="51" r="31" fill="#C77D67"/>
       <g stroke="#FFF9F6" stroke-width="2.4"><circle cx="40" cy="51" r="11"/><circle cx="61" cy="51" r="11"/><path d="M51 48h-1M29 47l-7-4M72 47l7-4" stroke-linecap="round"/></g>
-      <text x="94" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#6D5877" letter-spacing="1">OPTICA</text>
+      
       <path d="M94 43h96M94 58h74M94 73h50" stroke="#806B89" stroke-width="5.5" stroke-linecap="round" opacity=".6"/>
       <g fill="#806B89"><circle cx="194" cy="78" r="4"/><circle cx="208" cy="78" r="4"/><circle cx="222" cy="78" r="4"/><circle cx="236" cy="78" r="4"/></g>
-      <text x="194" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7" fill="#6D5877">4.0 KM</text>
+      
     </g>
   </g>
 
@@ -114,5 +107,4 @@
   </g>
   <ellipse cx="436" cy="379" rx="52" ry="18" stroke="#70587D" stroke-width="1" opacity=".42"/>
   <ellipse cx="436" cy="379" rx="29" ry="9" stroke="#70587D" stroke-width="1" opacity=".32"/>
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#65506F"><text x="452" y="401">NODE 18</text><text x="481" y="278">R 2.4</text></g>
 </svg>
