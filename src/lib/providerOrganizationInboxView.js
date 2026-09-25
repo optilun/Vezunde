@@ -1,3 +1,7 @@
+export function organizationInboxDataFor(data, organizationId) {
+  return data?.organization_id === organizationId ? data : null;
+}
+
 export function canShowOrganizationInbox({ isOrganizationOwner, organizationId, locations }) {
   return Boolean(isOrganizationOwner && organizationId && Array.isArray(locations) && locations.length > 1);
 }
