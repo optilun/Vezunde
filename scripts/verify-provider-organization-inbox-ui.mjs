@@ -22,6 +22,7 @@ const globalOwner = { isOrganizationOwner: true, organizationId: "org", location
 const selectiveOwner = { ...globalOwner, locations: [{ id: "a" }] };
 assert.equal(canShowOrganizationInbox(globalOwner), true, "An owner with two authorized locations gets the aggregate view");
 assert.equal(organizationInboxDataFor({ organization_id: "org-a", locations: [{ id: "a" }] }, "org-b"), null, "A previous organization's locations must never reach the next notification feed");
+assert.equal(organizationInboxDataFor({ organization_id: "org-a", _query_key: "old" }, "org-a", "new"), null, "The previous filter or page must not be shown under the next one");
 assert.equal(canShowOrganizationInbox(selectiveOwner), false, "A selective owner with one location remains on its inbox");
 assert.equal(canShowOrganizationInbox({ ...globalOwner, isOrganizationOwner: false }), false, "Manager, staff and organization admin do not get the aggregate view");
 assert.equal(locationPlanLabel({ a: { plan_code: "pro" }, b: { plan_code: "free" } }, "a"), "Pro");
