@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import NotificationCenter from "./NotificationCenter";
 import {
   providerNotificationLocationIds,
+  resolveProviderNotificationLocation,
   mergeProviderNotificationResults,
   settleProviderNotificationLocations,
 } from "@/lib/providerNotificationScope";
@@ -39,8 +40,8 @@ export default function ProviderNotificationCenter({ locationId, locations, onOp
   }, [locationIds]);
 
   const markNotificationRead = useCallback(async (notificationId, notification) => {
-    const targetLocationId = notification?.location_id || (isAggregate ? "" : locationId);
-    if (!locationIds.includes(targetLocationId)) throw new Error("Locația notificării nu este disponibilă.");
+    const targetLocationId = resolveProviderNotificationLocation(notification, locationIds, isAggregate ? "" : locationId);
+    if (!targetLocationId) throw new Error("Locația notificării nu este disponibilă.");
     const response = await base44.functions.invoke("providerLeadInboxOps", {
       action: "notification_mark_read",
       location_id: targetLocationId,
@@ -63,8 +64,8 @@ export default function ProviderNotificationCenter({ locationId, locations, onOp
 
   const openTarget = useCallback((notification) => {
     if (!notification?.action_target_id) return;
-    const targetLocationId = notification.location_id || (isAggregate ? "" : locationId);
-    if (!locationIds.includes(targetLocationId)) return;
+    const targetLocationId = resolveProviderNotificationLocation(notification, locationIds, isAggregate ? "" : locationId);
+    if (!targetLocationId) return;
     if (onOpenTarget) {
       onOpenTarget({ ...notification, location_id: targetLocationId });
       return;
