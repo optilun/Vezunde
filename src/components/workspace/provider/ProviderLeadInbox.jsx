@@ -15,6 +15,7 @@ import { base44 } from "@/api/base44Client";
 import ProviderCompletenessPanel from "./ProviderCompletenessPanel";
 import ProviderStatusCenter from "./ProviderStatusCenter";
 import ProviderLeadInboxLegacy from "./ProviderLeadInboxLegacy";
+import ProviderOrganizationLeadInbox from "./ProviderOrganizationLeadInbox";
 import ProviderAccessBand from "./leads/ProviderAccessBand";
 import ProviderBillingPanel from "./leads/ProviderBillingPanel";
 
@@ -32,7 +33,10 @@ function responseData(response) {
 }
 
 export default function ProviderLeadInbox(props) {
-  const { locationId, location, onEntitlementChanged } = props;
+  const { locationId, location, onEntitlementChanged, organizationId, isOrganizationOwner, ownerLocations = [], onSelectLocation } = props;
+  const canViewAll = Boolean(isOrganizationOwner && organizationId && ownerLocations.length > 1);
+  const [showAllLocations, setShowAllLocations] = useState(canViewAll);
+  const [targetLead, setTargetLead] = useState(null);
   const [searchParams] = useSearchParams();
   // O intoarcere din Stripe (Checkout sau Billing Portal) trebuie sa aterizeze direct in
   // tab-ul "Cont", unde traieste ProviderBillingPanel - altfel providerul revine din plata
@@ -47,6 +51,28 @@ export default function ProviderLeadInbox(props) {
   // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
   // entitlement-ul si contoarele fara sa reincarcam toata pagina.
   const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => { setShowAllLocations(canViewAll); }, [organizationId, canViewAll]);
+  useEffect(() => {
+    setTargetLead((current) => current?.locationId && current.locationId !== locationId ? null : current);
+  }, [locationId]);
+
+  const chooseInboxLocation = (nextLocationId) => {
+    setTargetLead(null);
+    if (nextLocationId === "all") {
+      setShowAllLocations(true);
+      return;
+    }
+    setShowAllLocations(false);
+    if (nextLocationId && nextLocationId !== locationId) onSelectLocation?.(nextLocationId);
+  };
+
+  const openLeadAtLocation = (target) => {
+    if (!target?.leadId || !ownerLocations.some((item) => item.id === target.locationId)) return;
+    setTargetLead(target);
+    setShowAllLocations(false);
+    if (target.locationId !== locationId) onSelectLocation?.(target.locationId);
+  };
 
   useEffect(() => {
     if (!locationId) return;
@@ -92,16 +118,41 @@ export default function ProviderLeadInbox(props) {
 
       {tab === "leads" ? (
         <div className="space-y-5">
-          <ProviderAccessBand
-            location={location || {}}
-            entitlement={snapshot.entitlement}
-            counters={snapshot.counters}
-            onOpenAccount={() => setTab("account")}
-          />
-          <ProviderLeadInboxLegacy {...props} />
+          {canViewAll && (
+            <label className="flex flex-wrap items-center gap-2 font-heading text-sm font-bold text-foreground">
+              Inbox
+              <select
+                value={showAllLocations ? "all" : locationId}
+                onChange={(event) => chooseInboxLocation(event.target.value)}
+                className="min-h-11 max-w-full rounded-full border border-foreground/20 bg-white/70 px-4 text-sm font-medium"
+              >
+                <option value="all">Toate locațiile</option>
+                {ownerLocations.map((item) => <option key={item.id} value={item.id}>{item.public_display_name || item.name || "Locație"}</option>)}
+              </select>
+            </label>
+          )}
+          {canViewAll && showAllLocations ? (
+            <ProviderOrganizationLeadInbox organizationId={organizationId} onOpenLead={openLeadAtLocation} />
+          ) : (
+            <>
+              <ProviderAccessBand
+                location={location || {}}
+                entitlement={snapshot.entitlement}
+                counters={snapshot.counters}
+                onOpenAccount={() => setTab("account")}
+              />
+              <ProviderLeadInboxLegacy
+                key={locationId + ":" + (targetLead?.leadId || "")}
+                {...props}
+                targetLeadId={targetLead?.locationId === locationId ? targetLead.leadId : ""}
+                targetHistory={targetLead?.locationId === locationId && targetLead.history === true}
+              />
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-5">
+          {canViewAll && <p className="rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6] px-4 py-3 text-sm text-muted-foreground">Contul și facturarea de mai jos se referă numai la locația selectată: <strong className="font-heading text-foreground">{location?.public_display_name || location?.name || "Locație"}</strong>.</p>}
           <ProviderStatusCenter
             location={location || {}}
             entitlement={snapshot.entitlement}
