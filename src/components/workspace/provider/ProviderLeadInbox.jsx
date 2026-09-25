@@ -48,6 +48,9 @@ export default function ProviderLeadInbox(props) {
   const wantsAccountTab = searchParams.get("tab") === "account";
   const [snapshot, setSnapshot] = useState({ entitlement: FREE_ENTITLEMENT, counters: {} });
   const [completeness, setCompleteness] = useState(null);
+  const currentSnapshot = snapshot.locationId === locationId
+    ? snapshot : { entitlement: FREE_ENTITLEMENT, counters: {} };
+  const currentCompleteness = completeness?.selected_location_id === locationId ? completeness : null;
   const [tab, setTab] = useState(billingReturn || wantsAccountTab ? "account" : "leads");
   // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
   // entitlement-ul si contoarele fara sa reincarcam toata pagina.
@@ -91,7 +94,7 @@ export default function ProviderLeadInbox(props) {
       }).then(responseData),
     ]).then(([inboxData, completenessData]) => {
       if (!active) return;
-      setSnapshot({ entitlement: inboxData.entitlement || FREE_ENTITLEMENT, counters: inboxData.counters || {} });
+      setSnapshot({ locationId, entitlement: inboxData.entitlement || FREE_ENTITLEMENT, counters: inboxData.counters || {} });
       setCompleteness(completenessData);
     }).catch(() => null);
     return () => { active = false; };
@@ -138,8 +141,8 @@ export default function ProviderLeadInbox(props) {
             <>
               <ProviderAccessBand
                 location={location || {}}
-                entitlement={snapshot.entitlement}
-                counters={snapshot.counters}
+                entitlement={currentSnapshot.entitlement}
+                counters={currentSnapshot.counters}
                 onOpenAccount={() => setTab("account")}
               />
               <ProviderLeadInboxLegacy
@@ -156,13 +159,13 @@ export default function ProviderLeadInbox(props) {
           {canViewAll && <p className="rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6] px-4 py-3 text-sm text-muted-foreground">Contul și facturarea de mai jos se referă numai la locația selectată: <strong className="font-heading text-foreground">{location?.public_display_name || location?.name || "Locație"}</strong>.</p>}
           <ProviderStatusCenter
             location={location || {}}
-            entitlement={snapshot.entitlement}
-            counters={snapshot.counters}
+            entitlement={currentSnapshot.entitlement}
+            counters={currentSnapshot.counters}
             defaultOpen
           />
           <ProviderBillingPanel
             locationId={locationId}
-            entitlement={snapshot.entitlement}
+            entitlement={currentSnapshot.entitlement}
             onSynced={() => {
               setRefreshTick((tick) => tick + 1);
               // Anunta ProviderWorkspaceRoot sa reincarce si el planul, ca sa se actualizeze
@@ -170,7 +173,7 @@ export default function ProviderLeadInbox(props) {
               onEntitlementChanged?.();
             }}
           />
-          <ProviderCompletenessPanel data={completeness} />
+          <ProviderCompletenessPanel data={currentCompleteness} />
         </div>
       )}
     </div>
