@@ -89,7 +89,9 @@ const chatComponent = await readFile(new URL('../src/components/workspace/provid
 // campul de scris (<textarea>) traieste acum in ChatComposer.jsx, comun ambelor parti.
 const chatComposer = await readFile(new URL('../src/components/chat/ChatComposer.jsx', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
-assert.match(backend, /ProviderMembership\.filter/);
+const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
+assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
+assert.match(accessHelper, /ProviderMembership\.filter/);
 assert.match(backend, /ProviderSubscription\.filter/);
 assert.match(backend, /hasProviderFeature\(entitlement, 'provider_leads\.respond'\)/);
 assert.match(backend, /acquireProviderLeadResponseLock/);
