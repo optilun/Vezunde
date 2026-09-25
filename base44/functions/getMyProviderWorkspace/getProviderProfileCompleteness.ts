@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import {
   computeLocationCompleteness,
   computeOrganizationCompleteness,
@@ -20,7 +21,8 @@ async function authorize(svc, user, locationId) {
   if (!location) return { error: 'Locatia nu a fost gasita.', status: 404 };
   if (user.role === 'admin') return { location, memberships: [] };
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
-  if (!memberships.some((membership) => membership.location_id === locationId && normalizeRole(membership.role))) {
+  if (!memberships.some((membership) => membership.location_id === locationId && normalizeRole(membership.role))
+    && !await findProviderLeadLocationMembership(svc, user, location)) {
     return { error: 'Nu ai acces la aceasta locatie.', status: 403 };
   }
   return { location, memberships };
