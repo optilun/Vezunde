@@ -121,7 +121,7 @@ function HeroOpticsMark() {
   return (
     <div
       aria-hidden="true"
-      className="home-fade-up relative mx-auto flex h-[4.5rem] w-[4.5rem] items-center justify-center sm:h-[5.25rem] sm:w-[5.25rem]"
+      className="home-fade-up relative mx-auto mt-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center sm:mt-6 sm:h-[5.25rem] sm:w-[5.25rem]"
       style={{ "--home-delay": "90ms" }}
     >
       <span className="absolute inset-0 rounded-full border border-black/[0.06] bg-white/70 shadow-[0_10px_28px_rgba(20,20,20,0.08)]" />
@@ -252,6 +252,8 @@ export default function Hero({ onStartedChange } = {}) {
             >
               Cauți un medic oftalmolog, o clinică sau o optică? VIASEE te ajută să găsești specialistul potrivit, aproape de tine.
             </p>
+
+            <HeroOpticsMark />
 
             <form
               onSubmit={submit}
