@@ -50,6 +50,16 @@ export function sanitizeInAppNotification(row) {
   };
 }
 
+// Contextul locatiei vine din locatia autorizata de endpoint, nu din randul notificarii.
+// Sanitizatorul comun pentru pacient ramane fara metadate de provider.
+export function sanitizeProviderInAppNotification(row, authorizedLocation) {
+  return {
+    ...sanitizeInAppNotification(row),
+    location_id: clean(authorizedLocation?.id, 120),
+    location_name: clean(authorizedLocation?.public_display_name || authorizedLocation?.name || 'Locatie', 120),
+  };
+}
+
 export function summarizeInAppNotifications(rows) {
   const notifications = Array.isArray(rows) ? rows : [];
   return {
