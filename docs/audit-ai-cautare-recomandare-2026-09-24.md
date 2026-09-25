@@ -488,10 +488,19 @@ celalalt agent ("Scrie acum"). Checkpoint: `6ab6ebc1da74d6ebb8910265`.
   `vite build` trec. `verify-all`: 138 trec, 15 esecuri, niciunul din aceste schimbari: 3 vechi,
   8 din functia noua `providerOrganizationLeadInboxOps` a celuilalt agent (testele cer 49 de
   functii fizice, acum sunt 50) si 4 pe `ProviderMembership.filter`, tot in zona lui.
-- **11.3, neaplicat.** Bundle-urile au fost reconstruite si comparate doar intr-un director
-  temporar: registrul, prerechizitele si modulul de recomandare sunt identice ca logica; cautarea
-  semantica de pe server s-ar alinia cu browserul (18 din 71 de formulari). Inlocuirea bundle-urilor
-  a fost refuzata de filtrul de securitate al sesiunii; ramane decizia owner-ului.
+- **11.3, aplicat** (dupa ce owner-ul a trecut sesiunea pe aprobare manuala; checkpoint
+  `6ab6f212ab78a23bd744043d`). Cele 4 bundle-uri `sharedDependencies.js` au fost reconstruite cu
+  esbuild din `shared/`, cu aceleasi exporturi. Reteta a fost verificata pe bundle-ul vechi din
+  `matchProviders`, reconstruit identic ca cod. Comparat cu bundle-urile vechi: registrul (toate
+  cheile si alias-urile), prerechizitele si modulul de recomandare (scor, bucket-uri, Top 3) sunt
+  identice ca logica; in `browseDirectoryProviders` si `getPublicProviderProfile` se schimba doar
+  nivelul intern al optometriei, pe care aceste functii nu il citesc. Cautarea semantica de pe
+  server foloseste acum sinonimele din browser (18 din 71 de formulari se schimba), deci
+  `semantic_fit` recunoaste serviciile pe care browserul le trimite deja. Blob nou aprobat in
+  testul de izolare. Testele de registru, prerechizite, cautare semantica, recomandare si
+  identificarea nevoii trec; testele de izolare trec intr-o copie fara functia noua a celuilalt
+  agent. `verify-all`: 17 esecuri, toate din afara acestor schimbari (cele 15 de mai sus plus 2 din
+  lucrul la antet si pagina principala: verify-home-performance, verify-page-stability-performance).
 - **11.4:** documentul pentru revizuirea medicala e gata (Claude Docs, "Revizuire medicala
   VIASEE"), cu lista deciziilor pentru medic, inclusiv randul scurt despre 112.
 - Dupa publicare: retest live pentru o reparatie (fara chei de vanzare) si o cumparare de lentile
