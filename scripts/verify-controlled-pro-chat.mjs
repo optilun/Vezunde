@@ -118,7 +118,9 @@ const providerInbox = await readFile(new URL('../src/components/workspace/provid
 assert.match(backend, /actor === 'patient'/);
 assert.match(backend, /actor === 'provider'/);
 assert.match(backend, /sha256\(accessToken\)/);
-assert.match(backend, /ProviderMembership\.filter/);
+const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
+assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
+assert.match(accessHelper, /ProviderMembership\.filter/);
 assert.match(backend, /PatientRequest\.get\(lead\.request_id\)/);
 assert.match(backend, /request: checked\.request/);
 assert.match(backend, /provider_chat\.access/);
