@@ -136,7 +136,7 @@ export default function Home() {
       {showCanvas && (
         <div
           className="relative z-20 -mt-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:-mt-24 sm:rounded-t-[2.75rem] lg:-mt-28 lg:rounded-t-[3.25rem]"
-          style={pinActive ? { marginTop: `calc(-1 * (${PIN_DISTANCE} + 0.3rem))` } : undefined}
+          style={pinActive ? { marginTop: `calc(-1 * (${PIN_DISTANCE} + 1.5rem))` } : undefined}
         >
           <HomeCanvas />
         </div>
