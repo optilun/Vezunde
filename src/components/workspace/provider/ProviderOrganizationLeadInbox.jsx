@@ -35,6 +35,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const requestRef = useRef(0);
+  const queryKey = JSON.stringify([organizationId, filter, locationFilter, offset]);
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -52,7 +53,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
         offset,
         limit: PAGE_SIZE,
       }));
-      if (requestId === requestRef.current) setData(inboxData);
+      if (requestId === requestRef.current) setData({ ...inboxData, _query_key: queryKey });
     } catch (loadError) {
       if (requestId === requestRef.current) {
         setData(null);
@@ -61,7 +62,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
     } finally {
       if (requestId === requestRef.current) setLoading(false);
     }
-  }, [filter, locationFilter, offset, organizationId]);
+  }, [filter, locationFilter, offset, organizationId, queryKey]);
 
   useEffect(() => {
     void load();
@@ -74,7 +75,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
     setData(null);
   }, [organizationId]);
 
-  const currentData = organizationInboxDataFor(data, organizationId);
+  const currentData = organizationInboxDataFor(data, organizationId, queryKey);
   const busy = loading || Boolean(data && !currentData);
   const groups = useMemo(() => groupOrganizationLeads(currentData?.leads), [currentData?.leads]);
   const locations = currentData?.locations || [];
