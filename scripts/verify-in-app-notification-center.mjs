@@ -108,6 +108,7 @@ for (const forbidden of ['contact_email', 'contact_phone', 'message_body', 'deta
 }
 
 const providerBackend = await readFile(new URL('../base44/functions/providerLeadInboxOps/entry.ts', import.meta.url), 'utf8');
+const providerLocationAccess = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
 const patientBackend = await readFile(new URL('../base44/functions/getPatientRequestStatus/entry.ts', import.meta.url), 'utf8');
 const projection = await readFile(new URL('../shared/inAppNotificationProjection.js', import.meta.url), 'utf8');
 const patientProjection = await readFile(new URL('../shared/patientCommunicationProjection.js', import.meta.url), 'utf8');
@@ -123,7 +124,8 @@ const providerInbox = await readFile(new URL('../src/components/workspace/provid
 const patientStatus = await readFile(new URL('../src/components/intake2/PatientRequestResponseStatus.jsx', import.meta.url), 'utf8');
 
 assert.match(providerBackend, /base44\.auth\.me\(\)/);
-assert.match(providerBackend, /ProviderMembership\.filter/);
+assert.match(providerBackend, /findProviderLeadLocationMembership/);
+assert.match(providerLocationAccess, /ProviderMembership\.filter/);
 assert.match(providerBackend, /recipient_ref_id: userId/);
 assert.match(providerBackend, /notification\.location_id !== locationId/);
 assert.match(providerBackend, /ensureProviderInAppNotifications/);
