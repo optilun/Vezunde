@@ -1,3 +1,18 @@
+export function canShowOrganizationInbox({ isOrganizationOwner, organizationId, locations }) {
+  return Boolean(isOrganizationOwner && organizationId && Array.isArray(locations) && locations.length > 1);
+}
+
+export function locationPlanLabel(entitlementsByLocation, locationId) {
+  return entitlementsByLocation?.[locationId]?.plan_code === "pro" ? "Pro" : "Free";
+}
+
+export function mergeFocusedLead(leads, targetLead) {
+  const listed = Array.isArray(leads) ? leads : [];
+  return targetLead && !listed.some((lead) => lead.id === targetLead.id)
+    ? [targetLead, ...listed]
+    : listed;
+}
+
 export function groupOrganizationLeads(leads) {
   const groups = new Map();
   for (const lead of Array.isArray(leads) ? leads : []) {
