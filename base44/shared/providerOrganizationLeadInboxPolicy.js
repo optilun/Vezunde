@@ -66,9 +66,11 @@ export function resolveOrganizationLeadLocations({
   ));
   if (ownerMemberships.length === 0) return [];
 
-  const organizationWide = ownerMemberships.some(
-    (membership) => membershipHasOrganizationWideAccess(membership, ownerScopeResolution),
-  );
+  const organizationWide = ownerMemberships.some((membership) => {
+    if (membership.organization_wide_access !== true
+      && ['location', 'selected_locations'].includes(membership.claim_scope)) return false;
+    return membershipHasOrganizationWideAccess(membership, ownerScopeResolution);
+  });
   const allowedIds = organizationWide
     ? locationIds
     : new Set(ownerMemberships.map((membership) => membership.location_id));
