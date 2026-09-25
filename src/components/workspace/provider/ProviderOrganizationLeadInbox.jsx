@@ -78,7 +78,8 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
   const currentData = organizationInboxDataFor(data, organizationId, queryKey);
   const busy = loading || Boolean(data && !currentData);
   const groups = useMemo(() => groupOrganizationLeads(currentData?.leads), [currentData?.leads]);
-  const locations = currentData?.locations || [];
+  // Keep authorized locations stable across filters to avoid reloading every notification feed.
+  const locations = organizationInboxDataFor(data, organizationId)?.locations || [];
   const totalLeads = currentData?.counters?.lead_deliveries_in_scope ?? 0;
   const totalRequests = currentData?.counters?.distinct_requests_in_scope ?? 0;
   const page = currentData?.pagination || {};
