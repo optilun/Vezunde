@@ -71,14 +71,14 @@ assert.equal(buildOrganizationLeadInboxPage({ leads: projection, locations }).co
 assert.equal(buildOrganizationLeadInboxPage({ leads: projection, locations, scope: 'history' }).leads[0].id, 'expired');
 
 // Execute the actual read-only endpoint with in-memory entities, including SDK pagination.
-const endpointUrl = new URL('../base44/functions/providerOrganizationLeadInboxOps/entry.ts', import.meta.url);
+const endpointUrl = new URL('../base44/functions/getMyProviderWorkspace/providerOrganizationLeadInboxOps.ts', import.meta.url);
 let source = await readFile(endpointUrl, 'utf8');
 source = source.replace(/import \{ createClientFromRequest \} from 'npm:@base44\/sdk@[^']+';/,
   'const createClientFromRequest = () => globalThis.__organizationInboxTestClient;');
 source = source.replace(/from '(\.\.[^']+)'/g, (_match, path) => 'from ' + JSON.stringify(new URL(path, endpointUrl).href));
-source = 'const Deno = { serve(handler) { globalThis.__organizationInboxTestHandler = handler; } };\n' + source;
+source = source.replace('req: Request', 'req');
 globalThis.__organizationInboxTestClient = { auth: { me: async () => user }, asServiceRole: svc };
-await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+globalThis.__organizationInboxTestHandler = (await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))).handle;
 const invoke = async (body) => {
   const response = await globalThis.__organizationInboxTestHandler(new Request('https://test.invalid', {
     method: 'POST', body: JSON.stringify({ organization_id: 'org', action: 'list', ...body }),
