@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, Check, CheckCheck, Loader2, RefreshCw } from "lucide-react";
 
 function formatDate(value) {
@@ -20,14 +20,19 @@ export default function NotificationCenter({
   markAllNotificationsRead,
   onOpenTarget,
   onDataChange,
+  refreshIntervalMs = 60000,
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ notifications: [], counters: { total: 0, unread: 0 }, warning: "" });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState("");
   const [error, setError] = useState("");
+  const loadingRef = useRef(false);
+  const lastLoadedAtRef = useRef(0);
 
   const load = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setError("");
     try {
       const result = await loadNotifications();
@@ -37,17 +42,21 @@ export default function NotificationCenter({
         warning: result?.warning || "",
       });
     } catch (loadError) {
+      setData({ notifications: [], counters: { total: 0, unread: 0 }, warning: "" });
       setError(loadError?.message || "Notificările nu au putut fi încărcate.");
     } finally {
+      loadingRef.current = false;
+      lastLoadedAtRef.current = Date.now();
       setLoading(false);
     }
   }, [loadNotifications]);
 
   useEffect(() => {
     void load();
-    const interval = window.setInterval(() => void load(), 60000);
+    if (refreshIntervalMs <= 0) return undefined;
+    const interval = window.setInterval(() => void load(), refreshIntervalMs);
     return () => window.clearInterval(interval);
-  }, [load]);
+  }, [load, refreshIntervalMs]);
 
   useEffect(() => {
     onDataChange?.(data);
@@ -102,7 +111,10 @@ export default function NotificationCenter({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (!open && Date.now() - lastLoadedAtRef.current > 30000) void load();
+          setOpen((value) => !value);
+        }}
         className="relative inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary"
         aria-expanded={open}
       >
@@ -121,6 +133,7 @@ export default function NotificationCenter({
             <div>
               <p className="text-sm font-extrabold text-foreground">{label}</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">{unread} necitite</p>
+              {refreshIntervalMs <= 0 && <p className="mt-0.5 text-[11px] text-muted-foreground">Actualizează manual pentru noutăți</p>}
             </div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => void load()} disabled={loading || Boolean(updatingId)} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary disabled:opacity-50" aria-label="Actualizează notificările">
