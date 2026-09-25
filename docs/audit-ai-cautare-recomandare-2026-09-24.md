@@ -465,3 +465,34 @@ de cod.
   spus" de sus si in blocul "Ai descris".
 
 Concluzie: v2.1 si fixurile din faza 3 functioneaza live. Raman deciziile din 11.2-11.4.
+
+## 13. Deciziile owner-ului aplicate (2026-09-25)
+
+Owner-ul a aprobat toate recomandarile ("Incepe cu toate"), apoi scrierea in sandbox in paralel cu
+celalalt agent ("Scrie acum"). Checkpoint: `6ab6ebc1da74d6ebb8910265`.
+
+- **11.2, aplicat.** `shared/confirmedNeedServiceKeys.js` (copie identica in `base44/shared/`) filtreaza
+  cheile gasite in text cand cererea are o nevoie confirmata (`intent` cunoscut si chei explicite):
+  raman doar cheile din familia nevoii, iar la reparatii, ochelari si lentile de contact textul nu mai
+  ridica cererea la `specialized_medical`. Aplicat in browser (`matchProvidersWithSemanticFallback`)
+  si pe server (`requestedKeys` in `matchProvidersSemantic/entry.ts`, inainte de ramurile
+  `question_only` / `interpret_only`). Cautarea libera din /cauta ramane reuniunea de pana acum.
+  Scorul, bucket-urile si selectia Top 3 nu s-au schimbat (amprenta `f33a9859` e aceeasi).
+  Masurat pe 65 de formulari: 54 neschimbate; nivelul nevoii se schimba doar la 3 cumparari de
+  lentile de contact (`specialized_medical` -> `general`). Limita cunoscuta: "s-a rupt rama si am
+  nevoie de ochelari noi" confirmat ca reparatie pastreaza doar cheile de atelier.
+- **Ecranul de verificare:** bula "Ai spus" nu mai apare acolo (mesajul e deja la "Ai descris").
+- **Teste:** blob-uri aprobate noi in `verify-patient-conversation-marketplace-isolation.mjs`, amprenta
+  clientului `e73e62cf` in cele 3 teste de selectie a intrebarilor, test nou
+  `scripts/verify-confirmed-need-service-keys.mjs` (inclus in `test:services`). ESLint si
+  `vite build` trec. `verify-all`: 138 trec, 15 esecuri, niciunul din aceste schimbari: 3 vechi,
+  8 din functia noua `providerOrganizationLeadInboxOps` a celuilalt agent (testele cer 49 de
+  functii fizice, acum sunt 50) si 4 pe `ProviderMembership.filter`, tot in zona lui.
+- **11.3, neaplicat.** Bundle-urile au fost reconstruite si comparate doar intr-un director
+  temporar: registrul, prerechizitele si modulul de recomandare sunt identice ca logica; cautarea
+  semantica de pe server s-ar alinia cu browserul (18 din 71 de formulari). Inlocuirea bundle-urilor
+  a fost refuzata de filtrul de securitate al sesiunii; ramane decizia owner-ului.
+- **11.4:** documentul pentru revizuirea medicala e gata (Claude Docs, "Revizuire medicala
+  VIASEE"), cu lista deciziilor pentru medic, inclusiv randul scurt despre 112.
+- Dupa publicare: retest live pentru o reparatie (fara chei de vanzare) si o cumparare de lentile
+  (nivel `general`).
