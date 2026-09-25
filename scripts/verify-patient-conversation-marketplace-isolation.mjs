@@ -94,6 +94,15 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // 2026-09-02: aliniat cu shared/providerRecommendation.js - diacritice pe eticheta
     // vizibila pacientului. Nicio schimbare de logica.
     '21e373e458dfbf81503fe4ab1e9cf3dbba147d58',
+    // 2026-09-25, re-sincronizarea bundle-ului cu sursele (aprobat explicit de owner, audit AI
+    // 11.3). Reconstruit cu esbuild din shared/ (aceleasi exporturi). Comparat cu bundle-ul
+    // vechi: registrul (toate cheile si alias-urile), prerechizitele si
+    // shared/providerRecommendation.js sunt identice ca logica (difera comentariile si modul de
+    // scriere a caracterelor). Singura schimbare reala: cautarea semantica de pe server foloseste
+    // sinonimele actuale, aceleasi ca in browser, deci componenta semantic_fit a scorului
+    // recunoaste serviciile pe care browserul le trimite deja. Formula de scor, bucket-urile si
+    // selectia Top 3 raman neschimbate.
+    '16abb988609c3a667abf1a4df7832a6cc3a28415',
   ]),
 });
 
