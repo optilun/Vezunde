@@ -1,5 +1,5 @@
-export function organizationInboxDataFor(data, organizationId) {
-  return data?.organization_id === organizationId ? data : null;
+export function organizationInboxDataFor(data, organizationId, queryKey = "") {
+  return data?.organization_id === organizationId && (!queryKey || data?._query_key === queryKey) ? data : null;
 }
 
 export function canShowOrganizationInbox({ isOrganizationOwner, organizationId, locations }) {
