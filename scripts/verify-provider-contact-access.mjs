@@ -118,7 +118,9 @@ for (const forbidden of [
 
 const backend = await readFile(new URL('../base44/functions/providerLeadContactAccessOps/entry.ts', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
-assert.match(backend, /ProviderMembership\.filter/);
+const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
+assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
+assert.match(accessHelper, /ProviderMembership\.filter/);
 assert.match(backend, /ProviderSubscription\.filter/);
 assert.match(backend, /hasProviderFeature\(entitlement, 'provider_contact\.access_after_consent'\)/);
 assert.match(backend, /ProviderLeadResponse\.filter/);
