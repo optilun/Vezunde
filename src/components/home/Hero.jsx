@@ -206,16 +206,14 @@ export default function Hero({ onStartedChange } = {}) {
               className="home-rise font-heading text-[2.25rem] font-extrabold leading-[1.02] tracking-[-0.04em] min-[390px]:text-[2.65rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
-              Spune ce cauți.
-              <br />
-              Vezi unde poți merge.
+              Găsește îngrijirea potrivită pentru ochi.
             </h1>
 
             <p
               className="home-fade-up mt-4 max-w-2xl text-[0.95rem] leading-relaxed sm:mt-5 sm:text-lg"
               style={{ color: "#5F5A53", "--home-delay": "60ms" }}
             >
-              VIASEE te ajută să găsești medici oftalmologi, clinici și optici pentru controale, investigații, ochelari sau reparații.
+              Cauți un medic oftalmolog, o clinică sau o optică? VIASEE te ajută să găsești specialistul potrivit, aproape de tine.
             </p>
 
             <form
