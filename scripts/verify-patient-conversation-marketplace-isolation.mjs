@@ -15,6 +15,13 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // server, nici fallback-ul structural - desi acesta are nevoie doar de localitate.
     // Decizia se ia acum pe server. Nicio schimbare de scor, ordonare sau Top 3.
     'd88d149043964e3d2c5c05b3b19b2f8cf143d7a9',
+    // 2026-09-25, cheile din text la nevoie confirmata (aprobat explicit de owner, audit AI
+    // 11.2): matchProvidersWithSemanticFallback trece cheile gasite in text prin
+    // filterTextServiceKeysForConfirmedNeed (shared/confirmedNeedServiceKeys.js). Cu `intent`
+    // cunoscut si chei explicite raman doar cheile din familia nevoii; fara intentie (cautarea
+    // din /cauta) rezultatul e reuniunea de pana acum. Nicio schimbare de scor, bucket sau
+    // selectie Top 3.
+    'd182b86f36348dcd8871938ab8d2fdc86a0bf214',
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
@@ -274,6 +281,7 @@ assert(
 const PR265_PROVIDER_SEMANTIC_BLOBS = Object.freeze([
   '240474eb3bba41f56f058ba83359ff33c77e757d',
   'd88d149043964e3d2c5c05b3b19b2f8cf143d7a9',
+  'd182b86f36348dcd8871938ab8d2fdc86a0bf214',
 ]);
 const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
 const providerSemanticComposition = PR265_PROVIDER_SEMANTIC_BLOBS.includes(providerSemanticBlob)

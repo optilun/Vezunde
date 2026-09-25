@@ -1007,7 +1007,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       transition={{ duration: reduceMotion ? 0 : 0.35, ease: "easeOut" }}
       className="mx-auto w-full max-w-2xl rounded-[1.5rem] border border-border bg-card p-5 text-left shadow-[0_18px_55px_rgba(20,20,20,0.11)] sm:rounded-[1.75rem] sm:p-10"
     >
-      {initialMessage && (
+      {/* Pe ecranul de verificare mesajul apare deja la "Ai descris". */}
+      {initialMessage && phase !== "review" && (
         <p className="mb-6 text-xs text-muted-foreground">
           Ai spus: <span className="italic">&bdquo;{initialMessage}&rdquo;</span>
         </p>

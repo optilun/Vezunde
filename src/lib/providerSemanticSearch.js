@@ -1,5 +1,7 @@
 import { base44 } from "@/api/base44Client";
 import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
+import { getCanonicalServiceDefinition } from "@/lib/canonicalServiceCatalog";
+import { filterTextServiceKeysForConfirmedNeed } from "../../shared/confirmedNeedServiceKeys.js";
 import { isPatientOperationTimeout, withPatientOperationTimeout } from "./patientOperationControl.js";
 import { planPatientShadowInterpretation } from "./patientShadowInterpretation.js";
 
@@ -328,7 +330,15 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
     minScore: payload.semantic_min_score || 0.34,
   });
   const explicitKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
-  const serviceKeys = [...new Set([...explicitKeys, ...localResolution.service_keys])];
+  // 2026-09-25, decizia owner-ului (audit AI, 11.2): cand cererea are o nevoie confirmata,
+  // cheile gasite in text raman doar daca sunt din familia ei (shared/confirmedNeedServiceKeys.js).
+  // Cautarea libera, fara intentie, ramane reuniunea de pana acum.
+  const serviceKeys = filterTextServiceKeysForConfirmedNeed({
+    intent: payload.intent,
+    explicitKeys,
+    textKeys: localResolution.service_keys,
+    getDefinition: getCanonicalServiceDefinition,
+  }).serviceKeys;
   // 2026-09-03, audit flow intrebari/recomandari: pana acum, un text care nu se lega de
   // catalog era oprit aici, in browser. Cererea nu ajungea niciodata pe server, deci nu
   // rula nici interpretarea de acolo, nici fallback-ul structural - desi acesta are nevoie

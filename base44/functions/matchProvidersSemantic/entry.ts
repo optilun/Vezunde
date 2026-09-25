@@ -24,6 +24,7 @@ import {
   getPatientNeedResponseSchema,
   sanitizePatientNeedInterpretation,
 } from '../../shared/patientNeedInterpretation.js';
+import { filterTextServiceKeysForConfirmedNeed } from '../../shared/confirmedNeedServiceKeys.js';
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
@@ -593,7 +594,15 @@ Deno.serve(async (request) => {
     const explicitKeys = Array.isArray(payload.service_keys)
       ? payload.service_keys.map((value) => normalizeServiceKey(value).canonicalKey).filter(Boolean)
       : [];
-    const requestedKeys = [...new Set([...explicitKeys, ...semantic.service_keys])];
+    // 2026-09-25, decizia owner-ului (audit AI, 11.2): cu nevoie confirmata (`intent` din
+    // cererea pacientului), cheile gasite in text raman doar din familia nevoii. Fara intentie
+    // (cautarea libera, interpret_only, question_only) rezultatul e reuniunea de pana acum.
+    const requestedKeys = filterTextServiceKeysForConfirmedNeed({
+      intent: clean(payload.intent),
+      explicitKeys,
+      textKeys: semantic.service_keys,
+      getDefinition: getCanonicalServiceDefinition,
+    }).serviceKeys;
     const semanticScoreByKey = Object.fromEntries(
       semantic.matches.map((match) => [match.service_key, Number(match.score) || 0]),
     );

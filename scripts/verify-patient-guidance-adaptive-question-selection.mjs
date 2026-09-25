@@ -299,7 +299,10 @@ await scenario("ranking and recommendation client remain byte-stable", () => {
   // 2026-09-03: clientul nu mai opreste cererea cand textul nu produce chei de serviciu.
   // Decizia se ia pe server, care are localitatea si poate raspunde cu fallback-ul
   // structural. Nicio schimbare de scor sau ordonare.
-  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "8242e30f");
+  // 2026-09-25, audit AI 11.2 (aprobat explicit de owner): cheile gasite in text trec prin
+  // filterTextServiceKeysForConfirmedNeed cand cererea are o nevoie confirmata. Cautarea
+  // libera ramane neschimbata; scorul si ordonarea nu se ating.
+  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "e73e62cf");
 });
 
 await scenario("live result is identical when question selection does not intervene", () => {
