@@ -485,10 +485,45 @@
   animation-delay: var(--home-delay, 0ms);
 }
 
+/* Insigna cu ochi de deasupra casetei de cautare din Hero: irisul "respira" usor, iar razele din
+   jur se rotesc foarte lent, ca un mic indiciu vizual de control de vedere. */
+@keyframes hero-optics-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes hero-optics-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hero-optics-pulse {
+  animation: hero-optics-pulse 3.2s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+.hero-optics-spin {
+  animation: hero-optics-spin 26s linear infinite;
+  transform-origin: 50% 50%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .role-content-fade,
   .home-rise,
-  .home-fade-up {
+  .home-fade-up,
+  .hero-optics-pulse,
+  .hero-optics-spin {
     animation: none;
   }
 
