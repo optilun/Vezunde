@@ -11,7 +11,7 @@ import {
   safeOrganizationLeadLocation,
 } from '../../shared/providerOrganizationLeadInboxPolicy.js';
 
-const ENTITY_PAGE_SIZE = 5000;
+const ENTITY_PAGE_SIZE = 500;
 
 function res(body, status = 200) {
   return Response.json(body, { status });
