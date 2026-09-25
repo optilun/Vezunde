@@ -350,7 +350,11 @@ var AMBIGUOUS_LEGACY_SERVICE_KEYS = [
 var GROUP_POLICY = {
   optical_retail: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
   lenses_and_measurements: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
-  optometry: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
+  // Reclasificat 2026-08-05: controlul de vedere de rutina (refractie, acuitate vizuala) e un
+  // serviciu comun oferit si de optici cu optometrist propriu, nu doar de cabinete medicale.
+  // Ramane distinct de ophthalmology_consults/investigations/specialties/procedures_surgery,
+  // care raman specialized_medical si pastreaza toata bariera de excludere din matching.
+  optometry: { kind: "service", need: "technical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
   contact_lenses: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
   ophthalmology_consults: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
   investigations: { kind: "investigation", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
@@ -604,6 +608,11 @@ var {
   SERVICE_GROUPS: SERVICE_GROUPS2
 } = canonicalServiceRegistry_exports;
 var NEW_KEYS = {
+  // Serviciile prestate in afara locatiei (2026-08-06). Inainte existau doua chei:
+  // cas_reimbursed_services (bifa globala de decontare) si onsite_eye_testing_b2b
+  // ("la domiciliu SAU la sediul firmelor", combinate). Ambele au fost eliminate:
+  // CAS se marcheaza acum per serviciu, iar deplasarile sunt piete diferite -
+  // ingrijire la domiciliu versus medicina muncii (obligatorie prin HG 1028/2006).
   home_visit_eye_care: {
     label: "Consulta\u021Bii la domiciliul pacientului",
     group: "business_attributes",
@@ -622,6 +631,9 @@ var NEW_KEYS = {
     specialist: true,
     professionalTypes: ["optometrist", "ophthalmologist"]
   },
+  // Nu e o deplasare, ci capacitatea de a emite documentele de care are nevoie
+  // angajatorul. HG 1028/2006: angajatorul e obligat sa suporte costul ochelarilor
+  // pentru lucrul la ecran cand oftalmologul ii recomanda expres.
   employer_glasses_reimbursement: {
     label: "Documente pentru decontarea ochelarilor de c\u0103tre angajator (HG 1028)",
     group: "business_attributes",
@@ -641,7 +653,7 @@ var NEW_KEYS = {
     professionalTypes: ["optometrist", "ophthalmologist"]
   },
   school_vision_screening: {
-    label: "Screening de vedere \u00EEn \u0219coli \u0219i gr\u0103dini\u021Be",
+    label: "Screening de vedere \xEEn \u0219coli \u0219i gr\u0103dini\u021Be",
     group: "business_attributes",
     kind: "service",
     need: "specialized_medical",
@@ -797,6 +809,8 @@ function addGroupAndKeys() {
   if (!CLAIM_PREP_SERVICE_GROUPS2.includes("business_attributes")) CLAIM_PREP_SERVICE_GROUPS2.unshift("business_attributes");
   Object.assign(LEGACY_SERVICE_ALIASES2, {
     microscopie_endoteliala: "specular_microscopy",
+    // Alias-uri vechi redirectionate catre cheile noi (2026-08-06). "servicii_cas" nu
+    // mai are corespondent - CAS se marcheaza per serviciu, nu ca serviciu separat.
     testare_la_sediu: "workplace_vision_screening",
     ochelari_calculator: "computer_screen_glasses",
     lentile_noapte: "orthokeratology",
@@ -1156,9 +1170,11 @@ var PROVIDER_SERVICE_SECTIONS = [
     key: "glaucoma",
     unitKey: "ophthalmology_office",
     capabilityKey: "ophthalmology_specialties",
+    // Titlul distinct de eticheta singurului serviciu (2026-08-18) - acelasi tipar de
+    // bug ca la "low_vision".
     area: "medical_specialties",
     kind: "specialty",
-    title: "Glaucom",
+    title: "Monitorizare glaucom",
     publicNeedKey: "glaucoma",
     publicLabel: "Glaucom",
     description: "Consulta\u021Bie \u0219i monitorizare specializat\u0103 pentru glaucom.",
@@ -1264,9 +1280,13 @@ var PROVIDER_SERVICE_SECTIONS = [
     unitKey: "optometry_cabinet",
     fallbackUnitKeys: ["ophthalmology_office"],
     capabilityKey: "low_vision_rehabilitation",
+    // Titlul sectiunii era identic, cuvant cu cuvant, cu eticheta singurului serviciu
+    // din ea (2026-08-18) - pe ecran aparea acelasi text de doua ori, unul sub altul.
+    // Eticheta serviciului nu s-a schimbat (e refolosita si in lista de specializari
+    // medicale, unde e corecta); doar titlul sectiunii a devenit distinct.
     area: "medical_specialties",
     kind: "rehabilitation_service",
-    title: "Vedere slab\u0103 \u0219i reabilitare vizual\u0103",
+    title: "Reabilitare vizual\u0103",
     publicNeedKey: "low_vision",
     publicLabel: "Vedere slab\u0103 \u0219i reabilitare",
     description: "Evaluare func\u021Bional\u0103 \u0219i recomand\u0103ri pentru persoanele cu vedere slab\u0103.",
@@ -1277,9 +1297,10 @@ var PROVIDER_SERVICE_SECTIONS = [
     key: "ocular_oncology",
     unitKey: "ophthalmology_office",
     capabilityKey: "ophthalmology_specialties",
+    // Titlul distinct de eticheta singurului serviciu (2026-08-18), acelasi tipar.
     area: "medical_specialties",
     kind: "specialty",
-    title: "Oncologie ocular\u0103",
+    title: "Evaluare tumori oculare",
     publicNeedKey: "ocular_oncology",
     publicLabel: "Oncologie ocular\u0103",
     description: "Evaluare specializat\u0103 pentru tumori oculare \u0219i ale anexelor.",
