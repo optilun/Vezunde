@@ -22,7 +22,7 @@ export default function NotificationCenter({
   onDataChange,
 }) {
   const [open, setOpen] = useState(false);
-  const [data, setData] = useState({ notifications: [], counters: { total: 0, unread: 0 } });
+  const [data, setData] = useState({ notifications: [], counters: { total: 0, unread: 0 }, warning: "" });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState("");
   const [error, setError] = useState("");
@@ -34,6 +34,7 @@ export default function NotificationCenter({
       setData({
         notifications: Array.isArray(result?.notifications) ? result.notifications : [],
         counters: result?.counters || { total: 0, unread: 0 },
+        warning: result?.warning || "",
       });
     } catch (loadError) {
       setError(loadError?.message || "Notificările nu au putut fi încărcate.");
@@ -56,7 +57,7 @@ export default function NotificationCenter({
     if (notification.status === "unread") {
       setUpdatingId(notification.id);
       try {
-        await markNotificationRead(notification.id);
+        await markNotificationRead(notification.id, notification);
         setData((current) => ({
           ...current,
           counters: {
@@ -88,6 +89,7 @@ export default function NotificationCenter({
         notifications: current.notifications.map((item) => ({ ...item, status: "read", read_at: item.read_at || now })),
       }));
     } catch (markError) {
+      await load();
       setError(markError?.message || "Notificările nu au putut fi actualizate.");
     } finally {
       setUpdatingId("");
@@ -131,6 +133,7 @@ export default function NotificationCenter({
           </div>
 
           {error && <p role="alert" className="m-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
+          {data.warning && <p role="status" className="m-3 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-xs text-amber-900">{data.warning}</p>}
 
           <div className="max-h-[420px] overflow-y-auto p-2">
             {loading && data.notifications.length === 0 ? (
@@ -154,6 +157,7 @@ export default function NotificationCenter({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-xs font-extrabold text-foreground">{notification.title}</span>
+                        {notification.location_name && <span className="mt-1 block text-[11px] font-semibold text-foreground/75">Locație: {notification.location_name}</span>}
                         <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{notification.body}</span>
                         {formatDate(notification.created_date) && <span className="mt-1.5 block text-[10px] text-muted-foreground">{formatDate(notification.created_date)}</span>}
                       </span>
