@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Inbox, Loader2, LockKeyhole, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
-import { groupOrganizationLeads, locationPlanLabel, organizationLeadTarget } from "@/lib/providerOrganizationInboxView";
+import { groupOrganizationLeads, locationPlanLabel, organizationInboxDataFor, organizationLeadTarget } from "@/lib/providerOrganizationInboxView";
 import LeadListItem from "./leads/LeadListItem";
 
 const PAGE_SIZE = 50;
@@ -74,7 +74,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
     setData(null);
   }, [organizationId]);
 
-  const currentData = data?.organization_id === organizationId ? data : null;
+  const currentData = organizationInboxDataFor(data, organizationId);
   const busy = loading || Boolean(data && !currentData);
   const groups = useMemo(() => groupOrganizationLeads(currentData?.leads), [currentData?.leads]);
   const locations = currentData?.locations || [];
