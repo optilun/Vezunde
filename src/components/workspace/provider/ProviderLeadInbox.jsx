@@ -16,6 +16,7 @@ import ProviderCompletenessPanel from "./ProviderCompletenessPanel";
 import ProviderStatusCenter from "./ProviderStatusCenter";
 import ProviderLeadInboxLegacy from "./ProviderLeadInboxLegacy";
 import ProviderOrganizationLeadInbox from "./ProviderOrganizationLeadInbox";
+import { canShowOrganizationInbox } from "@/lib/providerOrganizationInboxView";
 import ProviderAccessBand from "./leads/ProviderAccessBand";
 import ProviderBillingPanel from "./leads/ProviderBillingPanel";
 
@@ -34,7 +35,7 @@ function responseData(response) {
 
 export default function ProviderLeadInbox(props) {
   const { locationId, location, onEntitlementChanged, organizationId, isOrganizationOwner, ownerLocations = [], onSelectLocation } = props;
-  const canViewAll = Boolean(isOrganizationOwner && organizationId && ownerLocations.length > 1);
+  const canViewAll = canShowOrganizationInbox({ isOrganizationOwner, organizationId, locations: ownerLocations });
   const [showAllLocations, setShowAllLocations] = useState(canViewAll);
   const [targetLead, setTargetLead] = useState(null);
   const [searchParams] = useSearchParams();
