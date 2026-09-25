@@ -71,10 +71,12 @@ assert.equal(schema.properties.currency, undefined);
 
 const backend = await readFile(new URL('../base44/functions/getMyProviderWorkspace/getProviderEntitlement.ts', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
-assert.match(backend, /ProviderMembership\.filter/);
-assert.match(backend, /user_id: user\.id/);
+const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
+assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
+assert.match(accessHelper, /ProviderMembership\.filter/);
+assert.match(accessHelper, /user_id: user\.id/);
 assert.match(backend, /location_id: locationId/);
-assert.match(backend, /status: 'active'/);
+assert.match(accessHelper, /status: 'active'/);
 assert.match(backend, /ProviderSubscription\.filter/);
 assert.match(backend, /resolveProviderEntitlement/);
 assert.doesNotMatch(backend, /input\.plan_code/);
