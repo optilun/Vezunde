@@ -17,14 +17,16 @@ const desktopNavLinkClassName = ({ isActive }) =>
       : "text-muted-foreground hover:bg-secondary/55 hover:text-foreground"
   }`;
 
-function DesktopHeader({ scrolled, opaque }) {
+function DesktopHeader({ scrolled, opaque, transparent }) {
   return (
     <header
       style={opaque ? { backgroundColor: "hsl(var(--background))", backdropFilter: "none" } : undefined}
       className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color] duration-300 lg:block ${
-        scrolled
-          ? "border-border/70 bg-background/[0.96]"
-          : "border-transparent bg-background"
+        transparent
+          ? "border-transparent bg-transparent"
+          : scrolled
+            ? "border-border/70 bg-background/[0.96]"
+            : "border-transparent bg-background"
       }`}
     >
       <div className="flex h-20 w-full items-center justify-between gap-6 px-6 lg:px-12 xl:px-16">
@@ -70,14 +72,16 @@ function DesktopHeader({ scrolled, opaque }) {
   );
 }
 
-function MobileHeader({ scrolled, onMenuOpen, onMenuPreload, opaque }) {
+function MobileHeader({ scrolled, onMenuOpen, onMenuPreload, opaque, transparent, overlay }) {
   return (
     <header
       style={opaque ? { backgroundColor: "hsl(var(--background))", backdropFilter: "none" } : undefined}
-      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-300 safe-area-top lg:hidden ${
-        scrolled
-          ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
-          : "border-transparent bg-white/85"
+      className={`${overlay ? "fixed" : "sticky"} inset-x-0 top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-300 safe-area-top lg:hidden ${
+        transparent
+          ? "border-transparent bg-transparent"
+          : scrolled
+            ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
+            : "border-transparent bg-white/85"
       }`}
     >
       <div className="mx-auto flex h-16 items-center justify-between gap-2 px-4 sm:px-8">
@@ -177,11 +181,13 @@ export default function Layout() {
       >
         Sari la conținut
       </a>
-      <DesktopHeader scrolled={scrolled} opaque={isSearch} />
-      <div aria-hidden="true" className="hidden h-20 lg:block" />
+      <DesktopHeader scrolled={scrolled} opaque={isSearch} transparent={isHome && !scrolled} />
+      <div aria-hidden="true" className={isHome ? "hidden" : "hidden h-20 lg:block"} />
       <MobileHeader
         opaque={isSearch}
         scrolled={scrolled}
+        transparent={isHome && !scrolled}
+        overlay={isHome}
         onMenuOpen={openMobileMenu}
         onMenuPreload={preloadMobileMenu}
       />
