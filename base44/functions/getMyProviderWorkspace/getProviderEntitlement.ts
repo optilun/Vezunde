@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 
 function res(body, status = 200) {
@@ -15,12 +15,7 @@ async function authorizeLocation(svc, user, locationId) {
   if (!location) return { error: 'Locatia nu a fost gasita.', status: 404 };
   if (user.role === 'admin') return { location };
 
-  const memberships = await svc.entities.ProviderMembership.filter({
-    user_id: user.id,
-    location_id: locationId,
-    status: 'active',
-  }, '-created_date', 20);
-  if (!memberships.some((membership) => canAccessProviderLeadInbox(membership?.role))) {
+  if (!await findProviderLeadLocationMembership(svc, user, location)) {
     return { error: 'Nu ai acces la planul acestei locatii.', status: 403 };
   }
   return { location };
