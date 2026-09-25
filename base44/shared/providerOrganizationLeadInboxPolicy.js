@@ -131,6 +131,7 @@ export function buildOrganizationLeadInboxPage({
       lead_deliveries_in_scope: filtered.length,
       distinct_requests_in_scope: distinctRequestCount(filtered),
     },
+    group_key_scope: 'page',
     pagination: {
       offset: safeOffset,
       limit: safeLimit,
