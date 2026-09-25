@@ -117,6 +117,8 @@ The request matching and inbox audit is in docs/provider-lead-central-inbox-audi
 
 Validation on the saved HEAD: node scripts/verify-billing-flow.mjs (including partial failure and redacted logs), node scripts/verify-billing-ui-lifecycle.mjs, node scripts/verify-provider-billing.mjs, node scripts/verify-provider-entitlement.mjs, node scripts/verify-provider-context-url.mjs, node scripts/verify-provider-lead-inbox-free.mjs, npm run lint and npm run build passed. Build emitted only the existing Browserslist data-age warning. These are code/mocked tests, not a Stripe card lifecycle or a live scheduler response. The Base44 backend file is in an auto-sync path; runtime deployment of this exact revision has not been independently demonstrated. The new frontend copy is saved and admin preview was observed; the public owner page still showed old copy. No publish, deploy or push was run.
 
+A manual \"Run now\" of Provider Stripe Subscription Reconciler was started from the Base44 workflow UI at 01:31 EEST after the code fix. The run log showed Completed in 1.5 seconds but did not expose a step trace, HTTP response, checked/synced/failed counters, or request authentication. This establishes only that Base44 recorded the manual run as completed; it does not establish that the subscription loop executed, nor prove a scheduled trigger or service identity. At the last workflow-history inspection, the latest *scheduled* entry was still the 00:30 EEST run. A second attempt to use the documented Base44 CLI timed out during whoami after 90 seconds. No Stripe write operation was issued in this continuation.
+
 
 
 
