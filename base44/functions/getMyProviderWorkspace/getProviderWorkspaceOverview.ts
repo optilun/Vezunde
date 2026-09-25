@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -78,9 +79,9 @@ function computeLocationCompleteness(location) {
   ]);
 }
 
-async function getMemberSummary(svc, userId, locationId) {
+async function getMemberSummary(svc, userId, locationId, authorizedMembership = null) {
   const ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: userId, location_id: locationId, status: 'active' }, '-created_date', 20);
-  const currentRole = highestRole(ownMemberships.map((membership) => normalizeMemberRole(membership.role)));
+  const currentRole = highestRole([...ownMemberships, authorizedMembership].filter(Boolean).map((membership) => normalizeMemberRole(membership.role)));
   const activeRows = await svc.entities.ProviderMembership.filter({ location_id: locationId, status: 'active' }, '-created_date', 200);
   const validRows = activeRows.filter((membership) => normalizeMemberRole(membership.role));
   const pendingInvitations = await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 200).catch(() => []);
@@ -348,12 +349,19 @@ export async function handle(req: Request) {
     const payload = await req.json().catch(() => ({}));
     if (!payload.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
+    const location = await svc.entities.ProviderLocation.get(payload.location_id).catch(() => null);
+    if (!location) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
+    let authorizedMembership = null;
     let hasProviderAccess = user.role === 'admin';
     let activeClaim = null;
     let ownMemberships = [];
     if (!hasProviderAccess) {
       ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: payload.location_id, status: 'active' });
       hasProviderAccess = ownMemberships.some((membership) => normalizeMemberRole(membership.role));
+      if (!hasProviderAccess) {
+        authorizedMembership = await findProviderLeadLocationMembership(svc, user, location);
+        hasProviderAccess = Boolean(authorizedMembership);
+      }
       if (!hasProviderAccess) {
         const claims = await svc.entities.ProviderClaimRequest.filter({
           user_id: user.id,
@@ -365,8 +373,6 @@ export async function handle(req: Request) {
       }
     }
 
-    const location = await svc.entities.ProviderLocation.get(payload.location_id).catch(() => null);
-    if (!location) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
     if (!hasProviderAccess) return Response.json(await applicantOverview(svc, user, location, activeClaim));
 
     const organization = location.organization_id
@@ -424,7 +430,7 @@ export async function handle(req: Request) {
     const latestReview = reviewedSubs[0] || null;
     const activeOrganizationSubmission = pendingSubs.find((submission) => submission.section === 'public_profile' && submission.organization_id === organization?.id) || null;
     const contentSummary = await getAggregateContentSummary(svc, uniqueLocations, user.id);
-    const memberSummary = await getMemberSummary(svc, user.id, location.id);
+    const memberSummary = await getMemberSummary(svc, user.id, location.id, authorizedMembership);
 
     let pendingLogoUrl = '';
     let pendingLogoLocationId = '';
