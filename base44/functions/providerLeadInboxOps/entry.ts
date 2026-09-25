@@ -260,6 +260,7 @@ Deno.serve(async (req) => {
       ? await svc.entities.ProviderLead.get(requestedLeadId).catch(() => null)
       : null;
     const targetExpiresAt = Date.parse(String(targetRow?.expires_at || ''));
+    let targetWasReconciled = false;
     if (targetRow?.location_id === locationId
       && targetRow.delivery_state === 'available'
       && targetRow.request_id
@@ -267,9 +268,10 @@ Deno.serve(async (req) => {
       && targetExpiresAt <= Date.now()) {
       await reconcilePatientRequestExpiration(svc, targetRow.request_id).catch(() => null);
       targetRow = await svc.entities.ProviderLead.get(requestedLeadId).catch(() => null);
+      targetWasReconciled = true;
     }
     const targetLead = isProviderLeadInboxTarget(targetRow, locationId, requestedScope, requestedStatus)
-      ? (leads.find((lead) => lead.id === requestedLeadId)
+      ? ((!targetWasReconciled && leads.find((lead) => lead.id === requestedLeadId))
         || await enrichLeadForInbox(svc, targetRow, user, entitlement))
       : null;
 
