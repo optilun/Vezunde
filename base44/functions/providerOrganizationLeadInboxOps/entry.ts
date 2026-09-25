@@ -4,6 +4,7 @@ import {
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
+import { projectOrganizationLeadExpirations } from '../../shared/providerOrganizationLeadLifecycle.js';
 import {
   PROVIDER_ORGANIZATION_LEAD_INBOX_CONTRACT_VERSION,
   buildOrganizationLeadInboxPage,
@@ -93,8 +94,11 @@ Deno.serve(async (req) => {
     const entitlementsByLocation = {};
     for (const item of locationData) entitlementsByLocation[item.location.id] = item.entitlement;
 
+    const projectedLeads = await projectOrganizationLeadExpirations(
+      svc, locationData.flatMap((item) => item.leads),
+    );
     const page = buildOrganizationLeadInboxPage({
-      leads: locationData.flatMap((item) => item.leads),
+      leads: projectedLeads,
       locations,
       scope: clean(input.scope, 40),
       status: clean(input.status, 80),
