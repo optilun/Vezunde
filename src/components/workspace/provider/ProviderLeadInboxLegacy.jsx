@@ -11,6 +11,7 @@ import LeadListItem from "./leads/LeadListItem";
 import LeadDetailPanel from "./leads/LeadDetailPanel";
 import ProviderUpgradeSpotlight from "./leads/ProviderUpgradeSpotlight";
 import { openUpgradeSpotlight, setUpgradeSpotlightAvailable } from "@/lib/providerUpgradeSpotlight";
+import { mergeFocusedLead } from "@/lib/providerOrganizationInboxView";
 
 const FILTERS = [
   { key: "all", label: "Active", scope: "active", status: "" },
@@ -87,11 +88,7 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
 
   useEffect(() => { void load(); }, [load, notificationTick]);
 
-  const leads = useMemo(() => {
-    const listed = data?.leads || [];
-    const target = data?.target_lead;
-    return target && !listed.some((lead) => lead.id === target.id) ? [target, ...listed] : listed;
-  }, [data]);
+  const leads = useMemo(() => mergeFocusedLead(data?.leads, data?.target_lead), [data]);
 
   // Pe desktop lista si detaliul stau alaturi, deci prima cerere se deschide singura;
   // daca selectia nu mai exista in filtrul curent, revenim la prima din lista.
