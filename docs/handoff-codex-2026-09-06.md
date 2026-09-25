@@ -227,3 +227,12 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Publicare confirmata (bundle-urile live contin fixurile din faza 3). Endpoint: `patient-need-ai-v2.1` pe toate cele 3 cazuri, 2,3 s; "am tensiune oculara mare si as vrea un control" fara semnal; "vad dublu de azi dimineata" si "de ieri vad ca o umbra la ochiul stang" cu other_possible_urgent_eye_problem.
 - Interfata: verificarea de siguranta o singura data, anamneza pre-bifata (glaucom), recomandari corecte, fara 112/UPU. Oprit inainte de "Cauta rezultate". Detalii: audit, sectiunea 12.
 - Deciziile 11.2 (zgomot chei), 11.3 (bundle-uri) si 11.4 (revizuire medicala, acord anamneza) asteapta owner-ul.
+
+### 2026-09-25 — 11.2 aplicat, 11.3 neaplicat
+
+- 11.2 (aprobat de owner): `shared/confirmedNeedServiceKeys.js` + copie in `base44/shared/`; cheile gasite in text raman doar din familia nevoii confirmate, in browser si pe server. Cautarea libera neschimbata; scorul, bucket-urile si Top 3 neatinse. Checkpoint 6ab6ebc1da74d6ebb8910265. Detalii: audit, sectiunea 13.
+- Ecranul de verificare nu mai repeta mesajul pacientului (bula "Ai spus").
+- Test nou `verify-confirmed-need-service-keys` in `test:services`; ESLint si build OK.
+- **Pentru celalalt agent:** `verify-all` are 12 esecuri noi din zona lui: 8 teste cer exact 49 de functii fizice, iar `providerOrganizationLeadInboxOps` le-a facut 50 (de actualizat numarul cu justificare), si 4 teste nu mai gasesc `ProviderMembership.filter` (verify-controlled-pro-chat, verify-provider-contact-access, verify-provider-entitlement, verify-provider-lead-response).
+- 11.3 (re-sincronizarea bundle-urilor) neaplicat: refuzat de filtrul de securitate al sesiunii; ramane decizia owner-ului.
+- Documentul pentru revizuirea medicala (11.4) e gata in Claude Docs: "Revizuire medicala VIASEE".
