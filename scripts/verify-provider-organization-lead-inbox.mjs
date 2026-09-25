@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isProviderLeadInboxTarget } from '../base44/shared/providerLeadInboxTargetPolicy.js';
 import {
   PROVIDER_ORGANIZATION_LEAD_INBOX_CONTRACT_VERSION,
   buildOrganizationLeadInboxPage,
@@ -75,6 +76,7 @@ assert.equal(page.counters.lead_deliveries_in_scope, 3);
 assert.equal(page.counters.distinct_requests_in_scope, 2);
 assert.equal(page.pagination.total, 3);
 assert.equal(page.pagination.has_more, true);
+assert.equal(page.group_key_scope, 'page');
 assert.deepEqual(page.leads.map((item) => item.id), ['lead-1', 'lead-2']);
 assert.equal(page.leads[0].group_key, page.leads[1].group_key);
 assert.equal(page.leads[0].location_name, 'Alfa');
@@ -120,4 +122,12 @@ assert.equal(secondPage.counters.distinct_requests_in_scope, 601);
 assert.equal(secondPage.pagination.total, 601);
 assert.equal(secondPage.leads.length, 100);
 assert.equal(secondPage.pagination.has_more, true);
+
+const target = lead('old-target', 'request-old', 'a-1', 'new', '2025-01-01T00:00:00Z');
+assert.equal(isProviderLeadInboxTarget(target, 'a-1', 'active', ''), true);
+assert.equal(isProviderLeadInboxTarget(target, 'a-2', 'active', ''), false);
+assert.equal(isProviderLeadInboxTarget(target, 'a-1', 'history', ''), false);
+assert.equal(isProviderLeadInboxTarget(target, 'a-1', 'active', 'closed'), false);
+assert.equal(isProviderLeadInboxTarget({ ...target, status: 'closed' }, 'a-1', 'history', ''), true);
+assert.equal(isProviderLeadInboxTarget(null, 'a-1', 'active', ''), false);
 console.log('Provider organization lead inbox policy: OK');
