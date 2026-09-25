@@ -70,7 +70,9 @@ function HomeCanvas() {
 // fara JavaScript pe fiecare cadru si fara o a doua copie a sectiunilor. Singurul lucru calculat
 // la derulare e estomparea usoara a primului ecran (opacity, fara redesenare).
 const PIN_DISTANCE = "45svh";
-const HEADER_OFFSET_PX = 80;
+// Header-ul e acum transparent peste primul ecran (nu mai rezerva inaltime), asa ca ancora de
+// pin ramane chiar la varful ferestrei.
+const HEADER_OFFSET_PX = 0;
 
 function useHeroCoverFade(stageRef, heroRef, enabled) {
   useEffect(() => {
@@ -122,7 +124,7 @@ export default function Home() {
       <div ref={stageRef} className="relative">
         <div
           ref={heroRef}
-          className={pinActive ? "sticky top-20 z-0 will-change-[opacity]" : "relative"}
+          className={pinActive ? "sticky top-0 z-0 will-change-[opacity]" : "relative"}
         >
           <Hero onStartedChange={setStarted} />
         </div>
