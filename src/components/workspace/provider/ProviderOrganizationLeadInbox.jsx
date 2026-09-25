@@ -74,13 +74,15 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
     setData(null);
   }, [organizationId]);
 
-  const groups = useMemo(() => groupOrganizationLeads(data?.leads), [data?.leads]);
-  const locations = data?.locations || [];
-  const totalLeads = data?.counters?.lead_deliveries_in_scope ?? 0;
-  const totalRequests = data?.counters?.distinct_requests_in_scope ?? 0;
-  const page = data?.pagination || {};
+  const currentData = data?.organization_id === organizationId ? data : null;
+  const busy = loading || Boolean(data && !currentData);
+  const groups = useMemo(() => groupOrganizationLeads(currentData?.leads), [currentData?.leads]);
+  const locations = currentData?.locations || [];
+  const totalLeads = currentData?.counters?.lead_deliveries_in_scope ?? 0;
+  const totalRequests = currentData?.counters?.distinct_requests_in_scope ?? 0;
+  const page = currentData?.pagination || {};
   const pageStart = totalLeads > 0 ? (page.offset ?? offset) + 1 : 0;
-  const pageEnd = Math.min((page.offset ?? offset) + (data?.leads?.length || 0), totalLeads);
+  const pageEnd = Math.min((page.offset ?? offset) + (currentData?.leads?.length || 0), totalLeads);
   const historySelected = filter === "history";
 
   const openNotificationTarget = useCallback((notification) => {
@@ -109,8 +111,8 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
             <ProviderNotificationCenter locations={locations} onOpenTarget={openNotificationTarget} />
-            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45 disabled:opacity-60">
-              <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Actualizează
+            <button type="button" onClick={() => void load()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45 disabled:opacity-60">
+              <RefreshCw className={busy ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Actualizează
             </button>
           </div>
         </div>
@@ -139,7 +141,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
               value={locationFilter}
               onChange={(event) => { setLocationFilter(event.target.value); setOffset(0); }}
               className="min-h-10 max-w-[16rem] rounded-full border border-foreground/20 bg-white px-3 text-[12px] text-foreground"
-              disabled={loading && locations.length === 0}
+              disabled={busy && locations.length === 0}
             >
               <option value="">Toate locațiile</option>
               {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
@@ -159,7 +161,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
             </button>
           ))}
         </div>
-        {loading ? (
+        {busy ? (
           <div className="flex min-h-40 items-center justify-center font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă cererile</div>
         ) : error ? (
           <div role="alert" className="px-6 py-10 text-center text-sm text-destructive">{error}</div>
@@ -183,7 +185,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
                     key={lead.id}
                     lead={lead}
                     locationName={lead.location_name || locations.find((location) => location.id === lead.location_id)?.name || "Locație"}
-                    planLabel={locationPlanLabel(data?.entitlements_by_location, lead.location_id)}
+                    planLabel={locationPlanLabel(currentData?.entitlements_by_location, lead.location_id)}
                     onSelect={() => {
                       const target = organizationLeadTarget(lead);
                       if (target) onOpenLead?.(target);
@@ -194,7 +196,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
             ))}
           </div>
         )}
-        {!loading && !error && totalLeads > 0 && (
+        {!busy && !error && totalLeads > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e3ddd0] px-4 py-3">
             <p className="text-[12px] text-muted-foreground">Leadurile {pageStart}–{pageEnd} din {totalLeads}</p>
             <div className="flex gap-2">
