@@ -115,32 +115,6 @@ function TypingPrompt({ active }) {
   return <span ref={textRef} />;
 }
 
-// Mica insigna decorativa cu "ochi", desenata din forme simple (acelasi limbaj vizual ca
-// pictogramele de la categorii): irisul respira usor, iar razele din jur se rotesc foarte lent.
-function HeroOpticsMark() {
-  return (
-    <div
-      aria-hidden="true"
-      className="home-fade-up relative mx-auto mt-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center sm:mt-6 sm:h-[5.25rem] sm:w-[5.25rem]"
-      style={{ "--home-delay": "90ms" }}
-    >
-      <span className="absolute inset-0 rounded-full border border-black/[0.06] bg-white/70 shadow-[0_10px_28px_rgba(20,20,20,0.08)]" />
-      <svg viewBox="0 0 100 100" className="hero-optics-spin absolute h-[70%] w-[70%]" fill="none">
-        <g stroke="#684d78" strokeWidth="5" strokeLinecap="round" opacity="0.5">
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
-            <line key={angle} x1="50" y1="5" x2="50" y2="16" transform={`rotate(${angle} 50 50)`} />
-          ))}
-        </g>
-      </svg>
-      <svg viewBox="0 0 100 100" className="relative h-[42%] w-[42%]" fill="none">
-        <circle cx="50" cy="50" r="34" fill="#684d78" className="hero-optics-pulse" />
-        <circle cx="58" cy="42" r="7" fill="#F6F0E8" opacity="0.85" />
-        <circle cx="50" cy="50" r="14" fill="#171717" />
-      </svg>
-    </div>
-  );
-}
-
 export default function Hero({ onStartedChange } = {}) {
   const [text, setText] = useState("");
   const [animating, setAnimating] = useState(true);
@@ -252,8 +226,6 @@ export default function Hero({ onStartedChange } = {}) {
             >
               Cauți un medic oftalmolog, o clinică sau o optică? VIASEE te ajută să găsești specialistul potrivit, aproape de tine.
             </p>
-
-            <HeroOpticsMark />
 
             <form
               onSubmit={submit}
