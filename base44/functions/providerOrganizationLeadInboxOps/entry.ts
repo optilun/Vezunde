@@ -44,7 +44,7 @@ async function mapWithConcurrency(items, concurrency, mapper) {
   return output;
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -116,4 +116,4 @@ Deno.serve(async (req) => {
   } catch (_error) {
     return res({ error: 'Leadurile organizatiei nu au putut fi incarcate.' }, 500);
   }
-});
+}
