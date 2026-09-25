@@ -158,7 +158,8 @@ assert.doesNotMatch(phoneBackend, /conversation_access_state: 'locked'/);
 assert.match(phoneBackend, /conversation_access_state: checkedLead\.conversation_access_state/);
 assert.match(phoneBackend, /conversation_access_state: lead\?\.conversation_access_state/);
 
-assert.match(center, /window\.setInterval\(\(\) => void load\(\), 60000\)/);
+assert.match(center, /window\.setInterval\(\(\) => void load\(\), refreshIntervalMs\)/);
+assert.match(center, /refreshIntervalMs <= 0/);
 assert.match(center, /markAllNotificationsRead/);
 assert.match(center, /notification\.title/);
 assert.match(center, /notification\.body/);
