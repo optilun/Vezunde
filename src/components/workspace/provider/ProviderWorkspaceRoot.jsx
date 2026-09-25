@@ -661,6 +661,10 @@ export default function ProviderWorkspaceRoot({
               <ProviderLeadInbox
                 locationId={selectedLocationId}
                 location={selectedLocation}
+                organizationId={selectedOrganizationId}
+                isOrganizationOwner={isOrganizationOwner}
+                ownerLocations={locations}
+                onSelectLocation={selectLocation}
                 onEntitlementChanged={() => setEntitlementRefreshTick((tick) => tick + 1)}
               />
             )}
