@@ -141,7 +141,7 @@ export default function CategoryShowcase() {
             <span className="block">Într-un singur loc.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Medici, clinici, controale, investigații, ochelari și reparații.
+            Medici, clinici, optici, controale, investigații, ochelari și servicii.
           </p>
         </Reveal>
 
