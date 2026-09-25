@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { expandOwnerWorkspaceScope } from '../../shared/providerOwnerWorkspaceScope.js';
 
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
@@ -290,7 +291,7 @@ export async function handle(req: Request) {
     if (!user) return Response.json({ error: 'Autentificare necesara' }, { status: 401 });
     const svc = base44.asServiceRole;
     const rawMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
-    const memberships = rawMemberships.filter((membership) => normalizeMemberRole(membership.role) && membership.location_id);
+    let memberships = rawMemberships.filter((membership) => normalizeMemberRole(membership.role) && membership.location_id);
     if (memberships.length === 0) return Response.json(await getApplicantPreparationWorkspace(svc, user));
 
     const locationMap = new Map();
@@ -304,6 +305,16 @@ export async function handle(req: Request) {
       const organizationId = membership.organization_id || location?.organization_id || '';
       if (organizationId && !organizationMap.has(organizationId)) {
         const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
+        if (organization) organizationMap.set(organization.id, organization);
+      }
+    }
+
+    const expandedOwnerScope = await expandOwnerWorkspaceScope(svc, user, memberships, [...locationMap.values()]);
+    memberships = expandedOwnerScope.memberships;
+    for (const location of expandedOwnerScope.locations) {
+      locationMap.set(location.id, location);
+      if (location.organization_id && !organizationMap.has(location.organization_id)) {
+        const organization = await svc.entities.ProviderOrganization.get(location.organization_id).catch(() => null);
         if (organization) organizationMap.set(organization.id, organization);
       }
     }
@@ -325,7 +336,7 @@ export async function handle(req: Request) {
       const organizationId = membership.organization_id || location.organization_id || null;
       const organization = organizationId ? organizationMap.get(organizationId) : null;
       const normalizedRole = normalizeMemberRole(membership.role);
-      return { membership_id: membership.id, role: normalizedRole, capabilities: capabilitiesForRole(normalizedRole), organization_id: organizationId, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
+      return { membership_id: membership.id || null, virtual_owner_access: membership.virtual_owner_access === true, role: normalizedRole, capabilities: capabilitiesForRole(normalizedRole), organization_id: organizationId, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
     });
     const memberSummary = await getMemberSummary(svc, memberships, [...locationMap.keys()]);
     const organizations = [...organizationMap.values()].map((organization) => sanitizeOrganization(organization, [...locationMap.values()].filter((location) => location.organization_id === organization.id)));
