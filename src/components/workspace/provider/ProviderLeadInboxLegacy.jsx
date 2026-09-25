@@ -175,7 +175,7 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
           <button
             key={item.key}
             type="button"
-            onClick={() => setFilter(item.key)}
+            onClick={() => { targetLeadRef.current = ""; setTargetMissing(false); setSelectedLeadId(""); setFilter(item.key); }}
             className={`shrink-0 rounded-full px-3 py-1.5 font-heading text-[11.5px] font-bold tracking-[-0.015em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#fdfbf6] ${filter === item.key ? "bg-[#171717] text-white" : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"}`}
           >
             {item.label}
