@@ -182,8 +182,8 @@ export default function Hero({ onStartedChange } = {}) {
       />
 
       <div
-        className={`relative z-10 mx-auto flex w-full flex-col items-center px-4 text-center sm:px-5 ${
-          started ? "max-w-3xl py-6 sm:py-10" : "max-w-3xl sm:max-w-5xl py-16 sm:py-28"
+        className={`relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-4 text-center sm:px-5 ${
+          started ? "py-6 sm:py-10" : "py-16 sm:py-28"
         }`}
       >
         {started ? (
@@ -203,7 +203,7 @@ export default function Hero({ onStartedChange } = {}) {
         ) : (
           <>
             <h1
-              className="home-rise font-heading font-extrabold leading-[1.05] tracking-[-0.03em] text-[2.1rem] min-[390px]:text-[2.4rem] sm:whitespace-nowrap sm:text-[clamp(2.4rem,4.6vw,4.25rem)]"
+              className="home-rise font-heading text-balance text-[2.25rem] font-extrabold leading-[1.08] tracking-[-0.04em] min-[390px]:text-[2.65rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
               Găsește îngrijirea potrivită pentru ochi.
