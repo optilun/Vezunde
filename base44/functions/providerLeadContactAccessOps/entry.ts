@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import { hasProviderFeature, resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import {
   PROVIDER_CONTACT_ACCESS_CONTRACT_VERSION,
@@ -28,12 +28,7 @@ function expired(lead) {
 async function authorizeLocation(svc, user, locationId) {
   const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
   if (!location) return { error: 'Locatia nu a fost gasita.', status: 404 };
-  const memberships = await svc.entities.ProviderMembership.filter({
-    user_id: user.id,
-    location_id: locationId,
-    status: 'active',
-  }, '-created_date', 20);
-  const membership = memberships.find((row) => canAccessProviderLeadInbox(row?.role));
+  const membership = await findProviderLeadLocationMembership(svc, user, location);
   if (!membership) return { error: 'Nu ai acces la contactele acestei locatii.', status: 403 };
   return { location, membership };
 }
