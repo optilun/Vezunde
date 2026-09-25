@@ -15,7 +15,7 @@ import {
 } from '../../shared/providerLeadFullDetailsPolicy.js';
 import {
   IN_APP_NOTIFICATION_CONTRACT_VERSION,
-  sanitizeInAppNotification,
+  sanitizeProviderInAppNotification,
   summarizeInAppNotifications,
 } from '../../shared/inAppNotificationPolicy.js';
 import { ensureProviderInAppNotifications } from '../../shared/inAppNotificationProjection.js';
@@ -147,7 +147,8 @@ function providerNotificationFilter(userId, locationId) {
   };
 }
 
-async function listProviderNotifications(svc, userId, locationId, limit) {
+async function listProviderNotifications(svc, userId, location, limit) {
+  const locationId = location.id;
   const filter = providerNotificationFilter(userId, locationId);
   const [rows, allRows] = await Promise.all([
     svc.entities.InAppNotification.filter(filter, '-created_date', boundedLimit(limit)),
@@ -156,11 +157,12 @@ async function listProviderNotifications(svc, userId, locationId, limit) {
   return {
     notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
     counters: summarizeInAppNotifications(allRows),
-    notifications: rows.map(sanitizeInAppNotification),
+    notifications: rows.map((row) => sanitizeProviderInAppNotification(row, location)),
   };
 }
 
-async function markProviderNotificationRead(svc, userId, locationId, notificationId) {
+async function markProviderNotificationRead(svc, userId, location, notificationId) {
+  const locationId = location.id;
   const notification = await svc.entities.InAppNotification.get(notificationId).catch(() => null);
   if (!notification
     || notification.recipient_type !== 'provider_user'
@@ -174,7 +176,7 @@ async function markProviderNotificationRead(svc, userId, locationId, notificatio
       status: 'read',
       read_at: new Date().toISOString(),
     });
-  return { notification: sanitizeInAppNotification(updated) };
+  return { notification: sanitizeProviderInAppNotification(updated, location) };
 }
 
 async function markAllProviderNotificationsRead(svc, userId, locationId) {
@@ -210,12 +212,12 @@ Deno.serve(async (req) => {
     if (action === 'notifications_list') {
       await reconcileLocationExpirations(svc, locationId).catch(() => null);
       await ensureProviderInAppNotifications({ svc, userId: user.id, locationId }).catch(() => []);
-      return res(await listProviderNotifications(svc, user.id, locationId, input.limit));
+      return res(await listProviderNotifications(svc, user.id, authorized.location, input.limit));
     }
     if (action === 'notification_mark_read') {
       const notificationId = clean(input.notification_id, 120);
       if (!notificationId) return res({ error: 'notification_id este obligatoriu.' }, 400);
-      const result = await markProviderNotificationRead(svc, user.id, locationId, notificationId);
+      const result = await markProviderNotificationRead(svc, user.id, authorized.location, notificationId);
       if (result.error) return res({ error: result.error }, result.status);
       return res({ notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION, ...result });
     }
