@@ -6,7 +6,7 @@ import HowItWorks from "@/components/home/HowItWorks";
 import ProCta from "@/components/home/ProCta";
 import { useMediaQuery, usePrefersReducedMotion } from "@/lib/motion";
 
-// 2026-09-25. Bannerul „Versiune în dezvoltare” de deasupra primului ecran a fost scos, la cererea
+// 2026-09-25. Bannerul despre stadiul platformei (de deasupra primului ecran) a fost scos, la cererea
 // lui Alex (verify-home-development-banner.mjs verifica acum ca nu revine).
 
 function HomeCanvasBackground() {
