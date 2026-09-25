@@ -3,6 +3,11 @@ export function providerNotificationLocationIds(locationId, locations) {
   return [...new Set(ids.filter((id) => typeof id === "string" && id.trim().length > 0))];
 }
 
+export function resolveProviderNotificationLocation(notification, locationIds, fallbackLocationId = "") {
+  const targetLocationId = notification?.location_id || fallbackLocationId;
+  return locationIds.includes(targetLocationId) ? targetLocationId : "";
+}
+
 export function mergeProviderNotificationResults(results) {
   const notificationsById = new Map();
   let total = 0;
