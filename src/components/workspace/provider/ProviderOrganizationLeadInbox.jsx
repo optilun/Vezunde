@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Inbox, Loader2, LockKeyhole, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
-import { groupOrganizationLeads, organizationLeadTarget } from "@/lib/providerOrganizationInboxView";
+import { groupOrganizationLeads, locationPlanLabel, organizationLeadTarget } from "@/lib/providerOrganizationInboxView";
 import LeadListItem from "./leads/LeadListItem";
 
 const PAGE_SIZE = 50;
@@ -183,7 +183,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
                     key={lead.id}
                     lead={lead}
                     locationName={lead.location_name || locations.find((location) => location.id === lead.location_id)?.name || "Locație"}
-                    planLabel={data?.entitlements_by_location?.[lead.location_id]?.plan_code === "pro" ? "Pro" : "Free"}
+                    planLabel={locationPlanLabel(data?.entitlements_by_location, lead.location_id)}
                     onSelect={() => {
                       const target = organizationLeadTarget(lead);
                       if (target) onOpenLead?.(target);
