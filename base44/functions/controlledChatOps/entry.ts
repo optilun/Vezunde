@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import {
   CONTROLLED_CHAT_CONTRACT_VERSION,
@@ -136,12 +136,7 @@ async function loadProviderContext(base44, svc, input) {
   if (!location) return { error: 'Locatia nu a fost gasita.', status: 404 };
   if (!lead || lead.location_id !== locationId) return { error: 'Leadul nu a fost gasit.', status: 404 };
 
-  const memberships = await svc.entities.ProviderMembership.filter({
-    user_id: user.id,
-    location_id: locationId,
-    status: 'active',
-  }, '-created_date', 20);
-  const membership = memberships.find((row) => canAccessProviderLeadInbox(row?.role));
+  const membership = await findProviderLeadLocationMembership(svc, user, location);
   if (!membership) return { error: 'Nu ai acces la conversatiile acestei locatii.', status: 403 };
 
   const [request, contacts, response, entitlement, conversation] = await Promise.all([
