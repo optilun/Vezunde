@@ -78,6 +78,7 @@ export default function ProviderNotificationCenter({ locationId, locations, onOp
     <NotificationCenter
       key={scopeKey}
       label="Notificări"
+      refreshIntervalMs={isAggregate ? 0 : 60000}
       loadNotifications={loadNotifications}
       markNotificationRead={markNotificationRead}
       markAllNotificationsRead={markAllNotificationsRead}
