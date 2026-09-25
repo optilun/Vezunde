@@ -112,6 +112,37 @@ for (const patch of [{ role: 'location_manager' }, { role: 'location_staff' }, {
   reset({ ...owner, ...patch });
   assert.equal((await invoke({})).status, 403, JSON.stringify(patch));
 }
+// Exercise the actual workspace/read handlers for a future location with no direct membership.
+async function loadWorkspaceHandler(name) {
+  const url = new URL('../base44/functions/getMyProviderWorkspace/' + name + '.ts', import.meta.url);
+  let handlerSource = await readFile(url, 'utf8');
+  handlerSource = handlerSource.replace(/import \{ createClientFromRequest \} from 'npm:@base44\/sdk@[^']+';/,
+    'const createClientFromRequest = () => globalThis.__organizationInboxTestClient;');
+  handlerSource = handlerSource.replace(/from '(\.\.[^']+)'/g, (_match, path) => 'from ' + JSON.stringify(new URL(path, url).href));
+  handlerSource = handlerSource.replace('req: Request', 'req');
+  return (await import('data:text/javascript;base64,' + Buffer.from(handlerSource).toString('base64'))).handle;
+}
+const workspaceHandler = await loadWorkspaceHandler('getMyProviderWorkspace');
+reset();
+rows.ProviderOrganization = [{ id: 'org', name: 'Organizatie' }];
+const workspaceResponse = await workspaceHandler(new Request('https://test.invalid', { method: 'POST', body: '{}' }));
+assert.equal(workspaceResponse.status, 200);
+const workspaceData = await workspaceResponse.json();
+const futureLocation = workspaceData.organization_contexts[0].locations.find((row) => row.id === 'b');
+assert.equal(futureLocation.current_user_role, 'organization_owner');
+assert.ok(futureLocation.capabilities.includes('location.manage_requests'));
+for (const name of ['getProviderEntitlement', 'getProviderProfileCompleteness', 'getProviderWorkspaceOverview']) {
+  const handler = await loadWorkspaceHandler(name);
+  const readLocation = () => handler(new Request('https://test.invalid', {
+    method: 'POST', body: JSON.stringify({ location_id: 'b' }),
+  }));
+  reset();
+  rows.ProviderOrganization = [{ id: 'org', name: 'Organizatie' }];
+  const allowed = await readLocation();
+  assert.equal(allowed.status, 200, name + ': ' + await allowed.text());
+  reset({ ...owner, organization_wide_access: false });
+  assert.equal((await readLocation()).status, 403, name + ' must reject selective owner outside assignment');
+}
 delete globalThis.__organizationInboxTestClient;
 delete globalThis.__organizationInboxTestHandler;
 console.log('Organization inbox integration: owner scope, future locations, expiry, isolation and >500 SDK pagination passed.');
