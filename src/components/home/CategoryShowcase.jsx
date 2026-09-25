@@ -106,20 +106,6 @@ function ShapeTile({ type, className = "" }) {
   );
 }
 
-function SageMark() {
-  return (
-    <span aria-hidden="true" className="hidden h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#a9b491] bg-[#cfd8ba] text-[#73825e] xl:grid">
-      <svg viewBox="0 0 48 48" className="h-7 w-7" fill="currentColor">
-        <circle cx="24" cy="13" r="8" />
-        <circle cx="35" cy="24" r="8" />
-        <circle cx="24" cy="35" r="8" />
-        <circle cx="13" cy="24" r="8" />
-        <rect x="21" y="21" width="6" height="6" rx="1" fill="#cfd8ba" />
-      </svg>
-    </span>
-  );
-}
-
 export default function CategoryShowcase() {
   const headingId = "home-categories-title";
 
@@ -173,7 +159,6 @@ export default function CategoryShowcase() {
                   <img src={category.artwork} width="214" height="150" alt="" loading="lazy" decoding="async" className={`h-full w-full object-contain object-center transition-transform duration-500 ease-out motion-reduce:transform-none motion-reduce:transition-none ${category.artworkScale}`} />
                 </span>
                 <span className="relative z-20 flex min-h-[4.5rem] items-center gap-3 border-t border-black/[0.07] bg-white/[0.045] px-4 py-3 text-left text-[#1c1c1c] xl:px-5">
-                  {index === 4 && <SageMark />}
                   <span className={`font-heading font-bold leading-[1.08] tracking-[-0.025em] ${category.desktopLabel}`}>{category.title}</span>
                 </span>
               </Link>
