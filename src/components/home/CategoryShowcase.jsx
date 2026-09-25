@@ -190,9 +190,9 @@ export default function CategoryShowcase() {
 
         <Reveal delay={120} className="mt-8 flex justify-center sm:mt-10 lg:mt-11">
           <Link
-            to="/cerere"
-            aria-label="Alege ce cauți și trimite o cerere"
-            {...prefetchOnIntent("/cerere")}
+            to="/ghid"
+            aria-label="Vezi ghidul VIASEE"
+            {...prefetchOnIntent("/ghid")}
             className="group inline-flex min-h-14 items-center gap-5 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-white shadow-[0_16px_38px_rgba(18,18,18,0.15)] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(18,18,18,0.2)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-8 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-[4.5rem] sm:gap-8 sm:pl-10"
           >
             <span aria-hidden="true" className="order-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f8f4ec] text-[#171717] sm:h-14 sm:w-14">
