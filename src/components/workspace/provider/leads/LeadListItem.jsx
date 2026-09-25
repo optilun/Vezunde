@@ -45,7 +45,7 @@ function initial(value) {
   return String(value || "").trim().charAt(0).toUpperCase() || "C";
 }
 
-export default function LeadListItem({ lead, response, selected, onSelect }) {
+export default function LeadListItem({ lead, response, selected, onSelect, locationName = "", planLabel = "" }) {
   const terminal = lead.is_historical === true;
   const unread = !terminal && lead.status === "new";
   const tone = terminal ? { border: "#d9d4ca", bg: "#f1ede4" } : toneFor(lead);
@@ -93,6 +93,11 @@ export default function LeadListItem({ lead, response, selected, onSelect }) {
           )}
         </span>
 
+        {locationName && (
+          <span className="mt-1 flex items-center gap-1.5 truncate font-mono text-[9.5px] uppercase tracking-[0.16em] text-foreground/70">
+            {locationName}{planLabel && <span className="rounded-full border border-foreground/20 px-1.5 py-0.5 text-[9px]">{planLabel}</span>}
+          </span>
+        )}
         {place && (
           <span className="mt-1 block truncate font-mono text-[9.5px] uppercase tracking-[0.16em] text-muted-foreground/65">
             {place}
