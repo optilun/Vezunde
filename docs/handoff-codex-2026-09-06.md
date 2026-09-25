@@ -234,5 +234,6 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Ecranul de verificare nu mai repeta mesajul pacientului (bula "Ai spus").
 - Test nou `verify-confirmed-need-service-keys` in `test:services`; ESLint si build OK.
 - **Pentru celalalt agent:** `verify-all` are 12 esecuri noi din zona lui: 8 teste cer exact 49 de functii fizice, iar `providerOrganizationLeadInboxOps` le-a facut 50 (de actualizat numarul cu justificare), si 4 teste nu mai gasesc `ProviderMembership.filter` (verify-controlled-pro-chat, verify-provider-contact-access, verify-provider-entitlement, verify-provider-lead-response).
-- 11.3 (re-sincronizarea bundle-urilor) neaplicat: refuzat de filtrul de securitate al sesiunii; ramane decizia owner-ului.
+- 11.3 aplicat (checkpoint 6ab6f212ab78a23bd744043d): cele 4 bundle-uri `sharedDependencies.js` reconstruite din `shared/`; registrul, prerechizitele si scorul identice ca logica, cautarea semantica de pe server aliniata cu browserul. Blob nou aprobat in testul de izolare. Detalii: audit, sectiunea 13.
+- **Tot pentru celalalt agent:** inca 2 teste pica dupa lucrul la antet si pagina principala: verify-home-performance ("primul ecran ramane fixat prin CSS sticky") si verify-page-stability-performance ("antetul desktop are 5rem").
 - Documentul pentru revizuirea medicala (11.4) e gata in Claude Docs: "Revizuire medicala VIASEE".
