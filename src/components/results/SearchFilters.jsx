@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, Glasses, Building2, Stethoscope, Eye, Microscope, UserRound, ScanEye, WalletCards, Search, ChevronDown, Check, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { base44 } from "@/api/base44Client";
+import { formatLocationCount } from "@/lib/localityQuickPicks";
 import { PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { SERVICE_GROUP_UI, getServiceLabel, patientServicesByGroup, serviceMatchesNeedle } from "@/lib/serviceAutocomplete";
 
@@ -11,17 +13,28 @@ function TypeIcon({ type }) { const Icon = TYPE_ICONS[type] || UserRound; return
 // s-a schimbat doar felul in care se aleg:
 // - tipurile de locatie sunt randuri compacte, nu carduri mari;
 // - cele 136 de servicii sunt pe grupuri care se deschid, nu o lista plata cu derulare in derulare;
-// - serviciile bifate apar sus, ca etichete care se pot scoate dintr-un click.
-export default function SearchFilters({ providerType, professionalType, serviceKeys, casOnly, professionalMode, hasLocality, onApply }) {
+// - serviciile bifate apar sus, ca etichete care se pot scoate dintr-un click;
+// - cand exista deja o cautare in bara de sus, panoul spune ca filtrele doar o restrang;
+// - la rasfoirea unei localitati, butonul arata cate locatii raman, inainte de aplicare.
+function previewSignature(locality, draft) {
+  return JSON.stringify([locality.siruta_code, [...(draft.types || [])].sort(), [...(draft.services || [])].sort(), Boolean(draft.cas)]);
+}
+
+export default function SearchFilters({ providerType, professionalType, serviceKeys, casOnly, professionalMode, hasLocality, onApply, searchedLabel = "", browseLocality = null, browseTotal = null }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState({});
   const [needle, setNeedle] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
   const count = professionalMode ? Number(Boolean(professionalType)) : providerType.split(",").filter(Boolean).length + serviceKeys.length + Number(casOnly);
   const groups = useMemo(() => patientServicesByGroup(), []);
+  const previewCache = useRef(new Map());
+  const [preview, setPreview] = useState({ status: "idle", total: null });
   const begin = () => {
     const services = [...serviceKeys];
-    setDraft({ types: providerType.split(",").filter(Boolean), profession: professionalType, services, cas: casOnly });
+    const nextDraft = { types: providerType.split(",").filter(Boolean), profession: professionalType, services, cas: casOnly };
+    // Numarul pentru filtrele deja aplicate il stim din lista; nu il mai cerem serverului.
+    if (browseLocality && Number.isFinite(browseTotal)) previewCache.current.set(previewSignature(browseLocality, nextDraft), browseTotal);
+    setDraft(nextDraft);
     setNeedle("");
     setExpanded(new Set(groups.filter(([, items]) => items.some((item) => services.includes(item.service_key))).map(([group]) => group)));
     setOpen(true);
@@ -38,6 +51,33 @@ export default function SearchFilters({ providerType, professionalType, serviceK
     .filter(([, items]) => items.length > 0);
   const professions = Object.entries(PROFESSIONAL_TYPES).filter(([,label], index, entries) => entries.findIndex(([,other]) => other === label) === index);
   const draftCount = professionalMode ? Number(Boolean(draft.profession)) : (draft.types?.length || 0) + (hasLocality ? (draft.services?.length || 0) + Number(Boolean(draft.cas)) : 0);
+
+  // Aceeasi cerere ca lista de pe /cauta la rasfoire (browseDirectoryProviders), cu o singura
+  // locatie pe pagina: ne trebuie doar totalul. Asteptam putin dupa ultima bifa, ca sa nu cerem
+  // la fiecare click, si tinem minte raspunsurile.
+  const signature = open && browseLocality && !professionalMode && draft.types ? previewSignature(browseLocality, draft) : "";
+  useEffect(() => {
+    if (!signature) { setPreview({ status: "idle", total: null }); return undefined; }
+    if (previewCache.current.has(signature)) { setPreview({ status: "ready", total: previewCache.current.get(signature) }); return undefined; }
+    let active = true;
+    setPreview((previous) => ({ status: "loading", total: previous.total }));
+    const timer = window.setTimeout(() => {
+      const [siruta, types, services, cas] = JSON.parse(signature);
+      base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: siruta, provider_types: types, filter_service_keys: services, cas_only: cas, limit: 1 })
+        .then((response) => {
+          if (response.data?.error) throw new Error(response.data.error);
+          const total = Number(response.data?.pagination?.total ?? 0);
+          previewCache.current.set(signature, total);
+          if (active) setPreview({ status: "ready", total });
+        })
+        .catch(() => { if (active) setPreview({ status: "error", total: null }); });
+    }, 450);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [signature]);
+  const previewReady = preview.status === "ready" && Number.isFinite(preview.total);
+  const applyLabel = previewReady && preview.total > 0
+    ? `Arată ${formatLocationCount(preview.total)}`
+    : `Arată rezultatele${draftCount > 0 ? ` · ${draftCount} ${draftCount === 1 ? "filtru" : "filtre"}` : ""}`;
 
   return <>
     <button type="button" onClick={begin} className="inline-flex min-h-12 shrink-0 items-center gap-2.5 rounded-full border border-[#d7dce4] bg-card px-5 text-sm font-semibold shadow-sm transition hover:border-[#4f6080] hover:bg-[#eff1f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f6080]">
@@ -74,7 +114,9 @@ export default function SearchFilters({ providerType, professionalType, serviceK
               <legend className="flex items-center gap-2 font-semibold"><ScanEye className="h-5 w-5 text-[#4f6080]" aria-hidden="true" /> Servicii oferite</legend>
               {!hasLocality
                 ? <p className="mt-2 text-sm text-muted-foreground">Alege mai întâi localitatea din bara de căutare. Apoi poți filtra după servicii și decontare CAS.</p>
-                : <p className="mt-2 text-xs text-muted-foreground">Apar locațiile care oferă cel puțin unul dintre serviciile bifate.</p>}
+                : searchedLabel
+                  ? <p className="mt-3 rounded-xl bg-[#eff1f5] px-3.5 py-2.5 text-xs leading-relaxed text-[#3f4e6a]">Cauți deja <strong className="font-semibold">„{searchedLabel}”</strong> din bara de sus. Aici poți păstra doar locațiile care oferă și cel puțin unul dintre serviciile bifate mai jos.</p>
+                  : <p className="mt-2 text-xs text-muted-foreground">Apar doar locațiile care oferă cel puțin unul dintre serviciile bifate.</p>}
 
               {hasLocality && draft.services?.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Servicii bifate">
                 {draft.services.map((key) => <button key={key} type="button" onClick={() => toggle("services", key)} aria-label={`Scoate ${getServiceLabel(key)}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#4f6080] px-3 text-xs font-medium text-white hover:bg-[#3f4e6a]">{getServiceLabel(key)}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
@@ -113,9 +155,14 @@ export default function SearchFilters({ providerType, professionalType, serviceK
             </fieldset>
           </>}
         </div>
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-6 py-4">
-          <button type="button" onClick={() => setDraft({types:[],profession:"",services:[],cas:false})} className="min-h-11 text-sm underline">Resetează filtrele</button>
-          <button type="button" onClick={() => { onApply({providerType:draft.types.join(","),professionalType:draft.profession,serviceKeys:hasLocality?draft.services:[],casOnly:hasLocality&&draft.cas}); setOpen(false); }} className="min-h-11 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground">Arată rezultatele{draftCount > 0 ? ` · ${draftCount} ${draftCount === 1 ? "filtru" : "filtre"}` : ""}</button>
+        <div className="shrink-0 border-t border-border bg-card px-6 py-4">
+          {signature && <p aria-live="polite" className={`mb-3 text-xs ${previewReady && preview.total === 0 ? "font-medium text-[#8a4b2a]" : "text-muted-foreground"}`}>
+            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : `Nicio locație din ${browseLocality.name} nu are toate aceste filtre. Încearcă să scoți unul.`) : ""}
+          </p>}
+          <div className="flex items-center justify-between gap-3">
+            <button type="button" onClick={() => setDraft({types:[],profession:"",services:[],cas:false})} className="min-h-11 text-sm underline">Resetează filtrele</button>
+            <button type="button" onClick={() => { onApply({providerType:draft.types.join(","),professionalType:draft.profession,serviceKeys:hasLocality?draft.services:[],casOnly:hasLocality&&draft.cas}); setOpen(false); }} className="min-h-11 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground">{applyLabel}</button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

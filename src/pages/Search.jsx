@@ -378,7 +378,7 @@ export default function Search() {
 
       <SearchFilters providerType={providerType} professionalType={professionalType} serviceKeys={filterServiceKeys} casOnly={casOnly}
         hasLocality={hasCanonicalLocality} professionalMode={searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality}
-        searchedLabel={query.trim()} browseLocality={isDirectoryBrowseView ? locality : null}
+        searchedLabel={query.trim()} browseLocality={isDirectoryBrowseView ? locality : null} browseTotal={isDirectoryBrowseView && results !== null ? pagination?.total ?? null : null}
         onApply={(filters) => {
           if (searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality) { setProfessionalType(filters.professionalType); return; }
           setProviderType(filters.providerType);
