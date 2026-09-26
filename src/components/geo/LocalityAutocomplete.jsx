@@ -297,7 +297,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
       </div>}
       <div
         hidden={!listOpen}
-        className={`absolute z-40 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg ${guided ? "left-0 w-[min(22rem,calc(100vw-2rem))] md:left-auto md:right-0" : "w-full"}`}
+        className={`absolute z-40 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg ${guided ? "-left-7 w-[calc(100%+1.75rem)] md:left-auto md:right-0 md:w-[22rem]" : "w-full"}`}
       >
         <div
           id={listId}
