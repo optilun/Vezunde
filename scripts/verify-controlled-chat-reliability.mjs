@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
@@ -71,7 +71,8 @@ try {
     stdin: {
       contents: `export { default as Provider } from './src/components/workspace/provider/ProviderLeadChat.jsx';
 export { default as Patient } from './src/components/intake2/PatientRequestChat.jsx';
-export { default as Thread } from './src/components/chat/ChatThread.jsx';`,
+export { default as Thread } from './src/components/chat/ChatThread.jsx';
+export { default as useSession } from './src/components/chat/useControlledChatSession.js';`,
       resolveDir: root, loader: 'jsx',
     },
     bundle: true, platform: 'node', format: 'esm', write: false,
@@ -88,7 +89,7 @@ export { default as Thread } from './src/components/chat/ChatThread.jsx';`,
     }],
   });
   await writeFile(outfile, bundle.outputFiles[0].text);
-  const { Provider, Patient, Thread } = await import(pathToFileURL(outfile).href);
+  const { Provider, Patient, Thread, useSession } = await import(pathToFileURL(outfile).href);
   const h = React.createElement;
   const deferred = () => {
     let resolve, reject;
@@ -192,6 +193,44 @@ export { default as Thread } from './src/components/chat/ChatThread.jsx';`,
     check(label + ': older page appended without losing current messages; accessible log and input');
     await settle(() => renderer.unmount());
   }
+
+  let session;
+  const statusWait = deferred();
+  let waitStatus = false;
+  let responseMode = 'normal';
+  const invoke = async (action) => {
+    if (action === 'status' && waitStatus) return statusWait.promise;
+    if (responseMode === 'forbidden') throw Object.assign(new Error('Access revoked'), { response: { status: 403 } });
+    return payload('race', { messages: [message('initial'), ...(action === 'send' ? [message('sent-after-poll')] : [])] });
+  };
+  function SessionHarness({ readOnly = false }) {
+    session = useSession({ invoke, readOnly });
+    return null;
+  }
+  let harness;
+  await settle(() => { harness = TestRenderer.create(h(SessionHarness)); });
+  waitStatus = true;
+  let polling;
+  await settle(() => { polling = session.load({ silent: true }); });
+  await act(async () => { await session.mutate('send', { message: 'Test', client_message_id: 'stable-message-id' }); });
+  await act(async () => { statusWait.resolve(payload('race', { messages: [message('initial')] })); await polling; });
+  assert.ok(session.data.messages.some((item) => item.id === 'sent-after-poll'));
+  assert.equal(session.action, '');
+  check('late background status cannot replace the successful send result');
+
+  waitStatus = false;
+  responseMode = 'forbidden';
+  await act(async () => { await session.load({ silent: true }); });
+  assert.equal(session.data, null);
+  assert.match(session.error, /Access revoked/);
+  check('revoked access clears visible conversation data');
+
+  responseMode = 'normal';
+  await settle(() => harness.update(h(SessionHarness, { readOnly: true })));
+  assert.equal(await session.mutate('send', {}), false);
+  assert.equal(await session.mutate('close'), false);
+  await settle(() => harness.unmount());
+  check('historical/read-only sessions refuse send and close actions');
 
   // Exercise scrolling using a measured container: no focus/viewport jump for someone
   // reading older messages, and preserve the anchor when an earlier page is prepended.
