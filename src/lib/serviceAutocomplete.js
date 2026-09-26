@@ -75,7 +75,7 @@ function serviceIndex() {
       for (const raw of getServiceSearchKeywords(key) || []) {
         const normalized = normalizeSemanticText(raw);
         if (!normalized || normalized === labelN || raw.includes("_")) continue;
-        if (!keywordText.has(normalized) || /[ăâîșțş ţ]/i.test(raw)) keywordText.set(normalized, String(raw).toLocaleLowerCase("ro"));
+        if (!keywordText.has(normalized) || /[ăâîșțşţ]/i.test(raw)) keywordText.set(normalized, String(raw).toLocaleLowerCase("ro"));
       }
       const keywords = [...keywordText.keys()];
       return {
