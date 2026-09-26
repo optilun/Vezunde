@@ -31,6 +31,18 @@ function normalizedName(location) {
   return String(location?.public_display_name || location?.name || '').trim().toLocaleLowerCase('ro-RO');
 }
 
+// 2026-09-26. Numarul de locatii pe localitate, pentru lista de orase din /cauta. Include si
+// locatiile fara pozitie (harta le omite), deci e acelasi numar ca lista de pe pagina orasului.
+// Cheia e numele localitatii + judetul, fara diacritice. Sectoarele Bucurestiului se numara la
+// Bucuresti, iar resedinta cu acelasi nume ca UAT-ul are deja acelasi nume - exact regula din
+// resolveEquivalentLocalityCodes (base44/shared/locationScopedEntityQuery.js).
+function localityCountKey(name, county) {
+  const normalize = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const place = normalize(name).replace(/^bucuresti sector(ul)? \d+$/, 'bucuresti');
+  return `${place}|${normalize(county)}`;
+}
+
 // 2026-09-06, directorul pe harta. O singura ramura care intoarce TOATE locatiile publicate,
 // in forma minima necesara desenarii unui punct. Nu este o cautare si nu inlocuieste una:
 // nu scoreaza, nu ordoneaza dupa relevanta si nu are Top 3. Este harta directorului, din care
@@ -41,18 +53,6 @@ function normalizedName(location) {
 //
 // 2026-09-24. Datele vin din shared/nationalMapSources.js: aceleasi locatii si aceeasi stare de
 // director, citite pe pagini de 500 (~7 citiri) in loc de o interogare pe fiecare judet (~100).
-// 2026-09-26. Numarul de locatii pe localitate, pentru lista de orase din /cauta. Include si
-// locatiile fara pozitie (harta le omite), deci e acelasi numar ca lista de pe pagina orasului.
-// Cheia e numele localitatii + judetul, fara diacritice. Sectoarele Bucurestiului se numara la
-// Bucuresti, iar resedinta cu acelasi nume ca UAT-ul are deja acelasi nume - exact regula din
-// resolveEquivalentLocalityCodes (base44/shared/locationScopedEntityQuery.js).
-function localityCountKey(name, county) {
-  const normalize = (value) => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const place = normalize(name).replace(/^bucuresti sector(ul)? \d+$/, 'bucuresti');
-  return `${place}|${normalize(county)}`;
-}
-
 async function computeNationalMap(svc) {
   const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
   const visible = allLocations.filter((loc) => {
