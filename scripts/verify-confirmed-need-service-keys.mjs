@@ -7,13 +7,16 @@
 //     la reparatii, ochelari si lentile de contact nu poate ridica cererea la
 //     `specialized_medical`; cheile explicite raman toate;
 //  3. browserul si serverul aplica aceeasi regula, cu registrul pe care il folosesc deja, iar
-//     copiile din shared/ si base44/shared/ sunt identice.
+//     copiile din shared/ si base44/shared/ sunt identice;
+//  4. 2026-09-26, keratocon: cand textul il pomeneste, lentilele de contact si nevoile medicale
+//     pastreaza adaptarea speciala si consulturile medicale, iar pacientul e trimis la specialist.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { INTENTS, detectSubIntentPrefill } from '../src/lib/intentRegistry.js';
 import { resolveServiceSearchQuery } from '../shared/serviceSemanticSearch.js';
+import { buildPatientVisitGuidance } from '../src/lib/patientVisitGuidance.js';
 import {
   SERVICE_GROUPS,
   getCanonicalServiceDefinition,
@@ -72,7 +75,7 @@ function filterFor(text, intent, resolver = resolveServiceSearchQuery, getDefini
     explicitKeys,
     textKeys,
     before: [...new Set([...explicitKeys, ...textKeys])],
-    ...filterTextServiceKeysForConfirmedNeed({ intent, explicitKeys, textKeys, getDefinition }),
+    ...filterTextServiceKeysForConfirmedNeed({ intent, explicitKeys, textKeys, text, getDefinition }),
   };
 }
 
@@ -177,6 +180,50 @@ check('a medical need keeps its medical keys', () => {
   assert.deepEqual(result.droppedTextKeys, []);
 });
 
+check('keratoconus keeps specialist lens fitting and medical keys', () => {
+  const result = filterFor('am keratoconus si vreau lentile de contact', 'lentile_contact');
+  for (const key of ['specialty_contact_lens_fitting', 'cornea_consultation', 'corneal_topography']) {
+    assert.ok(result.serviceKeys.includes(key), `${key} lipseste: ${result.serviceKeys.join(', ')}`);
+  }
+  assert.equal(needLevel(result.serviceKeys), 'specialized_medical');
+  const withoutMention = filterTextServiceKeysForConfirmedNeed({
+    intent: 'lentile_contact',
+    explicitKeys: result.explicitKeys,
+    textKeys: result.textKeys,
+    getDefinition: getCanonicalServiceDefinition,
+  });
+  assert.ok(!withoutMention.serviceKeys.includes('specialty_contact_lens_fitting'), 'fara keratocon, lentilele raman nevoie comerciala');
+  const romanianSpelling = filterTextServiceKeysForConfirmedNeed({
+    intent: 'lentile_contact',
+    explicitKeys: ['lentile_contact'],
+    textKeys: ['specialty_contact_lens_fitting', 'cornea_consultation'],
+    text: 'am cheratocon',
+    getDefinition: getCanonicalServiceDefinition,
+  });
+  assert.deepEqual(romanianSpelling.droppedTextKeys, []);
+});
+
+check('keratoconus does not change glasses or repairs', () => {
+  for (const intent of ['ochelari_lentile', 'reparatii_ochelari']) {
+    const result = filterTextServiceKeysForConfirmedNeed({
+      intent,
+      explicitKeys: INTENTS[intent].service_keys,
+      textKeys: ['cornea_consultation', 'specialty_contact_lens_fitting'],
+      text: 'am keratocon',
+      getDefinition: getCanonicalServiceDefinition,
+    });
+    assert.deepEqual(result.droppedTextKeys, ['cornea_consultation', 'specialty_contact_lens_fitting'], intent);
+  }
+});
+
+check('keratoconus with contact lenses is sent to a specialist', () => {
+  const guidance = buildPatientVisitGuidance({ intent: 'lentile_contact', answers: [], text: 'am keratoconus si vreau lentile de contact' });
+  assert.match(guidance.where, /lentile de contact speciale/);
+  assert.ok(guidance.prepare.some((tip) => /lentile de contact/.test(tip)), guidance.prepare.join(' | '));
+  const regular = buildPatientVisitGuidance({ intent: 'lentile_contact', answers: [], text: 'vreau lentile de contact lunare' });
+  assert.match(regular.where, /optic/);
+});
+
 check('corpus invariants', () => {
   for (const [text, intent] of CORPUS) {
     const result = filterFor(text, intent);
@@ -202,11 +249,11 @@ check('browser and server apply the rule on the confirmed intent', () => {
   assert.match(client, /import \{ filterTextServiceKeysForConfirmedNeed \} from "\.\.\/\.\.\/shared\/confirmedNeedServiceKeys\.js";/);
   assert.match(client, /import \{ getCanonicalServiceDefinition \} from "@\/lib\/canonicalServiceCatalog";/);
   const clientCall = client.slice(client.indexOf('export async function matchProvidersWithSemanticFallback'));
-  assert.match(clientCall, /intent: payload\.intent,\s+explicitKeys,\s+textKeys: localResolution\.service_keys,\s+getDefinition: getCanonicalServiceDefinition,/);
+  assert.match(clientCall, /intent: payload\.intent,\s+explicitKeys,\s+textKeys: localResolution\.service_keys,\s+text: searchText,\s+getDefinition: getCanonicalServiceDefinition,/);
 
   const entry = source('base44/functions/matchProvidersSemantic/entry.ts');
   assert.match(entry, /import \{ filterTextServiceKeysForConfirmedNeed \} from '\.\.\/\.\.\/shared\/confirmedNeedServiceKeys\.js';/);
-  assert.match(entry, /const requestedKeys = filterTextServiceKeysForConfirmedNeed\(\{\s+intent: clean\(payload\.intent\),\s+explicitKeys,\s+textKeys: semantic\.service_keys,\s+getDefinition: getCanonicalServiceDefinition,\s+\}\)\.serviceKeys;/);
+  assert.match(entry, /const requestedKeys = filterTextServiceKeysForConfirmedNeed\(\{\s+intent: clean\(payload\.intent\),\s+explicitKeys,\s+textKeys: semantic\.service_keys,\s+text: searchText,\s+getDefinition: getCanonicalServiceDefinition,\s+\}\)\.serviceKeys;/);
   assert.ok(
     entry.indexOf('const requestedKeys = filterTextServiceKeysForConfirmedNeed') < entry.indexOf("if (payload.mode === 'question_only')"),
     'filtrul trebuie aplicat inainte de ramurile question_only / interpret_only',
@@ -228,6 +275,16 @@ check('the server bundle registry gives the same repair result', () => {
   for (const key of result.serviceKeys.filter((item) => !result.explicitKeys.includes(item))) {
     assert.equal(bundle.getCanonicalServiceDefinition(key)?.group, 'technical_activities', key);
   }
+});
+
+check('the server bundle registry keeps keratoconus lens fitting', () => {
+  const result = filterFor(
+    'am keratoconus si vreau lentile de contact',
+    'lentile_contact',
+    bundle.resolveServiceSearchQuery,
+    bundle.getCanonicalServiceDefinition,
+  );
+  assert.ok(result.serviceKeys.includes('specialty_contact_lens_fitting'), result.serviceKeys.join(', '));
 });
 
 console.log(`Confirmed need service keys verified: ${checks} checks, ${CORPUS.length} phrasings.`);
