@@ -200,6 +200,15 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // medicale pastreaza din text serviciile medicale si pe cele de lentile de contact. Tot
     // inaintea ramurii de potrivire: amprenta 'f33a9859' ramane aceeasi.
     '4aac06e0f8f4e098cfcc7f533b32d627ee03b62b',
+    // 2026-09-26, coduri SIRUTA echivalente (aprobat explicit de owner: „Da”, dupa raportul
+    // Pascani 0 din 3 / Cluj-Napoca 40 din 46): localitatea aleasa se completeaza cu codurile
+    // care inseamna acelasi loc (resolveEquivalentLocalityCodes din
+    // base44/shared/locationScopedEntityQuery.js) - resedinta cu acelasi nume si sectoarele
+    // Bucurestiului. Se schimba setul de candidati pe localitate si eticheta 'oras' pentru
+    // locatiile salvate cu codul componentei; amprenta ramurii de potrivire devine '658a02d0'.
+    // buildRecommendationScore, assignRecommendationBuckets, selectia Top 3 si ordinea
+    // fallbackului structural raman identice. Vezi scripts/verify-locality-equivalent-codes.mjs.
+    '1ec025eafd514771a3c3a47afec1d2a22e8e7f40',
   ]),
 });
 
