@@ -79,6 +79,21 @@ assert.deepEqual(
   "localitatea din harta devine cea oficiala din acelasi judet",
 );
 
+// Numerele pe oras vin de pe server (toate locatiile, si cele fara pozitie); sectoarele se
+// numara la Bucuresti, ca in cautare.
+assert.equal(quickPicks.placeKey("Bucuresti Sectorul 1", "Bucuresti"), quickPicks.placeKey("București", "București"));
+const serverCounts = quickPicks.localityCountsFromMap({ results: points, locality_counts: { "cluj napoca|cluj": 46 } });
+assert.equal(serverCounts.get(quickPicks.placeKey("Cluj-Napoca", "Cluj")), 46, "numarul de pe server are prioritate");
+assert.equal(quickPicks.localityCountsFromMap({ results: points }).get(quickPicks.placeKey("Cluj-Napoca", "Cluj")), 2, "fara el, din puncte");
+const bucharestNearby = quickPicks.nearbyLocalitiesFromPoints([
+  { city: "Bucuresti Sectorul 1", county: "Bucuresti", lat: 44.45, lng: 26.08 },
+  { city: "Bucuresti", county: "Bucuresti", lat: 44.43, lng: 26.1 },
+], { lat: 44.44, lng: 26.09 }, 3);
+assert.deepEqual(bucharestNearby.map((place) => [place.city, place.count]), [["Bucuresti", 2]], "un sector nu apare ca localitate separata");
+const browse = read("base44/functions/browseDirectoryProviders/entry.ts");
+assert.match(browse, /locality_counts: localityCounts/);
+assert.match(browse, /replace\(\/\^bucuresti sector\(ul\)\? \\d\+\$\/, 'bucuresti'\)/, "aceeasi regula pentru sectoare pe server");
+
 const search = read("src/pages/Search.jsx");
 assert.match(search, /<ServiceSearchField/);
 assert.match(search, /<LocalityAutocomplete\s+ref=\{localityFieldRef\}\s+guided/);
