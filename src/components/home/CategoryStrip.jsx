@@ -209,13 +209,13 @@ function MapTile() {
           })}
           {cities.map((city) => (
             <g key={city.name}>
-              {city.active && <circle cx={city.xy[0]} cy={city.xy[1]} r="26" fill="#684d78" opacity="0.16" />}
-              <circle cx={city.xy[0]} cy={city.xy[1]} r={city.active ? 11 : 7.5} fill="#684d78" stroke="#ffffff" strokeWidth="3" />
+              {city.active && <circle cx={city.xy[0]} cy={city.xy[1]} r="42" fill="#684d78" opacity="0.16" />}
+              <circle cx={city.xy[0]} cy={city.xy[1]} r={city.active ? 17 : 11} fill="#684d78" stroke="#ffffff" strokeWidth="5" />
             </g>
           ))}
-          <g transform={`translate(${ax + 18} ${ay - 44})`}>
-            <rect width="132" height="34" rx="6" fill="#2b2133" />
-            <text x="12" y="22" fill="#ffffff" fontSize="15" fontWeight="600" fontFamily="Manrope, sans-serif">Cluj-Napoca</text>
+          <g transform={`translate(${ax + 26} ${ay - 78})`}>
+            <rect width="228" height="58" rx="10" fill="#2b2133" />
+            <text x="20" y="38" fill="#ffffff" fontSize="28" fontWeight="700" fontFamily="Manrope, sans-serif">Cluj-Napoca</text>
           </g>
         </svg>
         </div>
@@ -307,14 +307,10 @@ function FiltersTile() {
       <div className="mt-5">
         <Slider label="Distanță maximă" value="5 km" pct={34} track="rgba(255,255,255,0.18)" fill="#d4c6d8" text="rgba(255,255,255,0.8)" />
       </div>
-      <div className="mt-5 space-y-3 text-[12px] text-white/80">
+      <div className="mt-5 text-[12px] text-white/80">
         <div className="flex items-center justify-between gap-3">
           <span>Primește cereri online</span>
           <Toggle on onColor="#d4c6d8" knob="#1d1922" />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span>Program sâmbăta</span>
-          <Toggle on={false} onColor="#d4c6d8" />
         </div>
       </div>
       <span className="mt-auto block rounded-md bg-[#d4c6d8] py-2.5 text-center text-[12px] font-semibold text-[#2b2133]">
