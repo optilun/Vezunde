@@ -32,6 +32,12 @@ const COPY = APPROVED_PATIENT_SAFETY_COPY;
 // cu telefon a disparut; 112 ramane un singur rand mic, conditionat, sub indicatia spre
 // urgenta - exact ce cere sectiunea 5 (fallback de transport, nu actiune principala). Titlul
 // e mai mic, ca ecranul sa informeze calm. Textele clinice raman cele aprobate.
+//
+// 2026-09-26, revizuire delegata de owner (fara medic disponibil): randul despre 112 numeste si
+// semnele de accident vascular (slabiciune intr-o parte a corpului, vorbire greoaie, gura
+// stramba). Vederea dubla aparuta brusc sau pierderea brusca a vederii pot avea o cauza
+// neurologica, iar ghidurile publice cer 112 cand apar impreuna cu aceste semne. Ramane un rand
+// mic si conditionat, dupa indicatia spre urgenta.
 const ACCENT = "#b4573a";
 
 function flagLabels(assessment) {
@@ -122,7 +128,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
               ))}
             </ul>
             <p className="mt-2.5 text-[12px] leading-relaxed text-black/45">
-              Doar dacă nu te poți deplasa în siguranță sau starea generală se agravează rapid, sună la{" "}
+              Dacă nu te poți deplasa în siguranță, dacă apar și slăbiciune într-o parte a corpului, vorbire greoaie sau gura strâmbă, ori dacă starea generală se agravează rapid, sună la{" "}
               <a href="tel:112" className="font-semibold text-black/60 underline underline-offset-2">112</a>.
             </p>
           </div>
