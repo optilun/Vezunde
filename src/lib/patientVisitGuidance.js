@@ -66,10 +66,56 @@ const CONDITION_NOTES = Object.freeze({
       "Dacă porți lentile de contact, spune câte ore pe zi le porți.",
     ],
   },
+  // 2026-09-26: note noi, revizuite de Claude (AI) pe baza ghidurilor publice pentru pacienti
+  // (AAO, NHS), la cererea owner-ului, care nu are un medic disponibil. De revazut cu un medic
+  // cand se poate. Raman informative: fara diagnostic, doze sau tratamente noi.
+  keratocon: {
+    title: "Keratocon",
+    points: [
+      "Spune medicului de când ai diagnosticul și ce tratamente ai făcut (de exemplu cross-linking sau lentile speciale).",
+      "Adu ultimele topografii corneene și parametrii lentilelor pe care le porți. Întreabă la programare cât timp înainte de topografie trebuie să nu porți lentilele.",
+      "Evită să îți freci ochii. Keratoconul se urmărește periodic, pentru că poate evolua, mai ales la tineri.",
+    ],
+  },
+  degenerescenta_maculara: {
+    title: "Degenerescență maculară",
+    points: [
+      "Adu rezultatele OCT anterioare și lista tratamentelor sau injecțiilor, dacă ai făcut.",
+      "Spune medicului dacă liniile drepte îți par ondulate sau dacă ai observat o pată în mijlocul vederii și de când.",
+      "Dacă aceste semne apar brusc sau se agravează repede, cere o evaluare cât mai curând, fără să aștepți programarea obișnuită.",
+    ],
+  },
+  conjunctivita: {
+    title: "Conjunctivită sau alergie la ochi",
+    points: [
+      "Nu purta lentile de contact până la consult.",
+      "Spală-te des pe mâini și nu folosi prosoape comune. Spune medicului ce alergii ai și ce picături ai folosit.",
+      "Dacă apar durere puternică, sensibilitate mare la lumină sau vedere încețoșată, cere o evaluare fără să aștepți programarea.",
+    ],
+  },
+  miopie_copil: {
+    title: "Miopie la copil",
+    points: [
+      "Adu rețetele anterioare ale copilului, ca medicul să vadă cât a crescut miopia.",
+      "Întreabă despre metodele de control al miopiei potrivite vârstei copilului.",
+      "Timpul petrecut afară, la lumina zilei, și pauzele de la ecrane sunt recomandate des la copii. Întreabă medicul ce se potrivește copilului tău.",
+    ],
+  },
+  ochi_lenes_strabism: {
+    title: "Ochi leneș sau strabism",
+    points: [
+      "Spune medicului de când ai observat și dacă ochiul deviază tot timpul sau doar uneori, de exemplu când copilul e obosit.",
+      "Ochiul leneș se tratează cel mai bine când e descoperit devreme, așa că nu amâna consultul.",
+      "Dacă ochiul a început brusc să devieze, cere o evaluare cât mai curând.",
+    ],
+  },
 });
 
 // Ordinea de afisare cand sunt mai multe afectiuni.
-const CONDITION_ORDER = ["glaucom", "glaucom_familie", "cataracta", "operat_cataracta", "diabet", "hipertensiune", "ochi_uscat"];
+const CONDITION_ORDER = [
+  "glaucom", "glaucom_familie", "keratocon", "degenerescenta_maculara", "cataracta", "operat_cataracta",
+  "diabet", "hipertensiune", "conjunctivita", "ochi_uscat", "miopie_copil", "ochi_lenes_strabism",
+];
 
 // Glaucomul unei rude nu e glaucomul pacientului: "am glaucom in familie", "mama are glaucom".
 const FAMILY_GLAUCOMA_PATTERN = /\bglaucom (?:in|din) famili\w*|\brud\w* cu glaucom|\b(?:mama|mamei|tata|tatal|tatalui|parintii|parintilor|bunica|bunicul|bunicii|fratele|sora)\b(?: \w+){0,2} (?:are|au|a avut|au avut) glaucom/;
@@ -82,7 +128,22 @@ const TEXT_CONDITION_RULES = [
   { condition: "ochi_uscat", pattern: /\bochi(?:i)? uscat|\buscaciune|\bma usuca ochii|\bnisip in ochi/ },
   // Fara nota proprie inca (asteapta revizuirea medicala); schimba doar unde e indrumat pacientul.
   { condition: "keratocon", pattern: /\b(?:k|ch)eratocon/ },
+  { condition: "degenerescenta_maculara", pattern: /\bdegenerescent\w* macular|\bdmla\b|\bmaculopati/ },
+  { condition: "conjunctivita", pattern: /\bconjunctivit|\balergi/ },
 ];
+
+// Doar la controlul pentru copil: notele de mai jos vorbesc despre copil.
+const CHILD_TEXT_CONDITION_RULES = [
+  { condition: "miopie_copil", pattern: /\bmiopi|\bmiop\b/ },
+  { condition: "ochi_lenes_strabism", pattern: /\bochi(?:ul)? lenes|\bambliopi|\bstrabism|\bcrucis|\bsasi[ue]\b|\bse uita cruc|\bochi\w* (?:care )?fug|\bfuge un ochi|\bdeviaz/ },
+];
+
+const CHILD_SERVICE_CONDITIONS = Object.freeze({
+  myopia_control_children: "miopie_copil",
+  strabismus: "ochi_lenes_strabism",
+  strabismus_screening: "ochi_lenes_strabism",
+  amblyopia_screening: "ochi_lenes_strabism",
+});
 
 const SERVICE_CONDITIONS = Object.freeze({
   cataract_consultation: "cataracta",
@@ -91,6 +152,7 @@ const SERVICE_CONDITIONS = Object.freeze({
   diabetic_retinopathy: "diabet",
   dry_eye_management: "ochi_uscat",
   dry_eye_screening: "ochi_uscat",
+  macular_degeneration: "degenerescenta_maculara",
 });
 
 function normalize(value) {
@@ -162,7 +224,7 @@ function preparationTips(intent, byKey, conditions) {
       "Alege o oră la care copilul este odihnit.",
       "Adu ochelarii copilului (dacă are) și scrisorile medicale anterioare.",
       "Spune ce ai observat acasă sau la școală și dacă în familie există ochelari purtați de mic, strabism sau ochi leneș.",
-      "La copii se folosesc des picături pentru măsurarea exactă a dioptriilor; vederea poate fi încețoșată câteva ore după consult.",
+      "La copii se folosesc des picături pentru măsurarea exactă a dioptriilor; vederea poate rămâne încețoșată și sensibilă la lumină câteva ore, uneori până a doua zi.",
     ];
   }
   if (intent === "reparatii_ochelari") {
@@ -204,11 +266,28 @@ export function buildPatientVisitGuidance({ intent = "unknown", answers = [], te
   const byKey = answerMap(answers);
   const conditions = patientAnamnesisConditions(answers);
   for (const condition of detectPatientConditionsFromText(text)) conditions.add(condition);
-  for (const key of Array.isArray(serviceKeys) ? serviceKeys : []) {
-    if (SERVICE_CONDITIONS[key]) conditions.add(SERVICE_CONDITIONS[key]);
+  const keys = Array.isArray(serviceKeys) ? serviceKeys : [];
+  const fromServicesOnly = new Set();
+  for (const key of keys) {
+    const condition = SERVICE_CONDITIONS[key];
+    if (condition && !conditions.has(condition)) {
+      conditions.add(condition);
+      fromServicesOnly.add(condition);
+    }
+  }
+  if (intent === "control_copil") {
+    const normalized = normalize(text);
+    for (const rule of CHILD_TEXT_CONDITION_RULES) {
+      if (rule.pattern.test(normalized)) conditions.add(rule.condition);
+    }
+    for (const key of keys) {
+      if (CHILD_SERVICE_CONDITIONS[key]) conditions.add(CHILD_SERVICE_CONDITIONS[key]);
+    }
   }
   // Nota despre glaucomul din familie nu se repeta cand exista deja nota de glaucom.
   if (conditions.has("glaucom")) conditions.delete("glaucom_familie");
+  // O conjunctivita sau o alergie nu primeste si nota de ochi uscat venita doar din servicii.
+  if (conditions.has("conjunctivita") && fromServicesOnly.has("ochi_uscat")) conditions.delete("ochi_uscat");
 
   const notes = CONDITION_ORDER
     .filter((condition) => conditions.has(condition) && CONDITION_NOTES[condition])
