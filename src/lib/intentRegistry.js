@@ -310,6 +310,7 @@ const INTENT_SIGNAL_GROUPS = [
       "vad puncte", "puncte negre", "pete negre", "musculite", "muste zburatoare",
       "corpi flotanti", "vad fulgere", "fulgerari", "vad dublu", "vedere dubla",
       "perdea", "umbra peste vedere", "pata in ochi", "pata pe ochi", "vad o pata",
+      "vad ca o umbra", "vad o umbra", "umbra in fata ochiului",
       "sensibil la lumina", "sensibilitate la lumina", "ma supara lumina", "ma deranjeaza lumina",
       "lovit la ochi", "lovitura la ochi", "lovitura in ochi", "intrat ceva in ochi",
       "intrat in ochi", "sarit in ochi", "corp strain", "aschie", "chimic", "chimicale",
