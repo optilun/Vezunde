@@ -24,9 +24,9 @@ function polar(cx, cy, r, deg) {
 
 // ── Piese comune ─────────────────────────────────────────────────────────────────────────────
 
-function Tile({ bg, color, className = "", children }) {
+function Tile({ bg, color, row = false, className = "", children }) {
   return (
-    <div className={`flex h-full w-full flex-col ${className}`} style={{ backgroundColor: bg, color }}>
+    <div className={`flex h-full w-full ${row ? "flex-row" : "flex-col"} ${className}`} style={{ backgroundColor: bg, color }}>
       {children}
     </div>
   );
@@ -91,13 +91,10 @@ function HalftoneTile({ bg, dot, children }) {
 function DoctorTile() {
   return (
     <Tile bg="#5a4468" color="#ffffff" className="p-5">
-      <div className="flex items-center justify-between gap-2">
-        <TileLabel className="text-white/60">Specialist</TileLabel>
-        <span className="flex items-center gap-1.5 text-[11px] text-white/80">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#a8e2b0]" />
-          Primește cereri
-        </span>
-      </div>
+      <span className="flex items-center gap-1.5 text-[11px] text-white/80">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#a8e2b0]" />
+        Primește cereri
+      </span>
       <div className="mt-6 flex items-center gap-3">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#e8e0ea] font-heading text-[15px] font-bold text-[#4a3657]">
           MP
@@ -198,13 +195,14 @@ function MapTile() {
   const [ax, ay] = cities[0].xy;
 
   return (
-    <Tile bg="#f3eef6" color="#2b2133" className="flex-row">
+    <Tile bg="#f3eef6" color="#2b2133" row>
       <div className="relative min-w-0 flex-1 p-4">
         <span className="inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white/70 px-2 py-1 text-[10.5px] text-[#4a3657]">
           <span className="h-2 w-2 rounded-sm bg-[#684d78]" />
           România
         </span>
-        <svg viewBox="-12 -12 690 500" className="absolute inset-x-3 bottom-4 top-12 h-[calc(100%-4rem)] w-[calc(100%-1.5rem)]" aria-hidden="true">
+        <div className="absolute inset-x-3 bottom-4 top-12">
+        <svg viewBox="-12 -12 690 500" className="h-full w-full" aria-hidden="true">
           {dots.map(([x, y]) => {
             const near = Math.hypot(x - ax, y - ay) < 70;
             return <rect key={`${x.toFixed(1)}-${y.toFixed(1)}`} x={x - 5.5} y={y - 5.5} width="11" height="11" rx="1.5" fill={near ? "#a58db8" : "#d8cde2"} />;
@@ -220,6 +218,7 @@ function MapTile() {
             <text x="12" y="22" fill="#ffffff" fontSize="15" fontWeight="600" fontFamily="Manrope, sans-serif">Cluj-Napoca</text>
           </g>
         </svg>
+        </div>
       </div>
       <div className="flex w-[40%] min-w-[9.5rem] max-w-[12.5rem] flex-col gap-2 p-2.5 pl-0">
         <div className="rounded-md bg-[#684d78] p-3 text-white">
@@ -343,7 +342,7 @@ function RefractionTile() {
         <Slider label="Ax" value="90°" pct={50} track="rgba(29,52,65,0.15)" fill="#345bc8" text="#1d3441" />
       </div>
       <div className="mt-auto grid grid-cols-2 gap-2">
-        {[["Adiție", "+1,50"], ["Distanță pupilară", "63 mm"]].map(([label, value]) => (
+        {[["Adiție", "+1,50"], ["DP", "63 mm"]].map(([label, value]) => (
           <div key={label} className="rounded-md bg-white/70 px-2.5 py-2">
             <p className="truncate text-[10px] text-[#1d3441]/60">{label}</p>
             <p className="mt-0.5 font-mono text-[12px] font-semibold">{value}</p>
@@ -355,11 +354,11 @@ function RefractionTile() {
 }
 
 const SNELLEN_ROWS = [
-  { letters: "E", size: 42, score: "6/60" },
-  { letters: "F P", size: 30, score: "6/36" },
-  { letters: "T O Z", size: 22, score: "6/24" },
-  { letters: "L P E D", size: 17, score: "6/18" },
-  { letters: "P E C F D", size: 13, score: "6/12", mark: true },
+  { letters: "E", size: 36, score: "6/60" },
+  { letters: "F P", size: 26, score: "6/36" },
+  { letters: "T O Z", size: 20, score: "6/24" },
+  { letters: "L P E D", size: 15.5, score: "6/18" },
+  { letters: "P E C F D", size: 12.5, score: "6/12", mark: true },
   { letters: "E D F C Z P", size: 10, score: "6/6" },
 ];
 
@@ -370,7 +369,7 @@ function SnellenTile() {
         <p className="font-heading text-[15px] font-bold">Acuitate vizuală</p>
         <TileLabel className="text-white/55">Ochiul drept</TileLabel>
       </div>
-      <div className="mt-3 flex flex-1 flex-col justify-center gap-[0.55rem]">
+      <div className="mt-2 flex min-h-0 flex-1 flex-col justify-center gap-[0.45rem]">
         {SNELLEN_ROWS.map((row) => (
           <div key={row.score} className="relative grid grid-cols-[2.5rem_1fr_2.5rem] items-center">
             <span className="font-mono text-[10px] text-[#f09a74]">{row.mark ? "▶" : ""}</span>
@@ -418,14 +417,17 @@ function getPlateDots() {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
+  // Grilă hexagonală ușor deplasată: cercuri dese, fără suprapuneri, calculate într-o singură trecere.
   const dots = [];
-  for (let tries = 0; dots.length < 190 && tries < 4000; tries += 1) {
-    const x = random() * 100;
-    const y = random() * 100;
-    const r = 1.4 + random() * 2.6;
-    if (Math.hypot(x - 50, y - 50) + r > 46.5) continue;
-    if (dots.some(([dx, dy, dr]) => Math.hypot(dx - x, dy - y) < dr + r + 0.5)) continue;
-    dots.push([x, y, r, random()]);
+  const step = 4.3;
+  for (let row = 0; row * step * 0.87 <= 100; row += 1) {
+    for (let col = 0; col * step <= 100; col += 1) {
+      const x = col * step + (row % 2 ? step / 2 : 0) + (random() - 0.5) * 0.7;
+      const y = row * step * 0.87 + (random() - 0.5) * 0.7;
+      const r = 1.15 + random() * 0.75;
+      if (Math.hypot(x - 50, y - 50) + r > 46.5) continue;
+      dots.push([x, y, r, random()]);
+    }
   }
   plateDotsCache = dots;
   return dots;
@@ -443,7 +445,7 @@ function ColorPlateTile() {
         <svg viewBox="0 0 100 100" className="h-full max-h-[8.5rem] w-full" aria-hidden="true">
           <defs>
             <clipPath id={id}>
-              <text x="50" y="66" textAnchor="middle" fontSize="46" fontWeight="800" fontFamily="Manrope, sans-serif">74</text>
+              <text x="50" y="67" textAnchor="middle" fontSize="50" fontWeight="800" fontFamily="Manrope, sans-serif">74</text>
             </clipPath>
           </defs>
           <circle cx="50" cy="50" r="48.5" fill="#efe6d6" />
@@ -1039,6 +1041,7 @@ function AdjustTile() {
 // ── Date ───────────────────────────────────────────────────────────────────────────────────
 
 // basis = lățimea de bază (rem): pe telefon e lățimea plăcuței, pe desktop proporția din rând.
+// optional = plăcuța lipsește pe ecranele desktop înguste (1024–1279px), ca celelalte să aibă loc.
 export const CATEGORY_SETS = [
   {
     id: "medici",
@@ -1049,7 +1052,7 @@ export const CATEGORY_SETS = [
       { key: "doctor", Component: DoctorTile, basis: 14, h: 16 },
       { key: "pin", Component: PinHalftoneTile, basis: 10, h: 10.5 },
       { key: "map", Component: MapTile, basis: 27, h: 17.5 },
-      { key: "schedule", Component: ScheduleTile, basis: 13, h: 15 },
+      { key: "schedule", Component: ScheduleTile, basis: 13, h: 15, optional: true },
       { key: "filters", Component: FiltersTile, basis: 15, h: 17.5 },
     ],
   },
@@ -1062,7 +1065,7 @@ export const CATEGORY_SETS = [
       { key: "refraction", Component: RefractionTile, basis: 14, h: 15.5 },
       { key: "snellen", Component: SnellenTile, basis: 21, h: 17.5 },
       { key: "e", Component: EHalftoneTile, basis: 10, h: 11 },
-      { key: "plate", Component: ColorPlateTile, basis: 12, h: 14.5 },
+      { key: "plate", Component: ColorPlateTile, basis: 12, h: 14.5, optional: true },
       { key: "calendar", Component: CalendarTile, basis: 16, h: 17.5 },
     ],
   },
@@ -1075,7 +1078,7 @@ export const CATEGORY_SETS = [
       { key: "oct", Component: OctTile, basis: 23, h: 17.5 },
       { key: "fundus", Component: FundusTile, basis: 11, h: 12.5 },
       { key: "field", Component: VisualFieldTile, basis: 13, h: 16 },
-      { key: "checklist", Component: ChecklistTile, basis: 13, h: 13.5 },
+      { key: "checklist", Component: ChecklistTile, basis: 13, h: 13.5, optional: true },
       { key: "pressure", Component: PressureTile, basis: 14, h: 17.5 },
     ],
   },
@@ -1087,7 +1090,7 @@ export const CATEGORY_SETS = [
     tiles: [
       { key: "frames", Component: FrameShapeTile, basis: 21, h: 17.5 },
       { key: "glasses", Component: GlassesHalftoneTile, basis: 10, h: 10.5 },
-      { key: "tint", Component: TintTile, basis: 12, h: 15.5 },
+      { key: "tint", Component: TintTile, basis: 12, h: 15.5, optional: true },
       { key: "lens", Component: LensZonesTile, basis: 16, h: 14 },
       { key: "measure", Component: MeasureTile, basis: 15, h: 17.5 },
     ],
@@ -1101,7 +1104,7 @@ export const CATEGORY_SETS = [
       { key: "ticket", Component: RepairTicketTile, basis: 19, h: 17.5 },
       { key: "screwdriver", Component: ScrewdriverHalftoneTile, basis: 10, h: 11.5 },
       { key: "parts", Component: PartsTile, basis: 15, h: 15 },
-      { key: "time", Component: TimeRingTile, basis: 11, h: 13 },
+      { key: "time", Component: TimeRingTile, basis: 11, h: 13, optional: true },
       { key: "adjust", Component: AdjustTile, basis: 16, h: 17.5 },
     ],
   },
@@ -1226,10 +1229,10 @@ export default function CategoryStrip() {
             {...prefetchOnIntent(current.to)}
             className="flex min-h-[18.5rem] w-max items-start gap-2.5 pl-2.5 pr-2.5 pt-2.5 lg:w-full lg:px-2.5"
           >
-            {current.tiles.map(({ key, Component, basis, h }, index) => (
+            {current.tiles.map(({ key, Component, basis, h, optional }, index) => (
               <div
                 key={key}
-                className="relative w-[var(--tile-w)] shrink-0 lg:w-auto lg:flex-[var(--tile-grow)_1_0%]"
+                className={`relative w-[var(--tile-w)] shrink-0 lg:w-auto lg:flex-[var(--tile-grow)_1_0%] ${optional ? "lg:max-xl:hidden" : ""}`}
                 style={{ "--tile-w": `${Math.min(basis, 21)}rem`, "--tile-grow": basis, height: `${h}rem` }}
               >
                 <span aria-hidden="true" className="absolute -left-[9px] -top-[9px] z-10 h-2 w-2 bg-[#171717]" />
