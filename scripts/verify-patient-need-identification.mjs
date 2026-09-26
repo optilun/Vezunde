@@ -119,6 +119,12 @@ const CORPUS = [
   ['unde pot face tomografie oculara', 'investigatii'],
   ['vreau sa-mi masor tensiunea oculara', 'investigatii'],
   ['am o trimitere de la medic dar nu inteleg ce scrie', 'investigatii'],
+  // 2026-09-26: afectiuni uzuale care nu primeau intentie.
+  ['am ochiul uscat, ce pot face?', 'simptome_oftalmologice'],
+  ['am pleoapele rosii si cu cruste dimineata', 'simptome_oftalmologice'],
+  ['am o pielita care creste pe ochi', 'simptome_oftalmologice'],
+  ['am uveita', 'simptome_oftalmologice'],
+  ['am cheratocon', 'simptome_oftalmologice'],
   ['doctor de ochi', 'simptome_oftalmologice'],
   ['am o problema cu ochii', 'simptome_oftalmologice'],
   ['nu stiu unde sa merg', null],
