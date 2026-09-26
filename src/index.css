@@ -543,22 +543,7 @@
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 
-@keyframes cat-progress {
-  from {
-    transform: scaleX(0);
-  }
 
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.cat-progress {
-  transform-origin: left center;
-  animation-name: cat-progress;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-}
 
 /* Linia de scanare din plăcuța OCT (unități din viewBox-ul SVG). */
 @keyframes cat-scan {
