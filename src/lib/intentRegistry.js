@@ -303,8 +303,9 @@ const INTENT_SIGNAL_GROUPS = [
       "imi lacrimeaza", "ii lacrimeaza", "lacrimeaza ochiul", "lacrimeaza ochii",
       "conjunctivita", "alergie la ochi",
       "usturime", "ma ustura", "ma ard ochii", "ma usuca ochii", "ochi uscat", "ochi uscati",
-      "ochii uscati", "uscaciune", "nisip in ochi", "ma inteapa ochii",
+      "ochii uscati", "ochiul uscat", "uscaciune", "nisip in ochi", "ma inteapa ochii",
       "pleoapa umflata", "pleoapele umflate", "pleoapa rosie", "s a umflat pleoapa",
+      "pleoapele rosii", "pleoape rosii", "cruste pe pleoape", "cruste la gene",
       "urcior", "ulcior", "orjelet", "salazion", "bubita pe pleoapa", "umflatura la pleoapa",
       "vad puncte", "puncte negre", "pete negre", "musculite", "muste zburatoare",
       "corpi flotanti", "vad fulgere", "fulgerari", "vad dublu", "vedere dubla",
@@ -357,6 +358,9 @@ const INTENT_SIGNAL_GROUPS = [
     phrases: [
       "cataracta", "glaucom", "keratocon", "keratoconus", "degenerescenta maculara", "dmla",
       "retinopatie", "dezlipire de retina", "retina", "macula",
+      // 2026-09-26: afectiuni uzuale care nu primeau nicio intentie.
+      "cheratocon", "uveita", "blefarita", "pterigion", "pinguecula", "pielita pe ochi",
+      "pielita care creste",
     ],
   },
   {
