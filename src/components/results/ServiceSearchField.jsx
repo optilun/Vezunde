@@ -15,7 +15,7 @@ import {
 // Alegerea unei sugestii trimite aceeasi cheie de serviciu ca inainte; textul liber ramane posibil.
 export default function ServiceSearchField({ query, service, onQueryChange, onChoose, onClear, inputId = "directory-search" }) {
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(-1);
+  const [activeKey, setActiveKey] = useState("");
   const listId = useId();
   const inputRef = useRef(null);
   const typed = query.trim();
@@ -25,10 +25,11 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
     () => (showPopular ? popularServiceSuggestions() : rankServiceSuggestions(typed, { limit: 8 })),
     [showPopular, typed],
   );
-  useEffect(() => { setActive(!showPopular && options.length > 0 ? 0 : -1); }, [options, showPopular]);
-  // Cine scrie repede si apasa Enter imediat ia prima sugestie, chiar inainte ca evidentierea sa
-  // ajunga pe ea.
-  const current = active >= 0 && active < options.length ? active : (!showPopular && options.length > 0 ? 0 : -1);
+  useEffect(() => { setActiveKey(""); }, [options]);
+  // Evidentierea tine minte serviciul, nu pozitia: cine scrie repede si apasa Enter imediat ia prima
+  // sugestie a listei noi, nu randul evidentiat in lista de dinainte.
+  const found = options.findIndex((option) => option.service_key === activeKey);
+  const current = found >= 0 ? found : (!showPopular && options.length > 0 ? 0 : -1);
 
   const choose = (option) => {
     setOpen(false);
@@ -42,7 +43,8 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
       if (!open) { setOpen(true); return; }
       if (!options.length) return;
       const step = event.key === "ArrowDown" ? 1 : -1;
-      setActive((previous) => (previous < 0 ? (step > 0 ? 0 : options.length - 1) : (previous + step + options.length) % options.length));
+      const next = current < 0 ? (step > 0 ? 0 : options.length - 1) : (current + step + options.length) % options.length;
+      setActiveKey(options[next].service_key);
       return;
     }
     if (event.key === "Enter" && current >= 0 && options[current] && (open || !showPopular)) {
@@ -112,7 +114,7 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
               role="option"
               aria-selected={index === current}
               onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setActive(index)}
+              onMouseEnter={() => setActiveKey(option.service_key)}
               onClick={() => choose(option)}
               className={`flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors ${index === current ? "bg-secondary" : ""}`}
             >
