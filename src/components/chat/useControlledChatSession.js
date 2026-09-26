@@ -50,6 +50,10 @@ export default function useControlledChatSession({ invoke, enabled = true, readO
 
   useEffect(() => {
     alive.current = true;
+    mutation.current = false;
+    readingOlder.current = false;
+    setAction("");
+    setLoadingOlder(false);
     setData(null);
     setError("");
     setLoading(enabled);

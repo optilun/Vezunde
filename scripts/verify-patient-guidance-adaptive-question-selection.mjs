@@ -290,7 +290,13 @@ await scenario("matching implementation remains byte-stable", () => {
   // dovezi de verificare), deci excluderea din collectStructuralCandidate si sortarea
   // fallbackului structural (capabilityRank, hasContact, nume) raman neschimbate. Se schimba
   // doar campurile de afisare (adresa, telefon, nivel de detaliu) pentru candidatii structurali.
-  assert.equal(fnv1a(matchingTail), "f33a9859");
+  // 2026-09-26, aprobat explicit de Alex („Da”, dupa raportul despre codurile SIRUTA duble):
+  // localitatea aleasa se completeaza cu codurile care inseamna acelasi loc (resedinta cu acelasi
+  // nume, sectoarele Bucurestiului), prin resolveEquivalentLocalityCodes. Se schimba doar setul de
+  // candidati pe localitate (locatiile salvate cu codul componentei, ex. Pascani 95408, nu mai
+  // lipsesc) si eticheta 'oras' pentru ele. buildRecommendationScore, bucketurile, Top 3 si
+  // ordinea fallbackului structural raman neatinse. Vezi scripts/verify-locality-equivalent-codes.mjs.
+  assert.equal(fnv1a(matchingTail), "658a02d0");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {
