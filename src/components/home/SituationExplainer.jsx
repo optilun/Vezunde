@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/common/Reveal";
 import { useInViewport, usePrefersReducedMotion } from "@/lib/motion";
-import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 const ROLES = [
   {
@@ -233,24 +232,11 @@ export default function SituationExplainer() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-            <Link
-              to={current.to}
-              {...prefetchOnIntent(current.to)}
-              className="group inline-flex min-h-14 items-center gap-7 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-16 sm:pl-9 sm:text-base"
-            >
-              {current.cta}
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F8F4EC] text-[#171717] sm:h-12 sm:w-12">
-                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
-              </span>
-            </Link>
-
-            <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
-              <RoleMark color={current.accent} />
-              <span>
-                Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
-              </span>
-            </div>
+          <div className="mt-8 flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
+            <RoleMark color={current.accent} />
+            <span>
+              Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
+            </span>
           </div>
         </div>
       </Reveal>
