@@ -26,6 +26,9 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
     [showPopular, typed],
   );
   useEffect(() => { setActive(!showPopular && options.length > 0 ? 0 : -1); }, [options, showPopular]);
+  // Cine scrie repede si apasa Enter imediat ia prima sugestie, chiar inainte ca evidentierea sa
+  // ajunga pe ea.
+  const current = active >= 0 && active < options.length ? active : (!showPopular && options.length > 0 ? 0 : -1);
 
   const choose = (option) => {
     setOpen(false);
@@ -39,12 +42,12 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
       if (!open) { setOpen(true); return; }
       if (!options.length) return;
       const step = event.key === "ArrowDown" ? 1 : -1;
-      setActive((current) => (current < 0 ? (step > 0 ? 0 : options.length - 1) : (current + step + options.length) % options.length));
+      setActive((previous) => (previous < 0 ? (step > 0 ? 0 : options.length - 1) : (previous + step + options.length) % options.length));
       return;
     }
-    if (event.key === "Enter" && open && active >= 0 && options[active]) {
+    if (event.key === "Enter" && current >= 0 && options[current] && (open || !showPopular)) {
       event.preventDefault();
-      choose(options[active]);
+      choose(options[current]);
     }
   };
 
@@ -73,7 +76,7 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
         aria-expanded={listOpen}
         aria-controls={listId}
         aria-autocomplete="list"
-        aria-activedescendant={listOpen && active >= 0 ? optionId(active) : undefined}
+        aria-activedescendant={listOpen && current >= 0 ? optionId(current) : undefined}
         className="min-h-12 w-full rounded-full border border-transparent bg-card py-2.5 pl-11 pr-12 text-base outline-none transition-colors focus:border-primary/50 sm:text-sm"
       />
       {(query || service) && (
@@ -107,11 +110,11 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
               key={option.service_key}
               id={optionId(index)}
               role="option"
-              aria-selected={index === active}
+              aria-selected={index === current}
               onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(index)}
               onClick={() => choose(option)}
-              className={`flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors ${index === active ? "bg-secondary" : ""}`}
+              className={`flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors ${index === current ? "bg-secondary" : ""}`}
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-foreground">
