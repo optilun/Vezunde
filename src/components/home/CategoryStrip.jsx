@@ -206,9 +206,9 @@ const MAP_CITIES = [
 ];
 
 const MAP_RESULTS = [
-  { name: "Cabinet oftalmologic", distance: "1,2 km", color: "#684d78", offset: [-44, 40] },
-  { name: "Optică medicală", distance: "2,4 km", color: "#c77d67", offset: [70, -6] },
-  { name: "Clinică de specialitate", distance: "3,1 km", color: "#5f8a76", offset: [14, 92] },
+  { name: "Cabinet oftalmologic", distance: "1,2 km", color: "#684d78", offset: [-70, 62] },
+  { name: "Optică medicală", distance: "2,4 km", color: "#c77d67", offset: [104, 18] },
+  { name: "Clinică de specialitate", distance: "3,1 km", color: "#5f8a76", offset: [30, 150] },
 ];
 
 function MapTile() {
@@ -245,7 +245,7 @@ function MapTile() {
             })}
             <circle cx={ax} cy={ay} r="21" fill="#2b2133" stroke="#ffffff" strokeWidth="6" />
             <circle cx={ax} cy={ay} r="7" fill="#ffffff" />
-            <g transform={`translate(${ax - 120} ${ay - 104})`}>
+            <g transform={`translate(${ax - 114} ${ay - 96})`}>
               <rect width="228" height="58" rx="10" fill="#2b2133" />
               <text x="20" y="38" fill="#ffffff" fontSize="28" fontWeight="700" fontFamily="Manrope, sans-serif">Cluj-Napoca</text>
             </g>
@@ -875,7 +875,7 @@ function LensZonesTile() {
     { label: "Aproape", swatch: "#ee9f78" },
     { label: "Periferie", swatch: "repeating-linear-gradient(45deg, #e7bda3 0 3px, #c98468 3px 4.5px)" },
   ];
-  const outline = "M14 40C14 8 186 8 186 40V100C186 146 14 146 14 100Z";
+  const outline = "M26 28C44 8 156 8 174 28C192 48 190 108 170 128C150 146 50 146 30 128C10 108 8 48 26 28Z";
   return (
     <Tile bg="#f5e4d6" color="#3b1f12" className="p-5">
       <div className="grid grid-cols-3 overflow-hidden rounded-md border border-[#3b1f12]/15 text-center text-[10.5px]">
@@ -905,7 +905,7 @@ function LensZonesTile() {
             <path d="M86 98H114C140 100 160 108 172 150H28C40 108 60 100 86 98Z" fill="#ee9f78" />
           </g>
           <path d={outline} fill="none" stroke="#7c3219" strokeWidth="4" />
-          <path d="M34 26c30-12 90-14 124-6" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
+          <path d="M44 24c30-10 80-11 110-3" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.9" />
         </svg>
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -1028,7 +1028,6 @@ function HingeArtTile() {
           width="400"
           height="280"
           alt=""
-          loading="lazy"
           decoding="async"
           className="h-full max-h-[10rem] w-full scale-[1.18] object-contain"
         />
