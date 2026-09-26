@@ -22,6 +22,8 @@ import {
 } from '../../shared/inAppNotificationDelivery.js';
 import { IN_APP_NOTIFICATION_EVENT_KEYS } from '../../shared/inAppNotificationPolicy.js';
 
+import { loadChatMessagePage } from './messageHistory.js';
+
 const ACTORS = new Set(['patient', 'provider']);
 const ACTIONS = new Set(['status', 'open', 'send', 'mark_read', 'close']);
 
@@ -59,14 +61,6 @@ async function findActiveResponse(svc, lead) {
 async function resolveEntitlement(svc, locationId) {
   const rows = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
   return resolveProviderEntitlement(rows);
-}
-
-async function loadMessages(svc, conversationId) {
-  if (!conversationId) return [];
-  return svc.entities.PatientRequestMessage.filter({
-    conversation_id: conversationId,
-    status: 'active',
-  }, 'created_date', 200);
 }
 
 async function authorizePatientRequest(svc, requestId, accessToken) {
@@ -174,15 +168,15 @@ function eligibilityWithoutClosedConversation(context) {
   });
 }
 
-async function buildStatusPayload(svc, context) {
+async function buildStatusPayload(svc, context, beforeMessageId = '') {
   const baseEligibility = eligibilityWithoutClosedConversation(context);
   const conversation = context.conversation;
   const isOpen = conversation?.status === 'open';
   const providerEntitled = context.entitlement?.plan_code === 'pro'
     && context.entitlement?.feature_keys?.includes('provider_chat.access');
-  const messages = conversation && (context.actor === 'patient' || providerEntitled)
-    ? await loadMessages(svc, conversation.id)
-    : [];
+  const page = conversation && (context.actor === 'patient' || providerEntitled)
+    ? await loadChatMessagePage(svc, conversation.id, beforeMessageId)
+    : { messages: [], next_before_message_id: null };
   const unreadCount = context.actor === 'provider'
     ? conversation?.provider_unread_count
     : conversation?.patient_unread_count;
@@ -215,7 +209,8 @@ async function buildStatusPayload(svc, context) {
       unreadCount,
       lastOwnMessageSeen,
     }),
-    messages: messages.map(sanitizeControlledChatMessage),
+    messages: page.messages.map(sanitizeControlledChatMessage),
+    next_before_message_id: page.next_before_message_id,
     eligibility_reasons: baseEligibility.reasons,
     provider_plan: context.entitlement?.plan_code || 'free',
   };
@@ -575,7 +570,14 @@ Deno.serve(async (req) => {
     if (actor === 'provider' && !context.entitlement?.feature_keys?.includes('provider_chat.access')) {
       return res({ error: 'Chatul este disponibil in planul Pro.', entitlement: context.entitlement }, 402);
     }
-    if (action === 'status') return res(await buildStatusPayload(svc, context));
+    if (action === 'status') {
+      try {
+        return res(await buildStatusPayload(svc, context, clean(input.before_message_id, 120)));
+      } catch (error) {
+        if (error.status === 400) return res({ error: error.message }, 400);
+        throw error;
+      }
+    }
 
     if (action === 'open') {
       const opened = await openConversation(svc, context);
