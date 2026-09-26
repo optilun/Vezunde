@@ -307,7 +307,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
         >
           {listOpen && (typing ? options.map(renderOption) : <>
             {renderSection("geo")}
-            {GEO_MESSAGES[geo.status] && <p role="status" className="px-4 pb-2 text-xs leading-relaxed text-[#8a4b2a]">{GEO_MESSAGES[geo.status]}</p>}
+            {GEO_MESSAGES[geo.status] && <p aria-hidden="true" className="px-4 pb-2 text-xs leading-relaxed text-[#8a4b2a]">{GEO_MESSAGES[geo.status]}</p>}
             {renderSection("nearby", "Lângă tine")}
             {renderSection("recent", "Căutate recent")}
             {renderSection("city", "Orașe mari")}
@@ -315,6 +315,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
           </>)}
         </div>
       </div>
+      {guided && <p role="status" className="sr-only">{GEO_MESSAGES[geo.status] || (geo.status === "ready" ? `Localități apropiate: ${geo.nearby.map((place) => prettyPlaceName(place.city)).join(", ")}` : "")}</p>}
     </div>
   );
 });

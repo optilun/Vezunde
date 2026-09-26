@@ -364,6 +364,7 @@ export default function Search() {
             <LocalityAutocomplete
               ref={localityFieldRef}
               guided
+              showCounts={!service && !query.trim()}
               value={locality}
               onSelect={chooseLocality}
               placeholder="În ce localitate?"
@@ -377,6 +378,7 @@ export default function Search() {
 
       <SearchFilters providerType={providerType} professionalType={professionalType} serviceKeys={filterServiceKeys} casOnly={casOnly}
         hasLocality={hasCanonicalLocality} professionalMode={searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality}
+        searchedLabel={query.trim()} browseLocality={isDirectoryBrowseView ? locality : null}
         onApply={(filters) => {
           if (searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality) { setProfessionalType(filters.professionalType); return; }
           setProviderType(filters.providerType);
