@@ -178,8 +178,9 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
     scored.set(entry.service_key, { entry, score: match.score + bonus });
   }
 
-  // Frazele descriptive („văd în ceață”, „mă ustură ochii”) vin din regulile existente.
-  if (query.length >= 4) {
+  // Frazele descriptive („văd în ceață”, „mă ustură ochii”) vin din regulile existente. Un singur
+  // cuvant e acoperit mai sus; acolo regulile ar aduce tot grupul („dioptrii” -> toata optometria).
+  if (queryTokens.length >= 2) {
     for (const suggestion of getServiceSearchSuggestions(rawQuery, { limit: 8 })) {
       if (Number(suggestion.score || 0) < 0.6) continue;
       const entry = serviceIndex().find((item) => item.service_key === suggestion.service_key);
