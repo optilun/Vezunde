@@ -71,7 +71,7 @@ export const MAJOR_CITIES = [
 // doar numele localitatii alese, ca la orice cautare scrisa.
 
 function normalizePlace(value) {
-  return String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 export function placeKey(name, county) {
