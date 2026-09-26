@@ -33,13 +33,66 @@ function dedupeRowsById(rows) {
   return [...byId.values()];
 }
 
+// 2026-09-26. Acelasi oras are in SIRUTA doua coduri: UAT-ul (nivel 2, de ex. Cluj-Napoca 54975)
+// si localitatea componenta cu acelasi nume, resedinta UAT-ului (nivel 3, de ex. 54984,
+// `municipality_component_seat` / `town_component_seat` / `commune_village_seat`).
+// Cautarea de localitati ofera pacientului doar UAT-ul, dar importul a salvat multe locatii cu
+// codul componentei. Cu filtrarea exacta pe cod, acele locatii nu apareau deloc: Pascani 0 din 3,
+// Cluj-Napoca 40 din 46.
+//
+// Aici codul ales se completeaza DOAR cu codurile care inseamna acelasi loc:
+// - UAT -> resedinta lui cu acelasi nume (si invers);
+// - Bucuresti (municipiul) -> cele 6 sectoare.
+// Celelalte sate ale unei comune raman separate: cautarea nu se extinde la alte localitati.
+// Registrul geografic e fix, deci raspunsul se tine minte in instanta functiei.
+const EQUIVALENT_CODES_TTL_MS = 6 * 60 * 60 * 1000;
+const equivalentCodesCache = new Map();
+
+function isSameNameSeat(row, name) {
+  return /_seat$/.test(clean(row?.locality_type)) && clean(row?.normalized_name) === name;
+}
+
+export async function resolveEquivalentLocalityCodes(svc, localitySirutaCode) {
+  const sirutaCode = clean(localitySirutaCode);
+  if (!sirutaCode) return [];
+  const cached = equivalentCodesCache.get(sirutaCode);
+  if (cached && Date.now() - cached.at < EQUIVALENT_CODES_TTL_MS) return cached.codes;
+  const geo = svc?.entities?.GeographicLocality;
+  if (!geo?.filter) return [sirutaCode];
+  try {
+    const [selected] = await geo.filter({ siruta_code: sirutaCode, is_active: true }, null, 1);
+    let related = [];
+    if (selected) {
+      const name = clean(selected.normalized_name);
+      const uatCode = clean(selected.uat_code);
+      if (!uatCode || uatCode === sirutaCode) {
+        const members = await geo.filter({ uat_code: sirutaCode, is_active: true }, null, 200);
+        const bucharest = clean(selected.locality_type) === 'bucharest_municipality';
+        related = members.filter((row) => clean(row.siruta_code) !== sirutaCode && (
+          isSameNameSeat(row, name) || (bucharest && clean(row.locality_type) === 'bucharest_sector')
+        ));
+      } else if (isSameNameSeat(selected, name)) {
+        const [uat] = await geo.filter({ siruta_code: uatCode, is_active: true }, null, 1);
+        if (uat && clean(uat.normalized_name) === name) related = [uat];
+      }
+    }
+    const codes = unique([sirutaCode, ...related.map((row) => row.siruta_code)]);
+    equivalentCodesCache.set(sirutaCode, { codes, at: Date.now() });
+    return codes;
+  } catch {
+    // Fara registru raspunsul ramane cel de dinainte (doar codul ales); nu se tine minte.
+    return [sirutaCode];
+  }
+}
+
 export async function loadPublicLocationsForLocality(svc, localitySirutaCode, options = {}) {
   const sirutaCode = clean(localitySirutaCode);
   if (!sirutaCode) return [];
   const limit = Math.max(1, Math.min(Number(options.limit) || DEFAULT_LOCALITY_LOCATION_LIMIT, 5000));
+  const codes = unique(Array.isArray(options.equivalentCodes) ? options.equivalentCodes : await resolveEquivalentLocalityCodes(svc, sirutaCode));
   return svc.entities.ProviderLocation.filter({
     status: 'publicata',
-    locality_siruta_code: sirutaCode,
+    locality_siruta_code: codes.length > 1 ? { $in: codes } : sirutaCode,
   }, options.sort || 'name', limit);
 }
 
