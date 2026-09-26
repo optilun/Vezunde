@@ -98,7 +98,7 @@ try {
       plugins: [{
         name: 'mock-server-sdk',
         setup(builder) {
-          builder.onResolve({ filter: /^npm:@base44\\/sdk/ }, () => ({ path: 'sdk', namespace: 'fake-sdk' }));
+          builder.onResolve({ filter: /^npm:/ }, () => ({ path: 'sdk', namespace: 'fake-sdk' }));
           builder.onLoad({ filter: /.*/, namespace: 'fake-sdk' }, () => ({
             contents: 'export function createClientFromRequest() { return globalThis.__chatTestBackend; }',
           }));
