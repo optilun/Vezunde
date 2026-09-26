@@ -119,7 +119,7 @@ export default function SituationExplainer() {
     <section
       ref={sectionRef}
       aria-labelledby="specialist-guide-title"
-      className="mx-auto mt-24 max-w-[84rem] px-5 sm:mt-32 lg:mt-36"
+      className="mx-auto mt-20 max-w-[84rem] px-5 sm:mt-24 lg:mt-28"
     >
       <Reveal threshold={0.1}>
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground/75 sm:text-[11px]">
