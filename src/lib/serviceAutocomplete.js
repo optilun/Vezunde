@@ -107,13 +107,15 @@ function everyTokenStartsAWord(queryTokens, words) {
   return queryTokens.every((token) => words.some((word) => word.startsWith(token)));
 }
 
-// Aceeasi idee, cu ultima litera a cuvintelor lungi lasata libera: in romana terminatia se schimba
-// („cataractă” / „cataractei”, „ochelarii” / „ochelari”).
+// Aceeasi idee, fara terminatia cuvintelor lungi: in romana ea se schimba
+// („cataractă” / „cataractei”, „ochelarii”, „glaucomul”, „lentilele”).
+function stem(token) {
+  if (token.length < 6) return token;
+  const stripped = token.replace(/(ului|ilor|elor|lor|ul|le|ii|ei|a|e|i)$/, "");
+  return stripped.length >= 4 ? stripped : token;
+}
 function everyTokenStartsAWordLoosely(queryTokens, words) {
-  return queryTokens.every((token) => {
-    const stem = token.length >= 6 ? token.slice(0, -1) : token;
-    return words.some((word) => word.startsWith(stem));
-  });
+  return queryTokens.every((token) => words.some((word) => word.startsWith(stem(token))));
 }
 
 // Scorul potrivirii si cuvantul-cheie care a potrivit (daca nu a potrivit eticheta).
