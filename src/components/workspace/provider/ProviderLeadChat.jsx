@@ -1,9 +1,10 @@
 // Conversatia vazuta de locatie. Logica de acces si apelurile catre controlledChatOps
 // rămân neschimbate; prezentarea s-a mutat in ChatThread, comun cu partea pacientului.
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import ChatThread from "@/components/chat/ChatThread";
 import useChatLivePolling from "@/components/chat/useChatLivePolling";
+import useControlledChatSession from "@/components/chat/useControlledChatSession";
 
 const ELIGIBLE_RESPONSES = new Set(["can_help", "needs_details"]);
 
@@ -13,17 +14,12 @@ function responseData(response) {
   return data;
 }
 
-function createMessageId() {
-  if (typeof globalThis.crypto?.randomUUID === "function") return `chat:${globalThis.crypto.randomUUID()}`;
-  return `chat:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+export default function ProviderLeadChat(props) {
+  const { leadId, locationId, enabled, responseType, terminal } = props;
+  return <ProviderChatSession key={JSON.stringify([leadId, locationId, enabled, responseType, terminal])} {...props} />;
 }
 
-export default function ProviderLeadChat({ leadId, locationId, enabled, responseType, terminal = false }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [action, setAction] = useState("");
-  const [error, setError] = useState("");
-
+function ProviderChatSession({ leadId, locationId, enabled, responseType, terminal = false }) {
   const invoke = useCallback(async (nextAction, values = {}) => {
     const response = await base44.functions.invoke("controlledChatOps", {
       actor: "provider",
@@ -35,61 +31,21 @@ export default function ProviderLeadChat({ leadId, locationId, enabled, response
     return responseData(response);
   }, [leadId, locationId]);
 
-  // silent = reimprospatare de fundal (polling): nu aprinde spinnerul si nu afiseaza erori
-  // tranzitorii, ca sa nu palpaie conversatia la fiecare ciclu.
-  const load = useCallback(async ({ silent = false } = {}) => {
-    if (!enabled || !ELIGIBLE_RESPONSES.has(responseType)) return;
-    if (!silent) {
-      setLoading(true);
-      setError("");
-    }
-    try {
-      let next = await invoke("status");
-      if (!terminal && Number(next.chat?.unread_count) > 0) next = await invoke("mark_read");
-      setData(next);
-    } catch (loadError) {
-      if (!silent) setError(loadError?.message || "Conversația nu a putut fi încărcată.");
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [enabled, invoke, responseType, terminal]);
-
-  useEffect(() => { void load(); }, [load]);
+  const { data, loading, loadingOlder, action, error, load, mutate, loadOlder } = useControlledChatSession({
+    invoke,
+    enabled: Boolean(enabled) && ELIGIBLE_RESPONSES.has(responseType),
+    readOnly: terminal,
+  });
 
   const conversationOpen = data?.chat?.status === "open";
   useChatLivePolling({
     active: !terminal && conversationOpen,
-    busy: loading || Boolean(action),
+    busy: loading || loadingOlder || Boolean(action),
     onPoll: () => load({ silent: true }),
   });
 
-  const send = async (message) => {
-    if (terminal) return false;
-    setAction("send");
-    setError("");
-    try {
-      setData(await invoke("send", { message, client_message_id: createMessageId() }));
-      return true;
-    } catch (sendError) {
-      setError(sendError?.message || "Mesajul nu a putut fi trimis.");
-      return false;
-    } finally {
-      setAction("");
-    }
-  };
-
-  const close = async () => {
-    if (terminal) return;
-    setAction("close");
-    setError("");
-    try {
-      setData(await invoke("close"));
-    } catch (closeError) {
-      setError(closeError?.message || "Conversația nu a putut fi închisă.");
-    } finally {
-      setAction("");
-    }
-  };
+  const send = (message, clientMessageId) => mutate("send", { message, client_message_id: clientMessageId });
+  const close = () => mutate("close");
 
   if (!enabled || !ELIGIBLE_RESPONSES.has(responseType)) return null;
 
@@ -110,6 +66,9 @@ export default function ProviderLeadChat({ leadId, locationId, enabled, response
         otherLabel="Client"
         loading={loading}
         sending={Boolean(action)}
+        loadingOlder={loadingOlder}
+        hasOlder={Boolean(data?.next_before_message_id)}
+        onLoadOlder={loadOlder}
         error={error}
         lockedNote={notOpened
           ? (terminal
