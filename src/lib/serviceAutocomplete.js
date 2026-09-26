@@ -107,11 +107,21 @@ function everyTokenStartsAWord(queryTokens, words) {
   return queryTokens.every((token) => words.some((word) => word.startsWith(token)));
 }
 
+// Aceeasi idee, cu ultima litera a cuvintelor lungi lasata libera: in romana terminatia se schimba
+// („cataractă” / „cataractei”, „ochelarii” / „ochelari”).
+function everyTokenStartsAWordLoosely(queryTokens, words) {
+  return queryTokens.every((token) => {
+    const stem = token.length >= 6 ? token.slice(0, -1) : token;
+    return words.some((word) => word.startsWith(stem));
+  });
+}
+
 // Scorul potrivirii si cuvantul-cheie care a potrivit (daca nu a potrivit eticheta).
 function lexicalMatch(entry, query, queryTokens) {
   if (entry.labelN === query) return { score: 120, keyword: null };
   if (entry.labelN.startsWith(query)) return { score: 100, keyword: null };
   if (everyTokenStartsAWord(queryTokens, entry.labelWords)) return { score: 85, keyword: null };
+  if (everyTokenStartsAWordLoosely(queryTokens, entry.labelWords)) return { score: 80, keyword: null };
   if (query.length < 3) return { score: 0, keyword: null };
   const loose = query.length >= 4;
   let best = { score: loose && entry.labelN.includes(query) ? 70 : 0, keyword: null };
