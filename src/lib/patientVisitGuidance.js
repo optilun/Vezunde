@@ -126,7 +126,7 @@ const TEXT_CONDITION_RULES = [
   { condition: "diabet", pattern: /\bdiabet/ },
   { condition: "hipertensiune", pattern: /\bhipertensiune|\btensiune(?:a)? arteriala|\btensiune(?:a)? mare\b(?! oculara)|\bam tensiune\b(?! oculara)/ },
   { condition: "ochi_uscat", pattern: /\bochi(?:i)? uscat|\buscaciune|\bma usuca ochii|\bnisip in ochi/ },
-  // Fara nota proprie inca (asteapta revizuirea medicala); schimba doar unde e indrumat pacientul.
+  // Nota proprie din 2026-09-26; la lentile de contact schimba si unde e indrumat pacientul.
   { condition: "keratocon", pattern: /\b(?:k|ch)eratocon/ },
   { condition: "degenerescenta_maculara", pattern: /\bdegenerescent\w* macular|\bdmla\b|\bmaculopati/ },
   { condition: "conjunctivita", pattern: /\bconjunctivit|\balergi/ },
