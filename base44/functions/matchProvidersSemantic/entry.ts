@@ -601,6 +601,7 @@ Deno.serve(async (request) => {
       intent: clean(payload.intent),
       explicitKeys,
       textKeys: semantic.service_keys,
+      text: searchText,
       getDefinition: getCanonicalServiceDefinition,
     }).serviceKeys;
     const semanticScoreByKey = Object.fromEntries(
