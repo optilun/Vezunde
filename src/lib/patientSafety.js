@@ -128,6 +128,12 @@ export function deterministicSafetyFlagsFromText(value) {
     "durere oculara severa",
     "ma doare ochiul foarte tare",
     "ma doare ingrozitor ochiul",
+    // 2026-09-26: aceeasi durere, cu alta ordine a cuvintelor.
+    "ma doare foarte tare ochiul",
+    "ma doare foarte rau ochiul",
+    "ma doare ochiul foarte rau",
+    "ma doare insuportabil ochiul",
+    "durere foarte puternica la ochi",
     "durere mare la ochi si greata",
     "durere la ochi si voma",
     "durere la ochi si varsaturi",
@@ -150,6 +156,32 @@ export function deterministicSafetyFlagsFromText(value) {
     "vedere dubla brusc",
     "am inceput sa vad dublu",
     "vad dublu deodata",
+    // 2026-09-26, revizuire (owner-ul a delegat-o, fara medic disponibil): vederea dubla si
+    // umbra noua din campul vizual, spuse impreuna cu momentul aparitiei. Ghidurile publice
+    // pentru pacienti le trateaza ca semne pentru evaluare in aceeasi zi. Formularile vechi,
+    // fara moment recent ("vad dublu de cativa ani"), nu se potrivesc.
+    "vad dublu de azi",
+    "vad dublu de ieri",
+    "vad dublu de aseara",
+    "vad dublu de dimineata",
+    "vad dublu de cateva ore",
+    "vad dublu de o ora",
+    "vad dublu brusc",
+    "de azi vad dublu",
+    "de ieri vad dublu",
+    "de aseara vad dublu",
+    "de dimineata vad dublu",
+    "de azi vad ca o umbra",
+    "de ieri vad ca o umbra",
+    "de aseara vad ca o umbra",
+    "de azi vad o umbra",
+    "de ieri vad o umbra",
+    "de aseara vad o umbra",
+    "vad ca o umbra de azi",
+    "vad ca o umbra de ieri",
+    "mi a aparut o umbra",
+    "a aparut brusc o umbra",
+    "umbra in fata ochiului",
   ])) flags.push("other_possible_urgent_eye_problem");
 
   if (includesAny(text, [
