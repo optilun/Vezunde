@@ -22,6 +22,10 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // din /cauta) rezultatul e reuniunea de pana acum. Nicio schimbare de scor, bucket sau
     // selectie Top 3.
     'd182b86f36348dcd8871938ab8d2fdc86a0bf214',
+    // 2026-09-26, keratocon (aprobat explicit de owner): filtrul primeste si textul pacientului
+    // (`text: searchText`), ca la keratocon cheile de adaptare speciala si cele medicale sa nu
+    // mai fie scoase. Nicio schimbare de scor, bucket sau selectie Top 3.
+    '4ad1e595b2cac79a2262d08aa847e4c2a8ea0dba',
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
@@ -185,6 +189,11 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // inaintea ramurii de potrivire: amprenta 'f33a9859' ramane aceeasi, iar
     // buildRecommendationScore, assignRecommendationBuckets si selectia Top 3 raman identice.
     'abac6abab24d4ebca2a7795ca11b7dd72b7ef933',
+    // 2026-09-26, keratocon (aprobat explicit de owner): acelasi apel primeste si
+    // `text: searchText`. Cand textul pomeneste keratoconul, nevoia de lentile si nevoile
+    // medicale pastreaza din text serviciile medicale si pe cele de lentile de contact. Tot
+    // inaintea ramurii de potrivire: amprenta 'f33a9859' ramane aceeasi.
+    '4aac06e0f8f4e098cfcc7f533b32d627ee03b62b',
   ]),
 });
 
@@ -299,6 +308,7 @@ const PR265_PROVIDER_SEMANTIC_BLOBS = Object.freeze([
   '240474eb3bba41f56f058ba83359ff33c77e757d',
   'd88d149043964e3d2c5c05b3b19b2f8cf143d7a9',
   'd182b86f36348dcd8871938ab8d2fdc86a0bf214',
+  '4ad1e595b2cac79a2262d08aa847e4c2a8ea0dba',
 ]);
 const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
 const providerSemanticComposition = PR265_PROVIDER_SEMANTIC_BLOBS.includes(providerSemanticBlob)
