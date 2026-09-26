@@ -48,6 +48,15 @@ export const CONFIRMED_NEED_SERVICE_GROUPS = Object.freeze({
 
 const COMMERCIAL_NEEDS = new Set(['reparatii_ochelari', 'ochelari_lentile', 'lentile_contact']);
 
+// 2026-09-26, decizia owner-ului: un pacient cu keratocon care cere lentile de contact are
+// nevoie de adaptare speciala (lentile rigide sau sclerale) la un specialist, nu de o cumparare
+// obisnuita. Cand textul pomeneste keratoconul, nevoia de lentile si nevoile medicale pastreaza
+// din text atat serviciile medicale, cat si pe cele de lentile de contact, iar lentilele nu mai
+// sunt tratate ca nevoie comerciala. Ochelarii si reparatiile raman neschimbate.
+const KERATOCONUS_PATTERN = /\b(?:k|ch)eratocon/i;
+const KERATOCONUS_NEEDS = new Set(['lentile_contact', 'simptome_oftalmologice', 'control_vedere', 'investigatii']);
+const KERATOCONUS_GROUPS = Object.freeze([...MEDICAL_NEED_GROUPS, 'contact_lenses']);
+
 const NEED_ORDER = Object.freeze({ general: 0, technical: 1, specialized_medical: 2 });
 
 function uniqueKeys(values) {
@@ -69,6 +78,7 @@ function highestNeedLevel(definitions) {
  *   intent?: string,
  *   explicitKeys?: string[],
  *   textKeys?: string[],
+ *   text?: string,
  *   getDefinition?: ((key: string) => any) | null,
  * }} input
  */
@@ -76,12 +86,14 @@ export function filterTextServiceKeysForConfirmedNeed({
   intent = '',
   explicitKeys = [],
   textKeys = [],
+  text: patientText = '',
   getDefinition = null,
 } = {}) {
   const need = String(intent || '').trim();
   const explicit = uniqueKeys(explicitKeys);
   const text = uniqueKeys(textKeys);
-  const allowedGroups = CONFIRMED_NEED_SERVICE_GROUPS[need];
+  const keratoconus = KERATOCONUS_NEEDS.has(need) && KERATOCONUS_PATTERN.test(String(patientText || ''));
+  const allowedGroups = keratoconus ? KERATOCONUS_GROUPS : CONFIRMED_NEED_SERVICE_GROUPS[need];
   if (!allowedGroups || explicit.length === 0 || typeof getDefinition !== 'function') {
     return { serviceKeys: uniqueKeys([...explicit, ...text]), droppedTextKeys: [], applied: false };
   }
@@ -96,7 +108,8 @@ export function filterTextServiceKeysForConfirmedNeed({
     const definition = getDefinition(key);
     const sameAsExplicit = explicit.includes(key) || Boolean(definition && explicitCanonicalKeys.has(definition.key));
     const inNeedFamily = Boolean(definition && allowedGroups.includes(definition.group));
-    const raisesCommercialNeed = COMMERCIAL_NEEDS.has(need)
+    const raisesCommercialNeed = !keratoconus
+      && COMMERCIAL_NEEDS.has(need)
       && definition?.service_need_level === 'specialized_medical'
       && explicitLevel !== 'specialized_medical';
     if (sameAsExplicit || (inNeedFamily && !raisesCommercialNeed)) keptTextKeys.push(key);
