@@ -88,61 +88,63 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
       )}
 
       <div
-        id={listId}
-        role="listbox"
-        aria-label={showPopular ? "Servicii căutate des" : "Servicii potrivite"}
         hidden={!listOpen}
-        className="absolute left-0 z-40 mt-2 max-h-[min(26rem,60dvh)] w-full min-w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-border bg-card py-1.5 shadow-xl"
+        className="absolute left-0 z-40 mt-2 w-full min-w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-card shadow-xl"
       >
-        {listOpen && showPopular && (
-          <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" aria-hidden="true">
+        {showPopular && (
+          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" aria-hidden="true">
             Căutate des
           </p>
         )}
-        {listOpen && options.map((option, index) => (
-          <div
-            key={option.service_key}
-            id={optionId(index)}
-            role="option"
-            aria-selected={index === active || option.service_key === service}
-            onMouseDown={(event) => event.preventDefault()}
-            onMouseEnter={() => setActive(index)}
-            onClick={() => choose(option)}
-            className={`flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors ${index === active ? "bg-secondary" : ""}`}
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-foreground">
-                {showPopular ? option.label : highlightParts(option.label, typed).map((part, partIndex) => (
-                  part.match ? <strong key={partIndex} className="font-semibold">{part.text}</strong> : <span key={partIndex}>{part.text}</span>
-                ))}
+        <div
+          id={listId}
+          role="listbox"
+          aria-label={showPopular ? "Servicii căutate des" : "Servicii potrivite"}
+          className="max-h-[min(22rem,50dvh)] overflow-y-auto py-1"
+        >
+          {listOpen && options.map((option, index) => (
+            <div
+              key={option.service_key}
+              id={optionId(index)}
+              role="option"
+              aria-selected={index === active}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActive(index)}
+              onClick={() => choose(option)}
+              className={`flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors ${index === active ? "bg-secondary" : ""}`}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-foreground">
+                  {showPopular ? option.label : highlightParts(option.label, typed).map((part, partIndex) => (
+                    part.match ? <strong key={partIndex} className="font-semibold">{part.text}</strong> : <span key={partIndex}>{part.text}</span>
+                  ))}
+                </span>
+                {option.hint && <span className="block truncate text-xs text-muted-foreground">{option.hint}</span>}
               </span>
-              {option.hint && <span className="block truncate text-xs text-muted-foreground">{option.hint}</span>}
-            </span>
-            {!showPopular && serviceGroupShort(option.group) && (
-              <span className="shrink-0 rounded-full bg-[#eff1f5] px-2 py-0.5 text-[11px] font-medium text-[#4f6080]">
-                {serviceGroupShort(option.group)}
-              </span>
-            )}
-          </div>
-        ))}
-        {listOpen && !showPopular && options.length === 0 && (
-          <div className="px-4 py-3 text-sm">
+              {!showPopular && serviceGroupShort(option.group) && (
+                <span className="shrink-0 rounded-full bg-[#eff1f5] px-2 py-0.5 text-[11px] font-medium text-[#4f6080]">
+                  {serviceGroupShort(option.group)}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+        {!showPopular && options.length === 0 && (
+          <div className="px-4 pb-3 text-sm" role="status">
             <p className="font-medium">Nu am găsit un serviciu cu acest nume.</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Poți căuta și așa, cu textul scris, sau poți descrie situația și te ajutăm să alegi.
             </p>
           </div>
         )}
-        {listOpen && (
-          <Link
-            to="/cerere"
-            onMouseDown={(event) => event.preventDefault()}
-            className="mt-1 flex min-h-11 items-center justify-between gap-3 border-t border-border px-4 py-2 text-xs font-medium text-[#4f6080] hover:bg-secondary"
-          >
-            Nu știi ce serviciu îți trebuie? Descrie situația
-            <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          </Link>
-        )}
+        <Link
+          to="/cerere"
+          onMouseDown={(event) => event.preventDefault()}
+          className="flex min-h-11 items-center justify-between gap-3 border-t border-border px-4 py-2 text-xs font-medium text-[#4f6080] hover:bg-secondary"
+        >
+          Nu știi ce serviciu îți trebuie? Descrie situația
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        </Link>
       </div>
     </div>
   );
