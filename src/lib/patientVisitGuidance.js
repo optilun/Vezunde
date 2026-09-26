@@ -80,6 +80,8 @@ const TEXT_CONDITION_RULES = [
   { condition: "diabet", pattern: /\bdiabet/ },
   { condition: "hipertensiune", pattern: /\bhipertensiune|\btensiune(?:a)? arteriala|\btensiune(?:a)? mare\b(?! oculara)|\bam tensiune\b(?! oculara)/ },
   { condition: "ochi_uscat", pattern: /\bochi(?:i)? uscat|\buscaciune|\bma usuca ochii|\bnisip in ochi/ },
+  // Fara nota proprie inca (asteapta revizuirea medicala); schimba doar unde e indrumat pacientul.
+  { condition: "keratocon", pattern: /\b(?:k|ch)eratocon/ },
 ];
 
 const SERVICE_CONDITIONS = Object.freeze({
@@ -135,6 +137,10 @@ function whereToGo(intent, byKey, conditions) {
         ? "Întâi un consult pentru dioptrii (optometrist sau medic oftalmolog), apoi o optică. Multe optici au și cabinet."
         : "La o optică. Adu rețeta.";
     case "lentile_contact":
+      // 2026-09-26, decizia owner-ului: la keratocon lentilele se adapteaza la specialist.
+      if (conditions.has("keratocon")) {
+        return "La un medic oftalmolog sau un optometrist care adaptează lentile de contact speciale (rigide sau sclerale).";
+      }
       return byKey.contact_lens_experience === "first_time" || byKey.prima_data === "da"
         ? "La un optometrist sau medic oftalmolog care face adaptarea lentilelor de contact."
         : "La o optică sau un cabinet care are lentilele tale.";
@@ -149,7 +155,7 @@ function preparationTips(intent, byKey, conditions) {
   const wearsLenses = conditions.has("poarta_lentile");
   const consult = CONSULT_INTENTS.has(intent)
     || ((intent === "ochelari_lentile") && (byKey.prescription_status === "needs_exam" || byKey.reteta === "needs_exam"))
-    || ((intent === "lentile_contact") && (byKey.contact_lens_experience === "first_time" || byKey.prima_data === "da"));
+    || ((intent === "lentile_contact") && (byKey.contact_lens_experience === "first_time" || byKey.prima_data === "da" || conditions.has("keratocon")));
 
   if (intent === "control_copil") {
     return [
