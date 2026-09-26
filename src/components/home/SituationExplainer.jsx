@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/common/Reveal";
 import { useInViewport, usePrefersReducedMotion } from "@/lib/motion";
