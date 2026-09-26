@@ -65,6 +65,80 @@ export const MAJOR_CITIES = [
   { siruta_code: "26564", name: "Oradea", county_name: "Bihor", county_code: "5", locality_type: "municipality_county_seat" },
 ].map((city) => prettyLocality({ ...city, uat_code: city.siruta_code, display_label: city.name }));
 
+// ---------------------------------------------------------------------------------------------
+// „Lângă mine” si numarul de locatii pe oras, calculate in browser din harta nationala (aceleasi
+// puncte ca pe harta de pe /cauta). Pozitia pacientului nu pleaca din browser: serverul primeste
+// doar numele localitatii alese, ca la orice cautare scrisa.
+
+function normalizePlace(value) {
+  return String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function placeKey(name, county) {
+  return `${normalizePlace(name)}|${normalizePlace(county)}`;
+}
+
+function distanceKm(a, b) {
+  const radians = (value) => (value * Math.PI) / 180;
+  const dLat = radians(b.lat - a.lat);
+  const dLng = radians(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(radians(a.lat)) * Math.cos(radians(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+// Cate locatii cu pozitie publicata are fiecare localitate (cheie: nume + judet).
+export function localityCountsFromPoints(points) {
+  const counts = new Map();
+  for (const point of points || []) {
+    if (!point?.city) continue;
+    const key = placeKey(point.city, point.county);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return counts;
+}
+
+// Cele mai apropiate localitati care au locatii in director, dupa cea mai apropiata locatie din
+// fiecare. Pacientul alege; nu schimbam singuri localitatea.
+export function nearbyLocalitiesFromPoints(points, origin, limit = 3) {
+  const groups = new Map();
+  for (const point of points || []) {
+    const lat = Number(point?.lat);
+    const lng = Number(point?.lng);
+    if (!point?.city || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    const key = placeKey(point.city, point.county);
+    const distance = distanceKm(origin, { lat, lng });
+    const group = groups.get(key) || { key, city: point.city, county: point.county || "", distanceKm: Infinity, count: 0 };
+    group.count += 1;
+    group.distanceKm = Math.min(group.distanceKm, distance);
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, limit);
+}
+
+export function formatDistance(km) {
+  if (!Number.isFinite(km)) return "";
+  if (km < 1) return "sub 1 km";
+  return `${km < 10 ? km.toFixed(1).replace(".", ",").replace(",0", "") : Math.round(km)} km`;
+}
+
+export function formatLocationCount(count) {
+  if (!count) return "";
+  return count === 1 ? "1 locație" : count < 20 ? `${count} locații` : `${count} de locații`;
+}
+
+// Numele unei localitati din harta, scris corect (harta pastreaza numele din registru).
+export function prettyPlaceName(name) {
+  return COUNTY_SEAT_NAMES[name] || name || "";
+}
+
+// Din rezultatele cautarii de localitati, cea care corespunde numelui si judetului din harta.
+export function pickLocalityForPlace(results, city, county) {
+  const name = normalizePlace(city);
+  const countyName = normalizePlace(county);
+  const sameName = (results || []).filter((item) => normalizePlace(item.name) === name);
+  return sameName.find((item) => normalizePlace(item.county_name) === countyName) || sameName[0] || null;
+}
+
 const RECENT_KEY = "viasee.recent.localities.v1";
 const RECENT_LIMIT = 3;
 
