@@ -89,6 +89,11 @@ function serviceIndex() {
         groupKeywords: keywords.filter((keyword) => groupLabels.has(keyword)),
       };
     });
+  // Un cuvant-cheie pus pe 4 sau mai multe servicii descrie grupul, nu serviciul („dioptrii” e pe
+  // toate serviciile de optometrie). Ramane gasibil, dar nu mai trage in fata orice serviciu.
+  const frequency = new Map();
+  for (const entry of indexCache) for (const keyword of entry.keywords) frequency.set(keyword, (frequency.get(keyword) || 0) + 1);
+  for (const entry of indexCache) entry.sharedKeywords = new Set(entry.keywords.filter((keyword) => frequency.get(keyword) >= 4));
   return indexCache;
 }
 
@@ -120,6 +125,7 @@ function lexicalMatch(entry, query, queryTokens) {
     else if (keyword.startsWith(query)) score = 75;
     else if (everyTokenStartsAWord(queryTokens, keyword.split(" "))) score = 65;
     else if (loose && keyword.includes(query)) score = 50;
+    if (score && entry.sharedKeywords.has(keyword)) { score = Math.min(score, 40); if (score > best.score) best = { score, keyword: null }; continue; }
     if (score > best.score) best = { score, keyword };
   }
   if (!best.score && loose && entry.groupKeywords.some((keyword) => keyword.includes(query))) best = { score: 20, keyword: null };
@@ -169,7 +175,10 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
   for (const entry of serviceIndex()) {
     const match = lexicalMatch(entry, query, queryTokens);
     if (!match.score) continue;
-    const bonus = POPULAR_RANK.has(entry.service_key) ? 16 : COMMON_SERVICES.has(entry.service_key) ? 8 : 0;
+    // Nevoile cele mai cautate urca: „control” trebuie sa aduca sus si „Consult optometric complet”
+    // (control de vedere), chiar daca potrivirea vine din cuvantul-cheie, nu din eticheta.
+    const popular = POPULAR_RANK.has(entry.service_key);
+    const bonus = popular ? (match.keyword ? 26 : 16) : COMMON_SERVICES.has(entry.service_key) ? 8 : 0;
     scored.set(entry.service_key, {
       entry,
       score: match.score + bonus,
