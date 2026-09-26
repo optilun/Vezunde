@@ -41,6 +41,7 @@ export const ADULT_ANAMNESIS_QUESTIONS = Object.freeze([
       { key: "hipertensiune", label: "Tensiune arterială mare" },
       { key: "glaucom", label: "Glaucom sau tensiune oculară mare" },
       { key: "cataracta", label: "Cataractă" },
+      { key: "keratocon", label: "Keratocon" },
       { key: "alta_boala_ochi", label: "Altă boală a ochilor" },
       { key: "niciuna", label: "Niciuna" },
     ],
@@ -219,6 +220,7 @@ const CONDITION_TO_AFFECTION = Object.freeze({
   hipertensiune: "hipertensiune",
   glaucom: "glaucom",
   cataracta: "cataracta",
+  keratocon: "keratocon",
 });
 
 export function buildAnamnesisPrefill(variant, conditions = new Set()) {
