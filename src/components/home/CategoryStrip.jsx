@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { usePrefersReducedMotion } from "@/lib/motion";
 import { prefetchOnIntent } from "@/lib/routePrefetch";
 
@@ -62,24 +62,29 @@ function Slider({ label, value, pct, track, fill, text }) {
   );
 }
 
-// Plăcuță pătrată cu o pictogramă mare „tipărită” din puncte (raster), pe fond plin.
-function HalftoneTile({ bg, dot, children }) {
+// Plăcuță pătrată cu o pictogramă mare „tipărită” din puncte (raster), cu o a doua tipărire mai
+// închisă, ușor decalată, ca la un afiș serigrafiat.
+function HalftoneTile({ bg, dot, shadow, children }) {
   const id = useSvgId("ht");
   return (
     <div
       className="grid h-full w-full place-items-center"
       style={{
         backgroundColor: bg,
-        backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.13) 0.7px, transparent 1.05px)",
-        backgroundSize: "4px 4px",
+        backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.12) 0.8px, transparent 1.15px)",
+        backgroundSize: "5px 5px",
       }}
     >
-      <svg viewBox="0 0 100 100" className="h-[72%] w-[72%]" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="h-[74%] w-[74%] overflow-visible" aria-hidden="true">
         <defs>
-          <pattern id={id} width="3.1" height="3.1" patternUnits="userSpaceOnUse">
-            <circle cx="1.55" cy="1.55" r="1.08" fill={dot} />
+          <pattern id={id} width="3.6" height="3.6" patternUnits="userSpaceOnUse">
+            <circle cx="1.8" cy="1.8" r="1.3" fill={dot} />
+          </pattern>
+          <pattern id={`${id}-s`} width="3.6" height="3.6" patternUnits="userSpaceOnUse">
+            <circle cx="1.8" cy="1.8" r="1.3" fill={shadow} />
           </pattern>
         </defs>
+        <g transform="translate(4.5 4.5)">{children(`url(#${id}-s)`)}</g>
         {children(`url(#${id})`)}
       </svg>
     </div>
@@ -90,30 +95,47 @@ function HalftoneTile({ bg, dot, children }) {
 
 function DoctorTile() {
   return (
-    <Tile bg="#5a4468" color="#ffffff" className="p-5">
-      <span className="flex items-center gap-1.5 text-[11px] text-white/80">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#a8e2b0]" />
-        Primește cereri
-      </span>
-      <div className="mt-6 flex items-center gap-3">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#e8e0ea] font-heading text-[15px] font-bold text-[#4a3657]">
-          MP
+    <Tile bg="#5a4468" color="#ffffff">
+      <div
+        className="relative h-[52%] shrink-0 overflow-hidden"
+        style={{
+          backgroundColor: "#b9a2cf",
+          backgroundImage: "radial-gradient(circle, rgba(74,54,87,0.28) 0.9px, transparent 1.25px)",
+          backgroundSize: "6px 6px",
+        }}
+      >
+        <span className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-semibold text-[#3f2d4c]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#3f9a48]" />
+          Primește cereri
         </span>
-        <div className="min-w-0">
-          <p className="font-heading text-[1.05rem] font-bold leading-tight">Medic oftalmolog</p>
-          <p className="mt-0.5 text-[12px] text-white/65">Adulți și copii</p>
+        <span className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[#e8e0ea]/60" />
+        <svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMax meet" className="absolute inset-x-0 bottom-0 h-[86%] w-full" aria-hidden="true">
+          <path d="M36 120C40 91 68 79 100 79s60 12 64 41Z" fill="#ffffff" stroke="#171717" strokeWidth="3" />
+          <path d="M86 80 100 104 114 80Z" fill="#684d78" stroke="#171717" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M86 80 95 120M114 80l-9 40" stroke="#171717" strokeWidth="2.5" />
+          <path d="M83 83c-10 10-11 23-1 29M117 83c10 10 11 21 3 27" fill="none" stroke="#2b2133" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="120" cy="112" r="5.5" fill="#d4c6d8" stroke="#171717" strokeWidth="2.5" />
+          <rect x="129" y="95" width="16" height="10" rx="2" fill="#684d78" />
+          <rect x="91" y="63" width="18" height="18" rx="4" fill="#dc9a78" />
+          <circle cx="100" cy="47" r="23" fill="#e7ad8c" stroke="#171717" strokeWidth="2.5" />
+          <path d="M77 46c-1-20 12-28 24-28 15 0 24 11 22 26-8-8-21-11-32-7-6 2-10 5-14 9Z" fill="#2b2133" />
+          <g fill="#f6eefa" stroke="#171717" strokeWidth="2.5">
+            <circle cx="90" cy="50" r="8" />
+            <circle cx="110" cy="50" r="8" />
+          </g>
+          <path d="M98 50h4" stroke="#171717" strokeWidth="2.5" />
+          <circle cx="91" cy="51" r="2" fill="#171717" />
+          <circle cx="111" cy="51" r="2" fill="#171717" />
+          <path d="M95 61c3.5 3 6.5 3 10 0" fill="none" stroke="#171717" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col p-4">
+        <p className="font-heading text-[1.05rem] font-bold leading-tight">Medic oftalmolog</p>
+        <p className="mt-0.5 text-[11.5px] text-white/65">Adulți și copii · consult, fund de ochi</p>
+        <div className="mt-auto flex items-center justify-between rounded-md bg-white px-3 py-2 text-[#3f2d4c]">
+          <span className="text-[12px] font-semibold">Trimite o cerere</span>
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </div>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-1.5">
-        {["Consult", "Fund de ochi", "Lentile de contact"].map((tag) => (
-          <span key={tag} className="rounded-full border border-white/25 px-2.5 py-1 text-[11px] text-white/85">
-            {tag}
-          </span>
-        ))}
-      </div>
-      <div className="mt-auto flex items-center justify-between rounded-md bg-white px-3 py-2.5 text-[#3f2d4c]">
-        <span className="text-[12px] font-semibold">Trimite o cerere</span>
-        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
       </div>
     </Tile>
   );
@@ -121,7 +143,7 @@ function DoctorTile() {
 
 function PinHalftoneTile() {
   return (
-    <HalftoneTile bg="#b29dc5" dot="#f3ecf7">
+    <HalftoneTile bg="#b29dc5" dot="#f5eff9" shadow="#6d5585">
       {(paint) => (
         <path
           fill={paint}
@@ -184,9 +206,9 @@ const MAP_CITIES = [
 ];
 
 const MAP_RESULTS = [
-  { name: "Cabinet oftalmologic", distance: "1,2 km", color: "#684d78" },
-  { name: "Optică medicală", distance: "2,4 km", color: "#c77d67" },
-  { name: "Clinică de specialitate", distance: "3,1 km", color: "#7f9a8c" },
+  { name: "Cabinet oftalmologic", distance: "1,2 km", color: "#684d78", offset: [-44, 40] },
+  { name: "Optică medicală", distance: "2,4 km", color: "#c77d67", offset: [70, -6] },
+  { name: "Clinică de specialitate", distance: "3,1 km", color: "#5f8a76", offset: [14, 92] },
 ];
 
 function MapTile() {
@@ -195,32 +217,42 @@ function MapTile() {
   const [ax, ay] = cities[0].xy;
 
   return (
-    <Tile bg="#f3eef6" color="#2b2133" row>
-      <div className="relative min-w-0 flex-1 p-4">
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white/70 px-2 py-1 text-[10.5px] text-[#4a3657]">
-          <span className="h-2 w-2 rounded-sm bg-[#684d78]" />
-          România
-        </span>
-        <div className="absolute inset-x-3 bottom-4 top-12">
-        <svg viewBox="-12 -12 690 500" className="h-full w-full" aria-hidden="true">
-          {dots.map(([x, y]) => {
-            const near = Math.hypot(x - ax, y - ay) < 70;
-            return <rect key={`${x.toFixed(1)}-${y.toFixed(1)}`} x={x - 5.5} y={y - 5.5} width="11" height="11" rx="1.5" fill={near ? "#a58db8" : "#d8cde2"} />;
-          })}
-          {cities.map((city) => (
-            <g key={city.name}>
-              {city.active && <circle cx={city.xy[0]} cy={city.xy[1]} r="42" fill="#684d78" opacity="0.16" />}
-              <circle cx={city.xy[0]} cy={city.xy[1]} r={city.active ? 17 : 11} fill="#684d78" stroke="#ffffff" strokeWidth="5" />
+    <Tile bg="#efe8f3" color="#2b2133" row>
+      <div className="relative min-w-0 flex-1">
+        <div className="absolute inset-3">
+          <svg viewBox="-12 -12 690 500" className="h-full w-full" aria-hidden="true">
+            {dots.map(([x, y]) => {
+              const distance = Math.hypot(x - ax, y - ay);
+              const fill = distance < 80 ? "#7d609a" : distance < 170 ? "#a78fbf" : "#d3c6df";
+              return <rect key={`${x.toFixed(1)}-${y.toFixed(1)}`} x={x - 6.5} y={y - 6.5} width="13" height="13" rx="2" fill={fill} />;
+            })}
+            <g fill="none" stroke="#684d78" strokeWidth="3" strokeDasharray="8 9" opacity="0.6">
+              <circle cx={ax} cy={ay} r="110" />
+              <circle cx={ax} cy={ay} r="190" />
             </g>
-          ))}
-          <g transform={`translate(${ax + 26} ${ay - 78})`}>
-            <rect width="228" height="58" rx="10" fill="#2b2133" />
-            <text x="20" y="38" fill="#ffffff" fontSize="28" fontWeight="700" fontFamily="Manrope, sans-serif">Cluj-Napoca</text>
-          </g>
-        </svg>
+            {cities.slice(1).map((city) => (
+              <circle key={city.name} cx={city.xy[0]} cy={city.xy[1]} r="9" fill="#2b2133" stroke="#ffffff" strokeWidth="4" />
+            ))}
+            {MAP_RESULTS.map((result) => {
+              const x = ax + result.offset[0];
+              const y = ay + result.offset[1];
+              return (
+                <g key={result.name}>
+                  <path d={`M${ax} ${ay}L${x} ${y}`} stroke={result.color} strokeWidth="4" />
+                  <rect x={x - 12} y={y - 12} width="24" height="24" rx="5" fill={result.color} stroke="#ffffff" strokeWidth="4" />
+                </g>
+              );
+            })}
+            <circle cx={ax} cy={ay} r="21" fill="#2b2133" stroke="#ffffff" strokeWidth="6" />
+            <circle cx={ax} cy={ay} r="7" fill="#ffffff" />
+            <g transform={`translate(${ax - 120} ${ay - 104})`}>
+              <rect width="228" height="58" rx="10" fill="#2b2133" />
+              <text x="20" y="38" fill="#ffffff" fontSize="28" fontWeight="700" fontFamily="Manrope, sans-serif">Cluj-Napoca</text>
+            </g>
+          </svg>
         </div>
       </div>
-      <div className="flex w-[40%] min-w-[9.5rem] max-w-[12.5rem] flex-col gap-2 p-2.5 pl-0">
+      <div className="flex w-[36%] min-w-[9rem] max-w-[12rem] flex-col gap-2 p-2.5 pl-0">
         <div className="rounded-md bg-[#684d78] p-3 text-white">
           <p className="font-heading text-[15px] font-bold leading-tight">Lângă tine</p>
           <p className="mt-1 text-[10.5px] text-white/70">Ordonate după distanță</p>
@@ -243,44 +275,37 @@ function MapTile() {
   );
 }
 
-const SCHEDULE = [
-  ["Luni – Vineri", "08:00 – 20:00"],
-  ["Sâmbătă", "09:00 – 14:00"],
-  ["Duminică", "Închis"],
-];
 const BUSY_HOURS = [28, 42, 66, 88, 72, 50, 58, 80, 62, 36, 22];
 
 function ScheduleTile() {
   return (
-    <Tile bg="#fffdf8" color="#231c28" className="p-5">
+    <Tile bg="#fffdf8" color="#231c28" className="border border-black/[0.06] p-5">
       <div className="flex items-center justify-between gap-2">
-        <p className="font-heading text-[15px] font-bold">Program</p>
+        <TileLabel className="text-black/50">Program azi</TileLabel>
         <span className="flex items-center gap-1.5 rounded-full bg-[#e3f1df] px-2 py-0.5 text-[10.5px] font-semibold text-[#2f6b35]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#3f9a48]" />
           Deschis
         </span>
       </div>
-      <div className="mt-4 space-y-2.5">
-        {SCHEDULE.map(([day, hours]) => (
-          <div key={day} className="flex items-baseline gap-2 text-[12px]">
-            <span className="shrink-0">{day}</span>
-            <span className="flex-1 border-b border-dotted border-black/25" />
-            <span className={`shrink-0 font-mono text-[10.5px] ${hours === "Închis" ? "text-black/40" : ""}`}>{hours}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-auto">
-        <TileLabel className="text-black/45">Ore aglomerate</TileLabel>
-        <div className="mt-2 flex h-11 items-end gap-[3px]">
+      <p className="mt-4 font-heading text-[2.3rem] font-extrabold leading-none tracking-[-0.05em]">
+        08<span className="text-[#684d78]">–</span>20
+      </p>
+      <p className="mt-1.5 text-[11px] text-black/50">Sâmbătă 09–14 · Duminică închis</p>
+      <div className="mt-auto pt-6">
+        <div className="flex h-16 items-end gap-[3px]">
           {BUSY_HOURS.map((value, index) => (
             <span
               key={index}
-              className="flex-1 rounded-[2px]"
-              style={{ height: `${value}%`, backgroundColor: index === 4 ? "#684d78" : "#dcd2e3" }}
-            />
+              className="relative flex-1 rounded-t-[3px]"
+              style={{ height: `${value}%`, background: index === 4 ? "#684d78" : "linear-gradient(#c9b9d7, #ebe3f0)" }}
+            >
+              {index === 4 && (
+                <span className="absolute -top-5 left-1/2 -translate-x-1/2 rounded bg-[#231c28] px-1 py-px font-mono text-[8.5px] text-white">acum</span>
+              )}
+            </span>
           ))}
         </div>
-        <div className="mt-1.5 flex justify-between font-mono text-[9.5px] text-black/40">
+        <div className="mt-1 flex justify-between border-t border-black/10 pt-1 font-mono text-[9.5px] text-black/40">
           <span>08</span>
           <span>14</span>
           <span>20</span>
@@ -332,19 +357,18 @@ function RefractionTile() {
           <span className="px-2 py-0.5">OS</span>
         </span>
       </div>
+      <div className="mt-4 flex items-end gap-2">
+        <span className="font-heading text-[2.6rem] font-extrabold leading-none tracking-[-0.05em] text-[#345bc8]">−1,25</span>
+        <span className="pb-1 font-mono text-[10.5px] text-[#1d3441]/70">D · sferă</span>
+      </div>
       <div className="mt-5 space-y-4">
-        <Slider label="Sferă" value="−1,25 D" pct={38} track="rgba(29,52,65,0.15)" fill="#345bc8" text="#1d3441" />
         <Slider label="Cilindru" value="−0,50 D" pct={22} track="rgba(29,52,65,0.15)" fill="#345bc8" text="#1d3441" />
         <Slider label="Ax" value="90°" pct={50} track="rgba(29,52,65,0.15)" fill="#345bc8" text="#1d3441" />
       </div>
-      <div className="mt-auto grid grid-cols-2 gap-2">
-        {[["Adiție", "+1,50"], ["DP", "63 mm"]].map(([label, value]) => (
-          <div key={label} className="rounded-md bg-white/70 px-2.5 py-2">
-            <p className="truncate text-[10px] text-[#1d3441]/60">{label}</p>
-            <p className="mt-0.5 font-mono text-[12px] font-semibold">{value}</p>
-          </div>
-        ))}
-      </div>
+      <p className="mt-auto flex justify-between border-t border-[#1d3441]/15 pt-2.5 font-mono text-[10.5px]">
+        <span>ADD +1,50</span>
+        <span>DP 63 mm</span>
+      </p>
     </Tile>
   );
 }
@@ -390,7 +414,7 @@ function SnellenTile() {
 
 function EHalftoneTile() {
   return (
-    <HalftoneTile bg="#345bc8" dot="#9fb4f2">
+    <HalftoneTile bg="#345bc8" dot="#b3c4f6" shadow="#1b2f86">
       {(paint) => (
         <g fill={paint}>
           <rect x="16" y="16" width="68" height="15" />
@@ -469,44 +493,53 @@ function ColorPlateTile() {
   );
 }
 
-const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
-const CALENDAR_CELLS = [...Array(3).fill(null), ...Array.from({ length: 31 }, (_, index) => index + 1), null];
-const AVAILABLE_DAYS = new Set([6, 8, 13, 14, 15, 20, 22, 27, 29]);
+// Cadranul pentru astigmatism: raze la fiecare 15°; cea „mai închisă” (ora 2–8) e evidențiată.
+const DIAL_LINES = Array.from({ length: 13 }, (_, index) => index * 15);
+const DIAL_HOURS = [[180, "9"], [150, "10"], [120, "11"], [90, "12"], [60, "1"], [30, "2"], [0, "3"]];
 
-function CalendarTile() {
+function AstigmatismTile() {
   return (
     <Tile bg="#15232c" color="#ffffff" className="p-5">
-      <TileLabel className="text-white/50">Interval preferat</TileLabel>
-      <div className="mt-2 flex items-center justify-between">
-        <p className="font-heading text-[15px] font-bold">Octombrie</p>
-        <span className="flex gap-1 text-white/60">
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </span>
+      <p className="font-heading text-[15px] font-bold">Test astigmatism</p>
+      <p className="mt-1 text-[11px] text-white/55">Care linii par mai închise?</p>
+      <div className="flex min-h-0 flex-1 items-end justify-center pt-2">
+        <svg viewBox="0 0 200 118" className="w-full max-w-[15rem]" aria-hidden="true">
+          {DIAL_LINES.map((deg) => {
+            const [x1, y1] = polar(100, 106, 16, deg);
+            const [x2, y2] = polar(100, 106, 84, deg);
+            const strong = deg === 30;
+            return (
+              <line
+                key={deg}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={strong ? "#a9c6d7" : "#ffffff"}
+                strokeOpacity={strong ? 1 : 0.82}
+                strokeWidth={strong ? 7.5 : 4}
+                strokeLinecap="round"
+              />
+            );
+          })}
+          {DIAL_HOURS.map(([deg, label]) => {
+            const [x, y] = polar(100, 106, 97, deg);
+            return (
+              <text key={label} x={x} y={y + 3.5} textAnchor="middle" fontSize="10" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#ffffff" fillOpacity="0.55">
+                {label}
+              </text>
+            );
+          })}
+          <circle cx="100" cy="106" r="5" fill="#a9c6d7" />
+        </svg>
       </div>
-      <div className="mt-3 grid grid-cols-7 gap-y-1 text-center">
-        {WEEK_DAYS.map((day, index) => (
-          <span key={`${day}-${index}`} className="font-mono text-[9.5px] text-white/40">{day}</span>
-        ))}
-        {CALENDAR_CELLS.map((day, index) => (
+      <div className="mt-3 grid grid-cols-3 gap-1.5">
+        {["12 – 6", "2 – 8", "3 – 9"].map((answer) => (
           <span
-            key={index}
-            className={`relative mx-auto grid h-[1.35rem] w-[1.35rem] place-items-center rounded-full text-[10.5px] ${
-              day === 14 ? "bg-[#a9c6d7] font-bold text-[#15232c]" : day ? "text-white/80" : ""
-            }`}
+            key={answer}
+            className={`rounded-md py-1.5 text-center font-mono text-[10.5px] ${answer === "2 – 8" ? "bg-[#a9c6d7] font-semibold text-[#15232c]" : "bg-white/10 text-white/75"}`}
           >
-            {day}
-            {day && day !== 14 && AVAILABLE_DAYS.has(day) && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#a9c6d7]" />}
-          </span>
-        ))}
-      </div>
-      <div className="mt-auto grid grid-cols-4 gap-1.5 pt-3">
-        {["09:00", "10:30", "12:00", "15:30"].map((slot) => (
-          <span
-            key={slot}
-            className={`rounded-md py-1.5 text-center font-mono text-[10px] ${slot === "10:30" ? "bg-[#a9c6d7] font-semibold text-[#15232c]" : "bg-white/10 text-white/75"}`}
-          >
-            {slot}
+            {answer}
           </span>
         ))}
       </div>
@@ -517,18 +550,17 @@ function CalendarTile() {
 // ── Investigații ───────────────────────────────────────────────────────────────────────────
 
 function octLayer(y, dip) {
-  return `M20 ${y} C90 ${y - 5} 140 ${y - 5} 170 ${y + dip * 0.55} C186 ${y + dip} 214 ${y + dip} 230 ${y + dip * 0.55} C260 ${y - 5} 310 ${y - 5} 380 ${y}`;
+  return `M0 ${y} C90 ${y - 5} 140 ${y - 5} 170 ${y + dip * 0.55} C186 ${y + dip} 214 ${y + dip} 230 ${y + dip * 0.55} C260 ${y - 5} 310 ${y - 5} 400 ${y}`;
 }
 const OCT_LAYERS = Array.from({ length: 9 }, (_, k) => ({
   y: 52 + k * 11 + (k >= 7 ? 6 : 0),
   dip: Math.max(0, 26 - k * 4),
-  width: k === 0 || k === 7 ? 3 : k % 2 ? 1.1 : 1.6,
-  color: k === 0 || k === 7 ? "#eef6e2" : ["#8fb07e", "#5f8052", "#a9c49a"][k % 3],
 }));
+// Straturile retinei colorate de sus în jos, ca pe o imagine OCT în pseudo-culori.
+const OCT_BANDS = ["#35603a", "#4f8443", "#7ea653", "#b2c666", "#dcd77f", "#a4bd6c", "#5f8c4c", "#f2edc2", "#2c4a31"];
 
 function OctTile() {
   const glow = useSvgId("scan");
-  const band = useSvgId("band");
   return (
     <Tile bg="#1d3325" color="#ffffff" className="p-5">
       <div className="flex items-center justify-between gap-2">
@@ -538,7 +570,7 @@ function OctTile() {
           Scanare
         </span>
       </div>
-      <div className="relative mt-3 min-h-0 flex-1 overflow-hidden rounded-md bg-[#132219]">
+      <div className="relative mt-3 min-h-0 flex-1 overflow-hidden rounded-md bg-[#0c1710]">
         <svg viewBox="0 0 400 190" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
           <defs>
             <linearGradient id={glow} x1="0" x2="1">
@@ -546,14 +578,12 @@ function OctTile() {
               <stop offset="0.5" stopColor="#d9ffc0" stopOpacity="0.28" />
               <stop offset="1" stopColor="#d9ffc0" stopOpacity="0" />
             </linearGradient>
-            <linearGradient id={band} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#a9c49a" stopOpacity="0.35" />
-              <stop offset="1" stopColor="#a9c49a" stopOpacity="0.04" />
-            </linearGradient>
           </defs>
-          <path d={`${octLayer(OCT_LAYERS[0].y, OCT_LAYERS[0].dip)} L380 170 L20 170 Z`} fill={`url(#${band})`} />
+          {OCT_LAYERS.map((layer, index) => (
+            <path key={`band-${layer.y}`} d={`${octLayer(layer.y, layer.dip)} L400 190 L0 190 Z`} fill={OCT_BANDS[index]} />
+          ))}
           {OCT_LAYERS.map((layer) => (
-            <path key={layer.y} d={octLayer(layer.y, layer.dip)} fill="none" stroke={layer.color} strokeWidth={layer.width} strokeLinecap="round" />
+            <path key={layer.y} d={octLayer(layer.y, layer.dip)} fill="none" stroke="#0f1d13" strokeOpacity="0.3" strokeWidth="0.8" />
           ))}
           <g className="cat-scan">
             <rect x="6" y="18" width="28" height="160" fill={`url(#${glow})`} />
@@ -576,39 +606,49 @@ function OctTile() {
 function FundusTile() {
   const fundus = useSvgId("fundus");
   const macula = useSvgId("macula");
+  const halo = useSvgId("halo");
   return (
-    <Tile bg="#e5e9d8" color="#26331f" className="p-4">
+    <Tile bg="#0d1510" color="#ffffff" className="p-4">
       <div className="flex items-center justify-between">
-        <TileLabel className="text-[#26331f]/55">Fund de ochi</TileLabel>
-        <TileLabel className="text-[#26331f]/55">OD</TileLabel>
+        <TileLabel className="text-white/55">Fund de ochi</TileLabel>
+        <TileLabel className="text-white/55">OD</TileLabel>
       </div>
-      <div className="flex flex-1 items-center justify-center pt-2">
-        <svg viewBox="0 0 100 100" className="h-full max-h-[9rem] w-full" aria-hidden="true">
+      <div className="flex min-h-0 flex-1 items-center justify-center pt-1">
+        <svg viewBox="0 0 110 110" className="h-full max-h-[10rem] w-full" aria-hidden="true">
           <defs>
-            <radialGradient id={fundus} cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stopColor="#f0a25c" />
-              <stop offset="0.7" stopColor="#d9692f" />
-              <stop offset="1" stopColor="#8f3417" />
+            <radialGradient id={halo} cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0.8" stopColor="#e2743a" stopOpacity="0.35" />
+              <stop offset="1" stopColor="#e2743a" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id={fundus} cx="0.55" cy="0.5" r="0.55">
+              <stop offset="0" stopColor="#f5b066" />
+              <stop offset="0.65" stopColor="#dc6c30" />
+              <stop offset="1" stopColor="#7c2a12" />
             </radialGradient>
             <radialGradient id={macula} cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stopColor="#7a2a12" stopOpacity="0.75" />
-              <stop offset="1" stopColor="#7a2a12" stopOpacity="0" />
+              <stop offset="0" stopColor="#6e230e" stopOpacity="0.8" />
+              <stop offset="1" stopColor="#6e230e" stopOpacity="0" />
             </radialGradient>
           </defs>
-          <circle cx="50" cy="50" r="47" fill={`url(#${fundus})`} />
-          <circle cx="63" cy="51" r="11" fill={`url(#${macula})`} />
-          <g fill="none" stroke="#8a2413" strokeLinecap="round" opacity="0.85">
-            <path d="M34 45C44 35 57 27 76 20" strokeWidth="1.6" />
-            <path d="M33 44C39 30 47 19 57 10" strokeWidth="1.3" />
-            <path d="M34 55C44 66 57 73 77 80" strokeWidth="1.6" />
-            <path d="M33 56C39 70 47 81 58 90" strokeWidth="1.3" />
-            <path d="M58 29C64 33 71 35 82 35" strokeWidth="0.9" />
-            <path d="M58 71C64 67 72 65 83 65" strokeWidth="0.9" />
-            <path d="M30 47C22 42 15 38 8 38" strokeWidth="1" />
-            <path d="M30 53C22 58 15 62 9 63" strokeWidth="1" />
+          <circle cx="55" cy="55" r="55" fill={`url(#${halo})`} />
+          <g transform="translate(5 5)">
+            <circle cx="50" cy="50" r="47" fill={`url(#${fundus})`} />
+            <circle cx="63" cy="51" r="12" fill={`url(#${macula})`} />
+            <g fill="none" stroke="#8a2413" strokeLinecap="round" opacity="0.9">
+              <path d="M34 45C44 35 57 27 76 20" strokeWidth="1.8" />
+              <path d="M33 44C39 30 47 19 57 10" strokeWidth="1.4" />
+              <path d="M34 55C44 66 57 73 77 80" strokeWidth="1.8" />
+              <path d="M33 56C39 70 47 81 58 90" strokeWidth="1.4" />
+              <path d="M58 29C64 33 71 35 82 35" strokeWidth="1" />
+              <path d="M58 71C64 67 72 65 83 65" strokeWidth="1" />
+              <path d="M66 24C70 30 76 32 86 44" strokeWidth="0.8" />
+              <path d="M66 76C70 70 76 68 86 56" strokeWidth="0.8" />
+              <path d="M30 47C22 42 15 38 8 38" strokeWidth="1.1" />
+              <path d="M30 53C22 58 15 62 9 63" strokeWidth="1.1" />
+            </g>
+            <circle cx="32" cy="50" r="7.5" fill="#f7d690" />
+            <circle cx="32.5" cy="50" r="3.5" fill="#fbe9bd" />
           </g>
-          <circle cx="32" cy="50" r="7.5" fill="#f7d690" />
-          <circle cx="32.5" cy="50" r="3.5" fill="#fbe9bd" />
         </svg>
       </div>
     </Tile>
@@ -655,36 +695,55 @@ function VisualFieldTile() {
   );
 }
 
-const PREP_ITEMS = [
-  { label: "Trimiterea de la medic", done: true },
-  { label: "Rezultatele anterioare", done: true },
-  { label: "Ochelarii sau lentilele", done: false },
-];
+function annularSector(cx, cy, r1, r2, a0, a1) {
+  const [x1, y1] = polar(cx, cy, r2, a0);
+  const [x2, y2] = polar(cx, cy, r2, a1);
+  const [x3, y3] = polar(cx, cy, r1, a1);
+  const [x4, y4] = polar(cx, cy, r1, a0);
+  const f = (value) => value.toFixed(2);
+  return `M${f(x1)} ${f(y1)} A${r2} ${r2} 0 0 0 ${f(x2)} ${f(y2)} L${f(x3)} ${f(y3)} A${r1} ${r1} 0 0 1 ${f(x4)} ${f(y4)} Z`;
+}
+// Grosimea retinei pe zone (µm): centru, inel interior și exterior (sus, dreapta, jos, stânga).
+const THICKNESS = { center: 268, inner: [322, 336, 318, 329], outer: [289, 301, 276, 294] };
+const SECTOR_ANGLES = [90, 0, 270, 180];
+const thicknessColor = (value) =>
+  value >= 330 ? "#e98a4f" : value >= 315 ? "#e7c25c" : value >= 290 ? "#a7c76c" : value >= 272 ? "#6fa56b" : "#3f7d6b";
 
-function ChecklistTile() {
+function ThicknessMapTile() {
   return (
-    <Tile bg="#fffdf7" color="#26331f" className="border border-black/[0.06] p-5">
-      <p className="font-heading text-[15px] font-bold leading-tight">Ce iei cu tine</p>
-      <div className="mt-4 space-y-3">
-        {PREP_ITEMS.map((item) => (
-          <div key={item.label} className="flex items-center gap-2.5 text-[12px]">
-            <span
-              className={`grid h-[1.1rem] w-[1.1rem] shrink-0 place-items-center rounded-full ${item.done ? "bg-[#4f7a45] text-white" : "border border-black/25"}`}
-            >
-              {item.done && <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />}
-            </span>
-            <span className={item.done ? "" : "text-black/55"}>{item.label}</span>
-          </div>
-        ))}
+    <Tile bg="#f1ecd9" color="#26331f" className="p-5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-heading text-[15px] font-bold">Grosime retină</p>
+        <TileLabel className="text-[#26331f]/55">µm</TileLabel>
       </div>
-      <div className="mt-auto">
-        <div className="flex justify-between text-[10.5px] text-black/50">
-          <span>Pregătit</span>
-          <span className="font-mono">2 / 3</span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/[0.07]">
-          <span className="block h-full w-2/3 rounded-full bg-[#4f7a45]" />
-        </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center py-2">
+        <svg viewBox="0 0 120 120" className="h-full max-h-[9.5rem] w-full" aria-hidden="true">
+          {SECTOR_ANGLES.map((angle, index) => (
+            <g key={angle}>
+              <path d={annularSector(60, 60, 36, 57, angle - 45, angle + 45)} fill={thicknessColor(THICKNESS.outer[index])} stroke="#f1ecd9" strokeWidth="1.6" />
+              <path d={annularSector(60, 60, 17, 36, angle - 45, angle + 45)} fill={thicknessColor(THICKNESS.inner[index])} stroke="#f1ecd9" strokeWidth="1.6" />
+            </g>
+          ))}
+          <circle cx="60" cy="60" r="17" fill={thicknessColor(THICKNESS.center)} stroke="#f1ecd9" strokeWidth="1.6" />
+          <g fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontSize="7.5" fontWeight="600" textAnchor="middle" fill="#1a2415">
+            {SECTOR_ANGLES.map((angle, index) => {
+              const [ox, oy] = polar(60, 60, 47, angle);
+              const [ix, iy] = polar(60, 60, 26.5, angle);
+              return (
+                <React.Fragment key={angle}>
+                  <text x={ox} y={oy + 2.6}>{THICKNESS.outer[index]}</text>
+                  <text x={ix} y={iy + 2.6}>{THICKNESS.inner[index]}</text>
+                </React.Fragment>
+              );
+            })}
+            <text x="60" y="62.6" fill="#ffffff">{THICKNESS.center}</text>
+          </g>
+        </svg>
+      </div>
+      <div className="flex items-center gap-2 text-[10px] text-[#26331f]/60">
+        <span>subțire</span>
+        <span className="h-1.5 flex-1 rounded-full bg-gradient-to-r from-[#3f7d6b] via-[#e7c25c] to-[#e98a4f]" />
+        <span>groasă</span>
       </div>
     </Tile>
   );
@@ -772,7 +831,7 @@ function FrameShapeTile() {
 
 function GlassesHalftoneTile() {
   return (
-    <HalftoneTile bg="#e6946a" dot="#fde7da">
+    <HalftoneTile bg="#e6946a" dot="#fde9dd" shadow="#a54f2a">
       {(paint) => (
         <g fill="none" stroke={paint} strokeWidth="9" strokeLinecap="round">
           <circle cx="28" cy="56" r="17" />
@@ -808,11 +867,15 @@ function TintTile() {
 
 function LensZonesTile() {
   const clip = useSvgId("lens");
+  const hatch = useSvgId("hatch");
+  const far = useSvgId("far");
   const zones = [
-    { label: "Departe", color: "#fff6ef" },
-    { label: "Intermediar", color: "#f7d9c4" },
-    { label: "Aproape", color: "#eeb99a" },
+    { label: "Departe", swatch: "#ffffff" },
+    { label: "Intermediar", swatch: "#f6c9ad" },
+    { label: "Aproape", swatch: "#ee9f78" },
+    { label: "Periferie", swatch: "repeating-linear-gradient(45deg, #e7bda3 0 3px, #c98468 3px 4.5px)" },
   ];
+  const outline = "M14 40C14 8 186 8 186 40V100C186 146 14 146 14 100Z";
   return (
     <Tile bg="#f5e4d6" color="#3b1f12" className="p-5">
       <div className="grid grid-cols-3 overflow-hidden rounded-md border border-[#3b1f12]/15 text-center text-[10.5px]">
@@ -820,29 +883,38 @@ function LensZonesTile() {
           <span key={type} className={`py-1 ${type === "Progresive" ? "bg-[#3b1f12] font-semibold text-white" : ""}`}>{type}</span>
         ))}
       </div>
-      <div className="mt-3 flex min-h-0 flex-1 items-center gap-4">
-        <svg viewBox="0 0 200 160" className="h-full max-h-[8.5rem] w-[58%] shrink-0" aria-hidden="true">
+      <div className="flex min-h-0 flex-1 items-center justify-center py-3">
+        <svg viewBox="0 0 200 150" className="h-full max-h-[8.5rem] w-full" aria-hidden="true">
           <defs>
             <clipPath id={clip}>
-              <path d="M18 44C18 12 182 12 182 44V108C182 150 18 150 18 108Z" />
+              <path d={outline} />
             </clipPath>
+            <pattern id={hatch} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="7" height="7" fill="#e7bda3" />
+              <line x1="0" y1="0" x2="0" y2="7" stroke="#b85d3f" strokeWidth="2.2" strokeOpacity="0.5" />
+            </pattern>
+            <linearGradient id={far} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="1" stopColor="#fde9dc" />
+            </linearGradient>
           </defs>
           <g clipPath={`url(#${clip})`}>
-            <rect width="200" height="160" fill="#dcae93" />
-            <path d="M0 0H200V62C150 66 122 70 110 74H90C78 70 50 66 0 62Z" fill={zones[0].color} />
-            <path d="M90 74H110L114 104H86Z" fill={zones[1].color} />
-            <path d="M86 104H114C140 106 160 114 172 160H28C40 114 60 106 86 104Z" fill={zones[2].color} />
+            <rect width="200" height="150" fill={`url(#${hatch})`} />
+            <path d="M0 0H200V60C150 64 122 68 110 72H90C78 68 50 64 0 60Z" fill={`url(#${far})`} />
+            <path d="M90 72H110L114 98H86Z" fill="#f6c9ad" />
+            <path d="M86 98H114C140 100 160 108 172 150H28C40 108 60 100 86 98Z" fill="#ee9f78" />
           </g>
-          <path d="M18 44C18 12 182 12 182 44V108C182 150 18 150 18 108Z" fill="none" stroke="#b85d3f" strokeWidth="3" />
+          <path d={outline} fill="none" stroke="#7c3219" strokeWidth="4" />
+          <path d="M34 26c30-12 90-14 124-6" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
         </svg>
-        <div className="min-w-0 space-y-2">
-          {zones.map((zone) => (
-            <div key={zone.label} className="flex items-center gap-2 text-[11px]">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm border border-[#3b1f12]/20" style={{ backgroundColor: zone.color }} />
-              <span className="truncate">{zone.label}</span>
-            </div>
-          ))}
-        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {zones.map((zone) => (
+          <div key={zone.label} className="flex items-center gap-2 text-[11px]">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-sm border border-[#3b1f12]/25" style={{ background: zone.swatch }} />
+            <span className="truncate">{zone.label}</span>
+          </div>
+        ))}
       </div>
     </Tile>
   );
@@ -931,7 +1003,7 @@ function RepairTicketTile() {
 
 function ScrewdriverHalftoneTile() {
   return (
-    <HalftoneTile bg="#c89c45" dot="#f8e9c6">
+    <HalftoneTile bg="#c89c45" dot="#faeecf" shadow="#77541a">
       {(paint) => (
         <g fill={paint} transform="rotate(-45 50 50)">
           <rect x="39" y="4" width="22" height="40" rx="8" />
@@ -943,19 +1015,29 @@ function ScrewdriverHalftoneTile() {
   );
 }
 
-const REPAIR_PARTS = ["Șurub de balama slăbit", "Plăcuțe nazale", "Braț îndoit", "Lentilă ieșită din ramă"];
-
-function PartsTile() {
+function HingeArtTile() {
   return (
-    <Tile bg="#f2e7cb" color="#3a2b10" className="p-5">
-      <p className="font-heading text-[15px] font-bold leading-tight">Ce se repară des</p>
-      <div className="mt-4 flex-1 divide-y divide-[#3a2b10]/10">
-        {REPAIR_PARTS.map((part, index) => (
-          <div key={part} className="flex items-center gap-2.5 py-2 text-[12px]">
-            <span className="grid h-5 w-5 shrink-0 place-items-center rounded bg-[#3a2b10]/[0.08] font-mono text-[9.5px]">{index + 1}</span>
-            <span className="min-w-0 flex-1 truncate">{part}</span>
-            <ArrowRight className="h-3 w-3 shrink-0 opacity-45" aria-hidden="true" />
-          </div>
+    <Tile bg="#f2e7cb" color="#3a2b10" className="p-4">
+      <div className="flex items-center justify-between">
+        <TileLabel className="text-[#3a2b10]/55">Balama · piese</TileLabel>
+        <TileLabel className="text-[#3a2b10]/55">4 : 1</TileLabel>
+      </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+        <img
+          src="/images/home/viasee-artwork-reparatii-reglaje.svg"
+          width="400"
+          height="280"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full max-h-[10rem] w-full scale-[1.18] object-contain"
+        />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {["Șuruburi", "Plăcuțe nazale", "Brațe"].map((part) => (
+          <span key={part} className="rounded-full border border-[#3a2b10]/20 px-2.5 py-1 text-[11px]">
+            {part}
+          </span>
         ))}
       </div>
     </Tile>
@@ -1045,10 +1127,10 @@ export const CATEGORY_SETS = [
     to: "/cauta",
     description: "Cabinete de oftalmologie, clinici și optici medicale, găsite după locul în care ești.",
     tiles: [
-      { key: "doctor", Component: DoctorTile, basis: 14, h: 16 },
+      { key: "doctor", Component: DoctorTile, basis: 14, h: 17.5 },
       { key: "pin", Component: PinHalftoneTile, basis: 10, h: 10.5 },
       { key: "map", Component: MapTile, basis: 27, h: 17.5 },
-      { key: "schedule", Component: ScheduleTile, basis: 13, h: 15, optional: true },
+      { key: "schedule", Component: ScheduleTile, basis: 13, h: 15.5, optional: true },
       { key: "filters", Component: FiltersTile, basis: 15, h: 17.5 },
     ],
   },
@@ -1062,7 +1144,7 @@ export const CATEGORY_SETS = [
       { key: "snellen", Component: SnellenTile, basis: 21, h: 17.5 },
       { key: "e", Component: EHalftoneTile, basis: 10, h: 11 },
       { key: "plate", Component: ColorPlateTile, basis: 12, h: 14.5, optional: true },
-      { key: "calendar", Component: CalendarTile, basis: 16, h: 17.5 },
+      { key: "astigmatism", Component: AstigmatismTile, basis: 16, h: 17.5 },
     ],
   },
   {
@@ -1072,9 +1154,9 @@ export const CATEGORY_SETS = [
     description: "Investigații recomandate de medic: tomografie OCT, câmp vizual, fund de ochi.",
     tiles: [
       { key: "oct", Component: OctTile, basis: 23, h: 17.5 },
-      { key: "fundus", Component: FundusTile, basis: 11, h: 12.5 },
+      { key: "fundus", Component: FundusTile, basis: 12, h: 13.5 },
       { key: "field", Component: VisualFieldTile, basis: 13, h: 16 },
-      { key: "checklist", Component: ChecklistTile, basis: 13, h: 13.5, optional: true },
+      { key: "thickness", Component: ThicknessMapTile, basis: 13, h: 15, optional: true },
       { key: "pressure", Component: PressureTile, basis: 14, h: 17.5 },
     ],
   },
@@ -1087,7 +1169,7 @@ export const CATEGORY_SETS = [
       { key: "frames", Component: FrameShapeTile, basis: 21, h: 17.5 },
       { key: "glasses", Component: GlassesHalftoneTile, basis: 10, h: 10.5 },
       { key: "tint", Component: TintTile, basis: 12, h: 15.5, optional: true },
-      { key: "lens", Component: LensZonesTile, basis: 16, h: 14 },
+      { key: "lens", Component: LensZonesTile, basis: 16, h: 15.5 },
       { key: "measure", Component: MeasureTile, basis: 15, h: 17.5 },
     ],
   },
@@ -1099,7 +1181,7 @@ export const CATEGORY_SETS = [
     tiles: [
       { key: "ticket", Component: RepairTicketTile, basis: 19, h: 17.5 },
       { key: "screwdriver", Component: ScrewdriverHalftoneTile, basis: 10, h: 11.5 },
-      { key: "parts", Component: PartsTile, basis: 15, h: 15 },
+      { key: "hinge", Component: HingeArtTile, basis: 15, h: 15.5 },
       { key: "time", Component: TimeRingTile, basis: 11, h: 13, optional: true },
       { key: "adjust", Component: AdjustTile, basis: 16, h: 17.5 },
     ],
@@ -1196,15 +1278,6 @@ export default function CategoryStrip() {
                 {selected && <span aria-hidden="true">[</span>}
                 {set.label}
                 {selected && <span aria-hidden="true">]</span>}
-                {selected && (
-                  <span aria-hidden="true" className="absolute inset-x-2 -bottom-0.5 h-[2px] overflow-hidden bg-[#171717]/10">
-                    <span
-                      key={`${active}-${running}`}
-                      className={`block h-full bg-[#171717] ${running ? "cat-progress" : ""}`}
-                      style={{ animationDuration: `${INTERVAL_MS}ms`, transform: running ? undefined : "scaleX(0)" }}
-                    />
-                  </span>
-                )}
               </button>
             </React.Fragment>
           );
