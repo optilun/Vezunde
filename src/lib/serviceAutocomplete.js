@@ -40,6 +40,7 @@ export const POPULAR_SERVICES = [
   { service_key: "visual_field_analyzer", hint: "investigație" },
 ];
 const POPULAR_RANK = new Map(POPULAR_SERVICES.map((item, index) => [item.service_key, index]));
+const POPULAR_HINTS = new Map(POPULAR_SERVICES.map((item) => [item.service_key, item.hint]));
 // Nevoi frecvente care nu intra in lista de mai sus, dar trebuie sa urce la egalitate.
 const COMMON_SERVICES = new Set([
   "prescription_lenses", "progressive_lenses", "frames", "sunglasses", "eyeglasses_adjustment",
@@ -110,8 +111,7 @@ function everyTokenStartsAWord(queryTokens, words) {
   return queryTokens.every((token) => words.some((word) => word.startsWith(token)));
 }
 
-// Scorul potrivirii si, cand potrivirea vine dintr-un cuvant-cheie, acel cuvant (ca pacientul sa
-// inteleaga de ce apare „Consult optometric complet” cand a scris „control”).
+// Scorul potrivirii si cuvantul-cheie care a potrivit (daca nu a potrivit eticheta).
 function lexicalMatch(entry, query, queryTokens) {
   if (entry.labelN === query) return { score: 120, keyword: null };
   if (entry.labelN.startsWith(query)) return { score: 100, keyword: null };
@@ -179,32 +179,38 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
     // (control de vedere), chiar daca potrivirea vine din cuvantul-cheie, nu din eticheta.
     const popular = POPULAR_RANK.has(entry.service_key);
     const bonus = popular ? (match.keyword ? 26 : 16) : COMMON_SERVICES.has(entry.service_key) ? 8 : 0;
-    scored.set(entry.service_key, {
-      entry,
-      score: match.score + bonus,
-      hint: match.keyword ? entry.keywordText.get(match.keyword) : "",
-    });
+    scored.set(entry.service_key, { entry, score: match.score + bonus });
   }
 
   // Frazele descriptive („văd în ceață”, „mă ustură ochii”) vin din regulile existente.
   if (query.length >= 4) {
     for (const suggestion of getServiceSearchSuggestions(rawQuery, { limit: 8 })) {
+      if (Number(suggestion.score || 0) < 0.6) continue;
       const entry = serviceIndex().find((item) => item.service_key === suggestion.service_key);
       if (!entry) continue;
       const score = Math.round(Number(suggestion.score || 0) * 90);
       const current = scored.get(entry.service_key);
-      if (!current || current.score < score) scored.set(entry.service_key, { entry, score, hint: "" });
+      if (!current || current.score < score) scored.set(entry.service_key, { entry, score });
     }
   }
 
+  // Potrivirile slabe nu stau langa cele clare: sub jumatate din scorul primei sugestii nu apar.
+  const top = Math.max(0, ...[...scored.values()].map((item) => item.score));
+  const cutoff = Math.max(40, top * 0.5);
   return [...scored.values()]
+    .filter((item) => item.score >= cutoff)
     .sort((a, b) =>
       b.score - a.score
       || (POPULAR_RANK.get(a.entry.service_key) ?? 99) - (POPULAR_RANK.get(b.entry.service_key) ?? 99)
       || a.entry.label.length - b.entry.label.length
       || a.entry.label.localeCompare(b.entry.label, "ro"))
     .slice(0, limit)
-    .map(({ entry, hint }) => ({ service_key: entry.service_key, label: entry.label, group: entry.group, hint: hint || "" }));
+    .map(({ entry }) => ({
+      service_key: entry.service_key,
+      label: entry.label,
+      group: entry.group,
+      hint: POPULAR_HINTS.get(entry.service_key) || "",
+    }));
 }
 
 // Filtru pentru lista de servicii din panoul de filtre: aceeasi potrivire, fara limita.
