@@ -533,5 +533,12 @@ celalalt agent ("Scrie acum"). Checkpoint: `6ab6ebc1da74d6ebb8910265`.
 - **La medic** (documentul Claude Docs, sectiunea "Propuneri noi"): recomandari pentru keratocon,
   degenerescenta maculara, conjunctivita sau alergie si copii; optiunea "Keratocon" in anamneza;
   fraza de siguranta pentru fulgere si multe puncte negre; semnalul informativ la uveita.
-- **Asteapta aprobarea owner-ului:** fraze pentru regulile fixe de intentie, sinonimele lipsa si
-  chei de fund de ochi la controlul cerut de un pacient cu diabet (schimbari de potrivire).
+- **Aplicat dupa "da" (2026-09-26):** regulile fixe recunosc acum "ochiul uscat", "pleoape rosii
+  cu cruste", "pielita pe ochi", "uveita", "cheratocon" (5 formulari noi in corpus, toate corecte).
+  Cautarea semantica are sinonime pentru ochiul uscat, crucis/sasiu (strabism), urcior/chalazion,
+  cheratocon si reguli noi pentru blefarita, pielita pe ochi (consult si segment anterior) si diabet
+  (retinopatie diabetica si fund de ochi); la controlul cerut de un pacient cu diabet raman in
+  potrivire, la ochelari filtrul le scoate. Pe cele 60 de formulari vechi se schimba un singur
+  rezultat ("am un urcior la ochi" primeste serviciile pentru pleoapa). Bundle-ul
+  `matchProvidersSemantic` reconstruit (se schimba doar sectiunea `serviceSemanticSearch`, identica
+  cu browserul), blob nou aprobat. `verify-all`: 150 trec, aceleasi 4 esecuri din afara modulului.
