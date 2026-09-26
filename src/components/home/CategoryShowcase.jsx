@@ -17,13 +17,10 @@ export default function CategoryShowcase() {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
             Servicii și specialiști
           </p>
-          <h2 id={headingId} className="mx-auto mt-4 max-w-[68rem] text-balance font-heading text-[2.4rem] font-extrabold leading-[0.98] tracking-[-0.055em] min-[390px]:text-[2.6rem] sm:text-[3.5rem] lg:text-[4rem] xl:text-[4.5rem]">
+          <h2 id={headingId} className="mx-auto mt-4 max-w-[68rem] text-balance font-heading text-[2.4rem] font-extrabold leading-[1.06] tracking-[-0.055em] min-[390px]:text-[2.6rem] sm:text-[3.5rem] lg:text-[4rem] xl:text-[4.5rem]">
             <span className="block lg:whitespace-nowrap">Tot ce ai nevoie pentru vedere.</span>
             <span className="block">Într-un singur loc.</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Medici, clinici, optici, controale, investigații, ochelari și servicii.
-          </p>
         </Reveal>
 
         <Reveal delay={80} className="mt-9 sm:mt-11">
