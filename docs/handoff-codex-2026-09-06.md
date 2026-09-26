@@ -242,4 +242,5 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 
 - 11.2 si 11.3 confirmate live. Test live AI pe 19 formulari cu boli (adulti si copii): intentie corecta la toate, servicii precise, urgenta doar la cazurile acute.
 - Aplicat (aprobat de owner, checkpoint 6ab713e080b227ea0729710a): keratocon cu lentile de contact tratat medical (filtrul primeste textul; indrumare la specialist in `patientVisitGuidance.js`). `verify-all` 150 OK / 4 (3 vechi + verify-page-stability-performance, zona antetului).
-- Propuneri pentru medic adaugate in "Revizuire medicala VIASEE" (keratocon, degenerescenta maculara, conjunctivita/alergie, copii, fraza pentru fulgere, uveita). Propuneri tehnice in asteptare: audit, sectiunea 14.
+- Propuneri pentru medic adaugate in "Revizuire medicala VIASEE" (keratocon, degenerescenta maculara, conjunctivita/alergie, copii, fraza pentru fulgere, uveita).
+- Dupa "da": formulari uzuale in regulile fixe (ochiul uscat, pleoape rosii cu cruste, pielita pe ochi, uveita, cheratocon) si sinonime semantice (crucis/sasiu, urcior, blefarita, pterigion, diabet -> fund de ochi). Bundle semantic reconstruit, blob aprobat. Detalii: audit, sectiunea 14.
