@@ -1,111 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import MobileCategoryShowcase from "@/components/home/MobileCategoryShowcase";
 import Reveal from "@/components/common/Reveal";
+import CategoryStrip from "@/components/home/CategoryStrip";
 import { prefetchOnIntent } from "@/lib/routePrefetch";
-import { softGlowBackground } from "@/lib/softGlow";
 
-const CATEGORIES = [
-  {
-    title: "Medici și clinici",
-    to: "/cauta",
-    artwork: "/images/home/viasee-artwork-medici-clinici.svg",
-    tone: "border-[#d4c6d8]/80 bg-[#e8e0ea]/90",
-    glow: softGlowBackground("190 169 200", 0.32),
-    artworkScale: "lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
-    desktopPlacement: "lg:col-[1/4] lg:row-[1/4]",
-    desktopLabel: "lg:text-xl",
-  },
-  {
-    title: "Control de vedere",
-    to: "/cerere?categorie=control_vedere",
-    artwork: "/images/home/viasee-artwork-control-vedere.svg",
-    tone: "border-[#c6d3da]/80 bg-[#dce5e9]/90",
-    glow: softGlowBackground("169 198 215", 0.3),
-    artworkScale: "lg:scale-[1.12] lg:group-hover:scale-[1.15] lg:group-focus-visible:scale-[1.15]",
-    desktopPlacement: "lg:col-[4/6] lg:row-[2/4]",
-    desktopLabel: "lg:text-[1.05rem]",
-  },
-  {
-    title: "Investigații",
-    to: "/cerere?categorie=investigatii",
-    artwork: "/images/home/viasee-artwork-investigatii.svg",
-    tone: "border-[#ccd2ba]/80 bg-[#dfe3d2]/90",
-    glow: softGlowBackground("189 200 164", 0.28),
-    artworkScale: "lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
-    desktopPlacement: "lg:col-[6/8] lg:row-[1/4]",
-    desktopLabel: "lg:text-lg",
-  },
-  {
-    title: "Ochelari și lentile",
-    to: "/cerere?categorie=ochelari_lentile",
-    artwork: "/images/home/viasee-artwork-ochelari-lentile.svg",
-    tone: "border-[#e1bda8]/80 bg-[#efd5c5]/90",
-    glow: softGlowBackground("228 167 134", 0.28),
-    artworkScale: "lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
-    desktopPlacement: "lg:col-[8/11] lg:row-[1/4]",
-    desktopLabel: "lg:text-lg",
-  },
-  {
-    title: "Reparații și reglaje",
-    to: "/cerere?categorie=reparatii_ochelari",
-    artwork: "/images/home/viasee-artwork-reparatii-reglaje.svg",
-    tone: "border-[#dac69b]/80 bg-[#eadcba]/90",
-    glow: softGlowBackground("211 181 101", 0.28),
-    artworkScale: "lg:scale-[1.12] lg:group-hover:scale-[1.15] lg:group-focus-visible:scale-[1.15]",
-    desktopPlacement: "lg:col-[11/13] lg:row-[2/4]",
-    desktopLabel: "lg:text-base xl:text-[1.05rem]",
-  },
-];
-
-// Plăcuțele cu pictogramă stau deasupra cardului căruia îi aparțin (ochiul peste "Control de
-// vedere", rotița peste "Reparații și reglaje") și iau o nuanță mai închisă din culoarea lui,
-// ca să se citească drept eticheta categoriei, nu ca pete de culoare separate.
-const SHAPE_TILE_PALETTE = {
-  gear: { tile: "border-[#6e4d17] bg-[#8a6424] text-[#f6ecd2]", fill: "#8a6424" },
-  pupil: { tile: "border-[#3e6278] bg-[#4b7085] text-[#eef4f6]", fill: "#4b7085" },
-};
-
-function ShapeTile({ type, className = "" }) {
-  const colors = SHAPE_TILE_PALETTE[type];
-
-  return (
-    <Reveal
-      aria-hidden="true"
-      variant="scale"
-      delay={120}
-      threshold={0.5}
-      className={`relative hidden overflow-hidden rounded-[1.25rem] border shadow-[0_12px_32px_rgba(20,20,20,0.06)] lg:grid lg:place-items-center ${colors.tile} ${className}`}
-    >
-      <span className="absolute left-3 top-3 h-3 w-3 border-l border-t border-current opacity-35" />
-      <span className="absolute right-3 top-3 h-3 w-3 border-r border-t border-current opacity-35" />
-      <span className="absolute bottom-3 left-3 h-3 w-3 border-b border-l border-current opacity-35" />
-      <span className="absolute bottom-3 right-3 h-3 w-3 border-b border-r border-current opacity-35" />
-
-      {type === "gear" && (
-        <svg viewBox="0 0 100 100" className="h-[68%] w-[68%]" fill="none">
-          <g fill="currentColor">
-            {[0, 45, 90, 135].map((rotation) => (
-              <rect key={rotation} x="43" y="7" width="14" height="86" rx="5" transform={`rotate(${rotation} 50 50)`} />
-            ))}
-            <circle cx="50" cy="50" r="31" />
-          </g>
-          <rect x="40" y="40" width="20" height="20" rx="3" fill={colors.fill} />
-        </svg>
-      )}
-
-      {type === "pupil" && (
-        <svg viewBox="0 0 180 90" className="h-[72%] w-[72%]" fill="none">
-          <circle cx="90" cy="45" r="31" stroke="currentColor" strokeWidth="12" />
-          <circle cx="100" cy="52" r="9" fill="currentColor" />
-          <path d="M20 45H50M130 45H160" stroke="currentColor" strokeWidth="2" opacity="0.45" />
-        </svg>
-      )}
-    </Reveal>
-  );
-}
-
+// Secțiunea „Servicii și specialiști”: titlul, banda de categorii (file + plăcuțe care se schimbă
+// singure, vezi CategoryStrip.jsx) și trimiterea spre ghid. Aceeași bandă pe desktop și pe telefon.
 export default function CategoryShowcase() {
   const headingId = "home-categories-title";
 
@@ -125,48 +26,11 @@ export default function CategoryShowcase() {
           </p>
         </Reveal>
 
-        <MobileCategoryShowcase />
+        <Reveal delay={80} className="mt-9 sm:mt-11">
+          <CategoryStrip />
+        </Reveal>
 
-        <div className="relative mt-10 hidden grid-cols-12 grid-rows-[6rem_10.5rem_4.5rem] items-stretch gap-3.5 lg:grid xl:gap-4">
-          <span aria-hidden="true" className="pointer-events-none absolute -left-8 -right-8 top-[58%] z-0 h-px bg-[#9a8668]/45" />
-          {[23.35, 39.35, 55.55, 79.2].map((position) => (
-            <span key={position} aria-hidden="true" className="pointer-events-none absolute top-[calc(58%_-_4px)] z-20 h-[9px] w-[9px] -translate-x-1/2 rounded-full border border-[#8d7658] bg-[#f8f4ec]" style={{ left: `${position}%` }} />
-          ))}
-
-          <ShapeTile type="pupil" className="lg:col-[4/6] lg:row-[1/2]" />
-          <ShapeTile type="gear" className="lg:col-[11/13] lg:row-[1/2]" />
-
-          {CATEGORIES.map((category, index) => (
-            <Reveal
-              as="article"
-              key={category.title}
-              delay={index * 60}
-              className={`group relative z-10 ${category.desktopPlacement}`}
-            >
-              {/* Halou: acelasi aspect ca vechiul blur-3xl (forma cu 12px/20px mai mare decat cardul),
-                  desenat ca gradient (vezi softGlow.js): 12px + 128px = 140px, 20px + 128px = 148px.
-                  Tot pentru derulare, cardul nu mai are backdrop-blur: pe fundalul aproape opac nu se
-                  vedea, dar obliga browserul sa redeseneze ce e in spate la fiecare cadru. */}
-              <span aria-hidden="true" className="pointer-events-none absolute -inset-x-[140px] -inset-y-[148px] z-0 opacity-70 transition-opacity duration-300 group-hover:opacity-100" style={{ backgroundImage: category.glow }} />
-              <Link
-                to={category.to}
-                aria-label={category.title}
-                {...prefetchOnIntent(category.to)}
-                className={`group relative z-10 grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.65rem] border shadow-[0_10px_30px_rgba(34,30,24,0.028)] outline-none transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(34,30,24,0.06)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none ${category.tone}`}
-              >
-                <span aria-hidden="true" className="absolute inset-0 opacity-35" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
-                <span aria-hidden="true" className="relative z-10 min-h-0 overflow-hidden p-2">
-                  <img src={category.artwork} width="214" height="150" alt="" loading="lazy" decoding="async" className={`h-full w-full object-contain object-center transition-transform duration-500 ease-out motion-reduce:transform-none motion-reduce:transition-none ${category.artworkScale}`} />
-                </span>
-                <span className="relative z-20 flex min-h-[4.5rem] items-center gap-3 border-t border-black/[0.07] bg-white/[0.045] px-4 py-3 text-left text-[#1c1c1c] xl:px-5">
-                  <span className={`font-heading font-bold leading-[1.08] tracking-[-0.025em] ${category.desktopLabel}`}>{category.title}</span>
-                </span>
-              </Link>
-            </Reveal>
-          ))}
-        </div>
-
-        <Reveal delay={120} className="mt-8 flex justify-center sm:mt-10 lg:mt-11">
+        <Reveal delay={120} className="mt-10 flex justify-center sm:mt-12 lg:mt-14">
           <Link
             to="/ghid"
             aria-label="Vezi ghidul VIASEE"
