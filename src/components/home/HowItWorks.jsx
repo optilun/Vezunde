@@ -8,7 +8,7 @@ import { softGlowBackground } from "@/lib/softGlow";
 const STEPS = [
   {
     number: "01",
-    title: "Ne spui ce cauți",
+    title: "Descrii ce ai nevoie",
     description:
       "Explici cu propriile cuvinte de ce ai nevoie — nu trebuie să știi denumirea exactă a serviciului sau a specialistului.",
     kind: "input",
@@ -22,7 +22,7 @@ const STEPS = [
     number: "02",
     title: "Răspunzi la câteva întrebări",
     description:
-      "Ne spui pentru cine cauți, ce fel de ajutor ai nevoie și în ce zonă. Durează mai puțin de un minut.",
+      "Alegi câteva răspunsuri: pentru cine cauți, ce fel de ajutor ai nevoie și în ce zonă. Durează mai puțin de un minut.",
     kind: "choices",
     accent: "#a97825",
     tone: "bg-[#eadcba]",
@@ -143,7 +143,7 @@ export default function HowItWorks() {
 
         <div className="lg:pb-1">
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Ne spui, cu cuvintele tale, ce cauți. Îți punem câteva întrebări simple ca să înțelegem exact de ce ai nevoie, apoi îți arătăm cabinetele, clinicile și opticile din zona ta care se potrivesc. Este un ghid de orientare — nu un diagnostic și nu o consultație medicală.
+            Totul pornește de la o descriere simplă a ceea ce cauți. Pe baza câtorva întrebări scurte, ajungi la o listă cu cabinetele, clinicile și opticile din zona ta care se potrivesc. Este un ghid de orientare — nu un diagnostic și nu o consultație medicală.
           </p>
           <Link
             to="/cerere"
