@@ -19,7 +19,7 @@ const home = homeSources['src/pages/Home.jsx'];
 
 // Componentele folosite efectiv de home (cele nefolosite, ex. ProvidersShowcase, nu intra in pagina).
 const used = ['src/pages/Home.jsx', 'src/components/home/Hero.jsx', 'src/components/home/CategoryShowcase.jsx',
-  'src/components/home/MobileCategoryShowcase.jsx', 'src/components/home/SituationExplainer.jsx',
+  'src/components/home/CategoryStrip.jsx', 'src/components/home/SituationExplainer.jsx',
   'src/components/home/HowItWorks.jsx', 'src/components/home/ProCta.jsx'];
 for (const file of used) {
   assert.ok(homeSources[file], `${file} lipseste`);
@@ -32,10 +32,11 @@ for (const file of used) {
 }
 
 // Halourile colorate raman, desenate ca gradient (aproape gratuit la derulare), nu ca filtru blur.
-for (const file of ['src/components/home/CategoryShowcase.jsx', 'src/components/home/HowItWorks.jsx']) {
+// (Categoriile nu mai au halouri din 2026-09-26: banda cu placute din CategoryStrip.jsx.)
+for (const file of ['src/components/home/HowItWorks.jsx']) {
   const source = stripComments(homeSources[file]);
   assert.match(source, /import \{ softGlowBackground \} from "@\/lib\/softGlow"/, `${file}: halourile folosesc softGlowBackground`);
-  assert.match(source, /style=\{\{ backgroundImage: (?:category|step)\.glow \}\}/, `${file}: haloul e un gradient`);
+  assert.match(source, /style=\{\{ backgroundImage: step\.glow \}\}/, `${file}: haloul e un gradient`);
 }
 const softGlow = await read('src/lib/softGlow.js');
 assert.match(softGlow, /SOFT_GLOW_BLEED_PX = 128/);
@@ -54,7 +55,8 @@ for (const [file, source] of Object.entries(homeSources)) {
 // Sectiunile se randeaza o singura data (inainte existau doua copii pe desktop).
 assert.equal((home.match(/<HomeCanvas\b/g) || []).length, 1, 'HomeCanvas trebuie randat o singura data');
 assert.doesNotMatch(home, /useScroll|useTransform/, 'Efectul de pe desktop foloseste derularea nativa (sticky), nu transformari pe fiecare cadru');
-assert.match(home, /sticky top-20/, 'Primul ecran ramane fixat prin CSS sticky');
+// Antetul e transparent peste primul ecran (nu mai rezerva 80px), deci ancora e la varful ferestrei.
+assert.match(home, /sticky top-0/, 'Primul ecran ramane fixat prin CSS sticky');
 assert.match(home, /PIN_DISTANCE = "45svh"/, 'Primul ecran sta fixat cam jumatate din cat statea inainte (70svh)');
 assert.match(home, /pinActive && <div aria-hidden="true" data-home-pin-track="" style=\{\{ height: PIN_DISTANCE \}\} \/>/,
   'Drumul pentru sticky e un element in parinte (padding-ul nu conteaza pentru sticky)');
