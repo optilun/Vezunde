@@ -6,7 +6,7 @@ import {
   MAJOR_CITIES,
   formatDistance,
   formatLocationCount,
-  localityCountsFromPoints,
+  localityCountsFromMap,
   localityRowParts,
   nearbyLocalitiesFromPoints,
   pickLocalityForPlace,
@@ -65,7 +65,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [recent, setRecent] = useState(() => (guided ? readRecentLocalities() : []));
-  const [mapPoints, setMapPoints] = useState(null);
+  const [mapData, setMapData] = useState(null);
   const [geo, setGeo] = useState({ status: "idle", nearby: [] });
   const [resolving, setResolving] = useState("");
   const inputRef = useRef(null);
@@ -96,14 +96,13 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   // incarcata. O cerem doar cand e nevoie: numere pe orase sau „Folosește locația mea”.
   const ensureMapPoints = useCallback(async () => {
     const data = await loadNationalDirectoryMap();
-    const points = Array.isArray(data?.results) ? data.results : [];
-    if (alive.current) setMapPoints(points);
-    return points;
+    if (alive.current) setMapData(data || {});
+    return Array.isArray(data?.results) ? data.results : [];
   }, []);
   useEffect(() => {
-    if (guided && showCounts && open && mapPoints === null) ensureMapPoints().catch(() => {});
-  }, [guided, showCounts, open, mapPoints, ensureMapPoints]);
-  const counts = useMemo(() => (mapPoints ? localityCountsFromPoints(mapPoints) : null), [mapPoints]);
+    if (guided && showCounts && open && mapData === null) ensureMapPoints().catch(() => {});
+  }, [guided, showCounts, open, mapData, ensureMapPoints]);
+  const counts = useMemo(() => (mapData ? localityCountsFromMap(mapData) : null), [mapData]);
 
   const requestLocation = () => {
     if (!navigator.geolocation) { setGeo({ status: "unavailable", nearby: [] }); return; }
@@ -238,7 +237,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     }
     if (option.section === "nearby") {
       const { place } = option;
-      const details = [formatDistance(place.distanceKm), showCounts ? formatLocationCount(place.count) : ""].filter(Boolean).join(" · ");
+      const details = [formatDistance(place.distanceKm), showCounts ? formatLocationCount(counts?.get(place.key) ?? place.count) : ""].filter(Boolean).join(" · ");
       return (
         <div key={`nearby-${place.key}`} {...optionProps(option, index)}>
           {resolving === place.key ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4f6080]" aria-hidden="true" /> : <Navigation className="h-4 w-4 shrink-0 text-[#4f6080]" aria-hidden="true" />}

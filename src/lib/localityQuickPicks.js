@@ -74,8 +74,14 @@ function normalizePlace(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+// Sectoarele Bucurestiului („Bucuresti Sectorul 1”) se numara si se afiseaza la Bucuresti, ca in
+// cautare (resolveEquivalentLocalityCodes) si in numerele de pe server (locality_counts).
+function canonicalPlace(name) {
+  return normalizePlace(name).replace(/^bucuresti sector(ul)? \d+$/, "bucuresti");
+}
+
 export function placeKey(name, county) {
-  return `${normalizePlace(name)}|${normalizePlace(county)}`;
+  return `${canonicalPlace(name)}|${normalizePlace(county)}`;
 }
 
 function distanceKm(a, b) {
@@ -86,7 +92,15 @@ function distanceKm(a, b) {
   return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-// Cate locatii cu pozitie publicata are fiecare localitate (cheie: nume + judet).
+// Cate locatii are fiecare localitate (cheie: nume + judet). Serverul trimite numarul complet
+// (`locality_counts`, inclusiv locatiile fara pozitie); din puncte ies doar cele de pe harta.
+export function localityCountsFromMap(data) {
+  if (data?.locality_counts && typeof data.locality_counts === "object") {
+    return new Map(Object.entries(data.locality_counts).map(([key, count]) => [key, Number(count) || 0]));
+  }
+  return localityCountsFromPoints(data?.results);
+}
+
 export function localityCountsFromPoints(points) {
   const counts = new Map();
   for (const point of points || []) {
@@ -107,7 +121,8 @@ export function nearbyLocalitiesFromPoints(points, origin, limit = 3) {
     if (!point?.city || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     const key = placeKey(point.city, point.county);
     const distance = distanceKm(origin, { lat, lng });
-    const group = groups.get(key) || { key, city: point.city, county: point.county || "", distanceKm: Infinity, count: 0 };
+    const city = canonicalPlace(point.city) === "bucuresti" ? "Bucuresti" : point.city;
+    const group = groups.get(key) || { key, city, county: point.county || "", distanceKm: Infinity, count: 0 };
     group.count += 1;
     group.distanceKm = Math.min(group.distanceKm, distance);
     groups.set(key, group);
