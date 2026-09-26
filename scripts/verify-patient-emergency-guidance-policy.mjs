@@ -215,6 +215,7 @@ assert(
   interruptionSource.indexOf('COPY.primary_instruction') < interruptionSource.indexOf('href="tel:112"'),
   '112 trebuie sa apara dupa indicatia spre spital/urgenta',
 );
-assert.match(interruptionSource, /Doar dacă nu te poți deplasa în siguranță sau starea generală se agravează rapid/);
+// 2026-09-26: randul numeste si semnele de accident vascular, dar ramane conditionat.
+assert.match(interruptionSource, /Dacă nu te poți deplasa în siguranță, dacă apar și slăbiciune într-o parte a corpului, vorbire greoaie sau gura strâmbă, ori dacă starea generală se agravează rapid/);
 
 console.log('Patient emergency guidance policy verified: approved injury-specific first aid survives the canonical boundary and untrusted variants fail closed.');
