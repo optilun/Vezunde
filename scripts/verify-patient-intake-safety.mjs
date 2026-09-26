@@ -21,6 +21,14 @@ assert.ok(deterministicSafetyFlagsFromText('Am o durere severa la ochi').include
 assert.ok(deterministicSafetyFlagsFromText('Vad o umbra ca o perdea').includes('other_possible_urgent_eye_problem'));
 assert.deepEqual(deterministicSafetyFlagsFromText('Am ochii putin obositi dupa calculator'), []);
 assert.deepEqual(deterministicSafetyFlagsFromText('Vreau un control de vedere'), []);
+// 2026-09-26: vedere dubla si umbra noua cu debut recent; durerea puternica spusa altfel.
+for (const text of ['Vad dublu de azi dimineata', 'De ieri vad ca o umbra la ochiul stang', 'Am o umbra in fata ochiului']) {
+  assert.ok(deterministicSafetyFlagsFromText(text).includes('other_possible_urgent_eye_problem'), text);
+}
+assert.ok(deterministicSafetyFlagsFromText('Am glaucom si de azi ma doare foarte tare ochiul').includes('severe_eye_pain'));
+for (const text of ['Vad dublu de cativa ani', 'Vad muste zburatoare de cateva luni', 'Am tensiune oculara mare si as vrea un control', 'Copilul se uita crucis de cand era mic']) {
+  assert.deepEqual(deterministicSafetyFlagsFromText(text), [], text);
+}
 
 const guidedAssessment = buildPatientSafetyAssessment({
   answers: [{ question_key: 'safety_screening', answer_value: 'traumatism_obiect' }],
