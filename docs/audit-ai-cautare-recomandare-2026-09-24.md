@@ -542,3 +542,13 @@ celalalt agent ("Scrie acum"). Checkpoint: `6ab6ebc1da74d6ebb8910265`.
   rezultat ("am un urcior la ochi" primeste serviciile pentru pleoapa). Bundle-ul
   `matchProvidersSemantic` reconstruit (se schimba doar sectiunea `serviceSemanticSearch`, identica
   cu browserul), blob nou aprobat. `verify-all`: 150 trec, aceleasi 4 esecuri din afara modulului.
+- **Verificat live dupa publicare (2026-09-26):** codul nou e in bundle-urile servite. Pe server:
+  keratocon cu lentile -> adaptare speciala, cornee si topografie, nivel `specialized_medical`;
+  cumpararea obisnuita de lentile ramane `general`; controlul la diabet primeste retinopatia
+  diabetica si fundul de ochi, ochelarii cu diabet nu; formularile noi (ochiul uscat, crucis, urcior,
+  pleoape rosii, pielita, cheratocon) sunt recunoscute. In interfata, "am keratoconus si vreau
+  lentile de contact" confirmat ca lentile, pacient care poarta deja lentile: ecranul de verificare
+  indruma la "un medic oftalmolog sau un optometrist care adapteaza lentile de contact speciale"
+  (inainte: "La o optica"). Un singur apel AI; oprit inainte de "Cauta rezultate". La aceeasi
+  fraza, modelul propune uneori lentile, alteori problema la ochi; ambele cai duc acum la
+  serviciile de specialitate.
