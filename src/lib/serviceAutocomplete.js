@@ -40,6 +40,12 @@ export const POPULAR_SERVICES = [
   { service_key: "visual_field_analyzer", hint: "investigație" },
 ];
 const POPULAR_RANK = new Map(POPULAR_SERVICES.map((item, index) => [item.service_key, index]));
+// Nevoi frecvente care nu intra in lista de mai sus, dar trebuie sa urce la egalitate.
+const COMMON_SERVICES = new Set([
+  "prescription_lenses", "progressive_lenses", "frames", "sunglasses", "eyeglasses_adjustment",
+  "refraction", "complete_eye_exam", "followup_consultation", "contact_lens_fitting",
+  "cataract_consultation", "glaucoma_consultation", "pediatric_ophthalmology",
+]);
 
 function isPatientService(definition) {
   return definition && definition.patient_facing !== false && definition.b2b_only !== true;
@@ -64,8 +70,14 @@ function serviceIndex() {
     .map(([key, definition]) => {
       const label = definition.label || key;
       const labelN = normalizeSemanticText(label);
-      const keywords = [...new Set((getServiceSearchKeywords(key) || []).map(normalizeSemanticText).filter(Boolean))]
-        .filter((keyword) => keyword !== labelN);
+      // Cuvintele-cheie pastreaza si forma lor scrisa (cu diacritice), ca sa le putem arata.
+      const keywordText = new Map();
+      for (const raw of getServiceSearchKeywords(key) || []) {
+        const normalized = normalizeSemanticText(raw);
+        if (!normalized || normalized === labelN || raw.includes("_")) continue;
+        if (!keywordText.has(normalized) || /[ăâîșțş ţ]/i.test(raw)) keywordText.set(normalized, String(raw).toLocaleLowerCase("ro"));
+      }
+      const keywords = [...keywordText.keys()];
       return {
         service_key: key,
         label,
@@ -73,6 +85,7 @@ function serviceIndex() {
         labelN,
         labelWords: labelN.split(" "),
         keywords: keywords.filter((keyword) => !groupLabels.has(keyword)),
+        keywordText,
         groupKeywords: keywords.filter((keyword) => groupLabels.has(keyword)),
       };
     });
@@ -92,21 +105,29 @@ function everyTokenStartsAWord(queryTokens, words) {
   return queryTokens.every((token) => words.some((word) => word.startsWith(token)));
 }
 
-function lexicalScore(entry, query, queryTokens) {
-  const short = query.length < 3;
-  if (entry.labelN === query) return 120;
-  if (entry.labelN.startsWith(query)) return 100;
-  if (everyTokenStartsAWord(queryTokens, entry.labelWords)) return 85;
-  if (short) return 0;
-  let score = entry.labelN.includes(query) ? 70 : 0;
+// Scorul potrivirii si, cand potrivirea vine dintr-un cuvant-cheie, acel cuvant (ca pacientul sa
+// inteleaga de ce apare „Consult optometric complet” cand a scris „control”).
+function lexicalMatch(entry, query, queryTokens) {
+  if (entry.labelN === query) return { score: 120, keyword: null };
+  if (entry.labelN.startsWith(query)) return { score: 100, keyword: null };
+  if (everyTokenStartsAWord(queryTokens, entry.labelWords)) return { score: 85, keyword: null };
+  if (query.length < 3) return { score: 0, keyword: null };
+  const loose = query.length >= 4;
+  let best = { score: loose && entry.labelN.includes(query) ? 70 : 0, keyword: null };
   for (const keyword of entry.keywords) {
-    if (keyword === query) score = Math.max(score, 90);
-    else if (keyword.startsWith(query)) score = Math.max(score, 75);
-    else if (everyTokenStartsAWord(queryTokens, keyword.split(" "))) score = Math.max(score, 65);
-    else if (keyword.includes(query)) score = Math.max(score, 50);
+    let score = 0;
+    if (keyword === query) score = 90;
+    else if (keyword.startsWith(query)) score = 75;
+    else if (everyTokenStartsAWord(queryTokens, keyword.split(" "))) score = 65;
+    else if (loose && keyword.includes(query)) score = 50;
+    if (score > best.score) best = { score, keyword };
   }
-  if (!score && entry.groupKeywords.some((keyword) => keyword.includes(query))) score = 20;
-  return score;
+  if (!best.score && loose && entry.groupKeywords.some((keyword) => keyword.includes(query))) best = { score: 20, keyword: null };
+  return best;
+}
+
+function lexicalScore(entry, query, queryTokens) {
+  return lexicalMatch(entry, query, queryTokens).score;
 }
 
 // Portiunea din eticheta care se potriveste cu ce a scris pacientul, pentru evidentiere.
@@ -146,10 +167,14 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
   const scored = new Map();
 
   for (const entry of serviceIndex()) {
-    const base = lexicalScore(entry, query, queryTokens);
-    if (!base) continue;
-    const bonus = POPULAR_RANK.has(entry.service_key) ? 16 : 0;
-    scored.set(entry.service_key, { entry, score: base + bonus });
+    const match = lexicalMatch(entry, query, queryTokens);
+    if (!match.score) continue;
+    const bonus = POPULAR_RANK.has(entry.service_key) ? 16 : COMMON_SERVICES.has(entry.service_key) ? 8 : 0;
+    scored.set(entry.service_key, {
+      entry,
+      score: match.score + bonus,
+      hint: match.keyword ? entry.keywordText.get(match.keyword) : "",
+    });
   }
 
   // Frazele descriptive („văd în ceață”, „mă ustură ochii”) vin din regulile existente.
@@ -159,7 +184,7 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
       if (!entry) continue;
       const score = Math.round(Number(suggestion.score || 0) * 90);
       const current = scored.get(entry.service_key);
-      if (!current || current.score < score) scored.set(entry.service_key, { entry, score });
+      if (!current || current.score < score) scored.set(entry.service_key, { entry, score, hint: "" });
     }
   }
 
@@ -170,7 +195,7 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
       || a.entry.label.length - b.entry.label.length
       || a.entry.label.localeCompare(b.entry.label, "ro"))
     .slice(0, limit)
-    .map(({ entry }) => ({ service_key: entry.service_key, label: entry.label, group: entry.group }));
+    .map(({ entry, hint }) => ({ service_key: entry.service_key, label: entry.label, group: entry.group, hint: hint || "" }));
 }
 
 // Filtru pentru lista de servicii din panoul de filtre: aceeasi potrivire, fara limita.
