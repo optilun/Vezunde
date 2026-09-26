@@ -302,7 +302,8 @@ await scenario("ranking and recommendation client remain byte-stable", () => {
   // 2026-09-25, audit AI 11.2 (aprobat explicit de owner): cheile gasite in text trec prin
   // filterTextServiceKeysForConfirmedNeed cand cererea are o nevoie confirmata. Cautarea
   // libera ramane neschimbata; scorul si ordonarea nu se ating.
-  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "e73e62cf");
+  // 2026-09-26, keratocon (aprobat explicit de owner): filtrul primeste si textul pacientului.
+  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "6af22c57");
 });
 
 await scenario("live result is identical when question selection does not intervene", () => {

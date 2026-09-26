@@ -213,7 +213,8 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // 2026-09-25, audit AI 11.2 (aprobat explicit de owner): cheile gasite in text trec prin
   // filterTextServiceKeysForConfirmedNeed cand cererea are o nevoie confirmata. Cautarea
   // libera ramane neschimbata; scorul si ordonarea nu se ating.
-  assert.equal(fnv1a(client.slice(client.indexOf(clientMarker))), "e73e62cf");
+  // 2026-09-26, keratocon (aprobat explicit de owner): filtrul primeste si textul pacientului.
+  assert.equal(fnv1a(client.slice(client.indexOf(clientMarker))), "6af22c57");
 });
 
 scenario("physical Base44 function count remains 48", () => {
