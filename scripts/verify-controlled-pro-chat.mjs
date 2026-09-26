@@ -140,11 +140,11 @@ assert.match(patientClient, /patientControlledChat/);
 assert.match(patientClient, /actor: "patient"/);
 assert.match(patientPanel, /Deschide conversația/);
 assert.match(patientPanel, /Nu introduce telefon, email sau linkuri/);
-assert.match(patientPanel, /clientMessageId: createControlledChatMessageId/);
+assert.match(patientPanel, /mutate\("send", \{ message, clientMessageId \}\)/);
 assert.match(patientStatus, /<PatientRequestChat/);
 assert.match(providerPanel, /actor: "provider"/);
 assert.match(providerPanel, /Locația nu poate iniția chatul unilateral/);
-assert.match(providerPanel, /client_message_id: createMessageId/);
+assert.match(providerPanel, /client_message_id: clientMessageId/);
 assert.match(providerInbox, /provider_chat\.access/);
 assert.match(providerInbox, /<ProviderLeadChat/);
 for (const source of [patientPanel, providerPanel]) {
