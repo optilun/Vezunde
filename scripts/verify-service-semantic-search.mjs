@@ -159,6 +159,22 @@ assert.equal(
   true,
   'Un serviciu medical declarat de furnizor este eligibil pentru matching fără verificare separată',
 );
+// 2026-09-26, decizia owner-ului: formulari uzuale care nu se legau de niciun serviciu.
+const dryEyeSingular = keys('am ochiul uscat, ce pot face?');
+assert.ok(dryEyeSingular.includes('dry_eye_management'), dryEyeSingular.join(', '));
+const squint = keys('fetița mea se uită cruciș');
+assert.ok(squint.includes('strabismus'), squint.join(', '));
+const stye = keys('am un urcior la pleoapă de o săptămână');
+assert.ok(stye.includes('chalazion_treatment'), stye.join(', '));
+const blepharitis = keys('am pleoapele roșii și cu cruste dimineața');
+assert.ok(blepharitis.includes('anterior_segment_exam'), blepharitis.join(', '));
+const pterygium = keys('am o pieliță care crește pe ochi');
+assert.ok(pterygium.includes('anterior_segment_exam'), pterygium.join(', '));
+const keratoconusRomanian = keys('am cheratocon');
+assert.ok(keratoconusRomanian.includes('cornea_consultation'), keratoconusRomanian.join(', '));
+const diabetes = keys('am diabet și vreau să-mi verific ochii');
+assert.ok(diabetes.includes('diabetic_retinopathy') && diabetes.includes('fundus_exam'), diabetes.join(', '));
+
 const unknown = resolveServiceSearchQuery('serviciu complet inventat zzzzz');
 assert.equal(unknown.matches.length, 0);
 
