@@ -1,94 +1,47 @@
 // Conversatia vazuta de pacient. Apelurile catre controlledChatOps si regula "doar
 // pacientul deschide conversatia" rămân neschimbate; prezentarea foloseste ChatThread.
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { Loader2, MessageCircle } from "lucide-react";
 import {
-  createControlledChatMessageId,
   patientControlledChat,
 } from "@/lib/patientRequestPersistenceClient";
 import ChatThread from "@/components/chat/ChatThread";
 import useChatLivePolling from "@/components/chat/useChatLivePolling";
+import useControlledChatSession from "@/components/chat/useControlledChatSession";
 
 const ELIGIBLE_RESPONSES = new Set(["can_help", "needs_details"]);
 
-export default function PatientRequestChat({ requestId, accessToken, locationId, locationName, responseType }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [action, setAction] = useState("");
-  const [error, setError] = useState("");
+export default function PatientRequestChat(props) {
+  const { requestId, locationId, responseType } = props;
+  return <PatientChatSession key={JSON.stringify([requestId, locationId, responseType])} {...props} />;
+}
 
+function PatientChatSession({ requestId, accessToken, locationId, locationName, responseType }) {
   const invoke = useCallback((nextAction, values = {}) => patientControlledChat({
     requestId,
     locationId,
     action: nextAction,
     explicitAccessToken: accessToken || "",
     ...values,
+    beforeMessageId: values.before_message_id || "",
   }), [accessToken, locationId, requestId]);
 
-  // silent = reimprospatare de fundal (polling): nu aprinde spinnerul si nu afiseaza erori
-  // tranzitorii, ca sa nu palpaie conversatia la fiecare ciclu.
-  const load = useCallback(async ({ silent = false } = {}) => {
-    if (!requestId || !locationId || !ELIGIBLE_RESPONSES.has(responseType)) return;
-    if (!silent) {
-      setLoading(true);
-      setError("");
-    }
-    try {
-      let next = await invoke("status");
-      if (Number(next.chat?.unread_count) > 0) next = await invoke("mark_read");
-      setData(next);
-    } catch (loadError) {
-      if (!silent) setError(loadError?.message || "Conversația nu a putut fi încărcată.");
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [invoke, locationId, requestId, responseType]);
+  const { data, loading, loadingOlder, action, error, load, mutate, loadOlder } = useControlledChatSession({
+    invoke,
+    enabled: Boolean(requestId && locationId) && ELIGIBLE_RESPONSES.has(responseType),
+    readOnly: false,
+  });
 
-  useEffect(() => { void load(); }, [load]);
-
+  const conversationOpen = data?.chat?.status === "open";
   useChatLivePolling({
-    active: data?.chat?.status === "open",
-    busy: loading || Boolean(action),
+    active: conversationOpen,
+    busy: loading || loadingOlder || Boolean(action),
     onPoll: () => load({ silent: true }),
   });
 
-  const open = async () => {
-    setAction("open");
-    setError("");
-    try {
-      setData(await invoke("open"));
-    } catch (openError) {
-      setError(openError?.message || "Conversația nu a putut fi deschisă.");
-    } finally {
-      setAction("");
-    }
-  };
-
-  const send = async (message) => {
-    setAction("send");
-    setError("");
-    try {
-      setData(await invoke("send", { message, clientMessageId: createControlledChatMessageId() }));
-      return true;
-    } catch (sendError) {
-      setError(sendError?.message || "Mesajul nu a putut fi trimis.");
-      return false;
-    } finally {
-      setAction("");
-    }
-  };
-
-  const close = async () => {
-    setAction("close");
-    setError("");
-    try {
-      setData(await invoke("close"));
-    } catch (closeError) {
-      setError(closeError?.message || "Conversația nu a putut fi închisă.");
-    } finally {
-      setAction("");
-    }
-  };
+  const send = (message, clientMessageId) => mutate("send", { message, clientMessageId });
+  const close = () => mutate("close");
+  const open = () => mutate("open");
 
   if (!ELIGIBLE_RESPONSES.has(responseType)) return null;
   if (loading && !data) return <div className="mt-4 flex min-h-16 items-center justify-center rounded-xl border border-border bg-secondary/25 text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificăm disponibilitatea chatului...</div>;
@@ -123,6 +76,9 @@ export default function PatientRequestChat({ requestId, accessToken, locationId,
         otherLabel={locationName || "Locația"}
         loading={loading}
         sending={Boolean(action)}
+        loadingOlder={loadingOlder}
+        hasOlder={Boolean(data?.next_before_message_id)}
+        onLoadOlder={loadOlder}
         error={error}
         emptyNote="Conversația este deschisă. Poți trimite primul mesaj."
         canSend={opened && Boolean(data?.chat?.can_send)}
