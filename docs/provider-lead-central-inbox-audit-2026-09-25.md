@@ -1,5 +1,7 @@
 # VIASEE: auditul fluxului de cereri si al inboxului centralizat
 
+Nota 26 septembrie 2026: acesta este auditul anterior implementarii. Implementarea aprobata si verificarile ulterioare sunt documentate in [raportul de implementare](provider-lead-central-inbox-implementation-2026-09-26.md).
+
 Data: 25 septembrie 2026. Aplicatie Base44: 6a48cb9d04fa7f999d8a8054. Inspectie read-only a codului din sandbox. La redactare, HEAD era b37635bf5d323ee644b92dc4991e3f4fadb7f102, iar worktree-ul era curat. Referintele de mai jos sunt la codul salvat; auditul nu confirma prin date reale sau browser ca toate functiile backend sunt sincronizate si ca frontendul publicat are acelasi cod.
 
 ## 1. Cererea si distribuirea
