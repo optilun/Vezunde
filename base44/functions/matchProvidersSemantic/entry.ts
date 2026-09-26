@@ -40,6 +40,7 @@ import {
   loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
+  resolveEquivalentLocalityCodes,
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
@@ -96,7 +97,7 @@ const STRUCTURAL_FALLBACK_GROUP_LABELS = {
 // Include si profilurile revendicate/verificate care nu si-au declarat inca serviciile:
 // in faza de pornire a directorului, absenta serviciilor nu trebuie sa ascunda complet
 // exact profilurile cu cea mai mare incredere. Eticheta afisata difera insa clar.
-function collectStructuralCandidate(location, sirutaCode, countyName, bucket, scope) {
+function collectStructuralCandidate(location, localityCodes, countyName, bucket, scope) {
   const disclosure = getPublicLocationDisclosure(location);
   // Accepta si profilurile revendicate/verificate care nu si-au declarat inca serviciile.
   // Altfel, exact profilurile cu cea mai mare incredere devin invizibile la cautari pe
@@ -106,7 +107,7 @@ function collectStructuralCandidate(location, sirutaCode, countyName, bucket, sc
   const capability = STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE[location?.provider_type];
   if (!capability) return;
 
-  const tier = expansionTier(location, sirutaCode, scope);
+  const tier = expansionTier(location, localityCodes, scope);
   bucket.push({
     id: location.id,
     name: location.public_display_name || location.name,
@@ -231,8 +232,11 @@ function locationSirutaCode(location) {
   return clean(location?.locality_siruta_code);
 }
 
-function expansionTier(location, selectedSirutaCode, scope) {
-  if (locationSirutaCode(location) === selectedSirutaCode) return 'oras';
+// `localityCodes`: codul ales plus codurile care inseamna acelasi loc (resedinta cu acelasi nume,
+// sectoarele pentru Bucuresti), vezi resolveEquivalentLocalityCodes. O locatie din Cluj-Napoca
+// salvata cu codul componentei (54984) e tot „în localitatea aleasă”, nu „din alt oras din judet”.
+function expansionTier(location, localityCodes, scope) {
+  if (localityCodes.has(locationSirutaCode(location))) return 'oras';
   if (scope === 'national') return 'tara';
   return 'judet';
 }
@@ -257,7 +261,7 @@ async function resolveSelectedLocality(svc, sirutaCode) {
   return rows[0] || null;
 }
 
-async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaCode) {
+async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaCode, localityCodes) {
   if (scope === 'national') {
     // Extindere nationala: doar profiluri revendicate/verificate, filtrate direct in
     // interogare (nu incarcate integral si filtrate dupa). Locatiile din director nu
@@ -268,7 +272,7 @@ async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaC
       profile_control_status: { $in: ['claimed', 'verified'] },
     }, 'name', 2000);
   }
-  if (scope !== 'county') return loadPublicLocationsForLocality(svc, sirutaCode);
+  if (scope !== 'county') return loadPublicLocationsForLocality(svc, sirutaCode, { equivalentCodes: [...localityCodes] });
   const countyCode = clean(selectedLocality?.county_code);
   if (!countyCode) return [];
   return svc.entities.ProviderLocation.filter({
@@ -717,7 +721,8 @@ Deno.serve(async (request) => {
 
     const directoryScope = directoryLocationScope(payload);
     const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
-    const scopeLocationRows = await loadPublicLocationsForScope(svc, queryScope, selectedLocality, sirutaCode);
+    const localityCodes = new Set(await resolveEquivalentLocalityCodes(svc, sirutaCode));
+    const scopeLocationRows = await loadPublicLocationsForScope(svc, queryScope, selectedLocality, sirutaCode, localityCodes);
     const scopedLocations = scopeLocationRows.filter((location) => (
       active(location)
       && location.profile_control_status !== 'suspended'
@@ -725,7 +730,7 @@ Deno.serve(async (request) => {
       && (directoryScope === null || directoryScope.has(location.id))
       && (providerTypes.size === 0 || providerTypes.has(location.provider_type))
     ));
-    const localLocations = scopedLocations.filter((location) => locationSirutaCode(location) === sirutaCode);
+    const localLocations = scopedLocations.filter((location) => localityCodes.has(locationSirutaCode(location)));
     const locationIds = scopedLocations.map((location) => location.id).filter(Boolean);
 
     const [
@@ -779,11 +784,11 @@ Deno.serve(async (request) => {
         return Boolean(canonicalKey && requestedSet.has(canonicalKey));
       });
       if (candidateRows.length === 0) {
-        collectStructuralCandidate(withDirectoryDetail(location, detailOverlay), sirutaCode, countyName, structuralCandidates, queryScope);
+        collectStructuralCandidate(withDirectoryDetail(location, detailOverlay), localityCodes, countyName, structuralCandidates, queryScope);
         continue;
       }
       configuredMatchingProviderCount += 1;
-      if (locationSirutaCode(location) === sirutaCode) localConfiguredMatchingProviderCount += 1;
+      if (localityCodes.has(locationSirutaCode(location))) localConfiguredMatchingProviderCount += 1;
 
       const locationAssignments = assignmentsByLocation[location.id] || [];
       const locationProfessionals = locationAssignments
@@ -837,7 +842,7 @@ Deno.serve(async (request) => {
         profileControlStatus,
         availability: publicDisclosure.expose_full_details ? availability : null,
       });
-      const tier = expansionTier(location, sirutaCode, queryScope);
+      const tier = expansionTier(location, localityCodes, queryScope);
 
       results.push({
         id: location.id,
