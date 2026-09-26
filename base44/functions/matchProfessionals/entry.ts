@@ -26,6 +26,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
+  resolveEquivalentLocalityCodes,
 } from '../../shared/locationScopedEntityQuery.js';
 import {
   PROFESSIONAL_RECOMMENDATION_CONTRACT_VERSION,
@@ -64,8 +65,10 @@ function locationSirutaCode(location: any) {
   return clean(location?.locality_siruta_code || location?.siruta_code);
 }
 
-function expansionTier(location: any, selectedSirutaCode: string, scope: string) {
-  if (locationSirutaCode(location) === selectedSirutaCode) return 'oras';
+// La fel ca in matchProvidersSemantic: codul ales plus codurile care inseamna acelasi loc
+// (resedinta cu acelasi nume, sectoarele Bucurestiului), vezi resolveEquivalentLocalityCodes.
+function expansionTier(location: any, localityCodes: Set<string>, scope: string) {
+  if (localityCodes.has(locationSirutaCode(location))) return 'oras';
   if (scope === 'national') return 'tara';
   return 'judet';
 }
@@ -96,7 +99,7 @@ async function resolveSelectedLocality(svc: any, sirutaCode: string) {
 
 // Aceleasi reguli de acoperire ca la locatii: la nivel national nu se ridica din director,
 // pentru ca nu trimitem un pacient sute de kilometri pe baza unui profil neconfirmat.
-async function loadLocationsForScope(svc: any, scope: string, selectedLocality: any, sirutaCode: string) {
+async function loadLocationsForScope(svc: any, scope: string, selectedLocality: any, sirutaCode: string, localityCodes: Set<string>) {
   if (scope === 'national') {
     return svc.entities.ProviderLocation.filter({
       status: 'publicata',
@@ -112,7 +115,7 @@ async function loadLocationsForScope(svc: any, scope: string, selectedLocality: 
     }, 'name', MAX_LOCATIONS_PER_SCOPE).catch(() => []);
   }
   if (!sirutaCode) return [];
-  return loadPublicLocationsForLocality(svc, sirutaCode).catch(() => []);
+  return loadPublicLocationsForLocality(svc, sirutaCode, { equivalentCodes: [...localityCodes] }).catch(() => []);
 }
 
 function indexServiceKeysByLocation(rows: any[]) {
@@ -158,7 +161,8 @@ Deno.serve(async (req) => {
     }
 
     const selectedLocality = await resolveSelectedLocality(svc, sirutaCode);
-    const scopeLocations = (await loadLocationsForScope(svc, queryScope, selectedLocality, sirutaCode))
+    const localityCodes = new Set<string>(sirutaCode ? await resolveEquivalentLocalityCodes(svc, sirutaCode) : []);
+    const scopeLocations = (await loadLocationsForScope(svc, queryScope, selectedLocality, sirutaCode, localityCodes))
       .filter(isPublicLocation);
 
     if (scopeLocations.length === 0) {
@@ -235,7 +239,7 @@ Deno.serve(async (req) => {
             organization_id: clean(location.organization_id) || null,
             organization_name: clean(organization?.public_display_name || organization?.name) || null,
             profile_control_status: clean(location.profile_control_status) || 'directory',
-            expansion_tier: expansionTier(location, sirutaCode, queryScope),
+            expansion_tier: expansionTier(location, localityCodes, queryScope),
             service_keys: serviceKeysByLocation[clean(location.id)] || [],
           };
         })
