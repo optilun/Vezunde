@@ -288,6 +288,7 @@ export async function patientControlledChat({
   action = "status",
   message = "",
   clientMessageId = "",
+  beforeMessageId = "",
   explicitAccessToken = "",
 }) {
   const token = resolveRequestAccessToken(requestId, explicitAccessToken);
@@ -299,6 +300,7 @@ export async function patientControlledChat({
     location_id: locationId,
     message,
     client_message_id: clientMessageId,
+    before_message_id: beforeMessageId,
   });
   return responseData(response);
 }
