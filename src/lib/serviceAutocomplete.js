@@ -236,7 +236,8 @@ export function serviceMatchesNeedle(serviceKey, rawNeedle) {
   if (!needle) return true;
   const entry = serviceIndex().find((item) => item.service_key === serviceKey);
   if (!entry) return false;
-  return lexicalScore(entry, needle, needle.split(" ").filter(Boolean)) >= 50 || entry.labelN.includes(needle);
+  // Mai strict decat sugestiile: in lista de bifat, un rezultat in plus e zgomot, nu ajutor.
+  return lexicalScore(entry, needle, needle.split(" ").filter(Boolean)) >= 70 || entry.labelN.includes(needle);
 }
 
 export function patientServicesByGroup() {
