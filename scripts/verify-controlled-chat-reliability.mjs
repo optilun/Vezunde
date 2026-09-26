@@ -66,6 +66,73 @@ check('equal timestamps, foreign/deleted/missing cursors, empty conversation');
 await mkdir(path.join(root, 'node_modules/.cache'), { recursive: true });
 const scratch = await mkdtemp(path.join(root, 'node_modules/.cache/chat-reliability-'));
 try {
+  // Execute the actual HTTP handler with a fake SDK; no live patient data or writes.
+  rows = Array.from({ length: 210 }, (_, index) => ({
+    id: String(index + 1).padStart(5, '0'), conversation_id: 'http-chat', status: 'active',
+    created_date: new Date(Date.UTC(2026, 8, 26, 0, 0, index)).toISOString(),
+    sender_type: 'patient', sender_user_id: 'private-user', body: 'Synthetic message',
+  }));
+  const tokenHash = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('synthetic-token'))).toString('hex');
+  const requestRow = { id: 'request', lifecycle_state: 'active', expires_at: '2099-01-01T00:00:00.000Z' };
+  const lead = { id: 'lead', request_id: 'request', location_id: 'location', result_bucket_snapshot: 'top3', access_tier: 'pro_full', delivery_state: 'available' };
+  const contact = { provider_request_distribution_consent: true, provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v3' };
+  const entities = {
+    ...svc.entities,
+    PatientRequest: { get: async () => requestRow },
+    PatientRequestContact: { filter: async (query) => query.access_token_hash === tokenHash ? [contact] : [] },
+    ProviderLead: { filter: async () => [lead] },
+    ProviderLocation: { get: async () => ({ id: 'location', name: 'Synthetic location' }) },
+    ProviderLeadResponse: { filter: async () => [{ status: 'active', response_type: 'can_help' }] },
+    ProviderSubscription: { filter: async () => [{ plan_code: 'pro', status: 'active' }] },
+    PatientRequestConversation: { filter: async () => [{ id: 'http-chat', status: 'open' }] },
+  };
+  let handler;
+  const previousDeno = globalThis.Deno;
+  globalThis.Deno = { serve: (callback) => { handler = callback; }, env: { get: () => undefined } };
+  globalThis.__chatTestBackend = { auth: { me: async () => null }, asServiceRole: { entities } };
+  try {
+    const backendFile = path.join(scratch, 'backend.mjs');
+    const backend = await build({
+      entryPoints: [path.join(root, 'base44/functions/controlledChatOps/entry.ts')],
+      bundle: true, platform: 'node', format: 'esm', write: false,
+      plugins: [{
+        name: 'mock-server-sdk',
+        setup(builder) {
+          builder.onResolve({ filter: /^npm:@base44\\/sdk/ }, () => ({ path: 'sdk', namespace: 'fake-sdk' }));
+          builder.onLoad({ filter: /.*/, namespace: 'fake-sdk' }, () => ({
+            contents: 'export function createClientFromRequest() { return globalThis.__chatTestBackend; }',
+          }));
+        },
+      }],
+    });
+    await writeFile(backendFile, backend.outputFiles[0].text);
+    await import(pathToFileURL(backendFile).href);
+    const call = (values = {}) => handler(new Request('https://test.invalid/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actor: 'patient', action: 'status', request_id: 'request', request_access_token: 'synthetic-token', location_id: 'location', ...values }),
+    }));
+    let response = await call();
+    assert.equal(response.status, 200);
+    const first = await response.json();
+    assert.equal(first.messages.length, 50);
+    assert.equal(first.messages.at(-1).id, '00210');
+    assert.equal(first.messages[0].sender_user_id, undefined);
+    assert.equal(first.messages[0].conversation_id, undefined);
+    response = await call({ before_message_id: first.next_before_message_id });
+    assert.equal(response.status, 200);
+    const second = await response.json();
+    assert.ok(second.messages.at(-1).id < first.messages[0].id);
+    assert.equal((await call({ request_access_token: 'wrong-token' })).status, 403);
+    assert.equal((await call({ actor: 'provider', lead_id: 'lead' })).status, 401);
+    rows.push({ ...rows[0], id: 'foreign-cursor', conversation_id: 'different-conversation' });
+    assert.equal((await call({ before_message_id: 'foreign-cursor' })).status, 400);
+    check('actual HTTP handler: authorized pages, sanitized output, invalid token/actor/cursor denied');
+  } finally {
+    if (previousDeno === undefined) delete globalThis.Deno;
+    else globalThis.Deno = previousDeno;
+    delete globalThis.__chatTestBackend;
+  }
+
   const outfile = path.join(scratch, 'components.mjs');
   const bundle = await build({
     stdin: {
