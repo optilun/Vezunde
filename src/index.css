@@ -523,7 +523,7 @@
 }
 
 /* Banda de categorii de pe prima pagină (CategoryStrip.jsx): plăcuțele intră pe rând, de sus în
-   jos, la fiecare schimbare de categorie; sub fila activă curge bara până la următoarea schimbare. */
+   jos, la fiecare schimbare de categorie. */
 @keyframes cat-tile-in {
   from {
     opacity: 0;
@@ -542,8 +542,6 @@
   animation: cat-tile-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   animation-delay: calc(var(--i, 0) * 70ms);
 }
-
-
 
 /* Linia de scanare din plăcuța OCT (unități din viewBox-ul SVG). */
 @keyframes cat-scan {
