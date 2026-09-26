@@ -107,6 +107,12 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // recunoaste serviciile pe care browserul le trimite deja. Formula de scor, bucket-urile si
     // selectia Top 3 raman neschimbate.
     '16abb988609c3a667abf1a4df7832a6cc3a28415',
+    // 2026-09-26, sinonime noi (aprobat explicit de owner): doar sectiunea
+    // shared/serviceSemanticSearch.js se schimba - forme uzuale pentru ochi uscat, strabism,
+    // urcior, keratocon si reguli noi pentru blefarita, pielita pe ochi si controlul la diabet,
+    // toate catre servicii canonice existente. Registrul, prerechizitele si
+    // shared/providerRecommendation.js raman identice; scorul, bucket-urile si Top 3 nu se ating.
+    '8d391bc46c3465f80f10c25ccce689d143104a9b',
   ]),
 });
 
