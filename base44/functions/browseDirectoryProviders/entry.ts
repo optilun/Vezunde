@@ -41,6 +41,18 @@ function normalizedName(location) {
 //
 // 2026-09-24. Datele vin din shared/nationalMapSources.js: aceleasi locatii si aceeasi stare de
 // director, citite pe pagini de 500 (~7 citiri) in loc de o interogare pe fiecare judet (~100).
+// 2026-09-26. Numarul de locatii pe localitate, pentru lista de orase din /cauta. Include si
+// locatiile fara pozitie (harta le omite), deci e acelasi numar ca lista de pe pagina orasului.
+// Cheia e numele localitatii + judetul, fara diacritice. Sectoarele Bucurestiului se numara la
+// Bucuresti, iar resedinta cu acelasi nume ca UAT-ul are deja acelasi nume - exact regula din
+// resolveEquivalentLocalityCodes (base44/shared/locationScopedEntityQuery.js).
+function localityCountKey(name, county) {
+  const normalize = (value) => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const place = normalize(name).replace(/^bucuresti sector(ul)? \d+$/, 'bucuresti');
+  return `${place}|${normalize(county)}`;
+}
+
 async function computeNationalMap(svc) {
   const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
   const visible = allLocations.filter((loc) => {
@@ -52,11 +64,14 @@ async function computeNationalMap(svc) {
   const { overlay } = await loadDirectoryDetailOverlayForMap(svc, visible.map((loc) => loc.id));
 
   const points = [];
+  const localityCounts = {};
   let totalPublished = 0;
   for (const loc of visible) {
     const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
     if (disclosure.profile_control_status === 'suspended') continue;
     totalPublished += 1;
+    const countKey = localityCountKey(loc.locality_name || loc.city, loc.county_name || loc.county);
+    localityCounts[countKey] = (localityCounts[countKey] || 0) + 1;
     if (disclosure.lat === null || disclosure.lng === null) continue;
     points.push({
       id: loc.id,
@@ -77,6 +92,7 @@ async function computeNationalMap(svc) {
     results: points,
     total_published: totalPublished,
     without_position: totalPublished - points.length,
+    locality_counts: localityCounts,
   };
 }
 
