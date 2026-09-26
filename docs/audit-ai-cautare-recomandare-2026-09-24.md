@@ -505,3 +505,33 @@ celalalt agent ("Scrie acum"). Checkpoint: `6ab6ebc1da74d6ebb8910265`.
   VIASEE"), cu lista deciziilor pentru medic, inclusiv randul scurt despre 112.
 - Dupa publicare: retest live pentru o reparatie (fara chei de vanzare) si o cumparare de lentile
   (nivel `general`).
+
+## 14. Boli frecvente si keratocon (2026-09-26)
+
+- **Live dupa publicare:** 11.2 (reparatia confirmata pastreaza doar cheile de atelier; cumpararea
+  de lentile ramane `general`; cautarea libera neschimbata) si 11.3 (serverul recunoaste acum "am
+  nevoie de OCT", "vreau sa-mi verific vederea", "am ochiul rosu de doua zile").
+- **Test live AI pe 19 formulari cu boli** (glaucom, keratocon, cataracta, ochi uscat, blefarita,
+  pterigion, uveita, degenerescenta maculara, diabet, conjunctivita, fulgere aparute azi; la copii:
+  strabism, miopie in crestere, bebelus cu lacrimare): intentia corecta la toate, servicii precise
+  (ex. keratocon -> cornee, topografie, cross-linking, lentile speciale; bebelus -> oftalmologie
+  pediatrica si cai lacrimale), circa 2 s. Semnal de urgenta doar la cazurile acute (glaucom cu
+  durere aparuta azi, fulgere aparute azi) si, informativ, la "am uveita".
+- **Regulile fixe (calea de rezerva, cand AI-ul nu raspunde):** nu recunosc nevoia la "am ochiul
+  uscat", "pleoape rosii cu cruste", "pielita pe ochi", "am uveita"; siguranta nu prinde "de azi
+  vad fulgere si multe puncte negre"; la "am diabet si vreau sa-mi verific ochii" cheile raman
+  optometrice (AI-ul adauga retinopatia diabetica); lipsesc sinonime pentru "ochiul uscat", "se uita
+  crucis", "urcior", "pielita pe ochi".
+- **Aplicat (aprobat de owner, checkpoint `6ab713e080b227ea0729710a`):** la keratocon, filtrul din
+  `shared/confirmedNeedServiceKeys.js` primeste textul pacientului si pastreaza, pentru lentile de
+  contact si nevoile medicale, adaptarea speciala si consulturile medicale (ochelarii si reparatiile
+  raman neschimbate); `patientVisitGuidance.js` trimite keratoconul cu lentile la "un medic
+  oftalmolog sau un optometrist care adapteaza lentile de contact speciale" si arata sfaturile de
+  consult. Blob-uri noi aprobate in testul de izolare, amprenta clientului `6af22c57`, 5 verificari
+  noi in `verify-confirmed-need-service-keys`. ESLint si build trec; `verify-all`: 150 trec, 4 pica
+  (cele 3 vechi si verify-page-stability-performance, din lucrul la antet).
+- **La medic** (documentul Claude Docs, sectiunea "Propuneri noi"): recomandari pentru keratocon,
+  degenerescenta maculara, conjunctivita sau alergie si copii; optiunea "Keratocon" in anamneza;
+  fraza de siguranta pentru fulgere si multe puncte negre; semnalul informativ la uveita.
+- **Asteapta aprobarea owner-ului:** fraze pentru regulile fixe de intentie, sinonimele lipsa si
+  chei de fund de ochi la controlul cerut de un pacient cu diabet (schimbari de potrivire).
