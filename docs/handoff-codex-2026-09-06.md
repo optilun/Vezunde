@@ -237,3 +237,9 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - 11.3 aplicat (checkpoint 6ab6f212ab78a23bd744043d): cele 4 bundle-uri `sharedDependencies.js` reconstruite din `shared/`; registrul, prerechizitele si scorul identice ca logica, cautarea semantica de pe server aliniata cu browserul. Blob nou aprobat in testul de izolare. Detalii: audit, sectiunea 13.
 - **Tot pentru celalalt agent:** inca 2 teste pica dupa lucrul la antet si pagina principala: verify-home-performance ("primul ecran ramane fixat prin CSS sticky") si verify-page-stability-performance ("antetul desktop are 5rem").
 - Documentul pentru revizuirea medicala (11.4) e gata in Claude Docs: "Revizuire medicala VIASEE".
+
+### 2026-09-26 — boli frecvente, keratocon
+
+- 11.2 si 11.3 confirmate live. Test live AI pe 19 formulari cu boli (adulti si copii): intentie corecta la toate, servicii precise, urgenta doar la cazurile acute.
+- Aplicat (aprobat de owner, checkpoint 6ab713e080b227ea0729710a): keratocon cu lentile de contact tratat medical (filtrul primeste textul; indrumare la specialist in `patientVisitGuidance.js`). `verify-all` 150 OK / 4 (3 vechi + verify-page-stability-performance, zona antetului).
+- Propuneri pentru medic adaugate in "Revizuire medicala VIASEE" (keratocon, degenerescenta maculara, conjunctivita/alergie, copii, fraza pentru fulgere, uveita). Propuneri tehnice in asteptare: audit, sectiunea 14.
