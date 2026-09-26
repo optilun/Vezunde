@@ -157,7 +157,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
         </div>
         <div className="shrink-0 border-t border-border bg-card px-6 py-4">
           {signature && <p aria-live="polite" className={`mb-3 text-xs ${previewReady && preview.total === 0 ? "font-medium text-[#8a4b2a]" : "text-muted-foreground"}`}>
-            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : `Nicio locație din ${browseLocality.name} nu are toate aceste filtre. Încearcă să scoți unul.`) : ""}
+            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : `Nicio locație din ${browseLocality.name} nu corespunde acestor filtre. Încearcă să scoți unul.`) : ""}
           </p>}
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={() => setDraft({types:[],profession:"",services:[],cas:false})} className="min-h-11 text-sm underline">Resetează filtrele</button>
