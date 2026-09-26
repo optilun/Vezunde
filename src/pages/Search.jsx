@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search as SearchIcon, MapPin, X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SERVICES, PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { CANONICAL_SERVICE_REGISTRY } from "@/lib/canonicalServiceCatalog";
-import { getServiceSearchSuggestions, resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
+import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
@@ -18,11 +18,10 @@ import SearchFilters from "@/components/results/SearchFilters";
 import DirectoryMap from "@/pages/DirectoryMap";
 import { browsePublicProfessionals, matchProfessionalsForRequest } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import ServiceSearchField from "@/components/results/ServiceSearchField";
+import { MAJOR_CITIES, readRecentLocalities, rememberLocality, prettyLocality } from "@/lib/localityQuickPicks";
 
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
-
-const SEARCH_INPUT =
-  "min-h-12 w-full rounded-full border border-transparent bg-card px-4 py-2.5 text-base outline-none transition-colors focus:border-primary/50 sm:text-sm";
 
 function useDebouncedValue(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -96,7 +95,7 @@ export default function Search() {
   const [professionals, setProfessionals] = useState(null);
   const [service, setService] = useState(saved.service ?? urlParams.get("serviciu") ?? "");
   const [query, setQuery] = useState(saved.query ?? (urlParams.get("q") || SERVICES[urlParams.get("serviciu")] || ""));
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const localityFieldRef = useRef(null);
   const initialLocalityName = urlParams.get("oras");
   const initialSirutaCode = urlParams.get("siruta");
   const [locality, setLocality] = useState(
@@ -142,10 +141,6 @@ export default function Search() {
   const [dismissedFor, setDismissedFor] = useState("");
   const showSafetyBanner = safetyFlags.length > 0 && dismissedFor !== debouncedQuery;
 
-  const suggestions = useMemo(
-    () => getServiceSearchSuggestions(query, { limit: 6 }),
-    [query],
-  );
   const hasCanonicalLocality = Boolean(locality?.siruta_code);
   const isDirectoryBrowse = !service && !debouncedQuery && hasCanonicalLocality;
   const isDirectoryBrowseView =
@@ -298,16 +293,17 @@ export default function Search() {
     setQuery(""); setService(""); setLocality(null);
     setSelectedId(null); setHoveredId(null);
     setSearchMode(RESULT_MODES.locations.key);
-    setSuggestionsOpen(false);
     writeSearchSession({ maps: {}, listScroll: {}, national: {}, scrollY: 0, nationalScroll: 0 });
     window.scrollTo({ top: 0, behavior: "instant" });
   };
 
+  // Dupa serviciu, pasul urmator e localitatea: daca lipseste, cursorul trece direct acolo.
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
     setQuery(suggestion.label);
-    setSuggestionsOpen(false);
+    if (!hasCanonicalLocality) window.requestAnimationFrame(() => localityFieldRef.current?.focus());
   };
+  const chooseLocality = (value) => { setLocality(value); setSelectedId(null); };
 
   const searchMapKey = JSON.stringify(["local", locality?.siruta_code, service, debouncedQuery, providerType, [...filterServiceKeys].sort(), casOnly]);
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
@@ -347,77 +343,30 @@ export default function Search() {
       <div ref={controlsRef} data-search-controls className="sticky z-30 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ top: "var(--search-nav-height)" }}>
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
       <section
-        className="relative z-40 w-full min-w-0 rounded-3xl border border-[#e1e3e8] bg-card px-2 py-1.5 shadow-[0_2px_10px_rgba(30,40,60,0.07)] transition-shadow focus-within:shadow-md sm:w-auto sm:flex-1 sm:rounded-full"
+        className="relative z-40 w-full min-w-0 rounded-3xl border border-[#e1e3e8] bg-card px-2 py-1.5 shadow-[0_2px_10px_rgba(30,40,60,0.07)] transition-shadow focus-within:shadow-md sm:flex-1 md:w-auto md:rounded-full"
         aria-label="Căutare"
       >
-        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-1 md:gap-2">
+        {/* Pe telefon cele doua campuri stau unul sub altul, ca textul sa se vada intreg. */}
+        <div className="grid grid-cols-1 gap-0 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:gap-2">
           <div className="min-w-0">
-            <label htmlFor="directory-search" className="sr-only">
-              Ce cauți?
-            </label>
-            <div
-              className="relative"
-              onFocus={() => setSuggestionsOpen(true)}
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) setSuggestionsOpen(false);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") setSuggestionsOpen(false);
-              }}
-            >
-              <SearchIcon
-                className="pointer-events-none absolute left-4 top-4 h-4 w-4 text-[#4f6080]"
-                aria-hidden="true"
-              />
-              <input
-                id="directory-search"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setService("");
-                  setSuggestionsOpen(true);
-                }}
-                placeholder="Ce serviciu cauți?"
-                autoComplete="off"
-                className={`${SEARCH_INPUT} pl-11 pr-12`}
-              />
-              {(query || service) && (
-                <button
-                  type="button"
-                  aria-label="Șterge căutarea"
-                  onClick={() => { setQuery(""); setService(""); setSuggestionsOpen(false); }}
-                  className="absolute right-1 top-0.5 flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </button>
-              )}
-              {suggestionsOpen && !service && query.trim() && suggestions.length > 0 && (
-                <div
-                  className="absolute z-30 mt-2 max-h-[min(22rem,55vh)] w-full overflow-y-auto rounded-xl border border-border bg-card shadow-xl"
-                  aria-label="Sugestii de servicii"
-                >
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.service_key}
-                      type="button"
-                      onClick={() => chooseSuggestion(suggestion)}
-                      className="block min-h-12 w-full border-b border-border/60 px-4 py-3 text-left text-sm font-medium last:border-b-0 hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none active:bg-secondary"
-                    >
-                      {suggestion.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ServiceSearchField
+              query={query}
+              service={service}
+              onQueryChange={(value) => { setQuery(value); setService(""); }}
+              onChoose={chooseSuggestion}
+              onClear={() => { setQuery(""); setService(""); }}
+            />
           </div>
-          <div className="relative min-w-0 border-l border-border pl-6 md:pl-7" role="group" aria-labelledby="directory-locality-label">
-            <MapPin className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-[#4f6080]" aria-hidden="true" /><span id="directory-locality-label" className="sr-only">
+          <div className="relative min-w-0 border-t border-border pl-7 md:border-l md:border-t-0" role="group" aria-labelledby="directory-locality-label">
+            <MapPin className="pointer-events-none absolute left-4 top-4 h-4 w-4 text-[#4f6080] md:left-3" aria-hidden="true" /><span id="directory-locality-label" className="sr-only">
               Unde?
             </span>
             <LocalityAutocomplete
+              ref={localityFieldRef}
+              guided
               value={locality}
-              onSelect={(value) => { setLocality(value); setSelectedId(null); }}
-              placeholder="Alege localitatea"
+              onSelect={chooseLocality}
+              placeholder="În ce localitate?"
               variant="compact"
               className="w-full"
             />
@@ -453,7 +402,7 @@ export default function Search() {
       ) : !hasCanonicalLocality ? (
         !service && !query.trim()
           ? <DirectoryMap providerType={providerType} filterSummary={filterSummary} />
-          : <SelectLocalityNotice />
+          : <SelectLocalityNotice onChoose={(value) => { rememberLocality(value); chooseLocality(value); }} onFocusField={() => localityFieldRef.current?.focus()} />
       ) : (loadError || (searchMode === RESULT_MODES.professionals.key && professionalError)) ? (
         <div role="alert" className="mt-6 rounded-2xl border border-border bg-card p-6">
           <p className="font-semibold">Nu am putut încărca rezultatele.</p>
@@ -535,16 +484,34 @@ function EmptyProfessionals({ locality }) {
   );
 }
 
-function SelectLocalityNotice() {
+// Serviciul e ales, localitatea lipseste: pasul urmator spus clar, cu orasele mari si
+// localitatile recente la un click distanta.
+function SelectLocalityNotice({ onChoose, onFocusField }) {
+  const [recent] = useState(() => readRecentLocalities().map(prettyLocality));
+  const recentCodes = new Set(recent.map((item) => item.siruta_code));
+  const picks = [...recent, ...MAJOR_CITIES.filter((city) => !recentCodes.has(city.siruta_code))].slice(0, 8);
   return (
-    <div className="mt-8 rounded-2xl border border-border bg-card p-6 text-center sm:p-10">
-      <p className="font-heading font-bold">
-        Alege localitatea în care vrei să cauți.
+    <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-card p-6 text-center sm:p-10">
+      <p className="font-heading text-lg font-bold">În ce localitate cauți?</p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+        Arătăm doar locațiile din localitatea aleasă, fără să extindem căutarea în alte orașe.
       </p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        VIASEE folosește localitatea oficială selectată și nu extinde automat
-        căutarea.
-      </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        {picks.map((city) => (
+          <button
+            key={city.siruta_code}
+            type="button"
+            onClick={() => onChoose(city)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#d7dce4] bg-card px-4 text-sm font-medium transition hover:border-[#4f6080] hover:bg-[#eff1f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f6080]"
+          >
+            <MapPin className="h-3.5 w-3.5 text-[#4f6080]" aria-hidden="true" />
+            {city.name}
+          </button>
+        ))}
+      </div>
+      <button type="button" onClick={onFocusField} className="mt-4 min-h-11 text-sm font-medium text-[#4f6080] underline underline-offset-4">
+        Altă localitate
+      </button>
     </div>
   );
 }
