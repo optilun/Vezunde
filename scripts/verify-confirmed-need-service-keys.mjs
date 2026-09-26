@@ -224,6 +224,16 @@ check('keratoconus with contact lenses is sent to a specialist', () => {
   assert.match(regular.where, /optic/);
 });
 
+check('a diabetic eye check keeps the fundus exam', () => {
+  const result = filterFor('am diabet si vreau sa-mi verific ochii', 'control_vedere');
+  for (const key of ['diabetic_retinopathy', 'fundus_exam']) {
+    assert.ok(result.serviceKeys.includes(key), `${key} lipseste: ${result.serviceKeys.join(', ')}`);
+  }
+  const glasses = filterFor('am diabet si vreau ochelari noi', 'ochelari_lentile');
+  assert.ok(glasses.textKeys.includes('diabetic_retinopathy'), 'textul trebuie sa aduca retinopatia diabetica');
+  assert.ok(!glasses.serviceKeys.includes('diabetic_retinopathy'), glasses.serviceKeys.join(', '));
+});
+
 check('corpus invariants', () => {
   for (const [text, intent] of CORPUS) {
     const result = filterFor(text, intent);
