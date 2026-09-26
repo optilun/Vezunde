@@ -9,7 +9,7 @@ import {
 } from "@/lib/serviceAutocomplete";
 
 // Caseta „Ce serviciu cauți?” de pe /cauta.
-// - goala: cele mai cautate nevoi, cu o explicatie scurta;
+// - goala: nevoi frecvente (alese de noi, nu masurate), cu o explicatie scurta;
 // - de la prima litera: servicii potrivite, cu partea scrisa evidentiata;
 // - sageti, Enter si Escape din tastatura (combobox ARIA).
 // Alegerea unei sugestii trimite aceeasi cheie de serviciu ca inainte; textul liber ramane posibil.
@@ -93,13 +93,13 @@ export default function ServiceSearchField({ query, service, onQueryChange, onCh
       >
         {showPopular && (
           <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" aria-hidden="true">
-            Căutate des
+            Nevoi frecvente
           </p>
         )}
         <div
           id={listId}
           role="listbox"
-          aria-label={showPopular ? "Servicii căutate des" : "Servicii potrivite"}
+          aria-label={showPopular ? "Nevoi frecvente" : "Servicii potrivite"}
           className="max-h-[min(22rem,50dvh)] overflow-y-auto py-1"
         >
           {listOpen && options.map((option, index) => (

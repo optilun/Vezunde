@@ -32,7 +32,10 @@ assert.equal(first("vad in ceata"), "optometry_consultation", "frazele pacientul
 assert.ok(autocomplete.rankServiceSuggestions("urcior").length > 0, "cuvintele din regulile de intentie sunt propuse");
 assert.ok(autocomplete.rankServiceSuggestions("control").some((item) => item.service_key === "optometry_consultation"));
 assert.deepEqual(autocomplete.rankServiceSuggestions("xyzq"), []);
-assert.ok(autocomplete.popularServiceSuggestions().length >= 6, "caseta goala arata nevoile cautate des");
+assert.ok(autocomplete.popularServiceSuggestions().length >= 6, "caseta goala arata nevoile frecvente");
+const serviceField = read("src/components/results/ServiceSearchField.jsx");
+assert.ok(!serviceField.includes("Căutate des"), "lista e aleasa de noi, nu masurata: nu o numim „Căutate des”");
+assert.match(serviceField, /Nevoi frecvente/);
 assert.deepEqual(
   autocomplete.highlightParts("Reparații ochelari", "ochel").filter((part) => part.match).map((part) => part.text),
   ["ochel"],

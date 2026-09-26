@@ -27,8 +27,9 @@ export const SERVICE_GROUP_UI = {
 };
 export const SERVICE_GROUP_ORDER = Object.keys(SERVICE_GROUP_UI);
 
-// Cele mai cautate nevoi, afisate cand caseta e goala. Eticheta ramane cea oficiala; `hint`
-// spune in cuvinte obisnuite despre ce e vorba.
+// Nevoile frecvente, afisate cand caseta e goala. Lista e aleasa de noi, nu vine din date de
+// cautare; de aceea titlul din pagina e „Nevoi frecvente”, nu „Căutate des”. Eticheta ramane cea
+// oficiala; `hint` spune in cuvinte obisnuite despre ce e vorba.
 export const POPULAR_SERVICES = [
   { service_key: "optometry_consultation", hint: "control de vedere, dioptrii" },
   { service_key: "ophthalmology_consultation", hint: "medic de ochi" },
