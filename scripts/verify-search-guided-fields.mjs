@@ -57,6 +57,28 @@ const commune = quickPicks.prettyLocality({ name: "Cleja", display_label: "Cleja
 assert.equal(commune.name, "Cleja");
 assert.equal(commune.county_name, "Bacău");
 
+// „Lângă mine”: localitatile apropiate, calculate in browser din harta nationala.
+const points = [
+  { city: "Cluj-Napoca", county: "Cluj", lat: 46.77, lng: 23.59 },
+  { city: "Cluj-Napoca", county: "Cluj", lat: 46.76, lng: 23.6 },
+  { city: "Floresti", county: "Cluj", lat: 46.745, lng: 23.49 },
+  { city: "Turda", county: "Cluj", lat: 46.57, lng: 23.78 },
+  { city: "Fara pozitie", county: "Cluj", lat: null, lng: null },
+];
+const nearby = quickPicks.nearbyLocalitiesFromPoints(points, { lat: 46.75, lng: 23.5 }, 3);
+assert.deepEqual(nearby.map((place) => place.city), ["Floresti", "Cluj-Napoca", "Turda"], "cea mai apropiata localitate cu locatii e prima");
+assert.equal(nearby[1].count, 2);
+assert.equal(quickPicks.localityCountsFromPoints(points).get(quickPicks.placeKey("Cluj-Napoca", "Cluj")), 2);
+assert.equal(quickPicks.formatDistance(0.4), "sub 1 km");
+assert.equal(quickPicks.formatDistance(7.46), "7,5 km");
+assert.equal(quickPicks.formatLocationCount(1), "1 locație");
+assert.equal(quickPicks.formatLocationCount(42), "42 de locații");
+assert.deepEqual(
+  quickPicks.pickLocalityForPlace([{ name: "Floresti", county_name: "Prahova" }, { name: "Floresti", county_name: "Cluj" }], "Floresti", "Cluj"),
+  { name: "Floresti", county_name: "Cluj" },
+  "localitatea din harta devine cea oficiala din acelasi judet",
+);
+
 const search = read("src/pages/Search.jsx");
 assert.match(search, /<ServiceSearchField/);
 assert.match(search, /<LocalityAutocomplete\s+ref=\{localityFieldRef\}\s+guided/);
@@ -67,9 +89,15 @@ const locality = read("src/components/geo/LocalityAutocomplete.jsx");
 assert.match(locality, /role="combobox"/);
 assert.match(locality, /ArrowDown/);
 assert.match(locality, /resultCache/);
+assert.match(locality, /Folosește locația mea/);
+assert.ok(!/invoke\([^)]*(latitude|longitude|coords)/.test(locality), "pozitia pacientului nu se trimite serverului");
+assert.match(search, /showCounts=\{!service && !query\.trim\(\)\}/, "numarul de locatii apare doar fara serviciu ales");
 
 const filters = read("src/components/results/SearchFilters.jsx");
 assert.match(filters, /patientServicesByGroup/);
 assert.ok(!filters.includes("max-h-56"), "fara derulare in derulare in panoul de filtre");
+assert.match(filters, /Cauți deja/, "filtrele spun ca doar restrang cautarea de sus");
+assert.match(filters, /browseDirectoryProviders", \{ locality_siruta_code: siruta, provider_types: types, filter_service_keys: services, cas_only: cas, limit: 1 \}/, "numarul din buton vine din aceeasi cerere ca lista");
+assert.match(search, /browseLocality=\{isDirectoryBrowseView \? locality : null\}/, "numarul se arata doar la rasfoire, nu la potrivire");
 
 console.log("Search guided fields: service suggestions, quick localities, diacritics, keyboard and grouped filters — OK");
