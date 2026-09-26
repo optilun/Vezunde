@@ -522,12 +522,84 @@
   transform-origin: 50% 50%;
 }
 
+/* Banda de categorii de pe prima pagină (CategoryStrip.jsx): plăcuțele intră pe rând, de sus în
+   jos, la fiecare schimbare de categorie; sub fila activă curge bara până la următoarea schimbare. */
+@keyframes cat-tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.cat-tile-in {
+  animation: cat-tile-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes cat-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.cat-progress {
+  transform-origin: left center;
+  animation-name: cat-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+/* Linia de scanare din plăcuța OCT (unități din viewBox-ul SVG). */
+@keyframes cat-scan {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(358px);
+  }
+}
+
+.cat-scan {
+  animation: cat-scan 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes cat-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(243, 223, 166, 0.45);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(243, 223, 166, 0);
+  }
+}
+
+.cat-pulse {
+  animation: cat-pulse 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .role-content-fade,
   .home-rise,
   .home-fade-up,
   .home-optician-head,
-  .home-optician-blink {
+  .home-optician-blink,
+  .cat-tile-in,
+  .cat-progress,
+  .cat-scan,
+  .cat-pulse {
     animation: none;
   }
 
