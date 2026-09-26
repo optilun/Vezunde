@@ -1,0 +1,98 @@
+// Alegerea rapida a localitatii pe /cauta: orasele mari, localitatile folosite recent si numele
+// scrise corect, cu diacritice.
+//
+// Registrul geografic pastreaza numele fara diacritice („Iasi”, „Bacau”). Aici le afisam corect
+// doar pentru judete si resedintele de judet; codul SIRUTA ramane cel oficial, deci cautarea
+// primeste exact aceeasi localitate.
+
+const COUNTY_NAMES = {
+  Arges: "Argeș", Bacau: "Bacău", "Bistrita-Nasaud": "Bistrița-Năsăud", Botosani: "Botoșani",
+  Brasov: "Brașov", Braila: "Brăila", Bucuresti: "București", Buzau: "Buzău",
+  "Caras-Severin": "Caraș-Severin", Calarasi: "Călărași", Constanta: "Constanța",
+  Dambovita: "Dâmbovița", Galati: "Galați", Ialomita: "Ialomița", Iasi: "Iași",
+  Maramures: "Maramureș", Mehedinti: "Mehedinți", Mures: "Mureș", Neamt: "Neamț",
+  Salaj: "Sălaj", Timis: "Timiș", Valcea: "Vâlcea",
+};
+
+const COUNTY_SEAT_NAMES = {
+  Bucuresti: "București", Constanta: "Constanța", Calarasi: "Călărași", Timisoara: "Timișoara",
+  Resita: "Reșița", "Piatra-Neamt": "Piatra Neamț", "Targu Jiu": "Târgu Jiu", Bacau: "Bacău",
+  Focsani: "Focșani", "Targu Mures": "Târgu Mureș", Pitesti: "Pitești", Galati: "Galați",
+  Zalau: "Zalău", Buzau: "Buzău", Braila: "Brăila", Brasov: "Brașov",
+  "Ramnicu Valcea": "Râmnicu Vâlcea", Targoviste: "Târgoviște", "Sfantu Gheorghe": "Sfântu Gheorghe",
+  Botosani: "Botoșani", Bistrita: "Bistrița", Ploiesti: "Ploiești", Iasi: "Iași",
+};
+
+const SEAT_TYPES = new Set(["municipality_county_seat", "bucharest_municipality"]);
+
+export function prettyCountyName(name) {
+  return COUNTY_NAMES[name] || name || "";
+}
+
+// Aceeasi localitate, cu numele afisat corect. Restul campurilor raman neschimbate.
+export function prettyLocality(locality) {
+  if (!locality) return locality;
+  const name = SEAT_TYPES.has(locality.locality_type) ? COUNTY_SEAT_NAMES[locality.name] || locality.name : locality.name;
+  const county = prettyCountyName(locality.county_name);
+  let displayLabel = locality.display_label || locality.name;
+  if (name !== locality.name && displayLabel.startsWith(locality.name)) displayLabel = name + displayLabel.slice(locality.name.length);
+  if (locality.county_name && county !== locality.county_name && displayLabel.endsWith(locality.county_name)) {
+    displayLabel = displayLabel.slice(0, -locality.county_name.length) + county;
+  }
+  return { ...locality, name, display_label: displayLabel, county_name: county };
+}
+
+// Rand de lista: numele (cu UAT-ul, cand acelasi nume exista de doua ori in judet) si judetul.
+export function localityRowParts(locality) {
+  const pretty = prettyLocality(locality);
+  let main = pretty.display_label || pretty.name;
+  if (pretty.county_name && main.endsWith(", " + pretty.county_name)) main = main.slice(0, -(pretty.county_name.length + 2));
+  const bucharest = pretty.locality_type === "bucharest_municipality" || pretty.locality_type === "bucharest_sector";
+  const secondary = bucharest ? (pretty.locality_type === "bucharest_sector" ? "București" : "municipiu") : pretty.county_name ? `jud. ${pretty.county_name}` : "";
+  return { main, secondary };
+}
+
+// Cele mai mari orase, in ordinea populatiei. Coduri SIRUTA oficiale, verificate in registrul
+// GeographicLocality (2026-09-26).
+export const MAJOR_CITIES = [
+  { siruta_code: "179132", name: "Bucuresti", county_name: "Bucuresti", county_code: "40", locality_type: "bucharest_municipality" },
+  { siruta_code: "54975", name: "Cluj-Napoca", county_name: "Cluj", county_code: "12", locality_type: "municipality_county_seat" },
+  { siruta_code: "95060", name: "Iasi", county_name: "Iasi", county_code: "22", locality_type: "municipality_county_seat" },
+  { siruta_code: "155243", name: "Timisoara", county_name: "Timis", county_code: "35", locality_type: "municipality_county_seat" },
+  { siruta_code: "60419", name: "Constanta", county_name: "Constanta", county_code: "13", locality_type: "municipality_county_seat" },
+  { siruta_code: "40198", name: "Brasov", county_name: "Brasov", county_code: "8", locality_type: "municipality_county_seat" },
+  { siruta_code: "69900", name: "Craiova", county_name: "Dolj", county_code: "16", locality_type: "municipality_county_seat" },
+  { siruta_code: "26564", name: "Oradea", county_name: "Bihor", county_code: "5", locality_type: "municipality_county_seat" },
+].map((city) => prettyLocality({ ...city, uat_code: city.siruta_code, display_label: city.name }));
+
+const RECENT_KEY = "viasee.recent.localities.v1";
+const RECENT_LIMIT = 3;
+
+// Doar pe dispozitivul pacientului: codul si numele localitatii, nimic despre ce a cautat.
+export function readRecentLocalities() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    return Array.isArray(saved) ? saved.filter((item) => item && item.siruta_code && item.name).slice(0, RECENT_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberLocality(locality) {
+  if (!locality?.siruta_code) return;
+  try {
+    const item = {
+      siruta_code: locality.siruta_code,
+      name: locality.name,
+      display_label: locality.display_label || locality.name,
+      county_name: locality.county_name || "",
+      county_code: locality.county_code || "",
+      uat_code: locality.uat_code,
+      locality_type: locality.locality_type,
+    };
+    const next = [item, ...readRecentLocalities().filter((saved) => saved.siruta_code !== item.siruta_code)].slice(0, RECENT_LIMIT);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    // Memorarea e optionala.
+  }
+}
