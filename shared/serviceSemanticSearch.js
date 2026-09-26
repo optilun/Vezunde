@@ -231,7 +231,7 @@ export const SEMANTIC_INTENT_RULES = [
   },
   {
     key: 'keratoconus_care',
-    phrases: ['keratoconus', 'keratocon', 'cornee subtiata'],
+    phrases: ['keratoconus', 'keratocon', 'cheratocon', 'cornee subtiata'],
     targets: [
       ['cornea_consultation', 1],
       ['corneal_topography', 0.92],
