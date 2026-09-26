@@ -337,6 +337,7 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
     intent: payload.intent,
     explicitKeys,
     textKeys: localResolution.service_keys,
+    text: searchText,
     getDefinition: getCanonicalServiceDefinition,
   }).serviceKeys;
   // 2026-09-03, audit flow intrebari/recomandari: pana acum, un text care nu se lega de
