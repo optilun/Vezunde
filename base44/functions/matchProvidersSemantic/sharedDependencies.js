@@ -1752,7 +1752,12 @@ var SEMANTIC_INTENT_RULES = [
       "uscaciune la ochi",
       "senzatie de uscaciune",
       "ochii obositi seara",
-      "ma inteapa ochii"
+      "ma inteapa ochii",
+      // 2026-09-26: forma articulata (ochiul uscat, ochii uscati) nu se potrivea prin subsir.
+      "ochiul uscat",
+      "ochii uscati",
+      "ochiul e uscat",
+      "ochii sunt uscati"
     ],
     targets: [
       ["dry_eye_management", 1],
@@ -1993,12 +1998,56 @@ var SEMANTIC_INTENT_RULES = [
       "bubita pe pleoapa",
       "ulcior la ochi",
       "salazion",
-      "orjelet"
+      "orjelet",
+      // 2026-09-26: urcior, forma cea mai folosita, lipsea.
+      "urcior",
+      "ulcior",
+      "chalazion"
     ],
     targets: [
       ["oculoplastics_consultation", 1],
       ["chalazion_treatment", 0.9],
       ["ophthalmology_consultation", 0.84]
+    ]
+  },
+  // 2026-09-26, decizia owner-ului: blefarita, pielita pe ochi (pterigion) si controlul cerut de
+  // un pacient cu diabet nu se legau de niciun serviciu potrivit. Tintele sunt servicii canonice
+  // existente; la nevoie confirmata, filtrul din confirmedNeedServiceKeys.js le pastreaza doar in
+  // familia nevoii.
+  {
+    key: "eyelid_margin_inflammation",
+    phrases: [
+      "pleoape rosii",
+      "pleoapele rosii",
+      "pleoapa rosie",
+      "cruste pe pleoape",
+      "cruste pe gene",
+      "cruste la gene",
+      "blefarita",
+      "pleoape inflamate",
+      "pleoapele inflamate"
+    ],
+    targets: [
+      ["ophthalmology_consultation", 1],
+      ["anterior_segment_exam", 0.86],
+      ["dry_eye_screening", 0.62]
+    ]
+  },
+  {
+    key: "conjunctival_growth",
+    phrases: ["pielita pe ochi", "pielita care creste pe ochi", "pielita pe albul ochiului", "pterigion", "pinguecula"],
+    targets: [
+      ["ophthalmology_consultation", 1],
+      ["anterior_segment_exam", 0.9]
+    ]
+  },
+  {
+    key: "diabetic_eye_check",
+    phrases: ["diabet"],
+    targets: [
+      ["diabetic_retinopathy", 1],
+      ["fundus_exam", 0.95],
+      ["ophthalmology_consultation", 0.8]
     ]
   },
   {
@@ -2020,7 +2069,7 @@ var SEMANTIC_INTENT_RULES = [
   },
   {
     key: "keratoconus_care",
-    phrases: ["keratoconus", "keratocon", "cornee subtiata"],
+    phrases: ["keratoconus", "keratocon", "cheratocon", "cornee subtiata"],
     targets: [
       ["cornea_consultation", 1],
       ["corneal_topography", 0.92],
@@ -2079,7 +2128,12 @@ var SEMANTIC_INTENT_RULES = [
       "ochii fug",
       "se uita cruce",
       "ochi cruce",
-      "ochiul deviaza"
+      "ochiul deviaza",
+      // 2026-09-26: formele uzuale crucis / sasiu lipseau.
+      "crucis",
+      "sasiu",
+      "sasie",
+      "ochi strambi"
     ],
     targets: [
       ["strabismus", 1],
