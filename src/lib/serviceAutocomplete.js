@@ -1,5 +1,5 @@
 import { CANONICAL_SERVICE_REGISTRY, SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
-import { getServiceSearchSuggestions, normalizeSemanticText } from "@/lib/serviceSemanticSearch";
+import { SEMANTIC_INTENT_RULES, getServiceSearchSuggestions, normalizeSemanticText } from "@/lib/serviceSemanticSearch";
 import { getServiceSearchKeywords } from "../../shared/canonicalServiceRegistryExtended.js";
 
 // Sugestiile din caseta „Ce serviciu cauți?” de pe /cauta.
@@ -178,8 +178,28 @@ export function rankServiceSuggestions(rawQuery, { limit = 8 } = {}) {
     scored.set(entry.service_key, { entry, score: match.score + bonus });
   }
 
-  // Frazele descriptive („văd în ceață”, „mă ustură ochii”) vin din regulile existente. Un singur
-  // cuvant e acoperit mai sus; acolo regulile ar aduce tot grupul („dioptrii” -> toata optometria).
+  // Cuvintele pacientului („urcior”, „conjunctivită”, „keratocon”) din regulile existente de
+  // intentie. Aceleasi tinte ca in cautare; aici doar le propunem.
+  for (const rule of SEMANTIC_INTENT_RULES) {
+    let best = 0;
+    for (const phrase of rule.phrases) {
+      const normalized = normalizeSemanticText(phrase);
+      if (normalized === query) best = Math.max(best, 1);
+      else if (query.length >= 4 && query.includes(normalized) && normalized.length >= 4) best = Math.max(best, 0.9);
+      else if (query.length >= 4 && normalized.startsWith(query)) best = Math.max(best, 0.85);
+    }
+    if (best < 0.85) continue;
+    for (const [serviceKey, weight] of rule.targets) {
+      const entry = serviceIndex().find((item) => item.service_key === serviceKey);
+      if (!entry) continue;
+      const score = Math.round(90 * best * Number(weight));
+      const current = scored.get(serviceKey);
+      if (!current || current.score < score) scored.set(serviceKey, { entry, score });
+    }
+  }
+
+  // Frazele mai lungi („văd în ceață de câteva zile”) trec prin potrivirea existenta pe fraze. Un
+  // singur cuvant e acoperit mai sus; acolo ar aduce tot grupul („dioptrii” -> toata optometria).
   if (queryTokens.length >= 2) {
     for (const suggestion of getServiceSearchSuggestions(rawQuery, { limit: 8 })) {
       if (Number(suggestion.score || 0) < 0.6) continue;
