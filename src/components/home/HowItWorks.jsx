@@ -8,9 +8,9 @@ import { softGlowBackground } from "@/lib/softGlow";
 const STEPS = [
   {
     number: "01",
-    title: "Spui ce cauți",
+    title: "Ne spui ce cauți",
     description:
-      "Descrii în cuvintele tale ce ai nevoie, fără să cunoști denumirea exactă a serviciului.",
+      "Explici cu propriile cuvinte de ce ai nevoie — nu trebuie să știi denumirea exactă a serviciului sau a specialistului.",
     kind: "input",
     accent: "#345bc8",
     tone: "bg-[#dce5e9]",
@@ -22,7 +22,7 @@ const STEPS = [
     number: "02",
     title: "Răspunzi la câteva întrebări",
     description:
-      "Alegi câteva detalii despre nevoie, pentru cine cauți și zona dorită.",
+      "Ne spui pentru cine cauți, ce fel de ajutor ai nevoie și în ce zonă. Durează mai puțin de un minut.",
     kind: "choices",
     accent: "#a97825",
     tone: "bg-[#eadcba]",
@@ -32,9 +32,9 @@ const STEPS = [
   },
   {
     number: "03",
-    title: "Vezi variante relevante",
+    title: "Vezi unde poți merge",
     description:
-      "Vezi locurile care corespund serviciului și zonei selectate.",
+      "Primești o listă de opțiuni potrivite din zona ta, pe care le poți compara înainte să alegi.",
     kind: "results",
     accent: "#735c80",
     tone: "bg-[#e8e0ea]",
@@ -47,21 +47,21 @@ const STEPS = [
 const RESULT_PRINCIPLES = [
   {
     number: "01",
-    title: "Potrivire cu căutarea ta",
+    title: "Rezultate potrivite",
     description:
-      "Rezultatele țin cont de serviciul selectat și de zona în care cauți.",
+      "Ține cont de ce ai căutat și de zona ta, ca să nu pierzi timpul cu rezultate care nu se potrivesc.",
   },
   {
     number: "02",
     title: "Detalii despre locație",
     description:
-      "Vezi serviciile, adresa, datele de contact și statutul profilului.",
+      "Vezi ce servicii oferă, adresa, datele de contact și dacă profilul a fost verificat.",
   },
   {
     number: "03",
-    title: "Alegi mai ușor unde să mergi",
+    title: "Decizia rămâne a ta",
     description:
-      "Compari informațiile disponibile și alegi varianta potrivită pentru tine.",
+      "Compari informațiile disponibile și alegi ce ți se potrivește, în ritmul tău.",
   },
 ];
 
@@ -143,7 +143,7 @@ export default function HowItWorks() {
 
         <div className="lg:pb-1">
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Spui ce cauți în cuvintele tale. Prin câteva întrebări scurte, VIASEE organizează informațiile necesare și îți arată variante relevante. VIASEE oferă orientare, nu diagnostic.
+            Ne spui, cu cuvintele tale, ce cauți. Îți punem câteva întrebări simple ca să înțelegem exact de ce ai nevoie, apoi îți arătăm cabinetele, clinicile și opticile din zona ta care se potrivesc. Este un ghid de orientare — nu un diagnostic și nu o consultație medicală.
           </p>
           <Link
             to="/cerere"
@@ -225,7 +225,7 @@ export default function HowItWorks() {
               Ce vezi în rezultate
             </p>
             <h3 className="mt-3 max-w-sm font-heading text-2xl font-extrabold leading-tight tracking-[-0.035em] sm:text-3xl">
-              Informații care te ajută să alegi unde să mergi.
+              Informații clare, ca să alegi cu încredere.
             </h3>
           </div>
 
