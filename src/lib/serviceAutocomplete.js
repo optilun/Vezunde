@@ -71,14 +71,11 @@ function serviceIndex() {
     .map(([key, definition]) => {
       const label = definition.label || key;
       const labelN = normalizeSemanticText(label);
-      // Cuvintele-cheie pastreaza si forma lor scrisa (cu diacritice), ca sa le putem arata.
-      const keywordText = new Map();
-      for (const raw of getServiceSearchKeywords(key) || []) {
-        const normalized = normalizeSemanticText(raw);
-        if (!normalized || normalized === labelN || raw.includes("_")) continue;
-        if (!keywordText.has(normalized) || /[ăâîșțşţ]/i.test(raw)) keywordText.set(normalized, String(raw).toLocaleLowerCase("ro"));
-      }
-      const keywords = [...keywordText.keys()];
+      // Cheile tehnice (control_vedere_adulti) nu sunt cuvinte pe care le scrie un pacient.
+      const keywords = [...new Set((getServiceSearchKeywords(key) || [])
+        .filter((raw) => !String(raw).includes("_"))
+        .map(normalizeSemanticText)
+        .filter((keyword) => keyword && keyword !== labelN))];
       return {
         service_key: key,
         label,
@@ -86,7 +83,6 @@ function serviceIndex() {
         labelN,
         labelWords: labelN.split(" "),
         keywords: keywords.filter((keyword) => !groupLabels.has(keyword)),
-        keywordText,
         groupKeywords: keywords.filter((keyword) => groupLabels.has(keyword)),
       };
     });
