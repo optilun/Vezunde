@@ -1,10 +1,18 @@
-import React, { forwardRef, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Clock3, MapPin, X } from "lucide-react";
+import React, { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { Clock3, Loader2, LocateFixed, MapPin, Navigation, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { loadNationalDirectoryMap } from "@/lib/nationalDirectoryMap";
 import {
   MAJOR_CITIES,
+  formatDistance,
+  formatLocationCount,
+  localityCountsFromPoints,
   localityRowParts,
+  nearbyLocalitiesFromPoints,
+  pickLocalityForPlace,
+  placeKey,
   prettyLocality,
+  prettyPlaceName,
   readRecentLocalities,
   rememberLocality,
 } from "@/lib/localityQuickPicks";
@@ -17,10 +25,28 @@ function cacheResults(key, results) {
   if (resultCache.size >= CACHE_LIMIT) resultCache.delete(resultCache.keys().next().value);
   resultCache.set(key, results);
 }
+async function searchLocalities(query) {
+  const key = query.trim().toLocaleLowerCase("ro");
+  if (resultCache.has(key)) return resultCache.get(key);
+  const res = await base44.functions.invoke("searchGeographicLocalities", { query: query.trim() });
+  if (res.data?.error) throw new Error(res.data.error);
+  const rows = res.data?.results || [];
+  cacheResults(key, rows);
+  return rows;
+}
+
+const GEO_MESSAGES = {
+  denied: "Accesul la locație nu este permis. Alege localitatea din listă.",
+  unavailable: "Poziția nu este disponibilă acum. Alege localitatea din listă.",
+  imprecise: "Poziția este prea aproximativă. Alege localitatea din listă.",
+  empty: "Nu am găsit locații în apropiere. Alege localitatea din listă.",
+};
 
 // Canonical locality selector backed by searchGeographicLocalities (Module 3F.2).
-// `guided` (pe /cauta): la deschidere arata localitatile recente si orasele mari, iar numele apar
-// cu diacritice. Celelalte formulare (onboarding, admin) raman ca inainte.
+// `guided` (pe /cauta): la deschidere arata „Folosește locația mea”, localitatile recente si
+// orasele mari, cu numele scrise cu diacritice. `showCounts` adauga numarul de locatii pe oras
+// (doar cand nu e ales un serviciu: numarul e al tuturor locatiilor, nu al celor potrivite).
+// Celelalte formulare (onboarding, admin) raman ca inainte.
 const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   value,
   onSelect,
@@ -28,6 +54,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   className = "",
   variant = "default",
   guided = false,
+  showCounts = false,
   inputId,
 }, ref) {
   const [query, setQuery] = useState("");
@@ -38,11 +65,16 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [recent, setRecent] = useState(() => (guided ? readRecentLocalities() : []));
+  const [mapPoints, setMapPoints] = useState(null);
+  const [geo, setGeo] = useState({ status: "idle", nearby: [] });
+  const [resolving, setResolving] = useState("");
   const inputRef = useRef(null);
+  const alive = useRef(true);
   const listId = useId();
   const optionId = (index) => `${listId}-option-${index}`;
 
   useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   useEffect(() => {
     const q = query.trim();
@@ -52,32 +84,61 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     if (resultCache.has(key)) { setResults(resultCache.get(key)); setStatus("ready"); return undefined; }
     setResults([]);
     setStatus("loading");
-
     const timer = window.setTimeout(() => {
-      base44.functions
-        .invoke("searchGeographicLocalities", { query: q })
-        .then((res) => {
-          if (res.data?.error) throw new Error(res.data.error);
-          const rows = res.data?.results || [];
-          cacheResults(key, rows);
-          if (reqId.current === id) { setResults(rows); setStatus("ready"); }
-        })
-        .catch(() => {
-          if (reqId.current === id) { setResults([]); setStatus("error"); }
-        });
+      searchLocalities(q)
+        .then((rows) => { if (reqId.current === id) { setResults(rows); setStatus("ready"); } })
+        .catch(() => { if (reqId.current === id) { setResults([]); setStatus("error"); } });
     }, 200);
     return () => { window.clearTimeout(timer); reqId.current += 1; };
   }, [query, retry]);
 
+  // Harta nationala e aceeasi ca pe /cauta (tinuta cateva minute in pagina), deci de obicei e deja
+  // incarcata. O cerem doar cand e nevoie: numere pe orase sau „Folosește locația mea”.
+  const ensureMapPoints = useCallback(async () => {
+    const data = await loadNationalDirectoryMap();
+    const points = Array.isArray(data?.results) ? data.results : [];
+    if (alive.current) setMapPoints(points);
+    return points;
+  }, []);
+  useEffect(() => {
+    if (guided && showCounts && open && mapPoints === null) ensureMapPoints().catch(() => {});
+  }, [guided, showCounts, open, mapPoints, ensureMapPoints]);
+  const counts = useMemo(() => (mapPoints ? localityCountsFromPoints(mapPoints) : null), [mapPoints]);
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) { setGeo({ status: "unavailable", nearby: [] }); return; }
+    setGeo({ status: "loading", nearby: [] });
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      if (!alive.current) return;
+      if (position.coords.accuracy > 5000) { setGeo({ status: "imprecise", nearby: [] }); return; }
+      try {
+        const points = await ensureMapPoints();
+        const nearby = nearbyLocalitiesFromPoints(points, { lat: position.coords.latitude, lng: position.coords.longitude }, 3);
+        if (!alive.current) return;
+        setGeo({ status: nearby.length ? "ready" : "empty", nearby });
+        setOpen(true);
+        inputRef.current?.focus();
+      } catch {
+        if (alive.current) setGeo({ status: "unavailable", nearby: [] });
+      }
+    }, (error) => {
+      if (alive.current) setGeo({ status: error.code === 1 ? "denied" : "unavailable", nearby: [] });
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  };
+
   const typing = query.trim().length >= 2;
   const quickPicks = useMemo(() => {
     if (!guided) return [];
+    const nearbyKeys = new Set(geo.nearby.map((place) => place.key));
     const recentCodes = new Set(recent.map((item) => item.siruta_code));
+    const notNearby = (locality) => !nearbyKeys.has(placeKey(locality.name, locality.county_name));
     return [
-      ...recent.map((item) => ({ locality: prettyLocality(item), section: "recent" })),
-      ...MAJOR_CITIES.filter((city) => !recentCodes.has(city.siruta_code)).map((locality) => ({ locality, section: "city" })),
+      ...(geo.status === "ready" ? [] : [{ section: "geo" }]),
+      ...geo.nearby.map((place) => ({ section: "nearby", place })),
+      ...recent.map(prettyLocality).filter(notNearby).map((locality) => ({ locality, section: "recent" })),
+      ...MAJOR_CITIES.filter((city) => !recentCodes.has(city.siruta_code)).filter(notNearby).map((locality) => ({ locality, section: "city" })),
     ];
-  }, [guided, recent]);
+  }, [guided, recent, geo]);
   const options = typing ? results.map((locality) => ({ locality, section: "result" })) : quickPicks;
 
   useEffect(() => { setActive(options.length > 0 ? 0 : -1); }, [options.length, typing, results]);
@@ -89,6 +150,28 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     setResults([]);
     setOpen(false);
     onSelect(chosen);
+  };
+
+  // Localitatea din harta devine localitatea oficiala (cod SIRUTA) prin aceeasi cautare ca atunci
+  // cand scrii numele. Daca nu o gasim sigur, lasam numele scris ca pacientul sa aleaga.
+  const chooseNearby = async (place) => {
+    setResolving(place.key);
+    try {
+      const locality = pickLocalityForPlace(await searchLocalities(place.city), place.city, place.county);
+      if (!alive.current) return;
+      if (locality) choose(locality);
+      else { setQuery(place.city); setOpen(true); inputRef.current?.focus(); }
+    } catch {
+      if (alive.current) { setQuery(place.city); setOpen(true); }
+    } finally {
+      if (alive.current) setResolving("");
+    }
+  };
+
+  const activate = (option) => {
+    if (option.section === "geo") requestLocation();
+    else if (option.section === "nearby") chooseNearby(option.place);
+    else choose(option.locality);
   };
 
   if (value) {
@@ -125,27 +208,54 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     }
     if (event.key === "Enter" && listOpen && active >= 0 && options[active]) {
       event.preventDefault();
-      choose(options[active].locality);
+      activate(options[active]);
     }
   };
 
-  const renderOption = ({ locality, section }, index) => {
+  const rowClass = (index) => `flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${index === active ? "bg-secondary" : ""}`;
+  const optionProps = (option, index) => ({
+    id: optionId(index),
+    role: "option",
+    "aria-selected": index === active,
+    onMouseDown: (event) => event.preventDefault(),
+    onMouseEnter: () => setActive(index),
+    onClick: () => activate(option),
+    className: rowClass(index),
+  });
+
+  const renderOption = (option, index) => {
+    if (option.section === "geo") {
+      const loading = geo.status === "loading";
+      return (
+        <div key="geo" {...optionProps(option, index)}>
+          {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4f6080]" aria-hidden="true" /> : <LocateFixed className="h-4 w-4 shrink-0 text-[#4f6080]" aria-hidden="true" />}
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold text-[#4f6080]">{loading ? "Se caută poziția..." : "Folosește locația mea"}</span>
+            <span className="block text-xs text-muted-foreground">Găsim localitățile apropiate. Poziția nu pleacă de pe dispozitivul tău.</span>
+          </span>
+        </div>
+      );
+    }
+    if (option.section === "nearby") {
+      const { place } = option;
+      const details = [formatDistance(place.distanceKm), showCounts ? formatLocationCount(place.count) : ""].filter(Boolean).join(" · ");
+      return (
+        <div key={`nearby-${place.key}`} {...optionProps(option, index)}>
+          {resolving === place.key ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4f6080]" aria-hidden="true" /> : <Navigation className="h-4 w-4 shrink-0 text-[#4f6080]" aria-hidden="true" />}
+          <span className="min-w-0 flex-1 truncate font-medium">{prettyPlaceName(place.city)}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">{details}</span>
+        </div>
+      );
+    }
+    const { locality, section } = option;
     const parts = guided ? localityRowParts(locality) : { main: locality.display_label, secondary: locality.county_name && !locality.display_label.includes(locality.county_name) ? locality.county_name : "" };
+    const count = guided && showCounts && counts && section !== "result" ? counts.get(placeKey(locality.name, locality.county_name)) : 0;
     const Icon = section === "recent" ? Clock3 : MapPin;
     return (
-      <div
-        key={`${section}-${locality.siruta_code}`}
-        id={optionId(index)}
-        role="option"
-        aria-selected={index === active}
-        onMouseDown={(event) => event.preventDefault()}
-        onMouseEnter={() => setActive(index)}
-        onClick={() => choose(locality)}
-        className={`flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${index === active ? "bg-secondary" : ""}`}
-      >
+      <div key={`${section}-${locality.siruta_code}`} {...optionProps(option, index)}>
         {guided && <Icon className="h-4 w-4 shrink-0 text-[#4f6080]" aria-hidden="true" />}
         <span className="min-w-0 flex-1 truncate font-medium">{parts.main}</span>
-        {parts.secondary && <span className="shrink-0 text-xs text-muted-foreground">{parts.secondary}</span>}
+        {(count || parts.secondary) && <span className="shrink-0 text-xs text-muted-foreground">{count ? formatLocationCount(count) : parts.secondary}</span>}
       </div>
     );
   };
@@ -153,6 +263,13 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   const sectionTitle = (text) => (
     <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" aria-hidden="true">{text}</p>
   );
+  const renderSection = (section, title) => {
+    if (!options.some((option) => option.section === section)) return null;
+    return <>
+      {title && sectionTitle(title)}
+      {options.map((option, index) => (option.section === section ? renderOption(option, index) : null))}
+    </>;
+  };
 
   return (
     <div className={`relative ${className}`} onFocus={() => setOpen(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
@@ -179,19 +296,24 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
         {status === "error" && <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-2 min-h-11 rounded-full border border-border px-4">Reîncearcă</button>}
       </div>}
       <div
-        id={listId}
-        role="listbox"
-        aria-label={typing ? "Localități găsite" : "Localități sugerate"}
         hidden={!listOpen}
-        className={`absolute z-40 mt-1 max-h-[min(22rem,55dvh)] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg ${guided ? "left-0 w-[min(22rem,calc(100vw-2rem))] md:left-auto md:right-0" : "w-full"}`}
+        className={`absolute z-40 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg ${guided ? "left-0 w-[min(22rem,calc(100vw-2rem))] md:left-auto md:right-0" : "w-full"}`}
       >
-        {listOpen && (typing ? options.map(renderOption) : <>
-          {options.some((option) => option.section === "recent") && sectionTitle("Căutate recent")}
-          {options.map((option, index) => option.section === "recent" ? renderOption(option, index) : null)}
-          {sectionTitle("Orașe mari")}
-          {options.map((option, index) => option.section === "city" ? renderOption(option, index) : null)}
-          <p className="px-4 pb-2 pt-1 text-xs text-muted-foreground">Sau scrie numele oricărei localități.</p>
-        </>)}
+        <div
+          id={listId}
+          role="listbox"
+          aria-label={typing ? "Localități găsite" : "Localități sugerate"}
+          className="max-h-[min(24rem,58dvh)] overflow-y-auto py-1"
+        >
+          {listOpen && (typing ? options.map(renderOption) : <>
+            {renderSection("geo")}
+            {GEO_MESSAGES[geo.status] && <p role="status" className="px-4 pb-2 text-xs leading-relaxed text-[#8a4b2a]">{GEO_MESSAGES[geo.status]}</p>}
+            {renderSection("nearby", "Lângă tine")}
+            {renderSection("recent", "Căutate recent")}
+            {renderSection("city", "Orașe mari")}
+            <p className="px-4 pb-2 pt-1 text-xs text-muted-foreground">Sau scrie numele oricărei localități.</p>
+          </>)}
+        </div>
       </div>
     </div>
   );
