@@ -10,6 +10,7 @@ import {
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import { readVisitedProfiles } from "@/lib/visitedProfiles";
 import { loadVectorCanvas } from "./vectorCanvasLoader";
 const LegacyResultsMap = lazy(() => import("./LegacyResultsMap"));
 
@@ -42,6 +43,19 @@ function shortTypeLabel(providerType) {
   return SHORT_TYPE_LABELS[providerType] || "Locație";
 }
 
+// Pe ecrane late cardul locatiei plutește deasupra pinului; pe telefon sta jos, pe latimea hartii.
+const WIDE_MAP_QUERY = "(min-width: 768px)";
+function useWideMap() {
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia(WIDE_MAP_QUERY).matches);
+  useEffect(() => {
+    const media = window.matchMedia(WIDE_MAP_QUERY);
+    const update = () => setWide(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
 
 export default function ResultsMap({
   results,
@@ -54,8 +68,22 @@ export default function ResultsMap({
   className = "",
   storageKey = null,
   focusArea = null,
+  // 2026-09-27: numarul fiecarei locatii in lista (id -> 1, 2, 3...), cand lista are o ordine a
+  // potrivirii. Pinul arata acelasi numar ca, cardul. Harta nu schimba ordinea.
+  rankById = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
+  // Starea „vazut” se citeste o data la deschiderea hartii (revenirea de pe un profil o redeschide).
+  const [visited] = useState(readVisitedProfiles);
+  const wideMap = useWideMap();
+  const mapPoints = useMemo(() => {
+    if (!rankById && visited.size === 0) return model.points;
+    return model.points.map((point) => {
+      const rank = rankById?.get(point.id) || null;
+      const seen = visited.has(point.id);
+      return rank || seen ? { ...point, map_rank: rank, visited: seen } : point;
+    });
+  }, [model.points, rankById, visited]);
   const fitModel = useMemo(() => fitResults === null ? model : buildResultsMapModel(fitResults), [fitResults, model]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
   const [openClusterKey, setOpenClusterKey] = useState(null);
@@ -64,8 +92,8 @@ export default function ResultsMap({
   const notice = unmappedNotice(model.unmappedCount);
 
   const clusters = useMemo(
-    () => clusterPoints(model.points, viewport.zoom),
-    [model.points, viewport.zoom],
+    () => clusterPoints(mapPoints, viewport.zoom),
+    [mapPoints, viewport.zoom],
   );
 
   const openCluster = clusters.find((cluster) => cluster.key === openClusterKey && cluster.count > 1);
@@ -99,7 +127,7 @@ export default function ResultsMap({
 
   if (vectorFailed) return <div className={`relative isolate ${className}`}>
     <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-sm">Se încarcă harta 2D...</div>}>
-      <LegacyResultsMap {...{results, fitResults, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea}} className="h-full w-full" />
+      <LegacyResultsMap {...{results, fitResults, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea, rankById}} className="h-full w-full" />
     </Suspense>
     <details className="absolute left-3 top-24 z-[500] max-w-60 rounded-2xl border border-border bg-card text-xs shadow-sm">
       <summary className="flex min-h-11 cursor-pointer items-center px-3 font-semibold">Hartă 2D · De ce?</summary>
@@ -108,11 +136,15 @@ export default function ResultsMap({
   </div>;
 
   // Keep the basemap navigable even when no result has public coordinates.
+  const closeCard = () => { if (onSelect) onSelect(null); };
+  const floatingCard = wideMap && selectedPoint
+    ? <MapLocationCard variant="floating" point={selectedPoint} onClose={closeCard} />
+    : null;
 
   return (
     <div className={`relative isolate ${className}`}>
       <Suspense fallback={VECTOR_LOADING}>
-        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} />
+        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} />
       </Suspense>
 
       {openCluster && !selectedPoint && (
@@ -138,8 +170,8 @@ export default function ResultsMap({
         </section>
       )}
 
-      {selectedPoint && (
-        <MapLocationCard point={selectedPoint} onClose={() => { if (onSelect) onSelect(null); }} />
+      {selectedPoint && !floatingCard && (
+        <MapLocationCard point={selectedPoint} onClose={closeCard} />
       )}
 
       {/* Ce nu se vede pe harta se scrie pe ea. O harta care pare completa cand nu este face mai
