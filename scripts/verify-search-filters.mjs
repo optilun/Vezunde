@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { loadDirectoryDetailOverlay, withDirectoryDetail } from '../base44/shared/locationScopedEntityQuery.js';
 
 const source = fs.readFileSync('base44/functions/browseDirectoryProviders/entry.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'');
 const locations = Array.from({length:55}, (_,i) => ({id:String(i),name:String(i).padStart(2,'0'),public_visibility_status:'approved',provider_profile_type:'ophthalmology_clinic',provider_type:'clinica_oftalmologica',expose_full_details:true}));
@@ -49,5 +50,16 @@ assert.equal(allMap.map_results.some(row=>'phone' in row),false, 'Lightweight ma
 const filteredMap = await run({include_map_results:true,filter_service_keys:['oct','consult'],cas_only:true,limit:1});
 assert.equal(filteredMap.results.length,1);
 assert.deepEqual(filteredMap.map_results.map(row=>row.id),['52','54']);
+assert.equal(filteredMap.filter_context.unfiltered_total,56, 'The empty state can distinguish unknown services from an empty locality');
+assert.equal(filteredMap.filter_context.locations_with_published_services,3, 'Only publicly eligible services count as evidence');
 assert.equal((await run({limit:1})).map_results,undefined, 'Existing callers keep their original response shape');
+locations[0].location_type_code = 'hospital_department';
+assert.equal((await run({limit:1})).results[0].location_type_code,'hospital_department', 'The card receives the precise location type');
+rows.splice(0);
+const unknownServices = await run({filter_service_keys:['oct']});
+assert.equal(unknownServices.pagination.total,0);
+assert.equal(unknownServices.filter_context.unfiltered_total,56);
+assert.equal(unknownServices.filter_context.locations_with_published_services,0, 'Zero results do not imply that local businesses do not offer the service');
+const typeOverlay = await loadDirectoryDetailOverlay({ entities: { ProviderLocationDirectoryState: { filter: async () => [{ location_id: 'loc-1', location_type_code: 'hospital_outpatient_unit', state_status: 'active' }] } } }, ['loc-1']);
+assert.equal(withDirectoryDetail({ id: 'loc-1' }, typeOverlay).location_type_code,'hospital_outpatient_unit');
 console.log('Search filters: CAS tied to selected service; hidden/ineligible/migration rows excluded; OR selections; pagination after filtering; invalid keys rejected — OK');
