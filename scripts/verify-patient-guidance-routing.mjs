@@ -310,7 +310,74 @@ scenario("unknown investigation reference remains unresolved until canonical ser
   });
   assert.equal(profile.care_path, "unresolved");
   assert.equal(profile.sufficient_for_search, false);
-  assert.equal(profile.next_question_key, null);
+  // 2026-09-27 (owner, "da"): traseul ramane nerezolvat, dar dupa ce faptele de cautare sunt
+  // raspunse se cere si termenul. Inainte chestionarul se oprea aici (next_question_key null).
+  assert.equal(profile.next_question_key, "timing");
+  assert.equal(profile.next_question_reason, "provider_request_completeness");
+  const withTiming = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "investigatii",
+    confirmedFacts: {
+      investigation_type: "not_sure",
+      investigation_reference_text: "investigatia notata pe bilet",
+      locality: "Brasov",
+      timing: "nu_e_urgent",
+    },
+    safetyState: "clear",
+  });
+  assert.equal(withTiming.care_path, "unresolved");
+  assert.equal(withTiming.sufficient_for_search, false);
+  assert.equal(withTiming.next_question_key, null);
+  assert.equal(withTiming.next_question_reason, "intent_or_service_resolution_required");
+});
+
+// 2026-09-27, test live dupa publicare: la control + "Nu sunt sigur" (si la nevoia "Nu sunt
+// sigur"), chestionarul se oprea dupa localitate si "Cat de repede ai nevoie?" nu aparea.
+scenario("unresolved path with all search facts still asks timing", () => {
+  const control = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_vedere",
+    confirmedFacts: { routine_vs_symptom: "not_sure", for_whom: "adult", locality: "Sibiu" },
+    safetyState: "clear",
+  });
+  assert.equal(control.care_path, "unresolved");
+  assert.equal(control.sufficient_for_search, false, "traseul nerezolvat nu devine suficient");
+  assert.equal(control.next_question_key, "timing");
+  const unknown = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "unknown",
+    confirmedFacts: { routine_vs_symptom: "not_sure", locality: "Sibiu" },
+    safetyState: "clear",
+  });
+  assert.equal(unknown.care_path, "unresolved");
+  assert.equal(unknown.next_question_key, "timing");
+  const missingLocality = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_vedere",
+    confirmedFacts: { routine_vs_symptom: "not_sure", for_whom: "adult" },
+    safetyState: "clear",
+  });
+  assert.equal(missingLocality.next_question_key, "locality", "faptele de cautare raman primele");
+  const routine = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_vedere",
+    confirmedFacts: { routine_vs_symptom: "routine", for_whom: "adult", locality: "Sibiu" },
+    safetyState: "clear",
+  });
+  assert.equal(routine.sufficient_for_search, true);
+  assert.equal(routine.next_question_key, "timing", "traseul rezolvat ramane neschimbat");
+});
+
+scenario("unapproved clinical rules and safety blocking are not bypassed by the timing question", () => {
+  const pediatric = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_copil",
+    confirmedFacts: { child_age_group: "7_12", routine_vs_symptom: "routine", locality: "Sibiu" },
+    safetyState: "clear",
+  });
+  assert.ok(pediatric.blocking_validation_rule_keys.includes("pediatric_age_to_care_path"));
+  assert.equal(pediatric.next_question_key, null);
+  assert.equal(pediatric.next_question_reason, "clinical_validation_required");
+  const blocked = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_vedere",
+    confirmedFacts: { routine_vs_symptom: "not_sure", for_whom: "adult", locality: "Sibiu" },
+    safetyState: "blocking",
+  });
+  assert.equal(blocked.next_question_key, null, "la blocaj de siguranta nu se mai pune nicio intrebare");
 });
 
 scenario("explicitly confirmed consultation can resolve unknown investigation", () => {
