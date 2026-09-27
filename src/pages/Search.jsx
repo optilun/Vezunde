@@ -445,6 +445,7 @@ export default function Search() {
               storageKey={searchMapKey}
               integratedMapAction={isDirectoryBrowseView}
               listLayout={isDirectoryBrowseView ? "grid" : "cards"}
+              numbered={!isDirectoryBrowseView}
               renderCard={(location, onShowMap) => isDirectoryBrowseView
                 ? <DirectoryResultCard location={location} onShowMap={onShowMap} />
                 : <ProviderCard location={location} />}
