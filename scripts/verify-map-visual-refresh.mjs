@@ -233,7 +233,8 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   // Rezultate chiar raspandite (doua orase, jumatate-jumatate): se incadreaza toate.
   const cluj = bucharest.map((point, index) => ({ id: `c${index}`, lat: point.lat + 2.34, lng: point.lng - 2.5 }));
   assert.equal(framingForPoints([...bucharest.slice(0, 10), ...cluj.slice(0, 10)]).excluded.length, 0, 'fara taieri cand rezultatele sunt raspandite');
-  assert.equal(framingForPoints([...bucharest, ...cluj.slice(0, 7)]).excluded.length, 0, 'peste 20% departe: se incadreaza toate');
+  assert.equal(framingForPoints([...bucharest, ...cluj.slice(0, 10)]).excluded.length, 0, 'peste 20% departe (10 din 40): se incadreaza toate');
+  assert.equal(framingForPoints([...bucharest, ...cluj.slice(0, 7)]).excluded.length, 7, 'pana la 20% (7 din 37) raman in afara');
   // In cartier, 20 km minim: locatiile de la marginea orasului raman.
   assert.equal(framingForPoints([...bucharest, { id: 'edge', lat: 44.43, lng: 26.3 }]).excluded.length, 0, 'marginea orasului (16 km) ramane');
   assert.equal(framingForPoints([]).points.length, 0);
