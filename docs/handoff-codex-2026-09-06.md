@@ -259,3 +259,9 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Test nou `verify-patient-intake-info-hints`. `verify-all`: 157 OK / 1 (verify-map-and-profile-loading, zona profilului, in lucru la celalalt agent). Detalii: audit, sectiunea 16.
 - A doua trecere (owner: "si mai putin"): toate variantele si textele din chestionar scurtate (siguranta, urgenta, anamneza, recomandari, alegerea nevoii); catalogul aprobat si copia din `base44/shared/` actualizate identic, cheile neschimbate.
 - Acelasi card (`ChoiceCard`, plus varianta `compact`) la toate variantele: verificarea de siguranta, localitati, anamneza, confirmarea nevoii. `verify-all` 158 OK / 0.
+
+### 2026-09-27 — anamneza la toate nevoile, date de contact la fiecare cautare
+
+- Anamneza nu lipsea din eroare: regula din 24.09 o dadea doar consulturilor. Decizia owner-ului: la toate nevoile, mai putin reparatiile (`patientNeedsAnamnesis`).
+- Pas nou "Date de contact" dupa anamneza, inainte de verificare (`PatientSearchContact.jsx`): nume + email sau telefon obligatorii, varsta optionala, acord nebifat implicit, "Sari peste" discret (decizii owner). Salvare prin `createPatientRequest` cu `mode: save_search_contact` (tot 49 de functii fizice), entitate noua `PatientSearchContact` doar pentru admin. Datele nu ajung la AI, in potrivire sau la locatii.
+- De facut: stergerea automata dupa 90 de zile si textul din politica de confidentialitate (propus in audit, sectiunea 17). `verify-all` 161 OK / 0.

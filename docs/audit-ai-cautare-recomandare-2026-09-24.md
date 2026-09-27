@@ -636,3 +636,63 @@ explicatiile in spatele unui buton "i". Componenta noua `src/components/intake2/
   anamneza (bifat cand e ales, doua coloane pentru Da/Nu) si confirmarea nevoii folosesc acum
   `ChoiceCard`, cu o varianta `compact` pentru listele lungi. Butoanele de actiune (Continua, Sari
   peste, Cauta rezultate) si ecranul de urgenta raman cum erau. `verify-all`: 158 trec, 0 esecuri.
+
+## 17. Anamneza la toate nevoile si datele de contact la fiecare cautare (2026-09-27)
+
+Cererea owner-ului: "anamneza nu mai apare, la unele variante flowul este incomplet; la fiecare
+cautare sa ceara date: email, nr de telefon, nume, varsta. Chiar daca nu continua, macar sa ii
+luam datele."
+
+### Cauza pentru anamneza
+
+Nu era o eroare. Regula din 2026-09-24 dadea anamneza doar consulturilor (control, problema
+recenta, trimitere, copil), ochelarilor cu "am nevoie si de un control" si primei adaptari de
+lentile. Cine alegea ochelari cu reteta, lentile purtate deja, "Nu sunt sigur" sau o reparatie nu o
+vedea deloc. Verificat live: la "Vreau un control" anamneza apare.
+
+### Deciziile owner-ului (2026-09-27)
+
+- Anamneza: la toate nevoile, mai putin la reparatii. La o rama rupta intrebarile despre boli nu
+  au rost, iar datele de sanatate se cer doar cand servesc cererii.
+- Datele de contact: la fiecare cautare, inainte de rezultate, cu "Sari peste" discret. Un acord
+  cerut ca pret pentru rezultate nu ar fi dat liber (GDPR art. 7 alin. 4).
+- Obligatorii: numele si emailul sau telefonul; varsta optionala.
+
+### Ce s-a schimbat
+
+- `src/lib/patientAnamnesis.js`: `patientNeedsAnamnesis` = orice nevoie, mai putin
+  `reparatii_ochelari`. Ecranul spune "pentru consult" la consulturi si "pentru specialist" in rest
+  (`patientAnamnesisIsForConsult`).
+- Pas nou "Date de contact" (`src/components/intake2/PatientSearchContact.jsx`), dupa anamneza si
+  inainte de verificarea cererii: nume, telefon, email, varsta (optional; a persoanei pentru care
+  cauta, cand e altcineva; nu se cere la copii, varsta lor e deja in chestionar). Sub 16 ani, cine
+  cauta pentru sine e rugat sa completeze un parinte. Acord nebifat implicit, cu link la politica
+  de confidentialitate; explicatiile sunt in butonul "i".
+- Salvare doar la "Continua", cu acordul bifat; nimic nu pleaca in timp ce pacientul scrie, iar
+  "Sari peste" nu trimite nimic. Starea pasului (`contactStep`: salvate/sarite) ramane in sesiunea
+  chestionarului, datele nu.
+- Server: `createPatientRequest`, `mode: save_search_contact` (fara functie fizica noua; raman 49).
+  Validare comuna in `shared/patientSearchContact.js` (copie identica in `base44/shared/`), limita
+  de 10 salvari pe ora pentru acelasi contact, aceeasi cautare trimisa din nou actualizeaza
+  inregistrarea. Entitate noua `PatientSearchContact`, acces doar pentru admin, cu versiunea
+  acordului, data acordului si `retention_until` (90 de zile).
+- Cand aceeasi persoana salveaza apoi o cerere, inregistrarea primeste `linked_request_id` (best
+  effort, nu poate strica salvarea cererii). Formularul de cerere porneste cu datele lasate la
+  cautare (memorate doar in fila curenta, sessionStorage).
+- Datele de contact nu ajung la modelul AI, in potrivire, in cererea catre locatii sau in analytics
+  (evenimentul `patient_search_contact_resolved` are doar nevoia si starea).
+- Test nou `verify-patient-search-contact` (13 verificari); `verify-patient-anamnesis-guidance`
+  actualizat la regula noua. ESLint si build trec; `verify-all`: 161 trec, 0 esecuri.
+
+### De facut de owner
+
+- Datele se vad in Base44, la Data, entitatea `PatientSearchContact` (`follow_up_status` si
+  `follow_up_note` sunt pentru urmarirea manuala).
+- Stergerea automata dupa `retention_until` nu este inca programata.
+- Politica de confidentialitate (`src/pages/Privacy.jsx`) mentioneaza deja numele, emailul,
+  telefonul si serviciul cautat, dar nu varsta si nici pastrarea datelor lasate fara cerere. Text
+  propus, de verificat juridic inainte de publicare: la "Ce date putem colecta", "... nume, email,
+  telefon, varsta (daca alegi sa o comunici) si datele contului"; la "Cat timp pastram datele",
+  "Datele de contact lasate in timpul unei cautari, fara o cerere trimisa, sunt pastrate cel mult
+  90 de zile, apoi sunt sterse." (dupa ce stergerea automata e activa). Data versiunii
+  (`LEGAL_LAST_UPDATED`) este comuna tuturor paginilor legale.
