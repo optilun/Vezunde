@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { MapPin, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SERVICES, PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
+import { SERVICES, DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { CANONICAL_SERVICE_REGISTRY } from "@/lib/canonicalServiceCatalog";
 import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
@@ -313,7 +313,7 @@ export default function Search() {
   const activeFilters = searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality
     ? (professionalType ? [{ key: "profession", label: PROFESSIONAL_TYPES[professionalType] || professionalType, remove: () => setProfessionalType("") }] : [])
     : [
-      ...providerType.split(",").filter(Boolean).map(key => ({ key, label: PROVIDER_TYPES[key] || key, remove: () => setProviderType(providerType.split(",").filter(value => value !== key).join(",")) })),
+      ...providerType.split(",").filter(Boolean).map(key => ({ key, label: DIRECTORY_PROVIDER_FILTER_LABELS[key] || key, remove: () => setProviderType(providerType.split(",").filter(value => value !== key).join(",")) })),
       ...filterServiceKeys.map(key => ({ key, label: CANONICAL_SERVICE_REGISTRY[key]?.label || key, remove: () => setFilterServiceKeys(filterServiceKeys.filter(value => value !== key)) })),
       ...(casOnly ? [{ key: "cas", label: "Decontare CAS", remove: () => setCasOnly(false) }] : []),
     ];
