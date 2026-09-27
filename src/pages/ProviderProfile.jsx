@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { loadPublicProviderProfile } from "@/lib/publicProfilePrefetch";
+import { isNotFoundError } from "@/lib/transientRetry";
+import ProfileTemporarilyUnavailable from "@/components/common/ProfileTemporarilyUnavailable";
 import { useEntitySeo } from "@/lib/useEntitySeo";
 import {
   SITE_URL,
