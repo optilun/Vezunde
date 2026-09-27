@@ -277,7 +277,8 @@ scenario('generatorul citeste lista publica si refuza sa scrie fara rezultate', 
   assert.match(generator, /if \(!appId\)/);
   // 2026-09-27: fara cheie API. SDK-ul nu are `apiKey`, iar `asServiceRole` arunca fara
   // serviceToken - versiunea veche nu putea rula. Lista vine din functia publica.
-  assert.doesNotMatch(generator, /BASE44_API_KEY|asServiceRole/);
+  const generatorCode = generator.replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(generatorCode, /BASE44_API_KEY|asServiceRole|createClient/);
   assert.match(generator, /functions\/browseDirectoryProviders/);
   assert.match(generator, /map_scope: 'sitemap'/);
   assert.match(generator, /Nu se suprascrie sitemap-ul existent/);
