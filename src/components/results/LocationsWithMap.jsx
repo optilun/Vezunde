@@ -165,7 +165,7 @@ export default function LocationsWithMap({
                 } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
               >
                 {rankById?.has(location.id) && mapPointFromResult(location) && (
-                  <span aria-hidden="true" title={`Pinul ${rankById.get(location.id)} pe hartă`} className={`pointer-events-none absolute -left-1 -top-1.5 z-10 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-xs font-extrabold tabular-nums shadow-[0_0_0_3px_hsl(var(--background))] ${selectedId === location.id ? "bg-[#4f6080] text-white" : "bg-[#171717] text-white"}`}>
+                  <span aria-hidden="true" title={`Pinul ${rankById.get(location.id)} pe hartă`} className={`pointer-events-none absolute -left-1 -top-1.5 z-10 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-1.5 text-xs font-extrabold tabular-nums shadow-[0_0_0_3px_hsl(var(--background))] ${selectedId === location.id ? "bg-[#4f6080] text-white" : "bg-[#171717] text-white"}`}>
                     {rankById.get(location.id)}
                   </span>
                 )}
