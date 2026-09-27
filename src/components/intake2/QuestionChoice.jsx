@@ -39,19 +39,9 @@ export default function QuestionChoice({ question, onSelect, suggestedOptionKey 
 
   return (
     <div className="mt-6 grid gap-2.5">
-      {/* 2026-09-01: catalogul are un camp `helper` pentru fiecare intrebare, scris cu
-          grija, pe care interfata nu-l randa niciodata - inclusiv explicatia care
-          impiedica un miop cronic sa declanseze o alerta de urgenta. */}
-      {question.helper && (
-        <p className="-mt-1 mb-1.5 text-sm leading-relaxed text-muted-foreground">
-          {question.helper}
-        </p>
-      )}
-      {hasSuggestion && (
-        <p className="-mt-1 mb-1.5 text-xs leading-relaxed text-muted-foreground">
-          Am marcat varianta care pare să corespundă mesajului tău. Alege-o pe cea corectă.
-        </p>
-      )}
+      {/* 2026-09-27: textul ajutator din catalog (inclusiv explicatia care impiedica un miop
+          cronic sa declanseze o alerta) si nota despre varianta marcata se deschid acum cu
+          butonul "i" de langa titlu (ConversationalCard.jsx, questionInfoItems). */}
       {/* Optiunile marcate `hidden` raman valori valide (cereri salvate, raspunsuri LLM,
           punctare), dar nu se mai ofera pacientului. */}
       {question.options.filter((option) => !option.hidden).map((option) => (
