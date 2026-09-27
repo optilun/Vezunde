@@ -22,11 +22,14 @@ import { fileURLToPath } from 'node:url';
 import {
   SITEMAP_SITE_URL,
   buildLocationSitemapEntries,
+  buildProfileSitemapEntries,
   buildUrlsetXml,
 } from '../shared/sitemapXml.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUTPUT = path.join(root, 'public', 'sitemap-locatii.xml');
+// 2026-09-27: organizatii (lanturi catre care site-ul trimite deja) si specialisti publici.
+const PROFILES_OUTPUT = path.join(root, 'public', 'sitemap-profiluri.xml');
 const REQUEST_TIMEOUT_MS = 60_000;
 const ATTEMPTS = 3;
 
@@ -51,7 +54,7 @@ async function requestSitemapLocations() {
   if (body?.map_scope !== 'sitemap' || !Array.isArray(body.locations)) {
     throw new Error('Raspunsul nu contine lista pentru sitemap (functia publicata e inca versiunea veche?)');
   }
-  return body.locations;
+  return body;
 }
 
 async function loadPublishedLocations() {
@@ -68,9 +71,11 @@ async function loadPublishedLocations() {
   throw lastError;
 }
 
+let body;
 let rows;
 try {
-  rows = await loadPublishedLocations();
+  body = await loadPublishedLocations();
+  rows = body.locations;
 } catch (error) {
   console.error(`Lista de locatii nu a putut fi citita (${error.message}). Nu se suprascrie sitemap-ul existent.`);
   process.exit(1);
@@ -91,13 +96,32 @@ if (entries.length === 0) {
   process.exit(1);
 }
 
-const xml = buildUrlsetXml(entries);
-const previous = fs.existsSync(OUTPUT) ? fs.readFileSync(OUTPUT, 'utf8') : '';
-
-if (previous === xml) {
-  console.log(`Neschimbat: ${entries.length} locatii in ${path.relative(root, OUTPUT)}.`);
-  process.exit(0);
+function writeIfChanged(output, xml, count, label) {
+  const previous = fs.existsSync(output) ? fs.readFileSync(output, 'utf8') : '';
+  if (previous === xml) {
+    console.log(`Neschimbat: ${count} ${label} in ${path.relative(root, output)}.`);
+    return;
+  }
+  fs.writeFileSync(output, xml, 'utf8');
+  console.log(`Scris ${count} ${label} in ${path.relative(root, output)} (inainte: ${previous ? 'existent' : 'inexistent'}).`);
 }
 
-fs.writeFileSync(OUTPUT, xml, 'utf8');
-console.log(`Scris ${entries.length} locatii in ${path.relative(root, OUTPUT)} (inainte: ${previous ? 'existent' : 'inexistent'}).`);
+writeIfChanged(OUTPUT, buildUrlsetXml(entries), entries.length, 'locatii');
+
+// Profilurile nu blocheaza sitemap-ul de locatii. Daca lista lipseste (functie veche) sau serverul
+// raporteaza o eroare, fisierul existent ramane neatins; un fisier gol nu se scrie niciodata.
+if (body.profiles_error === true || !Array.isArray(body.organizations) || !Array.isArray(body.professionals)) {
+  console.error('Lista de organizatii si specialisti lipseste sau e incompleta. sitemap-profiluri.xml ramane neschimbat.');
+} else {
+  const profileEntries = buildProfileSitemapEntries(body, { siteUrl });
+  if (profileEntries.length === 0) {
+    console.error('Zero organizatii si specialisti eligibili. sitemap-profiluri.xml ramane neschimbat.');
+  } else {
+    writeIfChanged(
+      PROFILES_OUTPUT,
+      buildUrlsetXml(profileEntries),
+      profileEntries.length,
+      `profiluri (${body.organizations.length} organizatii, ${body.professionals.length} specialisti)`,
+    );
+  }
+}
