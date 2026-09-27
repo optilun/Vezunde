@@ -796,8 +796,8 @@ export function evaluatePatientTop3Eligibility(input = {}) {
   };
 }
 
-function nextApprovedQuestion(missingSearch, missingProvider, sufficientForSearch) {
-  const candidates = sufficientForSearch ? missingProvider : missingSearch;
+function nextApprovedQuestion(missingSearch, missingProvider, asksProviderFacts) {
+  const candidates = asksProviderFacts ? missingProvider : missingSearch;
   return candidates.find((key) => isApprovedPatientGuidanceQuestionKey(key)) || null;
 }
 
@@ -911,10 +911,22 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
     safetyState,
     textSignals: signals,
   });
+  // 2026-09-27, aprobat de owner ("da"): cand toate faptele de cautare sunt raspunse, dar
+  // traseul ramane nerezolvat (control + "Nu sunt sigur", nevoia "Nu sunt sigur", trimitere pe
+  // care pacientul nu o intelege), intrebam totusi faptele pentru cerere (`timing`). Inainte,
+  // chestionarul se oprea dupa localitate si "Cat de repede ai nevoie?" nu mai aparea.
+  // `sufficient_for_search` nu se schimba: un traseu nerezolvat tot nu e suficient pentru
+  // cautare. Regulile clinice neaprobate si blocajul de siguranta raman neatinse.
+  const unresolvedButAnswered = !sufficientForSearch
+    && missingRequiredFacts.length === 0
+    && carePath === "unresolved"
+    && routingBlockingValidationRuleKeys.length === 0
+    && safetyState !== "blocking";
+  const asksProviderFacts = sufficientForSearch || unresolvedButAnswered;
   const nextQuestionKey = nextApprovedQuestion(
     missingRequiredFacts,
     missingProviderFacts,
-    sufficientForSearch,
+    asksProviderFacts,
   );
   const searchExpansionPolicy = derivePatientSearchExpansionPolicy({
     serviceKeys: routingServiceKeys,
@@ -948,7 +960,7 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
     sufficient_for_provider_request: sufficientForProviderRequest,
     next_question_key: nextQuestionKey,
     next_question_reason: nextQuestionKey
-      ? (sufficientForSearch ? "provider_request_completeness" : "search_completeness")
+      ? (asksProviderFacts ? "provider_request_completeness" : "search_completeness")
       : (blockingValidationRuleKeys.length > 0
         ? "clinical_validation_required"
         : (carePath === "unresolved" ? "intent_or_service_resolution_required" : null)),
