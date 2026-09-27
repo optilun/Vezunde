@@ -110,21 +110,5 @@ export function transformMapStyle(style) {
   return { ...style, layers };
 }
 
-let stylePromise = null;
-
-/** Stilul VIASEE, cerut o singura data pe pagina. Daca nu se poate citi, harta porneste cu URL-ul. */
-export function loadViaseeMapStyle(fetchImpl = typeof fetch === "function" ? fetch : null) {
-  if (!stylePromise) {
-    stylePromise = (fetchImpl ? fetchImpl(MAP_STYLE_URL) : Promise.reject(new Error("fetch unavailable")))
-      .then((response) => {
-        if (!response.ok) throw new Error(`style ${response.status}`);
-        return response.json();
-      })
-      .then(transformMapStyle)
-      .catch(() => {
-        stylePromise = null;
-        return MAP_STYLE_FALLBACK_URL;
-      });
-  }
-  return stylePromise;
-}
+// Harta cere stilul prin MapLibre (`setStyle(MAP_STYLE_URL, { transformStyle })`): JSON-ul vine
+// de la OpenFreeMap, iar transformarea de mai sus se aplica inainte de prima desenare.
