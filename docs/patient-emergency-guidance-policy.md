@@ -84,6 +84,21 @@ siguranță sau starea generală se agravează rapid, sună la 112."). The headi
 approved clinical wording (first aid, destination, transport) is unchanged. Removing the
 conditional 112 sentence entirely would be a broader change and still requires the review above.
 
+2026-09-26, review delegated by the owner (no physician available; performed by Claude, an AI,
+against public patient guidance such as AAO and NHS, and to be re-checked by a physician when
+possible):
+
+- the conditional 112 sentence now also names stroke warning signs, because sudden double vision
+  or sudden vision loss can have a neurological cause: "Dacă nu te poți deplasa în siguranță, dacă
+  apar și slăbiciune într-o parte a corpului, vorbire greoaie sau gura strâmbă, ori dacă starea
+  generală se agravează rapid, sună la 112." It stays single, small, conditional and after the
+  hospital instruction;
+- the deterministic intake layer (`src/lib/patientSafety.js`, identical copy in `base44/shared/`)
+  recognizes more wordings of the same six signals: double vision and a new shadow in the visual
+  field when said with a recent onset ("de azi", "de ieri", "de aseara", "de cateva ore"), and
+  severe eye pain in another word order. Older wordings without a recent onset do not match. No new
+  clinical concept was added.
+
 ## 6. Technical authority
 
 The versioned contract is:
