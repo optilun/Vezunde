@@ -295,7 +295,10 @@ Deno.serve(async (req) => {
 
     const professionalIds = [...new Set(assignments.map((assignment) => assignment.professional_id).filter(Boolean))];
     const professionals = (await Promise.all(
-      professionalIds.map((id) => svc.entities.ProfessionalProfile.get(id).catch(() => null)),
+      professionalIds.map((id) => svc.entities.ProfessionalProfile.get(id).catch((error) => {
+        if (advanced) throw error;
+        return null;
+      })),
     )).filter(Boolean);
     const professionalsById = Object.fromEntries(professionals.map((profile) => [profile.id, profile]));
 
