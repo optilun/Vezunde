@@ -58,6 +58,7 @@ export default function Search() {
   const [filterServiceKeys, setFilterServiceKeys] = useState(saved.filterServiceKeys || []);
   const [casOnly, setCasOnly] = useState(saved.casOnly || false);
   const [pagination, setPagination] = useState(null);
+  const [directoryFilterContext, setDirectoryFilterContext] = useState(null);
   const [moreLoading, setMoreLoading] = useState(false);
   const [moreError, setMoreError] = useState(false);
   const pageRequest = useRef(0);
@@ -152,7 +153,7 @@ export default function Search() {
     if (previousCriteria.current !== null && previousCriteria.current !== criteria) { setSelectedId(null); setHoveredId(null); }
     previousCriteria.current = criteria;
     pageRequest.current += 1;
-    setPagination(null); setMoreLoading(false); setMoreError(false);
+    setPagination(null); setDirectoryFilterContext(null); setMoreLoading(false); setMoreError(false);
     setMapResults(null);
     setResults(null);
     setProfessionals(null);
@@ -197,7 +198,7 @@ export default function Search() {
             page = next.data?.pagination || null;
             if (rows.size === previousSize) break;
           }
-          if (active) { setResults([...rows.values()]); setMapResults(response.data?.map_results || [...rows.values()]); setPagination(page); }
+          if (active) { setResults([...rows.values()]); setMapResults(response.data?.map_results || [...rows.values()]); setPagination(page); setDirectoryFilterContext(response.data?.filter_context || null); }
           return;
         }
 
@@ -453,7 +454,7 @@ export default function Search() {
               mobileView={mobileView}
               onToggleMobileView={() => setMobileView(view => view === "map" ? "list" : "map")}
             >
-              {results.length === 0 && (isDirectoryBrowseView ? <EmptyDirectory /> : <EmptyMatch locality={locality} filtered={activeFilters.length > 0} />)}
+              {results.length === 0 && (isDirectoryBrowseView ? <EmptyDirectory filterContext={directoryFilterContext} serviceFiltered={filterServiceKeys.length > 0 || casOnly} onClearServiceFilters={() => { setFilterServiceKeys([]); setCasOnly(false); }} /> : <EmptyMatch locality={locality} filtered={activeFilters.length > 0} />)}
               {isDirectoryBrowseView && pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}
             </LocationsWithMap>
           )}
@@ -529,15 +530,18 @@ function LoadingState() {
   );
 }
 
-function EmptyDirectory() {
+function EmptyDirectory({ filterContext, serviceFiltered, onClearServiceFilters }) {
+  const unconfirmedServices = serviceFiltered && filterContext?.unfiltered_total > 0
+    && filterContext.locations_with_published_services === 0;
   return (
     <div className="rounded-2xl border border-border bg-card p-6 text-center sm:col-span-2 sm:p-10">
       <p className="font-heading font-bold">
-        Nu există rezultate pentru localitatea și filtrele selectate.
+        {unconfirmedServices ? "Serviciile nu sunt încă confirmate în VIASEE pentru aceste locații." : serviceFiltered ? "Nu avem confirmarea serviciului sau a decontării CAS pentru filtrele alese." : "Nu există rezultate pentru localitatea și filtrele selectate."}
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        Poți elimina filtre sau alege altă localitate.
+        {unconfirmedServices ? `Există ${filterContext.unfiltered_total} locații pentru tipul și localitatea selectate, dar serviciile lor nu sunt publicate ca fiind confirmate.` : serviceFiltered ? "O locație poate oferi serviciul chiar dacă nu este încă listat aici. Poți elimina filtrul pentru a vedea celelalte locații." : "Poți elimina filtre sau alege altă localitate."}
       </p>
+      {serviceFiltered && <button type="button" onClick={onClearServiceFilters} className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full border border-border px-6 text-sm font-medium hover:bg-secondary sm:w-auto">Vezi locațiile fără filtrul de servicii</button>}
       <Link
         to="/cerere"
         className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
