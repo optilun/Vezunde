@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { transformMapStyle, ROMANIAN_NAME, MAP_STYLE_URL } from '../src/lib/viaseeMapStyle.js';
-import { clusterPoints, clusterExpansionZoom, clusterMarkerSize, CLUSTER_RADIUS_PX } from '../shared/resultsMapPoints.js';
+import { clusterPoints, clusterExpansionZoom, clusterMarkerSize, CLUSTER_RADIUS_PX, framingForPoints, FIT_MAX_ZOOM, FIT_MAX_ZOOM_FEW_POINTS } from '../shared/resultsMapPoints.js';
 import { pillHtml, clusterSizeClass } from '../shared/mapMarkerPresentation.js';
 import { mapCenterForOrdering, orderByDistanceFrom, MAP_CENTER_ORDER_ZOOM } from '../shared/nearbyDirectory.js';
 
@@ -215,6 +215,36 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.equal(readVisitedProfiles().size, 0, 'fara stocare: nimic vazut, fara eroare');
   markProfileVisited('a');
   delete globalThis.window;
+}
+
+// 8. Incadrarea de la deschidere (zoom sigur pe localitate).
+{
+  const bucharest = Array.from({ length: 30 }, (_, index) => ({ id: `b${index}`, lat: 44.43 + ((index % 6) - 3) * 0.012, lng: 26.1 + (Math.floor(index / 6) - 2) * 0.015 }));
+  const calarasiInBucharestList = { id: 'far', lat: 44.2, lng: 27.33 };
+  const framing = framingForPoints([...bucharest, calarasiInBucharestList]);
+  assert.deepEqual(framing.excluded.map((point) => point.id), ['far'], 'o coordonata aberanta nu departeaza harta orasului');
+  assert.equal(framing.points.length, 30, 'celelalte locatii raman in incadrare');
+  assert.equal(framing.maxZoom, FIT_MAX_ZOOM);
+  const three = framingForPoints([bucharest[0], bucharest[1], calarasiInBucharestList]);
+  assert.deepEqual(three.excluded.map((point) => point.id), ['far'], 'si la 3 locatii, una singura departe se lasa afara');
+  assert.equal(three.maxZoom, FIT_MAX_ZOOM_FEW_POINTS, 'doua locatii ramase: harta nu vine prea aproape');
+  assert.equal(framingForPoints([bucharest[0]]).maxZoom, FIT_MAX_ZOOM_FEW_POINTS, 'o singura locatie: zoom 13, cu cartierul in jur');
+  assert.equal(framingForPoints([bucharest[0], calarasiInBucharestList]).excluded.length, 0, 'cu doua puncte nu se poate spune care e gresit');
+  // Rezultate chiar raspandite (doua orase, jumatate-jumatate): se incadreaza toate.
+  const cluj = bucharest.map((point, index) => ({ id: `c${index}`, lat: point.lat + 2.34, lng: point.lng - 2.5 }));
+  assert.equal(framingForPoints([...bucharest.slice(0, 10), ...cluj.slice(0, 10)]).excluded.length, 0, 'fara taieri cand rezultatele sunt raspandite');
+  assert.equal(framingForPoints([...bucharest, ...cluj.slice(0, 7)]).excluded.length, 0, 'peste 20% departe: se incadreaza toate');
+  // In cartier, 20 km minim: locatiile de la marginea orasului raman.
+  assert.equal(framingForPoints([...bucharest, { id: 'edge', lat: 44.43, lng: 26.3 }]).excluded.length, 0, 'marginea orasului (16 km) ramane');
+  assert.equal(framingForPoints([]).points.length, 0);
+  assert.equal(framingForPoints([{ id: 'x', lat: null, lng: 3 }]).points.length, 0);
+  const canvas = read('src/components/results/VectorResultsCanvas.jsx');
+  assert.match(canvas, /const framing=framingForPoints\(fitPoints\);[\s\S]*?maxZoom:framing\.maxZoom/, 'harta vectoriala foloseste incadrarea sigura');
+  const legacy = read('src/components/results/LegacyResultsMap.jsx');
+  assert.match(legacy, /const framing = framingForPoints\(points\);/, 'harta 2D la fel');
+  const map = read('src/components/results/ResultsMap.jsx');
+  assert.match(map, /O locație e departe de celelalte/, 'harta spune cand a lasat o locatie in afara');
+  assert.match(map, /pointIdsWithinBounds\(framing\.points, viewport\.bounds\)\.length === framing\.points\.length/, 'nota apare doar cat se vad toate celelalte');
 }
 
 console.log('Map visual refresh checks passed.');
