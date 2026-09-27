@@ -164,14 +164,43 @@ export function unmappedNotice(unmappedCount) {
  * un singur pin acolo unde sunt cinci, iar patru locatii ar deveni invizibile fara ca cineva sa
  * observe. Gruparea le face vizibile ca numar si le desface la zoom, ca in orice harta de cautare.
  *
- * Metoda este o grila simpla, nu o clusterizare geografica: la fiecare nivel de zoom celula se
- * injumatateste, deci grupurile se desfac progresiv. Fara dependinte noi si usor de verificat.
+ * 2026-09-27. Gruparea se face pe ecran, nu pe o grila fixa de grade: fiecare grup porneste de la
+ * primul punct inca negrupat (in ordinea primita, deci cel mai bine clasat e mereu `lead`) si ia
+ * toate punctele aflate la cel mult CLUSTER_RADIUS_PX pixeli de el, la zoom-ul dat. Grila veche
+ * taia orasele pe marginea celulelor (Bucurestiul aparea ca "274" si "17" lipite) si lasa
+ * grupuri vecine una peste alta. Fara dependinte noi.
  *
  * @param {Array<object>} points punctele deja validate
- * @param {number} zoom nivelul curent de zoom Leaflet
+ * @param {number} zoom nivelul curent de zoom
+ * @param {{tileSize?: number}} options 512 pentru MapLibre (implicit), 256 pentru Leaflet
  * @returns {Array<{key: string, lat: number, lng: number, points: Array<object>, lead: object, count: number}>}
  */
-export function clusterPoints(points, zoom) {
+export const CLUSTER_RADIUS_PX = 52;
+export const CLUSTER_INDIVIDUAL_ZOOM = 15;
+
+function projectToPixels(lat, lng, zoom, tileSize) {
+  const scale = tileSize * (2 ** zoom);
+  const sin = Math.min(Math.max(Math.sin(lat * Math.PI / 180), -0.9999), 0.9999);
+  return [
+    ((lng + 180) / 360) * scale,
+    (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+  ];
+}
+
+/**
+ * Zoom-ul la care un grup se desface in cel putin doua (ca `getClusterExpansionZoom` din
+ * bibliotecile de harti). Apasarea pe grup apropie harta pana acolo, centrata pe grup - nu pe
+ * dreptunghiul tuturor punctelor lui, care putea cuprinde si orase vecine.
+ */
+export function clusterExpansionZoom(points, zoom, options = {}) {
+  const start = Math.floor(Number(zoom) || FALLBACK_ZOOM) + 1;
+  for (let level = start; level < CLUSTER_INDIVIDUAL_ZOOM; level += 1) {
+    if (clusterPoints(points, level, options).length > 1) return level;
+  }
+  return CLUSTER_INDIVIDUAL_ZOOM;
+}
+
+export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
   const list = (Array.isArray(points) ? points : []).filter(Boolean);
   if (list.length === 0) return [];
 
@@ -194,20 +223,47 @@ export function clusterPoints(points, zoom) {
     }));
   }
 
-  // Celula pleaca de la ~1.2 grade la zoom 6 (nivelul intregii tari) si se injumatateste
-  // la fiecare treapta de zoom.
-  const level = Math.max(3, Math.min(Number(zoom) || FALLBACK_ZOOM, 14));
-  const cell = 1.2 / (2 ** (level - 6));
+  // Zoom-ul se rotunjeste la jumatati de treapta, ca grupurile sa nu se refaca la fiecare
+  // miscare minuscula a hartii.
+  const level = Math.round(Math.max(3, Math.min(Number(zoom) || FALLBACK_ZOOM, CLUSTER_INDIVIDUAL_ZOOM)) * 2) / 2;
+  const radius = CLUSTER_RADIUS_PX;
+  const projected = list.map((point) => projectToPixels(point.lat, point.lng, level, tileSize));
+  const cells = new Map();
+  projected.forEach(([x, y], index) => {
+    const cellKey = `${Math.floor(x / radius)}:${Math.floor(y / radius)}`;
+    if (!cells.has(cellKey)) cells.set(cellKey, []);
+    cells.get(cellKey).push(index);
+  });
 
-  const buckets = new Map();
-  for (const point of list) {
-    const key = `${Math.floor(point.lat / cell)}:${Math.floor(point.lng / cell)}`;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(point);
+  const assigned = new Array(list.length).fill(false);
+  const groups = [];
+  for (let index = 0; index < list.length; index += 1) {
+    if (assigned[index]) continue;
+    assigned[index] = true;
+    const [seedX, seedY] = projected[index];
+    const members = [list[index]];
+    const cellX = Math.floor(seedX / radius);
+    const cellY = Math.floor(seedY / radius);
+    for (let dx = -1; dx <= 1; dx += 1) {
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (const other of cells.get(`${cellX + dx}:${cellY + dy}`) || []) {
+          if (assigned[other]) continue;
+          const [x, y] = projected[other];
+          if (Math.hypot(x - seedX, y - seedY) > radius) continue;
+          assigned[other] = true;
+          members.push(list[other]);
+        }
+      }
+    }
+    // Ordinea primita se pastreaza si in interiorul grupului.
+    const order = new Map(list.map((point, position) => [point, position]));
+    members.sort((a, b) => order.get(a) - order.get(b));
+    groups.push(members);
   }
 
   const clusters = [];
-  for (const [key, members] of buckets) {
+  for (const members of groups) {
+    const key = members.length > 1 ? `group:${members[0].id}` : `point:${members[0].id}`;
     // Punctul afisat este cel mai bine clasat din grup - deci un grup care contine o optiune
     // din Top 3 arata ca atare, nu ca o bula anonima.
     const lead = members[0];
