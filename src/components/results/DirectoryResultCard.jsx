@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, MapPin, Phone } from "lucide-react";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { formatDistance } from "@/lib/localityQuickPicks";
 import { typeVisual } from "./LocationThumb";
+import { PROFILE_STATUS_LABELS as STATUS_LABELS, coverTone } from "@/lib/locationCover";
 
 const PRECISE_LOCATION_TYPES = {
   hospital_department: "Secție de spital",
@@ -18,19 +19,7 @@ const PRECISE_LOCATION_TYPES = {
 // paleta: albastru-ardezie pentru optici, nisip pentru clinici si cabinete, salvie pentru
 // optometrie). Poza de profil (logo-ul organizatiei) apare peste coperta, cand exista.
 // Fotografiile si logo-ul vin doar pentru profilurile revendicate sau verificate (backend).
-const COVER_TONES = {
-  optica_medicala: "from-[#dce4f2] via-[#eff1f5] to-[#f7f2e8]",
-  laborator_optic: "from-[#dce4f2] via-[#eff1f5] to-[#f7f2e8]",
-  clinica_oftalmologica: "from-[#e9e2d3] via-[#f3efe7] to-[#eef1f5]",
-  cabinet_oftalmologic: "from-[#e9e2d3] via-[#f3efe7] to-[#eef1f5]",
-  cabinet_optometric: "from-[#dfe8e1] via-[#eef2ee] to-[#f7f2e8]",
-};
-
-const STATUS_LABELS = {
-  verified: "Profil verificat de VIASEE",
-  claimed: "Profil revendicat",
-  directory: "Profil din director",
-};
+// Tonurile copertei si etichetele de stare sunt comune cu fereastra pinului (src/lib/locationCover.js).
 
 function distanceLabel(km) {
   if (!Number.isFinite(km)) return "";
@@ -53,7 +42,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
   const statusLabel = STATUS_LABELS[status] || "";
   const photo = !photoFailed && location.photo_url ? location.photo_url : "";
   const logo = !logoFailed && location.logo_url ? location.logo_url : "";
-  const tone = COVER_TONES[location.provider_type] || COVER_TONES.clinica_oftalmologica;
+  const tone = coverTone(location.provider_type);
   const distance = distanceLabel(distanceKm);
   const profileHref = `/furnizor/${location.id}`;
 
