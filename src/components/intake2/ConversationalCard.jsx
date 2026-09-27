@@ -1128,12 +1128,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             >
               <h2 className={`font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl ${current.type === "text" && questionPhase === "safety" ? "sr-only" : ""}`}>
                 {current.title}
-                <InfoHint
-                  items={questionInfoItems(current, {
-                    suggestedKey: current.type === "choice" ? suggestedOptionKeyForQuestion(current, contextHints) : null,
-                    prefilled: Boolean(descriptionPrefill(current)),
-                  })}
-                />
+                {!(current.type === "text" && questionPhase === "safety") && (
+                  <InfoHint
+                    items={questionInfoItems(current, {
+                      suggestedKey: current.type === "choice" ? suggestedOptionKeyForQuestion(current, contextHints) : null,
+                      prefilled: Boolean(descriptionPrefill(current)),
+                    })}
+                  />
+                )}
               </h2>
               {current.type === "choice" && (
                 <QuestionChoice
