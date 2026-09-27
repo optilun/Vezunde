@@ -56,15 +56,13 @@ import UrgencyInterruption from "./UrgencyInterruption";
 import InfoHint from "./InfoHint";
 
 // 2026-09-27, cererea owner-ului: cardurile aratau prea mult text. Explicatiile unei intrebari
-// (textul ajutator din catalog, regula de cautare pe localitate, varianta marcata din mesaj)
-// se deschid acum cu butonul "i" de langa titlu.
-const LOCATION_INFO = "Alege localitatea din lista oficială. Căutăm întâi doar în localitatea aleasă și extindem aria doar dacă ceri tu.";
+// (textul ajutator din catalog, varianta marcata din mesaj) se deschid acum cu butonul "i" de
+// langa titlu. Regula de cautare pe localitate are butonul ei, in QuestionLocation.
 const SUGGESTION_INFO = "Varianta marcată „Sugestie” vine din mesajul tău. Alege-o pe cea corectă.";
 
 function questionInfoItems(question, { suggestedKey = null, prefilled = false } = {}) {
   const items = [];
   if (question?.helper && !prefilled) items.push(question.helper);
-  if (question?.type === "location") items.push(LOCATION_INFO);
   const hasSuggestion = question?.type === "choice"
     && question.key !== "safety_targeted_check"
     && Boolean(suggestedKey)
