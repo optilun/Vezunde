@@ -54,12 +54,12 @@ export const ADULT_ANAMNESIS_QUESTIONS = Object.freeze([
       { key: "nu", label: "Nu" },
       { key: "cataracta", label: "Operație de cataractă" },
       { key: "laser_refractiv", label: "Laser pentru dioptrii" },
-      { key: "alta", label: "Altă operație sau injecții în ochi" },
+      { key: "alta", label: "Altă operație sau injecții" },
     ],
   },
   {
     key: "anamneza_picaturi",
-    title: "Picături pentru ochi folosite regulat",
+    title: "Folosești picături regulat?",
     type: "single",
     options: [
       { key: "nu", label: "Nu" },
@@ -94,16 +94,16 @@ export const CHILD_ANAMNESIS_QUESTIONS = Object.freeze([
     type: "multi",
     exclusive_option: "niciunul",
     options: [
-      { key: "aproape_ecran", label: "Se apropie mult de ecran sau de carte" },
+      { key: "aproape_ecran", label: "Stă prea aproape de ecran" },
       { key: "mijeste", label: "Mijește ochii" },
-      { key: "ochi_deviat", label: "Un ochi pare să fugă în lateral" },
-      { key: "dureri_cap", label: "Se plânge de dureri de cap" },
+      { key: "ochi_deviat", label: "Un ochi fuge în lateral" },
+      { key: "dureri_cap", label: "Are dureri de cap" },
       { key: "niciunul", label: "Niciunul" },
     ],
   },
   {
     key: "anamneza_copil_familie",
-    title: "În familie: ochelari purtați de mic, strabism sau ochi leneș",
+    title: "În familie: ochelari de mic, strabism, ochi leneș",
     type: "single",
     options: [
       { key: "nu", label: "Nu" },
