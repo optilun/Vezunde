@@ -1,0 +1,138 @@
+{
+  "name": "PatientSearchContact",
+  "type": "object",
+  "properties": {
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "age_years": {
+      "type": "number"
+    },
+    "age_refers_to": {
+      "type": "string",
+      "enum": [
+        "",
+        "contact",
+        "patient"
+      ],
+      "default": ""
+    },
+    "for_whom": {
+      "type": "string",
+      "enum": [
+        "",
+        "adult",
+        "copil",
+        "other_adult"
+      ],
+      "default": ""
+    },
+    "intent": {
+      "type": "string"
+    },
+    "intent_label": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "locality_siruta_code": {
+      "type": "string"
+    },
+    "timing_key": {
+      "type": "string"
+    },
+    "search_key": {
+      "type": "string"
+    },
+    "requester_user_id": {
+      "type": "string"
+    },
+    "contact_identity_hash": {
+      "type": "string"
+    },
+    "processing_consent": {
+      "type": "boolean",
+      "default": false
+    },
+    "processing_consent_version": {
+      "type": "string"
+    },
+    "processing_consent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "linked_request_id": {
+      "type": "string"
+    },
+    "linked_request_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "follow_up_status": {
+      "type": "string",
+      "enum": [
+        "nou",
+        "contactat",
+        "fara_raspuns",
+        "nu_mai_contacta"
+      ],
+      "default": "nou"
+    },
+    "follow_up_note": {
+      "type": "string"
+    },
+    "retention_policy_key": {
+      "type": "string"
+    },
+    "retention_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "anonymized",
+        "deleted"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "contact_name",
+    "processing_consent",
+    "processing_consent_version"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
