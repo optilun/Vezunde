@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useEntitySeo } from "@/lib/useEntitySeo";
+import { isNotFoundError, withTransientRetry } from "@/lib/transientRetry";
+import ProfileTemporarilyUnavailable from "@/components/common/ProfileTemporarilyUnavailable";
 import {
   SITE_URL,
   buildProfessionalProfileStructuredData,
@@ -67,27 +69,34 @@ export default function ProfessionalProfile() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  // 2026-09-27: "unavailable" = eroare trecatoare dupa reincercari; fara `noindex`.
+  const [loadError, setLoadError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    base44.functions.invoke("getPublicProfessionalProfile", { professional_id: id })
+    setLoadError(null);
+    withTransientRetry(() => base44.functions.invoke("getPublicProfessionalProfile", { professional_id: id }))
       .then((response) => {
         if (active) setProfile(response.data?.profile || null);
       })
-      .catch(() => {
-        if (active) setProfile(null);
+      .catch((error) => {
+        if (!active) return;
+        setProfile(null);
+        setLoadError(isNotFoundError(error) ? "not_found" : "unavailable");
       })
       .finally(() => {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [id]);
+  }, [id, attempt]);
 
   // 2026-09-03, audit SEO: pagina nu avea niciun cod SEO, deci toate profilurile de
   // specialist ajungeau in index cu "Profil specialist | VIASEE".
   const seoMeta = useMemo(() => {
     if (loading) return null;
+    if (!profile && loadError === "unavailable") return null;
     if (!profile) {
       return { title: "Profil indisponibil | VIASEE", description: "Profilul căutat nu este public pe VIASEE.", noindex: true };
     }
@@ -106,11 +115,15 @@ export default function ProfessionalProfile() {
       image: /^https?:\/\//i.test(String(profile.profile_photo_url || "")) ? profile.profile_photo_url : undefined,
       structuredData: buildProfessionalProfileStructuredData({ professional, canonical }),
     };
-  }, [loading, profile, id]);
+  }, [loading, profile, loadError, id]);
   useEntitySeo(seoMeta);
 
   if (loading) {
     return <div className="mx-auto min-h-[55vh] max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Se încarcă profilul profesional...</div>;
+  }
+
+  if (!profile && loadError === "unavailable") {
+    return <ProfileTemporarilyUnavailable onRetry={() => setAttempt((value) => value + 1)} />;
   }
 
   if (!profile) {
