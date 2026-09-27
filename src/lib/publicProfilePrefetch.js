@@ -14,6 +14,8 @@
 // Clientul Base44 se incarca la nevoie (import dinamic), ca pe celelalte pagini sa nu fie adus
 // in codul principal.
 
+import { withTransientRetry } from "./transientRetry.js";
+
 export const PROFILE_PREFETCH_FRESH_MS = 30 * 1000;
 const PROFILE_PATH = /^\/furnizor\/([^/?#]+)\/?$/;
 
@@ -28,9 +30,11 @@ export function profileIdFromPath(pathname) {
   try { return cleanId(decodeURIComponent(match[1])); } catch (_error) { return ""; }
 }
 
-export function createPublicProfileLoader({ invoke, now = () => Date.now(), freshMs = PROFILE_PREFETCH_FRESH_MS }) {
+export function createPublicProfileLoader({ invoke, now = () => Date.now(), freshMs = PROFILE_PREFETCH_FRESH_MS, retry = withTransientRetry }) {
   const profiles = new Map();
   const brands = new Map();
+  // 2026-09-27: profilul se reincearca la erori trecatoare (vezi src/lib/transientRetry.js).
+  const loadProfile = (key) => retry(() => invoke("getPublicProviderProfile", { location_id: key }));
 
   function remember(cache, key, start) {
     const entry = { promise: Promise.resolve().then(start), at: now() };
@@ -62,7 +66,7 @@ export function createPublicProfileLoader({ invoke, now = () => Date.now(), fres
   function prefetchPublicProviderProfile(id) {
     const key = cleanId(id);
     if (!key || profiles.has(key)) return;
-    startBrandWhenProfileArrives(remember(profiles, key, () => invoke("getPublicProviderProfile", { location_id: key })));
+    startBrandWhenProfileArrives(remember(profiles, key, () => loadProfile(key)));
   }
 
   return {
@@ -74,7 +78,7 @@ export function createPublicProfileLoader({ invoke, now = () => Date.now(), fres
     /** Acelasi raspuns ca `base44.functions.invoke("getPublicProviderProfile", { location_id })`. */
     loadPublicProviderProfile(id) {
       const key = cleanId(id);
-      const promise = take(profiles, key, () => invoke("getPublicProviderProfile", { location_id: key }));
+      const promise = take(profiles, key, () => loadProfile(key));
       startBrandWhenProfileArrives(promise);
       return promise;
     },
