@@ -75,6 +75,10 @@ export function mapPointFromResult(result) {
     tier: BUCKET_TIER[clean(result.result_bucket)] || 'directory',
     bucket_rank: Number(result.bucket_rank) || null,
     phone: clean(result.phone) || null,
+    // 2026-09-27: coperta si poza de profil pentru fereastra pinului (doar profiluri revendicate
+    // sau verificate le au; serverul trimite numai adrese https).
+    photo_url: clean(result.photo_url) || null,
+    logo_url: clean(result.logo_url) || null,
   };
 }
 
@@ -301,6 +305,7 @@ export function pointIdsWithinBounds(points, bounds) {
 export default {
   RESULTS_MAP_CONTRACT_VERSION,
   clusterPoints,
+  clusterExpansionZoom,
   pointIdsWithinBounds,
   FALLBACK_CENTER,
   FALLBACK_ZOOM,
