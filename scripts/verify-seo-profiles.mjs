@@ -27,6 +27,7 @@ import {
 } from '../shared/seoProfileMetadata.js';
 import {
   buildLocationSitemapEntries,
+  buildProfileSitemapEntries,
   buildUrlsetXml,
   extractSitemapLocations,
   isLocationSitemapEligible,
@@ -247,15 +248,32 @@ scenario('XML-ul e valid si escapeaza corect', () => {
   assert.deepEqual(extractSitemapLocations(xml).length, 2);
 });
 
-scenario('robots declara ambele sitemap-uri', () => {
+scenario('sitemap-ul de profiluri: organizatii si specialisti, fara dubluri, ordine stabila', () => {
+  const entries = buildProfileSitemapEntries({
+    organizations: [{ id: 'org2', lastmod: '2026-09-02T10:00:00Z' }, { id: 'org1' }, { id: 'org1' }, { id: '' }],
+    professionals: [{ id: 'pro1', lastmod: '2026-09-03T10:00:00Z' }, null],
+  });
+  assert.deepEqual(entries.map((entry) => entry.loc), [
+    'https://viasee.ro/organizatie/org1',
+    'https://viasee.ro/organizatie/org2',
+    'https://viasee.ro/specialist/pro1',
+  ]);
+  const xml = buildUrlsetXml(entries);
+  assert.equal((xml.match(/<lastmod>/g) || []).length, 2);
+  assert.deepEqual(buildProfileSitemapEntries({}), []);
+});
+
+scenario('robots declara toate sitemap-urile', () => {
   const robots = source('public/robots.txt');
   assert.match(robots, /^Sitemap: https:\/\/viasee\.ro\/sitemap\.xml$/m);
   assert.match(robots, /^Sitemap: https:\/\/viasee\.ro\/sitemap-locatii\.xml$/m);
+  assert.match(robots, /^Sitemap: https:\/\/viasee\.ro\/sitemap-profiluri\.xml$/m);
 });
 
-scenario('IndexNow citeste si sitemap-ul de locatii', () => {
+scenario('IndexNow citeste si sitemap-urile de locatii si profiluri', () => {
   const indexnow = source('scripts/indexnow-submit.mjs');
   assert.match(indexnow, /public\/sitemap-locatii\.xml/);
+  assert.match(indexnow, /public\/sitemap-profiluri\.xml/);
   assert.match(indexnow, /new Set\(/);
   // 2026-09-11. Sandbox-ul Base44 readuce `.github` la starea publicata la fiecare
   // publicare si nu il urmareste deloc cu git, deci o modificare facuta aici in workflow
@@ -269,6 +287,7 @@ githubSetupCheck('workflow-ul IndexNow se declanseaza si la sitemap-ul de locati
   const workflowPath = new URL('../.github/workflows/indexnow.yml', import.meta.url);
   if (existsSync(workflowPath)) {
     assert.match(readFileSync(workflowPath, 'utf8'), /public\/sitemap-locatii\.xml/);
+    assert.match(readFileSync(workflowPath, 'utf8'), /public\/sitemap-profiluri\.xml/);
   }
 });
 
@@ -287,7 +306,20 @@ scenario('generatorul citeste lista publica si refuza sa scrie fara rezultate', 
   const browse = source('base44/functions/browseDirectoryProviders/entry.ts');
   assert.match(browse, /payload\.map_scope \|\| ''\)\.trim\(\) === 'sitemap'/);
   assert.match(browse, /async function computeSitemapLocations\(svc\) \{\s*const \{ locations: allLocations \} = await loadPublishedLocationsForMap\(svc\);\s*const visible = allLocations\.filter\(isVisibleInDirectory\);/);
-  assert.match(browse, /if \(disclosure\.profile_control_status === 'suspended'\) continue;\s*locations\.push\(\{\s*id: loc\.id,\s*lastmod:/);
+  assert.match(browse, /if \(disclosure\.profile_control_status === 'suspended'\) continue;\s*locations\.push\(\{ id: loc\.id, lastmod: lastmodOf\(loc\) \}\);/);
+
+  // Profilurile: organizatii doar daca site-ul trimite deja catre ele (detaliu complet pe cel
+  // putin o locatie) si au cel putin 2 locatii publice; specialisti cu aceeasi poarta ca
+  // pagina publica. Un esec aici nu strica lista de locatii.
+  assert.match(browse, /stats\.linked = stats\.linked \|\| disclosure\.expose_full_details === true;/);
+  assert.match(browse, /const SITEMAP_ORGANIZATION_MIN_LOCATIONS = 2;/);
+  assert.match(browse, /stats\.linked && stats\.count >= SITEMAP_ORGANIZATION_MIN_LOCATIONS/);
+  assert.match(browse, /organization\.status === 'inactiva'\) return null;/);
+  assert.match(browse, /\.filter\(\(profile\) => isPublicProfessionalProfile\(profile\)\)/);
+  assert.match(browse, /profiles_error: profilesError/);
+  assert.match(generator, /sitemap-profiluri\.xml/);
+  assert.match(generator, /body\.profiles_error === true/);
+  assert.match(generator, /sitemap-profiluri\.xml ramane neschimbat/);
 });
 
 githubSetupCheck('workflow-ul zilnic regenereaza sitemap-ul de locatii', () => {
@@ -296,6 +328,7 @@ githubSetupCheck('workflow-ul zilnic regenereaza sitemap-ul de locatii', () => {
   assert.match(workflow, /generate-sitemap-locations\.mjs/);
   assert.match(workflow, /BASE44_APP_ID/);
   assert.match(workflow, /contents: write/);
+  assert.match(workflow, /git add public\/sitemap-locatii\.xml public\/sitemap-profiluri\.xml/);
   // Un push facut cu GITHUB_TOKEN nu porneste alte workflow-uri: IndexNow se trimite de aici.
   assert.match(workflow, /indexnow-submit\.mjs/);
 });
