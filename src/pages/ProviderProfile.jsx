@@ -354,6 +354,9 @@ export default function ProviderProfile() {
   const [loadError, setLoadError] = useState(null);
   const [attempt, setAttempt] = useState(0);
 
+  // 2026-09-27: pinul unui profil deja deschis devine gri pe harta (doar in aceasta fila).
+  useEffect(() => { markProfileVisited(id); }, [id]);
+
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
