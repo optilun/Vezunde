@@ -5,6 +5,9 @@ Disallow: /contul-meu/
 Disallow: /dupa-login
 Disallow: /accept-professional-invitation
 Disallow: /accept-provider-invitation
+# 2026-09-27: dupa trimiterea sitemap-urilor, crawlerele au deschis sute de profiluri pe minut si
+# au atins limita de trafic Base44. Bing respecta Crawl-delay; Google il ignora (se regleaza singur).
+Crawl-delay: 5
 
 User-agent: OAI-SearchBot
 Allow: /
