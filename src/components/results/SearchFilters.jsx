@@ -111,12 +111,12 @@ export default function SearchFilters({ providerType, professionalType, serviceK
             </fieldset>
 
             <fieldset disabled={!hasLocality} className="mt-6 border-t border-border pt-5 disabled:opacity-60">
-              <legend className="flex items-center gap-2 font-semibold"><ScanEye className="h-5 w-5 text-[#4f6080]" aria-hidden="true" /> Servicii oferite</legend>
+              <legend className="flex items-center gap-2 font-semibold"><ScanEye className="h-5 w-5 text-[#4f6080]" aria-hidden="true" /> Servicii confirmate în VIASEE</legend>
               {!hasLocality
                 ? <p className="mt-2 text-sm text-muted-foreground">Alege mai întâi localitatea din bara de căutare. Apoi poți filtra după servicii și decontare CAS.</p>
                 : searchedLabel
-                  ? <p className="mt-3 rounded-xl bg-[#eff1f5] px-3.5 py-2.5 text-xs leading-relaxed text-[#3f4e6a]">Cauți deja <strong className="font-semibold">„{searchedLabel}”</strong> din bara de sus. Aici poți păstra doar locațiile care oferă și cel puțin unul dintre serviciile bifate mai jos.</p>
-                  : <p className="mt-2 text-xs text-muted-foreground">Apar doar locațiile care oferă cel puțin unul dintre serviciile bifate.</p>}
+                  ? <p className="mt-3 rounded-xl bg-[#eff1f5] px-3.5 py-2.5 text-xs leading-relaxed text-[#3f4e6a]">Cauți deja <strong className="font-semibold">„{searchedLabel}”</strong> din bara de sus. Aici poți păstra doar locațiile pentru care VIASEE are confirmarea a cel puțin unuia dintre serviciile bifate mai jos.</p>
+                  : <p className="mt-2 text-xs text-muted-foreground">Apar doar locațiile cu cel puțin unul dintre serviciile bifate confirmat în VIASEE. O locație fără servicii listate poate totuși să îl ofere.</p>}
 
               {hasLocality && draft.services?.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Servicii bifate">
                 {draft.services.map((key) => <button key={key} type="button" onClick={() => toggle("services", key)} aria-label={`Scoate ${getServiceLabel(key)}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#4f6080] px-3 text-xs font-medium text-white hover:bg-[#3f4e6a]">{getServiceLabel(key)}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
@@ -157,7 +157,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
         </div>
         <div className="shrink-0 border-t border-border bg-card px-6 py-4">
           {signature && <p aria-live="polite" className={`mb-3 text-xs ${previewReady && preview.total === 0 ? "font-medium text-[#8a4b2a]" : "text-muted-foreground"}`}>
-            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : `Nicio locație din ${browseLocality.name} nu corespunde acestor filtre. Încearcă să scoți unul.`) : ""}
+            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : `${draft.services?.length || draft.cas ? `Nicio locație din ${browseLocality.name} nu are serviciul sau marcajul CAS confirmat în VIASEE pentru aceste filtre. Poți elimina filtrul pentru a vedea celelalte locații.` : `Nicio locație din ${browseLocality.name} nu corespunde acestor filtre. Încearcă să scoți unul.`}`) : ""}
           </p>}
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={() => setDraft({types:[],profession:"",services:[],cas:false})} className="min-h-11 text-sm underline">Resetează filtrele</button>
