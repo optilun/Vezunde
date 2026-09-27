@@ -15,13 +15,16 @@ const TIMING_OPTIONS = Object.freeze([
   { key: "nu_e_urgent", label: "Nu e urgent" },
 ]);
 
+// 2026-09-27, cererea owner-ului (mai putin text pe carduri), in revizuirea delegata catre AI:
+// etichete scurte, cu acelasi sens. Detaliile (debut in ore sau zile, simptomele insotitoare,
+// problemele dupa operatie) sunt in `helper`, deschis cu butonul "i". Cheile raman aceleasi.
 const SAFETY_OPTIONS = Object.freeze([
-  { key: "pierdere_brusca_vedere", label: "În ultimele ore sau zile, vederea a dispărut brusc la un ochi (nu vedere slabă de mai mult timp)" },
-  { key: "substanta_chimica", label: "A ajuns o substanță chimică în ochi" },
-  { key: "traumatism_obiect", label: "Un obiect a pătruns în ochi sau a existat o lovitură puternică" },
-  { key: "durere_severa", label: "Am durere oculară foarte mare, mai ales cu vedere modificată, greață sau cefalee" },
-  { key: "fulgerari_perdea_diplopie", label: "Au apărut brusc fulgerări, multe puncte, o umbră/perdea sau vedere dublă" },
-  { key: "postoperator_acut", label: "Am durere, roșeață sau modificarea vederii după operație ori injecție oculară recentă" },
+  { key: "pierdere_brusca_vedere", label: "Am pierdut brusc vederea la un ochi" },
+  { key: "substanta_chimica", label: "Mi-a intrat o substanță chimică în ochi" },
+  { key: "traumatism_obiect", label: "Un obiect în ochi sau o lovitură puternică" },
+  { key: "durere_severa", label: "Durere foarte mare la ochi" },
+  { key: "fulgerari_perdea_diplopie", label: "Fulgerări, umbră sau vedere dublă apărute brusc" },
+  { key: "postoperator_acut", label: "Probleme după o operație sau injecție la ochi" },
   { key: "niciuna", label: "Niciuna dintre acestea" },
 ]);
 
@@ -58,9 +61,9 @@ const CATALOG = {
     type: "choice",
     title: "Ce te aduce la noi?",
     options: [
-      { key: "routine", label: "Un control — nu văd bine sau a trecut mult timp" },
+      { key: "routine", label: "Un control de vedere" },
       { key: "symptom", label: "O problemă apărută recent" },
-      { key: "not_sure", label: "Nu sunt sigur — ajută-mă să aleg" },
+      { key: "not_sure", label: "Nu sunt sigur" },
     ],
   },
   for_whom: {
@@ -82,7 +85,7 @@ const CATALOG = {
       { key: "child", label: "Pentru copilul meu", service_keys: ["children_eye_exam"] },
       // Optiune noua: cine cauta pentru un parinte in varsta - o parte importanta din
       // cererea de cataracta si glaucom - nu avea ce bifa si se incadra ca adult-pentru-sine.
-      { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
+      { key: "other_adult", label: "Pentru altcineva" },
     ],
   },
   child_age_group: {
@@ -110,7 +113,7 @@ const CATALOG = {
       { key: "tonometry", label: "Tonometrie", service_keys: ["tonometry"] },
       { key: "fundus_exam", label: "Fund de ochi", service_keys: ["fundus_exam"] },
       { key: "corneal_topography", label: "Topografie corneană", service_keys: ["corneal_topography"] },
-      { key: "not_sure", label: "Nu am trimiterea la mine sau nu înțeleg ce scrie" },
+      { key: "not_sure", label: "Nu o am sau nu o înțeleg" },
     ],
   },
   investigation_reference_text: {
@@ -167,7 +170,7 @@ const CATALOG = {
     legacy_question_keys: ["ce_deteriorat"],
     options: [
       { key: "broken_frame", label: "S-a rupt rama", service_keys: ["frame_repair"] },
-      { key: "damaged_lens", label: "S-a spart sau s-a zgâriat o lentilă", service_keys: ["lens_replacement"] },
+      { key: "damaged_lens", label: "Lentilă spartă sau zgâriată", service_keys: ["lens_replacement"] },
       { key: "hinge_or_screw", label: "Balamaua sau un șurub", service_keys: ["hinge_repair", "screw_replacement"] },
       { key: "frame_adjustment", label: "Nu-mi mai stau bine pe nas", service_keys: ["eyeglasses_adjustment"] },
       { key: "not_sure", label: "Altceva", service_keys: ["eyeglasses_repair"] },
@@ -206,9 +209,9 @@ const CATALOG = {
   },
   safety_targeted_check: {
     type: "choice",
-    title: "Ți s-a întâmplat recent una dintre situațiile de mai jos?",
+    title: "Ți s-a întâmplat recent una dintre acestea?",
     legacy_question_keys: ["safety_screening"],
-    helper: "Întrebăm doar despre situații apărute brusc, în ultimele ore sau zile. Dacă ai o problemă de vedere de mai mult timp (de exemplu nu vezi bine la distanță sau la aproape), alege \"Niciuna dintre acestea\" și continuăm căutarea normal.",
+    helper: "Întrebăm doar despre situații apărute brusc, în ultimele ore sau zile. Dacă ai o problemă de vedere mai veche (de exemplu nu vezi bine la distanță sau la aproape), alege „Niciuna dintre acestea”. Durerea foarte mare poate veni cu vedere modificată, greață sau dureri de cap. Semnele apărute brusc includ și multe puncte noi care plutesc. După o operație sau injecție recentă contează durerea, roșeața sau vederea mai slabă.",
     options: SAFETY_OPTIONS,
     safety_copy: APPROVED_PATIENT_SAFETY_COPY,
   },
