@@ -3,7 +3,8 @@
 // 2026-09-24, cerere explicita a owner-ului: anamneza scurta pentru cine se programeaza la un
 // consult si recomandari (inclusiv pentru cataracta si tensiune oculara/arteriala), fara semne
 // mari "Suna la 112". Verificarile de aici blocheaza regulile de autoritate si confidentialitate:
-//  - anamneza apare doar pentru consult, e optionala si nu schimba intrebarile serverului;
+//  - anamneza apare la toate nevoile, mai putin la reparatii (decizia owner-ului din 2026-09-27;
+//    pana atunci doar la consult), e optionala si nu schimba intrebarile serverului;
 //  - raspunsurile nu ajung la modelul AI si nici automat la furnizori (doar prin mesajul final,
 //    pe care pacientul il vede si il poate modifica);
 //  - niciun text din recomandari sau din rezumatul anamnezei nu declanseaza verificarea de
@@ -22,6 +23,7 @@ import {
   isPatientAnamnesisKey,
   normalizeAnamnesisSelection,
   patientAnamnesisAnswerLabel,
+  patientAnamnesisIsForConsult,
   patientAnamnesisVariant,
   patientNeedsAnamnesis,
   toggleAnamnesisSelection,
@@ -55,15 +57,27 @@ function check(name, fn) {
 }
 
 // --- 1. Cand apare anamneza ---------------------------------------------------------------
-check('anamnesis only for consult requests', () => {
-  for (const intent of ['control_vedere', 'control_copil', 'simptome_oftalmologice', 'investigatii']) {
+// 2026-09-27, decizia owner-ului: la toate nevoile, mai putin la reparatii. Pana atunci, cine
+// alegea ochelari cu reteta, lentile purtate deja sau "Nu sunt sigur" nu vedea anamneza deloc.
+check('anamnesis for every need except repairs', () => {
+  for (const intent of ['control_vedere', 'control_copil', 'simptome_oftalmologice', 'investigatii', 'ochelari_lentile', 'lentile_contact', 'unknown']) {
     assert.equal(patientNeedsAnamnesis({ intent, answers: [] }), true, intent);
   }
   assert.equal(patientNeedsAnamnesis({ intent: 'reparatii_ochelari', answers: [] }), false);
-  assert.equal(patientNeedsAnamnesis({ intent: 'ochelari_lentile', answers: [{ question_key: 'reteta', answer_value: 'recent_prescription' }] }), false);
+  assert.equal(patientNeedsAnamnesis({ intent: null, answers: [] }), false, 'fara nevoie aleasa nu exista anamneza');
+  assert.equal(patientNeedsAnamnesis({ intent: 'ochelari_lentile', answers: [{ question_key: 'reteta', answer_value: 'recent_prescription' }] }), true);
   assert.equal(patientNeedsAnamnesis({ intent: 'ochelari_lentile', answers: [{ question_key: 'prescription_status', answer_value: 'needs_exam' }] }), true);
-  assert.equal(patientNeedsAnamnesis({ intent: 'lentile_contact', answers: [{ question_key: 'prima_data', answer_value: 'nu' }] }), false);
+  assert.equal(patientNeedsAnamnesis({ intent: 'lentile_contact', answers: [{ question_key: 'prima_data', answer_value: 'nu' }] }), true);
   assert.equal(patientNeedsAnamnesis({ intent: 'lentile_contact', answers: [{ question_key: 'prima_data', answer_value: 'da' }] }), true);
+  for (const intent of ['control_vedere', 'control_copil', 'simptome_oftalmologice', 'investigatii']) {
+    assert.equal(patientAnamnesisIsForConsult(intent), true, intent);
+  }
+  for (const intent of ['ochelari_lentile', 'lentile_contact', 'unknown']) {
+    assert.equal(patientAnamnesisIsForConsult(intent), false, `${intent}: ecranul vorbeste despre specialist`);
+  }
+  const screen = source('src/components/intake2/PatientAnamnesis.jsx');
+  assert.match(screen, /Câteva informații pentru specialist/);
+  assert.match(source('src/components/intake2/ConversationalCard.jsx'), /forConsult=\{patientAnamnesisIsForConsult\(state\.intent\)\}/);
   assert.equal(
     patientNeedsAnamnesis({ intent: 'control_vedere', answers: [{ question_key: PATIENT_ANAMNESIS_MARKER_KEY, answer_value: 'sarita' }] }),
     false,
