@@ -8,7 +8,8 @@ const KEY_LOCATION = `https://${HOST}/${KEY}.txt`;
 // 2026-09-03, audit SEO: IndexNow citea doar sitemap-ul static de 29 de URL-uri, deci
 // publicarea unei locatii noi nu notifica niciodata nimic. Acum citeste si sitemap-ul de
 // locatii, generat din datele publicate (scripts/generate-sitemap-locations.mjs).
-const SITEMAP_FILES = ["public/sitemap.xml", "public/sitemap-locatii.xml"];
+// 2026-09-27: si sitemap-ul de profiluri (organizatii si specialisti).
+const SITEMAP_FILES = ["public/sitemap.xml", "public/sitemap-locatii.xml", "public/sitemap-profiluri.xml"];
 
 const urlList = [
   ...new Set(

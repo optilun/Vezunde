@@ -1,4 +1,5 @@
-// Genereaza public/sitemap-locatii.xml din locatiile publicate.
+// Genereaza public/sitemap-locatii.xml din locatiile publicate si public/sitemap-profiluri.xml
+// din paginile publice de organizatie si de specialist.
 //
 // 2026-09-03, audit SEO. Sitemap-ul commis are 29 de URL-uri statice; cele 500+ locatii
 // publicate nu apar nicaieri si nu exista drum de crawl catre ele (vezi comentariul din
