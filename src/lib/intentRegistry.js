@@ -34,7 +34,7 @@ export const INTENTS = {
           // pediatric, desi cautarea il deriva server-side din raspunsuri.
           { key: "copil", label: "Pentru copilul meu", next_intent: "control_copil", service_keys: ["children_eye_exam"] },
           // Cheia e identica cu cea din catalog, ca sa nu fie nevoie de alias de valoare.
-          { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
+          { key: "other_adult", label: "Pentru altcineva" },
         ],
       },
       {
@@ -134,7 +134,7 @@ export const INTENTS = {
   reparatii_ochelari: {
     label: "Reparatii sau reglaje",
     service_keys: ["reparatii_ochelari", "reglaj_rame"],
-    notice: "Un specialist poate evalua dacă reparația este posibilă. VIASEE nu poate garanta reparația doar pe baza informațiilor oferite.",
+    notice: "Un specialist confirmă dacă reparația e posibilă.",
     questions: [
       {
         // "Ce s-a deteriorat?" avea printre optiuni "Reglaj rama" - o ajustare nu e o
@@ -143,7 +143,7 @@ export const INTENTS = {
         key: "ce_deteriorat", type: "choice", title: "Ce s-a întâmplat?",
         options: [
           { key: "rama_rupta", label: "S-a rupt rama", service_keys: ["frame_repair"], replace_service_keys: true },
-          { key: "lentila_zgariata", label: "S-a spart sau s-a zgâriat o lentilă", service_keys: ["lens_replacement"], replace_service_keys: true },
+          { key: "lentila_zgariata", label: "Lentilă spartă sau zgâriată", service_keys: ["lens_replacement"], replace_service_keys: true },
           { key: "balama_surub", label: "Balamaua sau un șurub", service_keys: ["hinge_repair", "screw_replacement"], replace_service_keys: true },
           { key: "reglaj_rama", label: "Nu-mi mai stau bine pe nas", service_keys: ["eyeglasses_adjustment"], replace_service_keys: true },
           { key: "nu_stiu", label: "Altceva", service_keys: ["eyeglasses_repair"], replace_service_keys: true },
@@ -185,7 +185,7 @@ export const INTENTS = {
           // Vezi comentariul de la control_vedere: acelasi semnal pediatric, pe traseul
           // de rezerva. Aici nu exista next_intent, deci cheia se aduna direct.
           { key: "copil", label: "Pentru copilul meu", service_keys: ["children_eye_exam"] },
-          { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
+          { key: "other_adult", label: "Pentru altcineva" },
         ],
       },
       // Adaugat 2026-08-06, la cererea explicita a lui Alex: cine merge la medic pentru
@@ -200,7 +200,7 @@ export const INTENTS = {
           { key: "tonometry", label: "Da — Tonometrie", service_keys: ["tonometry"] },
           { key: "fundus_exam", label: "Da — Fund de ochi", service_keys: ["fundus_exam"] },
           { key: "corneal_topography", label: "Da — Topografie corneană", service_keys: ["corneal_topography"] },
-          { key: "nu_stiu", label: "Da, dar nu înțeleg ce scrie pe ea", service_keys: ["consult_oftalmologic"] },
+          { key: "nu_stiu", label: "Da, dar nu o înțeleg", service_keys: ["consult_oftalmologic"] },
         ],
       },
       LOCATION_QUESTION,
@@ -224,7 +224,7 @@ export const INTENTS = {
           { key: "tonometrie", label: "Tonometrie", service_keys: ["tonometry"] },
           { key: "fund_de_ochi", label: "Fund de ochi", service_keys: ["fundus_exam"] },
           { key: "topografie_corneana", label: "Topografie corneană", service_keys: ["corneal_topography"] },
-          { key: "nu_sunt_sigur", label: "Nu o am la mine sau nu înțeleg ce scrie", service_keys: ["consult_oftalmologic"] },
+          { key: "nu_sunt_sigur", label: "Nu o am sau nu o înțeleg", service_keys: ["consult_oftalmologic"] },
         ],
       },
       LOCATION_QUESTION,
@@ -255,12 +255,13 @@ export const CATEGORY_QUESTION = {
     // sa i-l fi cerut cineva. Iar "Nu sunt sigur" promite ajutor, nu doar inregistreaza
     // nesiguranta - inainte era ramura cu cele mai putine intrebari, desi e pacientul care
     // are cea mai mare nevoie de ghidare.
-    { key: "control_vedere", label: "Vreau un control — nu văd bine sau a trecut mult timp" },
+    // 2026-09-27: etichete scurte, fara explicatii dupa linie de pauza.
+    { key: "control_vedere", label: "Vreau un control" },
     { key: "simptome_oftalmologice", label: "Am o problemă apărută recent" },
     { key: "ochelari_lentile", label: "Ochelari sau lentile de contact" },
     { key: "reparatii_ochelari", label: "Îmi repar ochelarii" },
     { key: "investigatii", label: "Am o trimitere de la medic" },
-    { key: "unknown", label: "Nu sunt sigur — ajută-mă să aleg" },
+    { key: "unknown", label: "Nu sunt sigur" },
   ],
 };
 
