@@ -27,6 +27,7 @@ import {
   buildAnamnesisPrefill,
   buildPatientAnamnesisAnswers,
   isPatientAnamnesisKey,
+  patientAnamnesisIsForConsult,
   patientAnamnesisVariant,
   patientNeedsAnamnesis,
 } from "@/lib/patientAnamnesis";
@@ -38,6 +39,7 @@ import {
   detectIntentFromText,
   detectPatientContextHints,
   detectSubIntentPrefill,
+  intentDisplayLabel,
   mergePatientContextHints,
   suggestedOptionKeyForQuestion,
 } from "@/lib/intentRegistry";
@@ -52,6 +54,7 @@ import SearchingTransition from "./SearchingTransition";
 import PatientIntentConfirmation from "./PatientIntentConfirmation";
 import PatientRequestReview from "./PatientRequestReview";
 import PatientAnamnesis from "./PatientAnamnesis";
+import PatientSearchContact from "./PatientSearchContact";
 import UrgencyInterruption from "./UrgencyInterruption";
 import InfoHint from "./InfoHint";
 
@@ -203,6 +206,15 @@ function patientLanguageText(initialMessage, answers) {
       .map((answer) => answer.answer_value),
   ];
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
+}
+
+// Pentru cine cauta pacientul, in valorile PatientRequest.for_whom ("" cand nu stim).
+function patientForWhom(intent, answers = []) {
+  const byKey = Object.fromEntries((Array.isArray(answers) ? answers : [])
+    .map((answer) => [answer?.question_key, answer?.answer_value]));
+  const value = byKey.for_whom || byKey.pentru_cine || "";
+  if (intent === "control_copil" || value === "child" || value === "copil") return "copil";
+  return ["adult", "other_adult"].includes(value) ? value : "";
 }
 
 function expandedAnsweredQuestionKeys(values = []) {
@@ -676,6 +688,37 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("questions");
   };
 
+  // 2026-09-27, cererea owner-ului: la fiecare cautare cerem si datele de contact, dupa anamneza
+  // si inainte de verificarea cererii. Pasul se poate sari. Starea lui (salvate sau sarite)
+  // ramane in `contactStep`, ca sa nu apara din nou; datele insele nu intra in cerere, in
+  // potrivire sau la modelul AI.
+  const handleSearchContact = ({ status }) => {
+    matchingRequestRef.current.invalidate();
+    trackPatientSearchEvent("patient_search_contact_resolved", {
+      intent: state.intent || "unknown",
+      status: status === "saved" ? "saved" : "skipped",
+    });
+    pushHistory();
+    prepareAdaptiveSelection();
+    setState((s) => ({ ...s, contactStep: status === "saved" ? "saved" : "skipped" }));
+    setPhase("questions");
+  };
+
+  const handleSearchContactBack = () => {
+    goBack();
+    setPhase("questions");
+  };
+
+  const searchContactContext = {
+    intent: state.intent || "",
+    intent_label: state.intent ? intentDisplayLabel(state.intent) : "",
+    city: state.city || state.locality?.city_name || "",
+    county: state.locality?.county_name || "",
+    locality_siruta_code: state.locality?.siruta_code || "",
+    timing_key: state.answers.find((answer) => answer.question_key === "timing")?.answer_value || "",
+    search_key: entrySignatureRef.current,
+  };
+
   const handleReviewConfirm = () => {
     if (!requestDraft) return;
     matchingRequestRef.current.invalidate();
@@ -893,6 +936,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     // Chestionarul s-a incheiat. Pentru un consult, intai scurta anamneza, apoi verificarea.
     if (patientNeedsAnamnesis({ intent: state.intent, answers: state.answers })) {
       setPhase("anamnesis");
+      return;
+    }
+    // Apoi datele de contact, la fiecare cautare (se pot sari).
+    if (!state.contactStep) {
+      setPhase("contact");
       return;
     }
     const draft = buildPatientRequestDraft({
@@ -1169,10 +1217,21 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         <PatientAnamnesis
           key={`${state.intent || "unknown"}-${anamnesisVariant}`}
           variant={anamnesisVariant}
+          forConsult={patientAnamnesisIsForConsult(state.intent)}
           initialSelections={anamnesisPrefill}
           onSubmit={(selections) => handleAnamnesis(selections)}
           onSkip={() => handleAnamnesis({}, { skipped: true })}
           onBack={history.length > 0 ? handleAnamnesisBack : undefined}
+        />
+      )}
+
+      {phase === "contact" && (
+        <PatientSearchContact
+          key={`contact-${state.intent || "unknown"}`}
+          forWhom={patientForWhom(state.intent, state.answers)}
+          search={searchContactContext}
+          onDone={handleSearchContact}
+          onBack={history.length > 0 ? handleSearchContactBack : undefined}
         />
       )}
 
