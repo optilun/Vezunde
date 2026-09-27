@@ -631,3 +631,8 @@ explicatiile in spatele unui buton "i". Componenta noua `src/components/intake2/
     scurte, fara sa se piarda niciun sfat medical;
   - catalogul (`shared/` si copia identica din `base44/shared/`), testele de siguranta si politica
     de urgenta actualizate. `verify-all`: 157 trec, acelasi 1 esec din zona profilului.
+- **Acelasi stil de card peste tot (owner, cu captura):** verificarea de siguranta (fara chenar
+  interior, titlu ca la celelalte intrebari, "Niciuna" ca variant normala), lista de localitati,
+  anamneza (bifat cand e ales, doua coloane pentru Da/Nu) si confirmarea nevoii folosesc acum
+  `ChoiceCard`, cu o varianta `compact` pentru listele lungi. Butoanele de actiune (Continua, Sari
+  peste, Cauta rezultate) si ecranul de urgenta raman cum erau. `verify-all`: 158 trec, 0 esecuri.
