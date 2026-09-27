@@ -141,7 +141,11 @@ export default function LocationsWithMap({
         </div>
       )}
 
-      <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "relative mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8" : "relative mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8" : "mt-4")}>
+      {/* 2026-09-27 (audit /cauta, A1): distanta fata de antet si controale se aplica doar pe desktop,
+          unde zona e `lg:fixed`. Inainte `top` era pus direct in style, la toate latimile: pe telefon
+          si tableta elementul este `relative`, deci era impins in jos cu ~370 px si primul rezultat
+          ajungea sub ecran. */}
+      <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { "--workspace-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "relative mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8 lg:top-[var(--workspace-top)]" : "relative mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8 lg:top-[var(--workspace-top)]" : "mt-4")}>
         <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
           {listHeader}
           <div className={gridLayout
