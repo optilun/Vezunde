@@ -347,12 +347,27 @@ export default function ProviderProfile() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  // 2026-09-27: "not_found" doar la 404; "unavailable" la o eroare trecatoare care a persistat
+  // dupa reincercari (limita de trafic, 5xx). Vezi src/lib/transientRetry.js.
+  const [loadError, setLoadError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(null);
     // Cererea poate fi deja pornita la deschiderea paginii (src/lib/publicProfilePrefetch.js).
-    loadPublicProviderProfile(id).then((res) => setProfile(res.data?.profile || null)).catch(() => setProfile(null)).finally(() => setLoading(false));
-  }, [id]);
+    loadPublicProviderProfile(id)
+      .then((res) => {
+        const next = res.data?.profile || null;
+        setProfile(next);
+        if (!next) setLoadError("not_found");
+      })
+      .catch((error) => {
+        setProfile(null);
+        setLoadError(isNotFoundError(error) ? "not_found" : "unavailable");
+      })
+      .finally(() => setLoading(false));
+  }, [id, attempt]);
 
   const services = useMemo(() => profile?.services || [], [profile?.services]);
 
@@ -365,6 +380,9 @@ export default function ProviderProfile() {
   // indexabila si isi declara canonical spre ea insasi - un soft 404 pentru Google.
   const seoMeta = useMemo(() => {
     if (loading) return null;
+    // Eroare trecatoare: fara `noindex`. Un profil public nu are voie sa primeasca `noindex`
+    // doar pentru ca serverul a refuzat temporar cererea.
+    if (!profile && loadError === "unavailable") return null;
     if (!profile) {
       return { title: "Profil indisponibil | VIASEE", description: "Profilul căutat nu este public pe VIASEE.", noindex: true };
     }
@@ -375,10 +393,13 @@ export default function ProviderProfile() {
       image: profileImageUrl(profile) || undefined,
       structuredData: buildProviderProfileStructuredData({ profile, canonical }),
     };
-  }, [loading, profile]);
+  }, [loading, profile, loadError]);
   useEntitySeo(seoMeta);
 
   if (loading) return <div className="mx-auto max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Se încarcă...</div>;
+  if (!profile && loadError === "unavailable") {
+    return <ProfileTemporarilyUnavailable onRetry={() => setAttempt((value) => value + 1)} />;
+  }
   if (!profile) return <div className="mx-auto max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost găsit.</div>;
 
   const status = profile.profile_control_status;
