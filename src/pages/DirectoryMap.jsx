@@ -5,7 +5,7 @@ import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 
-import { distanceKm, nearestDirectory } from "../../shared/nearbyDirectory.js";
+import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom } from "../../shared/nearbyDirectory.js";
 
 // Directorul pe harta Romaniei.
 //
@@ -59,9 +59,15 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [visibleIds, setVisibleIds] = useState(null);
   const [pageSize, setPageSize] = useState(saved.pageSize || 24);
   const [mobileView, setMobileView] = useState(saved.mobileView || "map");
-  const handleViewport = useCallback(({ visibleIds: ids }) => {
+  // 2026-09-27. Cand harta e apropiata (de la zoom 9), lista urmeaza centrul hartii. Mutarile facute
+  // de alegerea unei locatii (din lista sau de pe harta) nu reordoneaza lista, ca locatia aleasa sa
+  // nu sara din locul in care vizitatorul tocmai a apasat-o.
+  const [mapCenter, setMapCenter] = useState(null);
+  const handleViewport = useCallback(({ visibleIds: ids, zoom, bounds, reason }) => {
     setVisibleIds(ids);
-
+    if (reason === "selection") return;
+    const next = mapCenterForOrdering(zoom, bounds);
+    setMapCenter((current) => (current && next && current.lat === next.lat && current.lng === next.lng) || (!current && !next) ? current : next);
   }, []);
   const [selectedId, setSelectedId] = useState(saved.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
@@ -161,18 +167,19 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       bounds: [[Math.max(-90, origin.lat-latDelta), Math.max(-180, origin.lng-lngDelta)], [Math.min(90, origin.lat+latDelta), Math.min(180, origin.lng+lngDelta)]],
     };
   }, [origin, radiusKm]);
+  const centerOrder = !origin && Boolean(mapCenter);
   const inView = useMemo(() => {
-    if (visibleIds === null) return orderedPoints;
-    const ids = new Set(visibleIds);
-    return orderedPoints.filter((point) => ids.has(point.id));
-  }, [orderedPoints, visibleIds]);
+    const ids = visibleIds === null ? null : new Set(visibleIds);
+    const shown = ids ? orderedPoints.filter((point) => ids.has(point.id)) : orderedPoints;
+    return centerOrder ? orderByDistanceFrom(shown, mapCenter) : shown;
+  }, [orderedPoints, visibleIds, centerOrder, mapCenter]);
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
   const geoMessage = geoStatus === "denied" ? "Accesul la locație nu este permis. Alege localitatea din bara de căutare." : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
   const listHeader = <div className="mb-4">
       <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
-        {origin || saved.nearbyOrder ? "Locații în zona explorată" : "Explorează România"}
+        {origin || saved.nearbyOrder || centerOrder ? "Locații în zona explorată" : "Explorează România"}
       </h2>
       <details className="group mt-1 text-muted-foreground">
         <summary className="flex min-h-9 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
@@ -180,7 +187,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
           <span className="inline-flex items-center gap-1 text-xs text-[#4f6080]">Despre rezultate <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></span>
         </summary>
         <div className="mt-2 space-y-2 rounded-xl border border-border bg-secondary/50 p-3 text-xs leading-relaxed">
-          <p>{origin ? "Ordine: apropiere de poziția dispozitivului." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>
+          <p>{origin ? "Ordine: apropiere de poziția dispozitivului." : centerOrder ? "Ordine: apropiere de centrul hărții. Mută harta și lista se reordonează." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>
           <p>Lista urmărește zona vizibilă pe hartă. Pozițiile pot fi aproximative; verifică adresa din profil.</p>
           {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații din director nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
         </div>
