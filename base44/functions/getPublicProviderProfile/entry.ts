@@ -12,6 +12,7 @@ import {
 } from '../../shared/professionalIdentity.js';
 import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
 import { loadRowsForLocationIds } from '../../shared/locationScopedEntityQuery.js';
+import { getRecordOrNull } from '../../shared/entityReadErrors.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
@@ -169,7 +170,9 @@ async function publicProfessionalsForLocations(svc, publicLocations) {
 }
 
 async function handleOrganizationProfile(svc, organizationId) {
-  const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
+  // 2026-09-27: o eroare de citire (ex. limita de trafic) nu mai devine 404 - vezi
+  // base44/shared/entityReadErrors.js. Doar lipsa reala a organizatiei da 404.
+  const organization = await getRecordOrNull(svc.entities.ProviderOrganization, organizationId);
   if (!organization || organization.status === 'inactiva') {
     return Response.json({ error: 'Organizatia nu a fost gasita' }, { status: 404 });
   }
@@ -178,7 +181,7 @@ async function handleOrganizationProfile(svc, organizationId) {
     { organization_id: organizationId },
     'city',
     500,
-  ).catch(() => []);
+  );
 
   // Aceeasi politica de vizibilitate ca pentru profilul de locatie: nu se expune nimic
   // ce nu ar fi vizibil in pagina locatiei.
@@ -191,8 +194,8 @@ async function handleOrganizationProfile(svc, organizationId) {
   const states = await loadRowsForLocationIds(
     svc.entities.ProviderLocationDirectoryState,
     rawLocations.map((location) => location.id),
-    { query: { state_status: 'active' }, sort: '-normalized_at', perLocationLimit: 5 },
-  ).catch(() => []);
+    { query: { state_status: 'active' }, sort: '-normalized_at', perLocationLimit: 5, throwOnError: true },
+  );
   const stateByLocation = new Map();
   for (const state of states) {
     if (state?.location_id && !stateByLocation.has(state.location_id)) {
@@ -278,13 +281,16 @@ Deno.serve(async (req) => {
     const locationId = payload.location_id ? String(payload.location_id) : null;
     if (!locationId) return Response.json({ error: 'location_id sau organization_id este obligatoriu' }, { status: 400 });
 
-    const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
+    // 2026-09-27: fara `.catch(() => null)` / `.catch(() => [])` aici. Sub limita de trafic,
+    // o citire esuata facea profilul sa para inexistent (404), iar pagina punea `noindex` pe un
+    // profil public valid. Acum eroarea ajunge 500 si pagina reincearca.
+    const location = await getRecordOrNull(svc.entities.ProviderLocation, locationId);
     const directoryStates = location
       ? await svc.entities.ProviderLocationDirectoryState.filter(
         { location_id: location.id, state_status: 'active' },
         '-normalized_at',
         1,
-      ).catch(() => [])
+      )
       : [];
     const directoryRecord = location ? { ...location, ...(directoryStates[0] || {}) } : null;
     const publicDisclosure = directoryRecord ? getPublicLocationDisclosure(directoryRecord) : null;
@@ -298,7 +304,7 @@ Deno.serve(async (req) => {
     ) return Response.json({ error: 'Profilul nu a fost gasit' }, { status: 404 });
 
     const organization = location.organization_id
-      ? await svc.entities.ProviderOrganization.get(location.organization_id).catch(() => null)
+      ? await getRecordOrNull(svc.entities.ProviderOrganization, location.organization_id)
       : null;
 
     const [services, assignments, equipment, facilities] = await Promise.all([
