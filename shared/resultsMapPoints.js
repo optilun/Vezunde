@@ -148,6 +148,56 @@ export function boundsForPoints(points) {
 }
 
 /**
+ * Ce puncte incadreaza harta la deschidere si cat de aproape poate veni.
+ *
+ * 2026-09-27. Pana acum harta cuprindea toate punctele, cu zoom maxim 14:
+ * - o singura locatie cu coordonate gresite (ex. o optica din Calarasi pusa langa Bucuresti, sau
+ *   invers) departa toata harta, iar orasul cautat ramanea un punct mic;
+ * - un oras cu o singura locatie se deschidea la zoom 14, atat de aproape incat nu se vedea unde e.
+ * Acum:
+ * - punctele mult prea departe de rest (peste FIT_OUTLIER_FACTOR x distanta mediana fata de centru,
+ *   dar cel putin FIT_OUTLIER_MIN_KM) nu intra in incadrare. Raman pe harta si in lista; harta
+ *   spune cate sunt in afara zonei si le poate arata;
+ * - se scot cel mult 20% dintre puncte (minim unul). Daca sunt mai multe, rezultatele chiar sunt
+ *   raspandite si se incadreaza toate (harta Romaniei ramane intreaga);
+ * - cu 1-2 puncte, zoomul maxim este FIT_MAX_ZOOM_FEW_POINTS, ca sa se vada cartierul.
+ * Nu schimba ce rezultate exista, ordinea sau potrivirea; doar camera de la deschidere.
+ */
+export const FIT_MAX_ZOOM = 14;
+export const FIT_MAX_ZOOM_FEW_POINTS = 13;
+export const FIT_OUTLIER_MIN_KM = 20;
+export const FIT_OUTLIER_FACTOR = 4;
+const FIT_OUTLIER_MAX_SHARE = 0.2;
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function kilometersBetween(a, b) {
+  const rad = Math.PI / 180;
+  const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2
+    + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+export function framingForPoints(points) {
+  const list = (Array.isArray(points) ? points : [])
+    .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng));
+  const zoomFor = (count) => (count <= 2 ? FIT_MAX_ZOOM_FEW_POINTS : FIT_MAX_ZOOM);
+  if (list.length < 3) return { points: list, excluded: [], maxZoom: zoomFor(list.length) };
+  const center = { lat: median(list.map((point) => point.lat)), lng: median(list.map((point) => point.lng)) };
+  const distances = list.map((point) => kilometersBetween(center, point));
+  const limit = Math.max(FIT_OUTLIER_MIN_KM, FIT_OUTLIER_FACTOR * median(distances));
+  const kept = list.filter((_, index) => distances[index] <= limit);
+  const excluded = list.filter((_, index) => distances[index] > limit);
+  const allowed = Math.max(1, Math.floor(list.length * FIT_OUTLIER_MAX_SHARE));
+  if (excluded.length === 0 || excluded.length > allowed) return { points: list, excluded: [], maxZoom: zoomFor(list.length) };
+  return { points: kept, excluded, maxZoom: zoomFor(kept.length) };
+}
+
+/**
  * Textul care explica ce lipseste de pe harta. Intoarce sir gol cand nu lipseste nimic, ca
  * apelantul sa nu afiseze o nota inutila.
  */
@@ -356,6 +406,7 @@ export function pointIdsWithinBounds(points, bounds) {
 
 export default {
   RESULTS_MAP_CONTRACT_VERSION,
+  framingForPoints,
   clusterPoints,
   clusterExpansionZoom,
   pointIdsWithinBounds,
