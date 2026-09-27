@@ -5,6 +5,7 @@ import {
   toggleAnamnesisSelection,
 } from "@/lib/patientAnamnesis";
 import InfoHint from "./InfoHint";
+import ChoiceCard from "@/components/intake/ChoiceCard";
 
 // 2026-09-24: scurta anamneza pentru cererile de consult (vezi src/lib/patientAnamnesis.js).
 // Un singur ecran, toate intrebarile optionale. Nimic de aici nu schimba potrivirea sau ordinea
@@ -69,23 +70,20 @@ export default function PatientAnamnesis({ variant = "adult", initialSelections 
               {question.type === "multi" && (
                 <p className="mt-0.5 text-xs text-muted-foreground">Poți alege mai multe.</p>
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
+              {/* 2026-09-27: acelasi card ca la celelalte intrebari (varianta compacta, bifat cand
+                  e ales). Raspunsurile scurte (Da, Nu, Nu stiu) stau pe doua coloane. */}
+              <div className={`mt-2 grid gap-2 ${question.options.every((option) => option.label.length <= 16) ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}>
                 {question.options.map((option) => {
                   const isSelected = selected.includes(option.key);
                   return (
-                    <button
+                    <ChoiceCard
                       key={option.key}
-                      type="button"
-                      aria-pressed={isSelected}
+                      compact
+                      label={option.label}
+                      selected={isSelected}
+                      pressed={isSelected}
                       onClick={() => toggle(question, option.key)}
-                      className={`min-h-11 rounded-full border px-4 py-2 text-left text-sm font-medium transition-colors ${
-                        isSelected
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-card text-foreground hover:border-foreground/40"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
+                    />
                   );
                 })}
               </div>
