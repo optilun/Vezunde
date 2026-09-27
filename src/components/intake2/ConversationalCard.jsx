@@ -53,6 +53,25 @@ import PatientIntentConfirmation from "./PatientIntentConfirmation";
 import PatientRequestReview from "./PatientRequestReview";
 import PatientAnamnesis from "./PatientAnamnesis";
 import UrgencyInterruption from "./UrgencyInterruption";
+import InfoHint from "./InfoHint";
+
+// 2026-09-27, cererea owner-ului: cardurile aratau prea mult text. Explicatiile unei intrebari
+// (textul ajutator din catalog, regula de cautare pe localitate, varianta marcata din mesaj)
+// se deschid acum cu butonul "i" de langa titlu.
+const LOCATION_INFO = "Alege localitatea din lista oficială. Căutăm întâi doar în localitatea aleasă și extindem aria doar dacă ceri tu.";
+const SUGGESTION_INFO = "Varianta marcată „Sugestie” vine din mesajul tău. Alege-o pe cea corectă.";
+
+function questionInfoItems(question, { suggestedKey = null, prefilled = false } = {}) {
+  const items = [];
+  if (question?.helper && !prefilled) items.push(question.helper);
+  if (question?.type === "location") items.push(LOCATION_INFO);
+  const hasSuggestion = question?.type === "choice"
+    && question.key !== "safety_targeted_check"
+    && Boolean(suggestedKey)
+    && (question.options || []).some((option) => option.key === suggestedKey && !option.hidden);
+  if (hasSuggestion) items.push(SUGGESTION_INFO);
+  return items;
+}
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
@@ -1109,6 +1128,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             >
               <h2 className={`font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl ${current.type === "text" && questionPhase === "safety" ? "sr-only" : ""}`}>
                 {current.title}
+                <InfoHint
+                  items={questionInfoItems(current, {
+                    suggestedKey: current.type === "choice" ? suggestedOptionKeyForQuestion(current, contextHints) : null,
+                    prefilled: Boolean(descriptionPrefill(current)),
+                  })}
+                />
               </h2>
               {current.type === "choice" && (
                 <QuestionChoice
