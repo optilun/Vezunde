@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { SearchIcon } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import InfoHint from "./InfoHint";
+
+// 2026-09-27: regula de cautare (aprobata) se deschide cu butonul "i" din campul de cautare, ca
+// sa nu ocupe cardul. Formularea ramane aceeasi.
+const LOCATION_RULE = "Selectează localitatea din lista oficială. VIASEE caută mai întâi numai în localitatea aleasă și extinde aria doar dacă soliciți explicit acest lucru.";
 
 // 2026-09-24: cand pacientul a scris deja orasul ("...in Cluj"), campul porneste completat si
 // lista oficiala apare imediat. Selectia ramane explicita: nu alegem noi localitatea.
@@ -48,14 +53,13 @@ export default function QuestionLocation({ onAnswer, initialQuery = "" }) {
           autoFocus
           className="min-w-0 w-full bg-transparent text-base outline-none placeholder:text-[#9B968D]"
         />
+        <InfoHint items={[LOCATION_RULE]} label="Cum căutăm localitatea" className="-my-1 -mr-2" />
       </div>
       {prefilled && query.trim() === prefilled && (
         <p className="mt-2 text-xs font-medium leading-relaxed text-foreground/80">
           Am căutat după localitatea din mesajul tău.
         </p>
       )}
-      {/* 2026-09-27: regula de cautare (lista oficiala, intai doar localitatea aleasa) se
-          deschide cu butonul "i" de langa titlu (ConversationalCard.jsx, LOCATION_INFO). */}
       <div className="mt-3 max-h-[min(16rem,42dvh)] space-y-2 overflow-y-auto overscroll-contain pr-1">
         {results?.map((locality) => (
           <button
