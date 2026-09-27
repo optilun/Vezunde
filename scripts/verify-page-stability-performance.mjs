@@ -14,7 +14,8 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   const layout = await read('src/components/Layout.jsx');
   assert.match(layout, /: \"page-main-min min-w-0 flex-1 overflow-x-clip outline-none\"/, 'Paginile fara home folosesc page-main-min');
   assert.match(layout, /\? \"min-w-0 flex-1 overflow-visible outline-none\"/, 'Home ramane neschimbat');
-  assert.match(layout, /<div aria-hidden=\"true\" className=\"hidden h-20 lg:block\" \/>/, 'Antetul desktop are 5rem (h-20), ca in regula CSS');
+  // Pe home antetul este transparent peste hero, deci spacer-ul lipseste acolo.
+  assert.match(layout, /<div aria-hidden=\"true\" className=\{isHome \? \"hidden\" : \"hidden h-20 lg:block\"\} \/>/, 'Antetul desktop are 5rem (h-20), ca in regula CSS');
 }
 
 // 2. /cauta
