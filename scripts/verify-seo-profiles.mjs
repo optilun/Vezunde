@@ -274,6 +274,58 @@ scenario('pagina de organizatie citeste starea de director doar pentru locatiile
   assert.match(orgHandler, /loadRowsForLocationIds\(\s*svc\.entities\.ProviderLocationDirectoryState,\s*rawLocations\.map\(\(location\) => location\.id\),\s*\{ query: \{ state_status: 'active' \}, sort: '-normalized_at'/);
 });
 
+scenario('o eroare trecatoare nu devine profil negasit si noindex', async () => {
+  // 2026-09-27. Sub limita de trafic Base44, profilurile publice primeau `noindex` pentru ca orice
+  // eroare era tratata ca „profil negasit”. Acum doar 404 inseamna negasit.
+  const { isNotFoundError, isTransientError, withTransientRetry } = await import('../src/lib/transientRetry.js');
+  assert.equal(isNotFoundError({ status: 404 }), true);
+  assert.equal(isNotFoundError({ response: { status: 500 } }), false);
+  assert.equal(isTransientError({ status: 500, message: 'Rate limit exceeded' }), true);
+  assert.equal(isTransientError({ status: 429 }), true);
+  assert.equal(isTransientError(new Error('Network Error')), true);
+  assert.equal(isTransientError({ status: 404 }), false);
+
+  let calls = 0;
+  const waits = [];
+  const value = await withTransientRetry(async () => {
+    calls += 1;
+    if (calls < 3) throw Object.assign(new Error('Rate limit exceeded'), { status: 500 });
+    return 'ok';
+  }, { wait: async (ms) => { waits.push(ms); } });
+  assert.equal(value, 'ok');
+  assert.equal(calls, 3);
+  assert.deepEqual(waits, [1500, 4000]);
+
+  let notFoundCalls = 0;
+  await assert.rejects(withTransientRetry(async () => {
+    notFoundCalls += 1;
+    throw Object.assign(new Error('not found'), { status: 404 });
+  }, { wait: async () => {} }));
+  assert.equal(notFoundCalls, 1, '404 nu se reincearca');
+
+  for (const page of ['src/pages/ProviderProfile.jsx', 'src/pages/OrganizationProfile.jsx', 'src/pages/ProfessionalProfile.jsx']) {
+    const code = source(page);
+    assert.match(code, /isNotFoundError\(error\) \? "not_found" : "unavailable"/, `${page}: 404 separat de erorile trecatoare`);
+    assert.match(code, /loadError === "unavailable"\) return null;/, `${page}: fara noindex la eroare trecatoare`);
+    assert.match(code, /<ProfileTemporarilyUnavailable onRetry=/, `${page}: mesaj de indisponibilitate temporara`);
+  }
+  assert.match(source('src/lib/publicProfilePrefetch.js'), /retry\(\(\) => invoke\("getPublicProviderProfile"/);
+
+  // Pe server, citirile care decid „exista / e public” nu mai inghit erorile.
+  const profile = source('base44/functions/getPublicProviderProfile/entry.ts');
+  assert.match(profile, /const location = await getRecordOrNull\(svc\.entities\.ProviderLocation, locationId\);/);
+  assert.doesNotMatch(profile, /ProviderLocation\.get\(locationId\)\.catch/);
+  assert.match(profile, /const organization = await getRecordOrNull\(svc\.entities\.ProviderOrganization, organizationId\);/);
+  assert.match(profile, /perLocationLimit: 5, throwOnError: true \},\s*\);/);
+  const professional = source('base44/functions/getPublicProfessionalProfile/entry.ts');
+  assert.match(professional, /const profile = await getRecordOrNull\(svc\.entities\.ProfessionalProfile, professionalId\);/);
+
+  const { getRecordOrNull } = await import('../base44/shared/entityReadErrors.js');
+  assert.equal(await getRecordOrNull({ get: async () => { throw Object.assign(new Error('x'), { status: 404 }); } }, 'a'), null);
+  await assert.rejects(getRecordOrNull({ get: async () => { throw Object.assign(new Error('Rate limit exceeded'), { status: 429 }); } }, 'a'));
+  assert.deepEqual(await getRecordOrNull({ get: async (id) => ({ id }) }, 'a'), { id: 'a' });
+});
+
 scenario('robots declara toate sitemap-urile', () => {
   const robots = source('public/robots.txt');
   assert.match(robots, /^Sitemap: https:\/\/viasee\.ro\/sitemap\.xml$/m);
