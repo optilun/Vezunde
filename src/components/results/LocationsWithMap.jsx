@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
@@ -27,8 +27,16 @@ export default function LocationsWithMap({
   // 2026-09-27: "grid" = cartile directorului intr-o grila cu linii fine intre celule (fara
   // carduri rotunjite separate). "cards" ramane pentru celelalte rezultate.
   listLayout = "cards",
+  // 2026-09-27: rezultatele unei cautari de servicii au o ordine a potrivirii. Cu `numbered`, fiecare
+  // card si pinul lui de pe harta poarta acelasi numar (1, 2, 3...). Numerotarea doar afiseaza
+  // ordinea primita de la server; nu o schimba.
+  numbered = false,
 }) {
   const gridLayout = listLayout === "grid";
+  const rankById = useMemo(
+    () => (numbered ? new Map((listResults || []).map((location, index) => [location.id, index + 1])) : null),
+    [numbered, listResults],
+  );
   useEffect(() => {
     if (!fixedDesktop) return;
     const media = window.matchMedia("(min-width: 1024px)");
@@ -150,10 +158,15 @@ export default function LocationsWithMap({
                   ? `group/cell h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
                     selectedId === location.id ? "bg-[#eaeff7]" : hoveredId === location.id ? "bg-white/70" : ""
                   }`
-                  : `h-full rounded-[22px] transition-shadow ${
+                  : `relative h-full rounded-[22px] transition-shadow ${
                   selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
                 } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
               >
+                {rankById?.has(location.id) && mapPointFromResult(location) && (
+                  <span aria-hidden="true" title={`Pinul ${rankById.get(location.id)} pe hartă`} className={`pointer-events-none absolute -left-2 -top-2 z-10 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-xs font-extrabold tabular-nums shadow-[0_0_0_3px_hsl(var(--background))] ${selectedId === location.id ? "bg-[#4f6080] text-white" : "bg-[#171717] text-white"}`}>
+                    {rankById.get(location.id)}
+                  </span>
+                )}
                 {renderCard(location, mapPointFromResult(location) ? () => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined)}
                 {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
               </div>
@@ -175,6 +188,7 @@ export default function LocationsWithMap({
               onViewportChange={onViewportChange}
               storageKey={storageKey}
               focusArea={focusArea}
+              rankById={rankById}
               className={fixedDesktop ? "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-full" : "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"}
             />
             {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
