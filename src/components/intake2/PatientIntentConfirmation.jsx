@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, Pencil, Search, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import ChoiceCard from "@/components/intake/ChoiceCard";
+import InfoHint from "./InfoHint";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 import { CATEGORY_QUESTION, INTENT_DISPLAY, TIMING_OPTIONS } from "@/lib/intentRegistry";
 import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../../shared/patientGuidanceQuestionCatalog.js";
@@ -85,8 +86,8 @@ export default function PatientIntentConfirmation({
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             {requiresManualChoice
-              ? "Din mesaj nu reiese sigur ce cauți. Alege varianta potrivită și continuăm cu întrebările potrivite pentru ea."
-              : "Alege varianta potrivită și continuăm cu întrebările potrivite pentru ea."}
+              ? "Din mesaj nu reiese sigur ce cauți. Alege varianta potrivită."
+              : "Alege varianta potrivită."}
           </p>
         </>
       ) : (
@@ -111,8 +112,15 @@ export default function PatientIntentConfirmation({
               </ul>
             </div>
           )}
+          {/* 2026-09-27: pe card ramane doar indemnul; restul se deschide cu butonul "i". */}
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Confirmă și continuăm cu câteva întrebări scurte. Ce ai scris deja apare marcat ca sugestie, ca să nu completezi totul de la zero. AI-ul nu alege furnizorii și nu stabilește ordinea rezultatelor.
+            Confirmă și continuăm cu câteva întrebări scurte.
+            <InfoHint
+              items={[
+                "Ce ai scris deja apare marcat ca sugestie, ca să nu completezi totul de la zero.",
+                "AI-ul nu alege furnizorii și nu stabilește ordinea rezultatelor.",
+              ]}
+            />
           </p>
         </>
       )}
