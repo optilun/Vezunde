@@ -49,7 +49,11 @@ assert.match(app, /AdminDirectoryOps/);
 assert.doesNotMatch(app, /ProtectedRoute|AdminVerifications/);
 assert.match(providerWorkspace, /ProviderAccess/);
 assert.match(locationsWithPhoto, /ProviderLocationPhotoCompact/);
-assert.match(providerServices, /ProviderServicesThreeColumn/);
+// 2026-09-13: ProviderServices a trecut pe ProviderServicesEditor (commit 36f5c61a).
+// Lantul ThreeColumn -> WorkspaceRuntime -> WorkspaceOperational nu mai este montat
+// si ramane doar ca referinta pentru alte scripturi de verificare.
+assert.match(providerServices, /import ProviderServicesEditor from "\.\/ProviderServicesEditor"/);
+assert.doesNotMatch(providerServices, /ProviderServicesThreeColumn/);
 assert.match(threeColumn, /ProviderServicesWorkspaceRuntime/);
 assert.match(runtime, /ProviderServicesWorkspaceOperational/);
 assert.doesNotMatch(providerServices, /ProviderServicesGuided|ProviderServicesProgressive|ProviderServicesWorkspaceStructured/);
