@@ -187,6 +187,7 @@ const DIRECTORY_DETAIL_OVERLAY_FIELDS = Object.freeze([
   'directory_detail_level',
   'directory_basic_details_approved',
   'data_quality_status',
+  'location_type_code',
 ]);
 
 /**
