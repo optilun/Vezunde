@@ -2,6 +2,7 @@ import { layoutMapMarkers } from "../../../shared/mapMarkerPresentation.js";
 import { clusterSharesPosition } from "../../../shared/resultsMapLabels.js";
 import { CLUSTER_INDIVIDUAL_ZOOM, clusterExpansionZoom } from "../../../shared/resultsMapPoints.js";
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { readSearchSession } from "@/lib/searchSession";
@@ -40,6 +41,12 @@ function createMapEntry(host) {
   // Fundalul VIASEE: Positron recolorat, nume romanesti (src/lib/viaseeMapStyle.js).
   map.setStyle(MAP_STYLE_URL, { transformStyle: (_previous, next) => transformMapStyle(next) });
   map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-left");
+  // Locul butonului 3D: un control al hartii, asezat sub zoom si busola de MapLibre (nu la o
+  // pozitie fixa, care se suprapunea cu butoanele mai mari de pe ecranele tactile).
+  const controlSlot = document.createElement("div");
+  controlSlot.className = "maplibregl-ctrl viasee-map-control-slot";
+  map.addControl({ onAdd: () => controlSlot, onRemove: () => controlSlot.remove() }, "top-left");
+  entry.controlSlot = controlSlot;
   map.on("moveend", event => entry.owner?.onMoveEnd(event));
   for (const event of ["moveend", "zoomend", "rotateend", "pitchend", "resize"]) map.on(event, () => entry.owner?.onLabels());
   map.on("click", event => entry.owner?.onMapClick(event));
@@ -120,6 +127,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   const [styleReady, setStyleReady] = useState(false);
   const [threeD, setThreeD] = useState(false);
   const [zoom, setZoom] = useState(6);
+  const [controlSlot, setControlSlot] = useState(null);
   useEffect(() => {
     let entry;
     let map;
@@ -148,10 +156,11 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
         onFailure: (reason) => latest.current.onFailure(reason),
         // Un clic pe harta (nu pe un pin sau pe card) inchide cardul locatiei, ca pe Airbnb.
         onMapClick: (event) => {
-          if (event.originalEvent?.target?.closest?.(".viasee-vector-marker")) return;
+          if (event.originalEvent?.target?.closest?.(".viasee-vector-marker, .maplibregl-ctrl")) return;
           if (markerState.current.selectedId) handlers.current.onSelect?.(null);
         },
       };
+      setControlSlot(entry.controlSlot);
       if (entry.styleLoaded) setStyleReady(true);
       else timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
       observer = new ResizeObserver(() => {
@@ -331,9 +340,9 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     {ready && hasCard && <div ref={cardAnchor} className="pointer-events-none absolute left-0 top-0 z-[450]" style={{visibility:"hidden"}}>
       <div className="pointer-events-auto w-[300px]">{selectedCard}</div>
     </div>}
-    <div className="absolute left-[10px] top-[132px] z-40 flex flex-col items-start gap-2">
+    {controlSlot && createPortal(<div className="flex flex-col items-start gap-2">
       <button type="button" disabled={!styleReady} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="viasee-map-control h-9 w-9 text-[12px] font-bold disabled:opacity-50">{threeD?"2D":"3D"}</button>
       {threeD && zoom<14 && <span className="max-w-40 rounded-xl bg-card p-2 text-xs shadow">Apropie harta pentru a vedea clădirile 3D.</span>}
-    </div>
+    </div>, controlSlot)}
   </>;
 }
