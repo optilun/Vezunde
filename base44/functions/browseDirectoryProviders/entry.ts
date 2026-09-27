@@ -12,7 +12,8 @@ import {
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { getNationalMap } from '../../shared/nationalMapCache.js';
-import { loadDirectoryDetailOverlayForMap, loadPublishedLocationsForMap } from '../../shared/nationalMapSources.js';
+import { loadDirectoryDetailOverlayForMap, loadPublishedLocationsForMap, readAllPages } from '../../shared/nationalMapSources.js';
+import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Read-only locality browse. It does not score or match by service.
@@ -106,21 +107,93 @@ async function computeNationalMap(svc) {
 const SITEMAP_FRESH_MS = 10 * 60 * 1000;
 let sitemapMemory = null; // { value, generatedAt }
 
+function lastmodOf(row) {
+  return row?.profile_updated_at || row?.updated_date || row?.created_date || null;
+}
+
+function latestDate(values) {
+  let best = null;
+  for (const value of values) {
+    const time = Date.parse(value);
+    if (Number.isFinite(time) && (best === null || time > best)) best = time;
+  }
+  return best === null ? null : new Date(best).toISOString();
+}
+
+const byId = (a, b) => String(a.id).localeCompare(String(b.id));
+
+// 2026-09-27. Organizatiile intra in sitemap doar daca site-ul insusi trimite catre pagina lor:
+// profilul unei locatii arata linkul „Vezi toate locatiile organizatiei” numai cand locatia are
+// detaliu complet (revendicata sau verificata - vezi `organization_id` in
+// getPublicProviderProfile). Pentru profilurile din director legatura cu organizatia nu e
+// expusa, deci nici sitemap-ul nu o promoveaza. In plus, cel putin 2 locatii publice: o
+// organizatie cu o singura locatie ar dubla pagina locatiei.
+const SITEMAP_ORGANIZATION_MIN_LOCATIONS = 2;
+
+async function sitemapOrganizations(svc, orgStats) {
+  const candidates = [...orgStats.entries()]
+    .filter(([, stats]) => stats.linked && stats.count >= SITEMAP_ORGANIZATION_MIN_LOCATIONS);
+  const rows = await Promise.all(candidates.map(async ([organizationId, stats]) => {
+    const organization = await svc.entities.ProviderOrganization.get(organizationId);
+    if (!organization || organization.status === 'inactiva') return null;
+    return { id: organizationId, lastmod: latestDate([...stats.lastmods, lastmodOf(organization)]) };
+  }));
+  return rows.filter(Boolean).sort(byId);
+}
+
+// Aceeasi poarta ca getPublicProfessionalProfile: profil public, verificat, aprobat si cu nume.
+async function sitemapProfessionals(svc) {
+  const { rows } = await readAllPages(svc.entities.ProfessionalProfile, { is_public: true });
+  return rows
+    .filter((profile) => isPublicProfessionalProfile(profile))
+    .filter((profile) => String(profile.public_display_name || profile.full_name || '').trim())
+    .map((profile) => ({ id: profile.id, lastmod: lastmodOf(profile) }))
+    .sort(byId);
+}
+
 async function computeSitemapLocations(svc) {
   const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
   const visible = allLocations.filter(isVisibleInDirectory);
   const { overlay } = await loadDirectoryDetailOverlayForMap(svc, visible.map((loc) => loc.id));
   const locations = [];
+  const orgStats = new Map(); // organization_id -> { count, linked, lastmods }
   for (const loc of visible) {
     const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
     if (disclosure.profile_control_status === 'suspended') continue;
-    locations.push({
-      id: loc.id,
-      lastmod: loc.profile_updated_at || loc.updated_date || loc.created_date || null,
-    });
+    locations.push({ id: loc.id, lastmod: lastmodOf(loc) });
+    if (loc.organization_id) {
+      const key = String(loc.organization_id);
+      const stats = orgStats.get(key) || { count: 0, linked: false, lastmods: [] };
+      stats.count += 1;
+      stats.linked = stats.linked || disclosure.expose_full_details === true;
+      stats.lastmods.push(lastmodOf(loc));
+      orgStats.set(key, stats);
+    }
   }
-  locations.sort((a, b) => String(a.id).localeCompare(String(b.id)));
-  return { map_scope: 'sitemap', locations, total: locations.length };
+  locations.sort(byId);
+
+  // Profilurile de organizatie si de specialist sunt un fisier separat. O eroare aici nu are voie
+  // sa strice lista de locatii: generatorul vede `profiles_error` si pastreaza fisierul existent.
+  let organizations = [];
+  let professionals = [];
+  let profilesError = false;
+  try {
+    [organizations, professionals] = await Promise.all([
+      sitemapOrganizations(svc, orgStats),
+      sitemapProfessionals(svc),
+    ]);
+  } catch (_error) {
+    profilesError = true;
+  }
+
+  return {
+    map_scope: 'sitemap',
+    locations,
+    total: locations.length,
+    organizations,
+    professionals,
+    profiles_error: profilesError,
+  };
 }
 
 async function getSitemapLocations(svc) {
