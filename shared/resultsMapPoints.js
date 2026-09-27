@@ -170,10 +170,8 @@ export function unmappedNotice(unmappedCount) {
  * taia orasele pe marginea celulelor (Bucurestiul aparea ca "274" si "17" lipite) si lasa
  * grupuri vecine una peste alta. Fara dependinte noi.
  *
- * @param {Array<object>} points punctele deja validate
- * @param {number} zoom nivelul curent de zoom
- * @param {{tileSize?: number}} options 512 pentru MapLibre (implicit), 256 pentru Leaflet
- * @returns {Array<{key: string, lat: number, lng: number, points: Array<object>, lead: object, count: number}>}
+ * Functia: clusterPoints(points, zoom, { tileSize }) - 512 pentru MapLibre (implicit), 256 pentru
+ * Leaflet. Intoarce [{key, lat, lng, points, lead, count}].
  */
 export const CLUSTER_RADIUS_PX = 52;
 export const CLUSTER_INDIVIDUAL_ZOOM = 15;
@@ -241,7 +239,7 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
     if (assigned[index]) continue;
     assigned[index] = true;
     const [seedX, seedY] = projected[index];
-    const members = [list[index]];
+    const memberIndexes = [index];
     const cellX = Math.floor(seedX / radius);
     const cellY = Math.floor(seedY / radius);
     for (let dx = -1; dx <= 1; dx += 1) {
@@ -251,14 +249,13 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
           const [x, y] = projected[other];
           if (Math.hypot(x - seedX, y - seedY) > radius) continue;
           assigned[other] = true;
-          members.push(list[other]);
+          memberIndexes.push(other);
         }
       }
     }
-    // Ordinea primita se pastreaza si in interiorul grupului.
-    const order = new Map(list.map((point, position) => [point, position]));
-    members.sort((a, b) => order.get(a) - order.get(b));
-    groups.push(members);
+    // Ordinea primita se pastreaza si in interiorul grupului (primul e mereu punctul de pornire).
+    memberIndexes.sort((a, b) => a - b);
+    groups.push(memberIndexes.map((position) => list[position]));
   }
 
   const clusters = [];
