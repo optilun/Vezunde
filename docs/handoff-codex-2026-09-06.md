@@ -252,3 +252,8 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Aplicat (checkpoint 6ab8c4907b600f3a1fc3166d): fraze noi de urgenta in `src/lib/patientSafety.js` + copia din `base44/shared/` (vedere dubla si umbra noua cu debut recent, durere foarte puternica); randul 112 numeste si semnele de accident vascular; note noi in recomandari (keratocon, degenerescenta maculara, conjunctivita/alergie, miopie la copil, ochi lenes/strabism); "Keratocon" in anamneza.
 - Corectie: "fulgere si multe puncte negre" era deja prinsa in formular; golul era doar in stratul agentului de conversatie (`shared/patientEyeSafetyPolicy.js`, neschimbat). Detalii: audit, sectiunea 15.
 - Verificat live dupa publicare: ecranul de urgenta pentru "vad dublu de azi dimineata" (randul 112 nou), anamneza cu "Keratocon" bifat si nota pentru keratocon pe ecranul de verificare.
+
+### 2026-09-27 — mai putin text pe cardurile chestionarului
+
+- La cererea owner-ului: explicatiile de pe carduri (confirmare, intrebari, verificarea de siguranta, localitate, anamneza, disclaimerul recomandarilor) se deschid cu butonul "i" (`src/components/intake2/InfoHint.jsx`). Textele aprobate nu s-au schimbat, doar locul; ecranul de urgenta si plasa de siguranta raman vizibile.
+- Test nou `verify-patient-intake-info-hints`. `verify-all`: 157 OK / 1 (verify-map-and-profile-loading, zona profilului, in lucru la celalalt agent). Detalii: audit, sectiunea 16.
