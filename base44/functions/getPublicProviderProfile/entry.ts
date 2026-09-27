@@ -11,6 +11,7 @@ import {
   sanitizeProfessionalSpecializations,
 } from '../../shared/professionalIdentity.js';
 import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
+import { loadRowsForLocationIds } from '../../shared/locationScopedEntityQuery.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
@@ -181,10 +182,16 @@ async function handleOrganizationProfile(svc, organizationId) {
 
   // Aceeasi politica de vizibilitate ca pentru profilul de locatie: nu se expune nimic
   // ce nu ar fi vizibil in pagina locatiei.
-  const states = await svc.entities.ProviderLocationDirectoryState.filter(
-    { state_status: 'active' },
-    '-normalized_at',
-    2000,
+  //
+  // 2026-09-27. Starile se citesc doar pentru locatiile organizatiei. Inainte se citeau primele
+  // 2000 de stari active din toata aplicatia, dupa `-normalized_at`: odata ce directorul a trecut
+  // de 2000 de stari, locatiile importate mai demult ramaneau fara stare, iesea
+  // `is_publicly_available: false` si pagina raspundea „Organizatia nu are locatii publice” -
+  // inclusiv pentru lanturi cu zeci de locatii publicate, legate din profilul locatiei.
+  const states = await loadRowsForLocationIds(
+    svc.entities.ProviderLocationDirectoryState,
+    rawLocations.map((location) => location.id),
+    { query: { state_status: 'active' }, sort: '-normalized_at', perLocationLimit: 5 },
   ).catch(() => []);
   const stateByLocation = new Map();
   for (const state of states) {
