@@ -38,10 +38,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = (relativePath) => readFileSync(path.join(root, relativePath), 'utf8').replace(/\r\n/g, '\n');
 let scenarioCount = 0;
 
+const pendingScenarios = [];
+
 function scenario(name, verify) {
   scenarioCount += 1;
   try {
-    verify();
+    const result = verify();
+    if (result && typeof result.then === 'function') {
+      pendingScenarios.push(result.catch((error) => {
+        error.message = `[${name}] ${error.message}`;
+        throw error;
+      }));
+    }
   } catch (error) {
     error.message = `[${name}] ${error.message}`;
     throw error;
@@ -436,6 +444,7 @@ scenario('manifestul referentiat de index.html exista si e valid', () => {
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0);
 });
 
+await Promise.all(pendingScenarios);
 assert.ok(scenarioCount >= 20);
 console.log(JSON.stringify({
   contract: SEO_PROFILE_CONTRACT_VERSION,
