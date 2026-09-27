@@ -10,7 +10,9 @@ import ChoiceCard from "@/components/intake/ChoiceCard";
 // 2026-09-24: scurta anamneza pentru cererile de consult (vezi src/lib/patientAnamnesis.js).
 // Un singur ecran, toate intrebarile optionale. Nimic de aici nu schimba potrivirea sau ordinea
 // rezultatelor si nimic nu ajunge automat la furnizori.
-export default function PatientAnamnesis({ variant = "adult", initialSelections = {}, onSubmit, onSkip, onBack }) {
+// 2026-09-27: apare la toate cautarile, mai putin la reparatii. Cand nevoia nu e un consult
+// medical (ochelari, lentile, "Nu sunt sigur"), ecranul vorbeste despre specialist, nu despre medic.
+export default function PatientAnamnesis({ variant = "adult", forConsult = true, initialSelections = {}, onSubmit, onSkip, onBack }) {
   const questions = patientAnamnesisQuestions(variant);
   const [selections, setSelections] = useState(() => ({ ...initialSelections }));
   // Ce a pornit bifat din mesajul pacientului, afisat ca sa nu para o alegere facuta de noi.
@@ -44,13 +46,17 @@ export default function PatientAnamnesis({ variant = "adult", initialSelections 
 
       {/* 2026-09-27: rostul anamnezei si nota de confidentialitate se deschid cu butonul "i". */}
       <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-        Câteva informații pentru consult
+        {forConsult ? "Câteva informații pentru consult" : "Câteva informații pentru specialist"}
         <InfoHint
           items={[
-            variant === "child"
-              ? "Ajută medicul să se pregătească pentru consultul copilului. Durează sub un minut și poți sări peste orice întrebare."
-              : "Ajută medicul să se pregătească pentru consult. Durează sub un minut și poți sări peste orice întrebare.",
-            "Răspunsurile rămân în cererea ta și nu schimbă ordinea rezultatelor. La final le poți trimite medicului, în mesajul pe care îl vezi și îl poți modifica înainte de trimitere.",
+            forConsult
+              ? (variant === "child"
+                ? "Ajută medicul să se pregătească pentru consultul copilului. Durează sub un minut și poți sări peste orice întrebare."
+                : "Ajută medicul să se pregătească pentru consult. Durează sub un minut și poți sări peste orice întrebare.")
+              : "Ajută specialistul să se pregătească. Durează sub un minut și poți sări peste orice întrebare.",
+            forConsult
+              ? "Răspunsurile rămân în cererea ta și nu schimbă ordinea rezultatelor. La final le poți trimite medicului, în mesajul pe care îl vezi și îl poți modifica înainte de trimitere."
+              : "Răspunsurile rămân în cererea ta și nu schimbă ordinea rezultatelor. La final le poți trimite specialistului, în mesajul pe care îl vezi și îl poți modifica înainte de trimitere.",
           ]}
         />
       </h2>
