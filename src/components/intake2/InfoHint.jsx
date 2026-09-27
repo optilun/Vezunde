@@ -22,9 +22,12 @@ export default function InfoHint({ items = [], label = "Mai multe informații", 
           <Info className="h-4 w-4" aria-hidden="true" />
         </button>
       </PopoverTrigger>
+      {/* collisionPadding: pe telefon fereastra ramane la 16px de marginea ecranului (test live,
+          2026-09-27: la 375px lipea de marginea din dreapta). */}
       <PopoverContent
         side="bottom"
         align="start"
+        collisionPadding={16}
         className="w-[min(20rem,calc(100vw-2rem))] space-y-2 text-sm font-normal leading-relaxed tracking-normal text-muted-foreground"
       >
         {paragraphs.map((paragraph) => (
