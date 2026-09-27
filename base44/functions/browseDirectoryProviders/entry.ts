@@ -378,6 +378,9 @@ Deno.serve(async (req) => {
     // profil o arata. Vezi loadDirectoryDetailOverlay.
     const detailOverlay = await loadDirectoryDetailOverlay(svc, (includeMapResults ? eligibleLocations : locations).map((loc) => loc.id), { throwOnError: advanced });
 
+    const localityLogos = await loadOrganizationLogos(svc, fullDetailOrganizationIds(
+      locations.map((loc) => ({ loc, disclosure: getPublicLocationDisclosure(withDirectoryDetail(loc, detailOverlay)) })),
+    ));
     const results = [];
     let locationsWithPublishedServices = 0;
     for (const loc of locations) {
@@ -428,6 +431,7 @@ Deno.serve(async (req) => {
         service_coverage_status: publicDisclosure.expose_full_details
           ? (hasPublicService ? 'listed' : 'not_listed')
           : 'not_disclosed',
+        ...cardImages(loc, publicDisclosure, localityLogos),
       });
     }
 
