@@ -245,3 +245,9 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Propuneri pentru medic adaugate in "Revizuire medicala VIASEE" (keratocon, degenerescenta maculara, conjunctivita/alergie, copii, fraza pentru fulgere, uveita).
 - Dupa "da": formulari uzuale in regulile fixe (ochiul uscat, pleoape rosii cu cruste, pielita pe ochi, uveita, cheratocon) si sinonime semantice (crucis/sasiu, urcior, blefarita, pterigion, diabet -> fund de ochi). Bundle semantic reconstruit, blob aprobat. Detalii: audit, sectiunea 14.
 - Verificat live dupa publicare: keratocon, diabet si formularile noi functioneaza pe server; indrumarea la specialist apare in interfata. Ramane doar revizuirea medicala a ciornelor.
+
+### 2026-09-27 — revizuirea textelor medicale, delegata de owner catre AI
+
+- Owner-ul nu are medic disponibil; revizuirea a facut-o Claude pe baza ghidurilor publice (AAO, NHS). De refacut cu un medic cand se poate.
+- Aplicat (checkpoint 6ab8c4907b600f3a1fc3166d): fraze noi de urgenta in `src/lib/patientSafety.js` + copia din `base44/shared/` (vedere dubla si umbra noua cu debut recent, durere foarte puternica); randul 112 numeste si semnele de accident vascular; note noi in recomandari (keratocon, degenerescenta maculara, conjunctivita/alergie, miopie la copil, ochi lenes/strabism); "Keratocon" in anamneza.
+- Corectie: "fulgere si multe puncte negre" era deja prinsa in formular; golul era doar in stratul agentului de conversatie (`shared/patientEyeSafetyPolicy.js`, neschimbat). Detalii: audit, sectiunea 15.
