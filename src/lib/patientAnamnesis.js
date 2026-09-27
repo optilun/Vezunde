@@ -3,6 +3,8 @@
 // 2026-09-24, cerere explicita a owner-ului: "pentru cei care vor sa se programeze la un
 // consult sa se faca si o scurta anamneza". Un singur ecran, cu intrebari optionale, pus dupa
 // chestionar si inainte de verificarea cererii.
+// 2026-09-27, decizia owner-ului: anamneza apare la toate cautarile, mai putin la reparatii
+// (vezi patientNeedsAnamnesis).
 //
 // Reguli de autoritate si confidentialitate:
 //  - intrebarile si variantele sunt text fix, aprobat aici; modelul AI nu le formuleaza;
@@ -130,14 +132,22 @@ export const PATIENT_ANAMNESIS_QUESTIONS = Object.freeze([
 
 const QUESTION_BY_KEY = new Map(PATIENT_ANAMNESIS_QUESTIONS.map((question) => [question.key, question]));
 
-// Nevoile pentru care pacientul ajunge la un consult. Reparatiile si cumpararea de ochelari
-// sau lentile cu reteta nu primesc anamneza.
+// Nevoile pentru care pacientul ajunge la un consult medical. Folosite pentru formularea
+// ecranului ("pentru consult" sau "pentru specialist").
 const CONSULT_INTENTS = new Set([
   "control_vedere",
   "control_copil",
   "simptome_oftalmologice",
   "investigatii",
 ]);
+
+// 2026-09-27, owner-ul: "anamneza nu mai apare, la unele variante flowul este incomplet".
+// Pana acum o primeau doar consulturile, ochelarii cu "am nevoie si de un control" si prima
+// adaptare de lentile; cine alegea ochelari cu reteta, lentile purtate deja sau "Nu sunt sigur"
+// nu o vedea deloc. Decizia owner-ului: la toate cautarile, mai putin la reparatii. La o rama
+// rupta, intrebarile despre boli nu au rost, iar datele de sanatate se cer doar cand servesc
+// cererii.
+const NO_ANAMNESIS_INTENTS = new Set(["reparatii_ochelari"]);
 
 function answerMap(answers = []) {
   return Object.fromEntries((Array.isArray(answers) ? answers : [])
@@ -160,16 +170,15 @@ export function patientAnamnesisDone(answers = []) {
  */
 export function patientNeedsAnamnesis({ intent, answers = [] } = {}) {
   if (patientAnamnesisDone(answers)) return false;
-  if (CONSULT_INTENTS.has(intent)) return true;
-  const byKey = answerMap(answers);
-  if (intent === "ochelari_lentile") {
-    return byKey.prescription_status === "needs_exam" || byKey.reteta === "needs_exam";
-  }
-  if (intent === "lentile_contact") {
-    // Cheile istorice: prima_data "da" inseamna prima adaptare.
-    return byKey.contact_lens_experience === "first_time" || byKey.prima_data === "da";
-  }
-  return false;
+  return Boolean(intent) && !NO_ANAMNESIS_INTENTS.has(intent);
+}
+
+/**
+ * @param {string | null | undefined} intent
+ * @returns {boolean}
+ */
+export function patientAnamnesisIsForConsult(intent) {
+  return CONSULT_INTENTS.has(String(intent || ""));
 }
 
 /**
