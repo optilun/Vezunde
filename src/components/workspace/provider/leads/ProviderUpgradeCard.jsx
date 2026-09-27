@@ -22,7 +22,11 @@ const ACCENT = { bg: "#eadcba", border: "#dac69b" };
 
 const GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" };
 
+// 2026-09-27: beneficiile spun doar ce deblocheaza planul. Pro NU schimba cine apare, ordinea sau
+// Top 3 (pacientii citesc "Plata nu influenteaza ordinea"), deci lista nu promite vizibilitate sau
+// recomandare mai buna. "Zona" = aria aleasa de pacient, in care locatia a fost deja recomandata.
 const BENEFITS = [
+  "Cererile complete ale pacienților din zona ta, când locația ta e recomandată",
   "Datele complete ale clientului",
   "Răspuns direct la cerere",
   "Chat VIASEE cu clientul",
