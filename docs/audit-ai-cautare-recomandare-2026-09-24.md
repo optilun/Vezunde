@@ -707,7 +707,7 @@ vedea deloc. Verificat live: la "Vreau un control" anamneza apare.
 - Validarea fara date ("Completeaza numele.") nu trimite nimic. Niciun formular cu date reale nu a
   fost trimis.
 - Telefon (375 px): campurile unul sub altul, fara derulare orizontala; fereastra "i" lipea de
-  marginea din dreapta, corectat cu `collisionPadding={16}` in `InfoHint.jsx` (neplublicat inca).
+  marginea din dreapta, corectat cu `collisionPadding={16}` in `InfoHint.jsx` (nepublicat inca).
 
 ### Gol gasit in planificatorul de intrebari (propunere, asteapta "da")
 
