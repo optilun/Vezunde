@@ -6,10 +6,18 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { typeVisual } from "./LocationThumb";
 import TrustBadge from "./TrustBadge";
 
+const PRECISE_LOCATION_TYPES = {
+  hospital_department: "Secție de spital",
+  hospital_outpatient_unit: "Ambulatoriu de spital",
+  multi_specialty_clinic: "Clinică multidisciplinară",
+};
+
 // Public directory information only. No paid rank or recommendation claims.
 export default function DirectoryResultCard({ location, onShowMap }) {
   const phoneHref = publicPhoneLink(location.phone);
   const { Icon } = typeVisual(location.provider_type);
+  const typeLabel = PRECISE_LOCATION_TYPES[location.location_type_code]
+    || PROVIDER_TYPES[location.provider_type] || "Locație";
   const city = String(location.city || "").trim();
   const address = String(location.address || "").trim();
   const addressLabel = address.toLocaleLowerCase("ro").includes(city.toLocaleLowerCase("ro"))
@@ -21,7 +29,7 @@ export default function DirectoryResultCard({ location, onShowMap }) {
           <Icon className="h-5 w-5" strokeWidth={1.75} />
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-semibold leading-snug text-[#4f6080]">{PROVIDER_TYPES[location.provider_type] || "Locație"}</p>
+          <p className="text-xs font-semibold leading-snug text-[#4f6080]">{typeLabel}</p>
           {city && <p className="mt-1 text-xs leading-snug text-muted-foreground">{city}</p>}
         </div>
       </div>
@@ -34,6 +42,7 @@ export default function DirectoryResultCard({ location, onShowMap }) {
       </p>
       <div className="mt-3 flex flex-wrap gap-2"><TrustBadge status={location.profile_control_status} className="max-w-full whitespace-normal" /></div>
       {location.service_coverage_status === "not_listed" && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Serviciile nu sunt încă listate sau confirmate.</p>}
+      {location.service_coverage_status === "not_disclosed" && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Nu sunt publicate servicii confirmate în VIASEE pentru acest profil.</p>}
 
       <div className="mt-auto pt-4">
         <div className="flex items-center gap-2 border-t border-border/70 pt-3">
