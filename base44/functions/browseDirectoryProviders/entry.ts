@@ -53,14 +53,16 @@ function localityCountKey(name, county) {
 //
 // 2026-09-24. Datele vin din shared/nationalMapSources.js: aceleasi locatii si aceeasi stare de
 // director, citite pe pagini de 500 (~7 citiri) in loc de o interogare pe fiecare judet (~100).
+function isVisibleInDirectory(loc) {
+  if (loc.public_visibility_status !== 'approved') return false;
+  if (loc.active_status === 'inactiva') return false;
+  if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) return false;
+  return true;
+}
+
 async function computeNationalMap(svc) {
   const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
-  const visible = allLocations.filter((loc) => {
-    if (loc.public_visibility_status !== 'approved') return false;
-    if (loc.active_status === 'inactiva') return false;
-    if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) return false;
-    return true;
-  });
+  const visible = allLocations.filter(isVisibleInDirectory);
   const { overlay } = await loadDirectoryDetailOverlayForMap(svc, visible.map((loc) => loc.id));
 
   const points = [];
@@ -96,6 +98,37 @@ async function computeNationalMap(svc) {
   };
 }
 
+// 2026-09-27. Lista pentru sitemap-ul de locatii (scripts/generate-sitemap-locations.mjs, rulat
+// zilnic din GitHub Actions). Acelasi set ca harta - inclusiv locatiile fara pozitie, pe care
+// harta nu le deseneaza - dar doar id si data ultimei modificari. Sunt exact profilurile publice
+// deja listate pe site, deci nu cere nicio cheie. Nu scoreaza si nu ordoneaza dupa relevanta.
+// O copie in memorie SITEMAP_FRESH_MS, ca apeluri repetate sa nu consume din limita de citiri.
+const SITEMAP_FRESH_MS = 10 * 60 * 1000;
+let sitemapMemory = null; // { value, generatedAt }
+
+async function computeSitemapLocations(svc) {
+  const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
+  const visible = allLocations.filter(isVisibleInDirectory);
+  const { overlay } = await loadDirectoryDetailOverlayForMap(svc, visible.map((loc) => loc.id));
+  const locations = [];
+  for (const loc of visible) {
+    const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
+    if (disclosure.profile_control_status === 'suspended') continue;
+    locations.push({
+      id: loc.id,
+      lastmod: loc.profile_updated_at || loc.updated_date || loc.created_date || null,
+    });
+  }
+  locations.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  return { map_scope: 'sitemap', locations, total: locations.length };
+}
+
+async function getSitemapLocations(svc) {
+  if (sitemapMemory && Date.now() - sitemapMemory.generatedAt < SITEMAP_FRESH_MS) return sitemapMemory;
+  sitemapMemory = { value: await computeSitemapLocations(svc), generatedAt: Date.now() };
+  return sitemapMemory;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -112,6 +145,18 @@ Deno.serve(async (req) => {
     const pageSize = Math.max(1, Math.min(Number(payload.page_size || payload.limit) || 20, 50));
     const offset = Math.max(0, Math.floor(Number(payload.offset) || 0));
     const includeMapResults = payload.include_map_results === true;
+
+    if (String(payload.map_scope || '').trim() === 'sitemap') {
+      try {
+        const sitemap = await getSitemapLocations(svc);
+        return Response.json({ ...sitemap.value, generated_at: new Date(sitemap.generatedAt).toISOString() });
+      } catch (_error) {
+        return Response.json({
+          error: 'Lista pentru sitemap nu poate fi incarcata acum. Incearca din nou peste cateva minute.',
+          code: 'sitemap_unavailable',
+        }, { status: 503 });
+      }
+    }
 
     // Harta nationala (vezi computeNationalMap). 2026-09-23: vine dintr-o copie tinuta cateva
     // minute (shared/nationalMapCache.js). Recalcularea la fiecare vizita facea ~100 de citiri,
