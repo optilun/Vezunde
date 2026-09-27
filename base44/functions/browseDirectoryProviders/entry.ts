@@ -287,10 +287,10 @@ Deno.serve(async (req) => {
     const locationIds = locations.map((location) => location.id).filter(Boolean);
 
     const [services, assignments, equipment, facilities] = await Promise.all([
-      loadRowsForLocationIds(svc.entities.LocationService, locationIds, { perLocationLimit: 500 }),
-      loadRowsForLocationIds(svc.entities.ProfessionalLocationAssignment, locationIds, { query: { active_status: 'activ' }, perLocationLimit: 200 }),
-      loadRowsForLocationIds(svc.entities.LocationEquipment, locationIds, { perLocationLimit: 300 }),
-      loadRowsForLocationIds(svc.entities.LocationFacility, locationIds, { perLocationLimit: 300 }),
+      loadRowsForLocationIds(svc.entities.LocationService, locationIds, { perLocationLimit: 500, throwOnError: advanced }),
+      loadRowsForLocationIds(svc.entities.ProfessionalLocationAssignment, locationIds, { query: { active_status: 'activ' }, perLocationLimit: 200, throwOnError: advanced }),
+      loadRowsForLocationIds(svc.entities.LocationEquipment, locationIds, { perLocationLimit: 300, throwOnError: advanced }),
+      loadRowsForLocationIds(svc.entities.LocationFacility, locationIds, { perLocationLimit: 300, throwOnError: advanced }),
     ]);
 
     const professionalIds = [...new Set(assignments.map((assignment) => assignment.professional_id).filter(Boolean))];
@@ -330,7 +330,7 @@ Deno.serve(async (req) => {
     // Nivelul de detaliu public sta pe starea de director, nu pe locatie. Fara el, un profil
     // aprobat editorial aparea aici ca 'summary' si isi ascundea adresa - desi pagina lui de
     // profil o arata. Vezi loadDirectoryDetailOverlay.
-    const detailOverlay = await loadDirectoryDetailOverlay(svc, (includeMapResults ? eligibleLocations : locations).map((loc) => loc.id));
+    const detailOverlay = await loadDirectoryDetailOverlay(svc, (includeMapResults ? eligibleLocations : locations).map((loc) => loc.id), { throwOnError: advanced });
 
     const results = [];
     let locationsWithPublishedServices = 0;
