@@ -92,7 +92,11 @@ possible):
   or sudden vision loss can have a neurological cause: "Dacă nu te poți deplasa în siguranță, dacă
   apar și slăbiciune într-o parte a corpului, vorbire greoaie sau gura strâmbă, ori dacă starea
   generală se agravează rapid, sună la 112." It stays single, small, conditional and after the
-  hospital instruction;
+  hospital instruction. 2026-09-27 (owner request, less text): same content, shorter wording:
+  "Dacă nu te poți deplasa, dacă starea se agravează sau apar slăbiciune pe o parte a corpului,
+  vorbire greoaie ori gura strâmbă, sună la 112." The explanation and the disclaimer of the
+  emergency screen open from an "i" button next to the title; destination, first aid and the 112
+  sentence stay visible;
 - the deterministic intake layer (`src/lib/patientSafety.js`, identical copy in `base44/shared/`)
   recognizes more wordings of the same six signals: double vision and a new shadow in the visual
   field when said with a recent onset ("de azi", "de ieri", "de aseara", "de cateva ore"), and
