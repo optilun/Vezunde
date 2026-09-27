@@ -333,6 +333,7 @@ Deno.serve(async (req) => {
     const detailOverlay = await loadDirectoryDetailOverlay(svc, (includeMapResults ? eligibleLocations : locations).map((loc) => loc.id));
 
     const results = [];
+    let locationsWithPublishedServices = 0;
     for (const loc of locations) {
       const publicDisclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, detailOverlay));
       const locAssignments = assignmentsByLocation[loc.id] || [];
@@ -353,6 +354,7 @@ Deno.serve(async (req) => {
         && evaluateServicePrerequisites(service.service_key, prerequisiteContext).eligible
       )) : [];
       const hasPublicService = publicServices.length > 0;
+      if (hasPublicService) locationsWithPublishedServices += 1;
       if (advanced && !publicServices.some(service => (!selectedServices.length || selectedServices.includes(normalizeServiceKey(service.service_key).canonicalKey)) && (!casOnly || service.cas_reimbursed === true))) continue;
 
       results.push({
@@ -360,6 +362,7 @@ Deno.serve(async (req) => {
         name: loc.public_display_name || loc.name,
         provider_type: loc.provider_type,
         provider_profile_type: loc.provider_profile_type,
+        location_type_code: publicDisclosure.location_type_code,
         city: loc.city,
         county: loc.county || null,
         address: publicDisclosure.address,
@@ -403,6 +406,10 @@ Deno.serve(async (req) => {
       results: finalPage.page,
       ...(includeMapResults ? { map_results: mapResults } : {}),
       coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
+      ...(advanced ? { filter_context: {
+        unfiltered_total: eligibleLocations.length,
+        locations_with_published_services: locationsWithPublishedServices,
+      } } : {}),
       routing_mode: 'locality',
       query_scope: 'locality',
       selected_locality_siruta_code: sirutaCode,
