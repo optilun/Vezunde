@@ -178,7 +178,15 @@ export function unmappedNotice(unmappedCount) {
  * Leaflet. Intoarce [{key, lat, lng, points, lead, count}].
  */
 export const CLUSTER_RADIUS_PX = 52;
-export const CLUSTER_MIN_SEPARATION_PX = 40;
+// Diametrul aproximativ al markerului pe ecran (vezi mapMarkers.css): cercul unui grup creste cu
+// numarul de locatii; o locatie singura este o pastila de 32 px.
+export function clusterMarkerSize(count) {
+  if (count >= 200) return 54;
+  if (count >= 50) return 46;
+  if (count >= 10) return 40;
+  return count > 1 ? 34 : 32;
+}
+const CLUSTER_MAX_SEPARATION_PX = clusterMarkerSize(Infinity) + 4;
 export const CLUSTER_INDIVIDUAL_ZOOM = 15;
 
 function projectToPixels(lat, lng, zoom, tileSize) {
@@ -262,9 +270,11 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
   }
 
   // Al doilea pas: centrul unui grup (media punctelor lui) se poate apropia de un grup vecin, iar
-  // cercurile ar ajunge unul peste altul (in test: Bucurestiul "280" peste un "5"). Grupurile ale
-  // caror centre raman mai aproape de CLUSTER_MIN_SEPARATION_PX se unesc.
-  const minSeparation = CLUSTER_MIN_SEPARATION_PX;
+  // cercurile ar ajunge unul peste altul (in test: Bucurestiul "280" peste un "5"). Doua grupuri
+  // ale caror cercuri s-ar atinge se unesc.
+  const minSeparation = CLUSTER_MAX_SEPARATION_PX;
+  const touches = (a, b) => Math.hypot(a.center[0] - b.center[0], a.center[1] - b.center[1])
+    < (clusterMarkerSize(a.memberIndexes.length) + clusterMarkerSize(b.memberIndexes.length)) / 2 + 4;
   const centerOf = (memberIndexes) => {
     let x = 0;
     let y = 0;
@@ -281,20 +291,19 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
     keptCells.get(group.cell).add(group);
   };
   for (const memberIndexes of groups) {
-    const center = centerOf(memberIndexes);
-    const [cx, cy] = cellOf(center);
+    const candidate = { memberIndexes, center: centerOf(memberIndexes) };
+    const [cx, cy] = cellOf(candidate.center);
     let target = null;
     for (let dx = -1; dx <= 1 && !target; dx += 1) {
       for (let dy = -1; dy <= 1 && !target; dy += 1) {
         for (const other of keptCells.get(`${cx + dx}:${cy + dy}`) || []) {
-          if (Math.hypot(other.center[0] - center[0], other.center[1] - center[1]) < minSeparation) { target = other; break; }
+          if (touches(other, candidate)) { target = other; break; }
         }
       }
     }
     if (!target) {
-      const group = { memberIndexes, center };
-      kept.push(group);
-      addToCells(group);
+      kept.push(candidate);
+      addToCells(candidate);
       continue;
     }
     keptCells.get(target.cell).delete(target);
