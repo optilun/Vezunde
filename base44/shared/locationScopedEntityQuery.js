@@ -137,10 +137,14 @@ export async function loadRowsForLocationIds(entity, locationIds, options = {}) 
 
   for (let offset = 0; offset < ids.length; offset += idsPerBatch) {
     const batch = ids.slice(offset, offset + idsPerBatch);
-    const result = await entity.filter({
+    // `throwOnError` (2026-09-27): pentru apelantii la care un rezultat gol ar insemna altceva decat
+    // „nu exista randuri” - de exemplu pagina de organizatie, unde lipsa starii de director face
+    // locatiile sa para nepublice. Implicit, comportamentul ramane cel de pana acum.
+    const request = entity.filter({
       ...baseQuery,
       location_id: { $in: batch },
-    }, options.sort || null, limitPerBatch).catch(() => []);
+    }, options.sort || null, limitPerBatch);
+    const result = options.throwOnError ? await request : await request.catch(() => []);
     if (Array.isArray(result)) rows.push(...result);
   }
 
