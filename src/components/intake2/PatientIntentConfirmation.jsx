@@ -130,7 +130,8 @@ export default function PatientIntentConfirmation({
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <p>
-              Formularea poate conține un semnal care merită evaluare rapidă. VIASEE nu pune diagnostic și nu stabilește dacă situația este sau nu urgentă.
+              Mesajul poate conține un semn care merită evaluat rapid.
+              <InfoHint items={["VIASEE nu pune diagnostic și nu stabilește dacă situația este urgentă."]} className="-my-2" />
             </p>
           </div>
           {safetyLabels.length > 0 && (
@@ -148,7 +149,7 @@ export default function PatientIntentConfirmation({
               clarificare (Da, continua / Aleg alta nevoie). Verificarea de siguranta
               deterministica urmeaza oricum in chestionar, inainte de distribuirea cererii. */}
           <p className="mt-3 pl-8 text-xs leading-relaxed">
-            Dacă simptomele sunt severe, au apărut brusc sau se agravează, cere o evaluare medicală fără să aștepți un răspuns în platformă.
+            Dacă e sever, a apărut brusc sau se agravează, cere o evaluare fără să aștepți.
           </p>
           <div className="mt-3 flex flex-wrap gap-2 pl-8">
             <Link
