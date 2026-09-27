@@ -4,6 +4,7 @@ import {
   patientAnamnesisQuestions,
   toggleAnamnesisSelection,
 } from "@/lib/patientAnamnesis";
+import InfoHint from "./InfoHint";
 
 // 2026-09-24: scurta anamneza pentru cererile de consult (vezi src/lib/patientAnamnesis.js).
 // Un singur ecran, toate intrebarile optionale. Nimic de aici nu schimba potrivirea sau ordinea
@@ -40,14 +41,18 @@ export default function PatientAnamnesis({ variant = "adult", initialSelections 
         Scurtă anamneză · opțional
       </div>
 
+      {/* 2026-09-27: rostul anamnezei si nota de confidentialitate se deschid cu butonul "i". */}
       <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
         Câteva informații pentru consult
+        <InfoHint
+          items={[
+            variant === "child"
+              ? "Ajută medicul să se pregătească pentru consultul copilului. Durează sub un minut și poți sări peste orice întrebare."
+              : "Ajută medicul să se pregătească pentru consult. Durează sub un minut și poți sări peste orice întrebare.",
+            "Răspunsurile rămân în cererea ta și nu schimbă ordinea rezultatelor. La final le poți trimite medicului, în mesajul pe care îl vezi și îl poți modifica înainte de trimitere.",
+          ]}
+        />
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {variant === "child"
-          ? "Ajută medicul să se pregătească pentru consultul copilului. Durează sub un minut și poți sări peste orice întrebare."
-          : "Ajută medicul să se pregătească pentru consult. Durează sub un minut și poți sări peste orice întrebare."}
-      </p>
 
       {prefilledLabels.length > 0 && (
         <p className="mt-3 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-xs leading-relaxed text-foreground/80">
@@ -89,11 +94,7 @@ export default function PatientAnamnesis({ variant = "adult", initialSelections 
         })}
       </div>
 
-      <p className="mt-6 text-[11px] leading-relaxed text-muted-foreground">
-        Răspunsurile rămân în cererea ta și nu schimbă ordinea rezultatelor. La final le poți trimite medicului, în mesajul pe care îl vezi și îl poți modifica înainte de trimitere.
-      </p>
-
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-7 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
           onClick={() => onSubmit?.(selections)}
