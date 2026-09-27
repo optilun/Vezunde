@@ -306,4 +306,36 @@ check('review does not repeat an unchanged description', () => {
   assert.match(review, /FREE_TEXT_KEYS\.has\(answer\.question_key\) && original && comparableText\(answer\.answer_value\) === original/);
 });
 
+// --- 8. Revizuirea din 2026-09-26 (delegata de owner, fara medic disponibil) ---------------
+check('new condition notes and keratoconus in the anamnesis', () => {
+  const keratoconus = buildPatientVisitGuidance({ intent: 'simptome_oftalmologice', text: 'am keratoconus' });
+  assert.ok(keratoconus.notes.some((note) => note.key === 'keratocon'));
+  const amd = buildPatientVisitGuidance({ intent: 'simptome_oftalmologice', text: 'am degenerescenta maculara' });
+  assert.ok(amd.notes.some((note) => note.key === 'degenerescenta_maculara'));
+  const amdFromService = buildPatientVisitGuidance({ intent: 'simptome_oftalmologice', serviceKeys: ['macular_degeneration'] });
+  assert.deepEqual(amdFromService.notes.map((note) => note.key), ['degenerescenta_maculara']);
+  const conjunctivitis = buildPatientVisitGuidance({ intent: 'simptome_oftalmologice', text: 'am conjunctivita', serviceKeys: ['dry_eye_screening'] });
+  assert.deepEqual(conjunctivitis.notes.map((note) => note.key), ['conjunctivita'], 'conjunctivita nu primeste si nota de ochi uscat venita doar din servicii');
+  const writtenDryEye = buildPatientVisitGuidance({ intent: 'simptome_oftalmologice', text: 'am conjunctivita si ochi uscati' });
+  assert.ok(writtenDryEye.notes.some((note) => note.key === 'ochi_uscat'), 'ochiul uscat scris de pacient ramane');
+  const childMyopia = buildPatientVisitGuidance({ intent: 'control_copil', text: 'copilul meu are miopie si i-a crescut' });
+  assert.ok(childMyopia.notes.some((note) => note.key === 'miopie_copil'));
+  const childSquint = buildPatientVisitGuidance({ intent: 'control_copil', text: 'fetita mea se uita crucis' });
+  assert.ok(childSquint.notes.some((note) => note.key === 'ochi_lenes_strabism'));
+  const childFromService = buildPatientVisitGuidance({ intent: 'control_copil', serviceKeys: ['amblyopia_screening'] });
+  assert.deepEqual(childFromService.notes.map((note) => note.key), ['ochi_lenes_strabism']);
+  const adultMyopia = buildPatientVisitGuidance({ intent: 'control_vedere', text: 'am miopie', serviceKeys: ['strabismus'] });
+  assert.deepEqual(adultMyopia.notes, [], 'notele pentru copil nu apar la adult');
+  assert.deepEqual(
+    buildAnamnesisPrefill('adult', detectPatientConditionsFromText('am keratocon si vreau un control')),
+    { anamneza_afectiuni: ['keratocon'] },
+  );
+  for (const note of [...keratoconus.notes, ...amd.notes, ...conjunctivitis.notes, ...childMyopia.notes, ...childSquint.notes]) {
+    assert.ok(note.points.length > 0 && note.points.length <= 3, note.key);
+    for (const point of note.points) {
+      assert.doesNotMatch(point, /\b112\b|\bUPU\b|spital/i, `${note.key}: suprafata informativa, fara 112, UPU sau spital`);
+    }
+  }
+});
+
 console.log(`Patient anamnesis and visit guidance verified: ${checks} checks.`);
