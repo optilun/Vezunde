@@ -7,9 +7,18 @@ import {
   sanitizePatientRequestSubmission,
 } from '../../shared/patientRequestPersistence.js';
 import { notifyPatientRequestReceived } from '../../shared/patientCommunicationNotifications.js';
+import {
+  PATIENT_SEARCH_CONTACT_MODE,
+  PATIENT_SEARCH_CONTACT_RETENTION_DAYS,
+  PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
+  PatientSearchContactValidationError,
+  sanitizePatientSearchContact,
+} from '../../shared/patientSearchContact.js';
 
 const MAX_REQUESTS_PER_CONTACT_PER_HOUR = 5;
 const IDEMPOTENCY_SETTLE_MS = 90;
+const MAX_SEARCH_CONTACTS_PER_CONTACT_PER_HOUR = 10;
+const SEARCH_CONTACT_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 function addDays(date, days) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -91,6 +100,72 @@ async function rollbackPartial(svc, requestId) {
   }
 }
 
+// 2026-09-27, cererea owner-ului: datele de contact lasate la fiecare cautare, inainte de
+// rezultate (regulile: shared/patientSearchContact.js). Stau in aceeasi functie ca cererea, ca
+// suprafata Base44 sa ramana la 49 de functii fizice. Nu creeaza o cerere, nu atinge potrivirea
+// si nu trimite nimic locatiilor.
+async function saveSearchContact(base44, svc, input) {
+  const submission = sanitizePatientSearchContact(input);
+  const user = await optionalUser(base44);
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const identitySource = submission.contact.contact_email
+    ? `email:${submission.contact.contact_email}`
+    : `phone:${phoneIdentity(submission.contact.contact_phone)}`;
+  const contactIdentityHash = await sha256(identitySource);
+  const recent = await svc.entities.PatientSearchContact.filter({
+    contact_identity_hash: contactIdentityHash,
+    created_date: { $gt: new Date(now.getTime() - SEARCH_CONTACT_WINDOW_MS).toISOString() },
+  }, '-created_date', 50);
+
+  const record = {
+    ...submission.contact,
+    ...submission.search,
+    requester_user_id: user?.id || '',
+    contact_identity_hash: contactIdentityHash,
+    processing_consent: true,
+    processing_consent_version: submission.consent.version,
+    processing_consent_at: nowIso,
+    retention_policy_key: PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
+    retention_until: addDays(now, PATIENT_SEARCH_CONTACT_RETENTION_DAYS),
+    status: 'active',
+  };
+  if (record.age_years === null) delete record.age_years;
+
+  // Aceeasi cautare trimisa din nou (ex. dupa "Modifica") actualizeaza inregistrarea existenta.
+  const sameSearch = submission.search.search_key
+    ? recent.find((row) => row.search_key === submission.search.search_key)
+    : null;
+  if (sameSearch) {
+    await svc.entities.PatientSearchContact.update(sameSearch.id, record);
+    return Response.json({ success: true, contact_id: sameSearch.id, updated: true });
+  }
+
+  const oneHourAgo = now.getTime() - 60 * 60 * 1000;
+  const lastHour = recent.filter((row) => Date.parse(String(row?.created_date || '')) > oneHourAgo);
+  if (lastHour.length >= MAX_SEARCH_CONTACTS_PER_CONTACT_PER_HOUR) {
+    return Response.json({ error: 'Au fost trimise prea multe date într-un interval scurt. Încearcă mai târziu.' }, { status: 429 });
+  }
+
+  const created = await svc.entities.PatientSearchContact.create({ ...record, follow_up_status: 'nou' });
+  return Response.json({ success: true, contact_id: created.id, updated: false }, { status: 201 });
+}
+
+// Cand aceeasi persoana salveaza apoi o cerere, legam datele lasate la cautare de cerere, ca
+// echipa sa vada cine a continuat. Best effort: o eroare aici nu afecteaza cererea.
+async function linkSearchContactToRequest(svc, contactIdentityHash, requestId, now) {
+  const rows = await svc.entities.PatientSearchContact.filter({
+    contact_identity_hash: contactIdentityHash,
+    created_date: { $gt: new Date(now.getTime() - SEARCH_CONTACT_WINDOW_MS).toISOString() },
+  }, '-created_date', 10);
+  const target = (rows || []).find((row) => !row.linked_request_id);
+  if (!target) return;
+  await svc.entities.PatientSearchContact.update(target.id, {
+    linked_request_id: requestId,
+    linked_request_at: now.toISOString(),
+  });
+}
+
 async function validatePublishedMatches(svc, matches) {
   const resolved = await Promise.all((matches || []).map(async (match) => {
     const location = await svc.entities.ProviderLocation.get(match.location_id).catch(() => null);
@@ -107,6 +182,7 @@ Deno.serve(async (request) => {
     const base44 = createClientFromRequest(request);
     const svc = base44.asServiceRole;
     const input = await request.json().catch(() => ({}));
+    if (input?.mode === PATIENT_SEARCH_CONTACT_MODE) return await saveSearchContact(base44, svc, input);
     const submission = sanitizePatientRequestSubmission(input);
     const user = await optionalUser(base44);
     const now = new Date();
@@ -212,6 +288,8 @@ Deno.serve(async (request) => {
       return replayResponse(finalWinner, finalWinner.persistence_state === 'complete' ? 200 : 202);
     }
 
+    await linkSearchContactToRequest(svc, contactIdentityHash, requestRecord.id, now).catch(() => null);
+
     await notifyPatientRequestReceived({
       base44,
       svc,
@@ -241,7 +319,7 @@ Deno.serve(async (request) => {
         // The partial marker is handled inside rollbackPartial whenever possible.
       }
     }
-    if (error instanceof PatientRequestValidationError) {
+    if (error instanceof PatientRequestValidationError || error instanceof PatientSearchContactValidationError) {
       return Response.json({ error: error.message, field: error.field || '' }, { status: 400 });
     }
     return Response.json({ error: 'Cererea nu a putut fi salvata.' }, { status: 500 });
