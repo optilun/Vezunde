@@ -1055,9 +1055,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             {interpretationFromDescription ? "Analizăm ce ai descris" : "Înțelegem ce cauți"}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {interpretationFromDescription
-              ? "Alegem întrebările potrivite pentru nevoia ta, apoi îți cerem confirmarea."
-              : "Interpretăm cererea, apoi îți cerem confirmarea înainte de chestionar."}
+            Durează câteva secunde.
           </p>
         </div>
       )}
