@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { SearchIcon } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import InfoHint from "./InfoHint";
+import ChoiceCard from "@/components/intake/ChoiceCard";
 
 // 2026-09-27: regula de cautare (aprobata) se deschide cu butonul "i" din campul de cautare, ca
 // sa nu ocupe cardul. Formularea ramane aceeasi.
@@ -61,10 +62,12 @@ export default function QuestionLocation({ onAnswer, initialQuery = "" }) {
         </p>
       )}
       <div className="mt-3 max-h-[min(16rem,42dvh)] space-y-2 overflow-y-auto overscroll-contain pr-1">
+        {/* 2026-09-27: acelasi card ca la celelalte intrebari (varianta compacta). */}
         {results?.map((locality) => (
-          <button
+          <ChoiceCard
             key={locality.siruta_code}
-            type="button"
+            compact
+            label={locality.display_label}
             onClick={() =>
               onAnswer({
                 scope: "locality",
@@ -73,10 +76,7 @@ export default function QuestionLocation({ onAnswer, initialQuery = "" }) {
                 clientAddressText: locality.display_label,
               })
             }
-            className="min-h-12 w-full rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors hover:border-foreground/40 active:bg-secondary"
-          >
-            {locality.display_label}
-          </button>
+          />
         ))}
         {results !== null && results.length === 0 && (
           <p className="py-2 text-sm text-muted-foreground">
