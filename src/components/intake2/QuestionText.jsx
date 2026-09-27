@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
+import ChoiceCard from "@/components/intake/ChoiceCard";
 import UrgencyInterruption from "./UrgencyInterruption";
 import InfoHint from "./InfoHint";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
@@ -81,30 +82,28 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
   }
 
   if (!screeningCleared) {
+    // 2026-09-27, cererea owner-ului: verificarea arata ca orice alta intrebare (titlu mare,
+    // variante ChoiceCard), fara chenar interior si fara buton negru separat pentru "Niciuna".
     return (
-      <div className="mt-6">
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranță</p>
-          {/* 2026-09-27: explicatia aprobata (situatii aparute brusc; problemele vechi de vedere
-              aleg "Niciuna") se deschide cu butonul "i". Variantele clinice raman neschimbate. */}
-          <p className="mt-1.5 font-heading text-base font-bold leading-snug tracking-tight text-foreground">
-            {SAFETY_QUESTION.title}
-            <InfoHint items={[SAFETY_QUESTION.helper]} />
-          </p>
-          <div className="mt-4 grid gap-2.5">
-            {SAFETY_CHOICES.map((choice) => (
-              <button
-                key={choice.key}
-                type="button"
-                onClick={() => setUrgentChoice(choice.key)}
-                className="min-h-[56px] rounded-2xl border border-border bg-background px-4 py-3 text-left text-sm font-semibold leading-snug text-foreground transition-all duration-200 hover:border-foreground/40 hover:bg-secondary/50"
-              >
-                {choice.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranță</p>
+        {/* 2026-09-27: explicatia aprobata (situatii aparute brusc; problemele vechi de vedere
+            aleg "Niciuna") se deschide cu butonul "i". Variantele clinice raman neschimbate. */}
+        <h2 className="mt-2 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          {SAFETY_QUESTION.title}
+          <InfoHint items={[SAFETY_QUESTION.helper]} />
+        </h2>
+        <div className="mt-6 grid gap-2.5">
+          {SAFETY_CHOICES.map((choice) => (
+            <ChoiceCard
+              key={choice.key}
+              label={choice.label}
+              onClick={() => setUrgentChoice(choice.key)}
+            />
+          ))}
+          <ChoiceCard
+            label={SAFETY_NONE_LABEL}
+            onClick={() => {
                 // 2026-09-01: inainte, acest buton doar deschidea ecranul urmator si nu
                 // salva nimic. Consecinte in lant: starea de siguranta ramanea "neverificat"
                 // pentru totdeauna, fluxul de simptome nu se putea considera niciodata
@@ -113,11 +112,7 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
                 onSafetyCleared?.();
                 setScreeningCleared(true);
               }}
-              className="min-h-[56px] rounded-2xl bg-primary px-4 py-3 text-left text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              {SAFETY_NONE_LABEL}
-            </button>
-          </div>
+          />
         </div>
       </div>
     );
