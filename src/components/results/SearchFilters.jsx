@@ -3,7 +3,7 @@ import { SlidersHorizontal, Glasses, Building2, Stethoscope, Eye, Microscope, Us
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { base44 } from "@/api/base44Client";
 import { formatLocationCount } from "@/lib/localityQuickPicks";
-import { PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
+import { DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { SERVICE_GROUP_UI, getServiceLabel, patientServicesByGroup, serviceMatchesNeedle } from "@/lib/serviceAutocomplete";
 
 const TYPE_ICONS = { optica_medicala: Glasses, clinica_oftalmologica: Building2, cabinet_oftalmologic: Stethoscope, cabinet_optometric: Eye, laborator_optic: Microscope, optometrist_independent: UserRound, medic_oftalmolog_independent: Stethoscope };
@@ -79,7 +79,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
     ? `Arată ${formatLocationCount(preview.total)}`
     : `Arată rezultatele${draftCount > 0 ? ` · ${draftCount} ${draftCount === 1 ? "filtru" : "filtre"}` : ""}`;
   const zeroPreviewMessage = draft.services?.length || draft.cas
-    ? `Nicio locație din ${browseLocality?.name || "această localitate"} nu are serviciul sau marcajul CAS confirmat în VIASEE pentru aceste filtre. Poți elimina filtrul pentru a vedea celelalte locații.`
+    ? `Filtrele de servicii sau CAS nu au confirmări în VIASEE pentru locațiile din ${browseLocality?.name || "această localitate"}. Poți elimina filtrele pentru a vedea celelalte locații.`
     : `Nicio locație din ${browseLocality?.name || "această localitate"} nu corespunde acestor filtre. Încearcă să scoți unul.`;
 
   return <>
@@ -101,7 +101,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
               <legend className="mb-1 font-semibold">Tipul locației</legend>
               <p className="mb-3 text-xs text-muted-foreground">Poți alege mai multe. Fără nicio alegere, apar toate tipurile.</p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {Object.entries(PROVIDER_TYPES).map(([key,label]) => {
+                {Object.entries(DIRECTORY_PROVIDER_FILTER_LABELS).map(([key,label]) => {
                   const checked = draft.types?.includes(key) || false;
                   return <label key={key} className="relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-medium transition hover:border-[#a7b4c9] hover:bg-[#f7f8fa] has-[:checked]:border-[#4f6080] has-[:checked]:bg-[#eff1f5] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#4f6080]">
                     <input className="sr-only" type="checkbox" checked={checked} onChange={() => toggle("types",key)} />
