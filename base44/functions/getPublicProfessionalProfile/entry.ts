@@ -6,6 +6,7 @@ import {
   sanitizeProfessionalSpecializations,
 } from '../../shared/professionalIdentity.js';
 import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
+import { getRecordOrNull } from '../../shared/entityReadErrors.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
@@ -107,7 +108,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'professional_id este obligatoriu' }, { status: 400 });
     }
 
-    const profile = await svc.entities.ProfessionalProfile.get(professionalId).catch(() => null);
+    // 2026-09-27: o eroare de citire (limita de trafic) nu mai devine 404 si `noindex` pe pagina.
+    const profile = await getRecordOrNull(svc.entities.ProfessionalProfile, professionalId);
     if (!isPublicProfile(profile)) {
       return Response.json({ error: 'Profilul profesional nu a fost gasit' }, { status: 404 });
     }
