@@ -150,7 +150,9 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(canvas, /\{viaseeSelection:true\}/, 'mutarea facuta de selectie este marcata');
   assert.match(canvas, /reason:event\?\.viaseeSelection \? "selection" : "move"/);
   assert.match(canvas, /const below=y-cardHeight-30 < 8/, 'cardul trece sub pin cand nu are loc deasupra');
-  assert.match(canvas, /closest\?\.\("\.viasee-vector-marker"\)/, 'clicul pe pin nu inchide cardul');
+  assert.match(canvas, /closest\?\.\("\.viasee-vector-marker, \.maplibregl-ctrl"\)/, 'clicul pe pin sau pe butoanele hartii nu inchide cardul');
+  assert.match(canvas, /map\.addControl\(\{ onAdd: \(\) => controlSlot,/, 'butonul 3D sta sub controalele MapLibre, nu la o pozitie fixa');
+  assert.match(canvas, /createPortal\(<div className="flex flex-col items-start gap-2">/);
   const legacy = read('src/components/results/LegacyResultsMap.jsx');
   assert.match(legacy, /clusterPoints\(mapPoints, viewport\.zoom, LEAFLET_TILE\)/, 'harta 2D grupeaza cu dale de 256 px');
   assert.match(legacy, /const LEAFLET_TILE = \{ tileSize: 256 \};/);
