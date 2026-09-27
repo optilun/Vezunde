@@ -38,7 +38,6 @@ check('question explanations moved next to the title', () => {
   const card = source('src/components/intake2/ConversationalCard.jsx');
   assert.match(card, /function questionInfoItems\(question/);
   assert.match(card, /if \(question\?\.helper && !prefilled\) items\.push\(question\.helper\);/);
-  assert.match(card, /const LOCATION_INFO = "Alege localitatea din lista oficială\./);
   assert.match(card, /const SUGGESTION_INFO = "Varianta marcată „Sugestie” vine din mesajul tău\./);
   assert.match(card, /!\(current\.type === "text" && questionPhase === "safety"\) && \(\n\s+<InfoHint/, 'butonul nu ramane ascuns in titlul invizibil al verificarii de siguranta');
 
@@ -47,7 +46,8 @@ check('question explanations moved next to the title', () => {
   assert.doesNotMatch(choice, /Am marcat varianta care pare/);
 
   const location = source('src/components/intake2/QuestionLocation.jsx');
-  assert.doesNotMatch(location, /VIASEE caută mai întâi numai/);
+  assert.match(location, /<InfoHint items=\{\[LOCATION_RULE\]\}/, 'regula de cautare se deschide cu butonul din campul de cautare');
+  assert.doesNotMatch(location, /<p[^>]*>\s*Selectează localitatea din lista oficială/, 'regula nu mai e un paragraf vizibil');
   assert.match(location, /Am căutat după localitatea din mesajul tău\./);
 });
 
