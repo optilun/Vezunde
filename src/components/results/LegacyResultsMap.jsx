@@ -13,6 +13,7 @@ import {
   buildResultsMapModel,
   clusterExpansionZoom,
   clusterPoints,
+  framingForPoints,
   pointIdsWithinBounds,
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
@@ -92,12 +93,15 @@ function FitToPoints({ points, storageKey }) {
       map.fitBounds([[43.6,20.2],[48.3,29.8]], { padding: [24,24], animate: false });
       return;
     }
-    if (points.length === 1) {
-      map.setView([points[0].lat, points[0].lng], 14);
+    // 2026-09-27: ca pe harta vectoriala, coordonatele aberante nu departeaza harta. Zoomul Leaflet
+    // (dale de 256 px) este cu 1 mai mare decat cel MapLibre: 14 aici = 13 acolo.
+    const framing = framingForPoints(points);
+    if (framing.points.length === 1) {
+      map.setView([framing.points[0].lat, framing.points[0].lng], framing.maxZoom + 1);
       return;
     }
-    const bounds = boundsForPoints(points);
-    if (bounds) map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
+    const bounds = boundsForPoints(framing.points);
+    if (bounds) map.fitBounds(bounds, { padding: [48, 48], maxZoom: framing.maxZoom + 1 });
   }, [signature, map, points, storageKey]);
 
   return null;
