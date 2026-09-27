@@ -24,7 +24,11 @@ export default function LocationsWithMap({
   onHover,
   mobileView,
   onToggleMobileView,
+  // 2026-09-27: "grid" = cartile directorului intr-o grila cu linii fine intre celule (fara
+  // carduri rotunjite separate). "cards" ramane pentru celelalte rezultate.
+  listLayout = "cards",
 }) {
+  const gridLayout = listLayout === "grid";
   useEffect(() => {
     if (!fixedDesktop) return;
     const media = window.matchMedia("(min-width: 1024px)");
@@ -130,7 +134,9 @@ export default function LocationsWithMap({
       <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "relative mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8" : "relative mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8" : "mt-4")}>
         <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
           {listHeader}
-          <div className={hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
+          <div className={gridLayout
+            ? (hasPositions ? "grid border-t border-border sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid border-t border-border sm:grid-cols-2")
+            : (hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2")}>
             {(listResults || []).map((location) => (
               <div
                 key={location.id}
@@ -139,7 +145,12 @@ export default function LocationsWithMap({
                 onMouseLeave={() => onHover(null)}
                 onFocus={() => onHover(location.id)}
                 onBlur={() => onHover(null)}
-                className={`h-full rounded-[22px] transition-shadow ${
+                data-selected={selectedId === location.id ? "" : undefined}
+                className={gridLayout
+                  ? `h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
+                    selectedId === location.id ? "bg-[#eaeff7]" : hoveredId === location.id ? "bg-white/70" : ""
+                  }`
+                  : `h-full rounded-[22px] transition-shadow ${
                   selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
                 } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
               >
