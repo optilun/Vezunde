@@ -96,7 +96,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
       <div className={`flex items-start gap-2 ${logo ? "mt-9" : "mt-5"}`}>
         <h3 className="min-w-0 flex-1 break-words font-heading text-xl font-bold leading-snug tracking-tight sm:text-[22px]">
           <Link to={profileHref} className="rounded-sm transition-colors hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{location.name}</Link>
-          {status === "verified" && <BadgeCheck role="img" aria-label="Profil verificat de VIASEE" className="ml-1.5 inline-block h-5 w-5 align-[-3px] text-[#4f6080]" />}
+          {status === "verified" && <><span className="sr-only"> (profil verificat)</span><BadgeCheck aria-hidden="true" className="ml-1.5 inline-block h-5 w-5 align-[-3px] text-[#4f6080]" /></>}
         </h3>
         <div className="-mr-2 -mt-1.5 flex shrink-0 items-center">
           {onShowMap && (
