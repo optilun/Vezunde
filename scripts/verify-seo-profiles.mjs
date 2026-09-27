@@ -272,18 +272,31 @@ githubSetupCheck('workflow-ul IndexNow se declanseaza si la sitemap-ul de locati
   }
 });
 
-scenario('generatorul refuza sa scrie fara chei sau fara rezultate', () => {
+scenario('generatorul citeste lista publica si refuza sa scrie fara rezultate', () => {
   const generator = source('scripts/generate-sitemap-locations.mjs');
-  assert.match(generator, /if \(!appId \|\| !apiKey\)/);
+  assert.match(generator, /if \(!appId\)/);
+  // 2026-09-27: fara cheie API. SDK-ul nu are `apiKey`, iar `asServiceRole` arunca fara
+  // serviceToken - versiunea veche nu putea rula. Lista vine din functia publica.
+  assert.doesNotMatch(generator, /BASE44_API_KEY|asServiceRole/);
+  assert.match(generator, /functions\/browseDirectoryProviders/);
+  assert.match(generator, /map_scope: 'sitemap'/);
   assert.match(generator, /Nu se suprascrie sitemap-ul existent/);
   assert.match(generator, /process\.exit\(1\)/);
+
+  const browse = source('base44/functions/browseDirectoryProviders/entry.ts');
+  assert.match(browse, /payload\.map_scope \|\| ''\)\.trim\(\) === 'sitemap'/);
+  assert.match(browse, /async function computeSitemapLocations\(svc\) \{\s*const \{ locations: allLocations \} = await loadPublishedLocationsForMap\(svc\);\s*const visible = allLocations\.filter\(isVisibleInDirectory\);/);
+  assert.match(browse, /if \(disclosure\.profile_control_status === 'suspended'\) continue;\s*locations\.push\(\{\s*id: loc\.id,\s*lastmod:/);
 });
 
 githubSetupCheck('workflow-ul zilnic regenereaza sitemap-ul de locatii', () => {
   assert.ok(existsSync(path.join(root, '.github/workflows/sitemap-locations.yml')), 'lipseste .github/workflows/sitemap-locations.yml');
   const workflow = source('.github/workflows/sitemap-locations.yml');
   assert.match(workflow, /generate-sitemap-locations\.mjs/);
-  assert.match(workflow, /secrets\.BASE44_API_KEY/);
+  assert.match(workflow, /BASE44_APP_ID/);
+  assert.match(workflow, /contents: write/);
+  // Un push facut cu GITHUB_TOKEN nu porneste alte workflow-uri: IndexNow se trimite de aici.
+  assert.match(workflow, /indexnow-submit\.mjs/);
 });
 
 // ---- invariante de runtime ----------------------------------------------------
