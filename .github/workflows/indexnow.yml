@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "public/sitemap.xml"
+      - "public/sitemap-locatii.xml"
       - "scripts/indexnow-submit.mjs"
       - ".github/workflows/indexnow.yml"
   workflow_dispatch:
