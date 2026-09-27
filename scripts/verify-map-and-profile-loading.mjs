@@ -44,9 +44,14 @@ async function listFiles(dir) {
 // 2. Markerele nu mai asteapta fundalul hartii.
 {
   const canvas = await read('src/components/results/VectorResultsCanvas.jsx');
+  // 2026-09-27: harta este pastrata intre cautari (o singura instanta pe pagina), deci evenimentul
+  // `load` al hartii ajunge la componenta curenta prin `entry.owner.onStyleReady`, iar o harta
+  // refolosita are fundalul gata de la inceput.
   const loadHandler = canvas.slice(canvas.indexOf('map.on("load"'), canvas.indexOf('map.on("webglcontextlost"'));
-  assert.match(loadHandler, /setStyleReady\(true\)/, 'la load se marcheaza doar fundalul');
+  assert.match(loadHandler, /entry\.styleLoaded = true;\s*entry\.owner\?\.onStyleReady\(\);/, 'la load se marcheaza doar fundalul');
   assert.doesNotMatch(loadHandler, /setReady\(true\)/);
+  assert.match(canvas, /onStyleReady: \(\) => \{ clearTimeout\(timer\); setStyleReady\(true\); \}/);
+  assert.match(canvas, /if \(entry\.styleLoaded\) setStyleReady\(true\);/, 'harta refolosita: fundalul e gata');
   assert.match(canvas, /observer\.observe\(container\.current\);\s*setReady\(true\);/, 'harta exista -> markere si camera');
   assert.match(canvas, /\},\[clusters,ready,pillHtml\]\);/, 'markerele depind de harta, nu de fundal');
   assert.match(canvas, /\},\[threeD,styleReady\]\);/, 'straturile 3D asteapta fundalul');
