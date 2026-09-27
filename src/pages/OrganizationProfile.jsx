@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Building2, Globe2, MapPin, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useEntitySeo } from "@/lib/useEntitySeo";
+import { isNotFoundError, withTransientRetry } from "@/lib/transientRetry";
+import ProfileTemporarilyUnavailable from "@/components/common/ProfileTemporarilyUnavailable";
 import { SITE_URL, buildOrganizationProfileTitle } from "../../shared/seoProfileMetadata.js";
 import ProfessionalThumb from "@/components/results/ProfessionalThumb";
 
@@ -59,16 +61,22 @@ export default function OrganizationProfile() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedCounty, setSelectedCounty] = useState("");
+  // 2026-09-27: "unavailable" = eroare trecatoare dupa reincercari; fara `noindex`.
+  const [loadError, setLoadError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    base44.functions
-      .invoke("getPublicProviderProfile", { organization_id: id })
+    setLoadError(null);
+    withTransientRetry(() => base44.functions.invoke("getPublicProviderProfile", { organization_id: id }))
       .then((res) => setData(res.data || null))
-      .catch(() => setData(null))
+      .catch((error) => {
+        setData(null);
+        setLoadError(isNotFoundError(error) ? "not_found" : "unavailable");
+      })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, attempt]);
 
   const organization = data?.organization || null;
   const summary = data?.summary || null;
@@ -95,6 +103,7 @@ export default function OrganizationProfile() {
   // acum prin store, iar instanta globala ramane singurul scriitor.
   const seoMeta = useMemo(() => {
     if (loading) return null;
+    if (!organization && loadError === "unavailable") return null;
     if (!organization) {
       return { title: "Organizație indisponibilă | VIASEE", description: "Profilul căutat nu este public pe VIASEE.", noindex: true };
     }
@@ -127,7 +136,7 @@ export default function OrganizationProfile() {
         ],
       },
     };
-  }, [loading, organization, summary, locations.length, id]);
+  }, [loading, organization, loadError, summary, locations.length, id]);
   useEntitySeo(seoMeta);
 
   if (loading) {
@@ -137,6 +146,10 @@ export default function OrganizationProfile() {
         <div className="mt-4 h-4 w-80 animate-pulse rounded bg-muted" />
       </div>
     );
+  }
+
+  if (!organization && loadError === "unavailable") {
+    return <ProfileTemporarilyUnavailable onRetry={() => setAttempt((value) => value + 1)} />;
   }
 
   if (!organization) {
