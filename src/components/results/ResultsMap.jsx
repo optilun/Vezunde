@@ -101,9 +101,11 @@ export default function ResultsMap({
   const openCluster = clusters.find((cluster) => cluster.key === openClusterKey && cluster.count > 1);
 
   // 2026-09-27. Locatiile cu pozitia departe de restul (de obicei coordonate gresite) nu intra in
-  // incadrarea de la deschidere. Harta spune cate au ramas in afara zonei vazute si le poate arata.
+  // incadrarea de la deschidere. Cat timp harta arata toate celelalte locatii, spune cate au ramas
+  // in afara si le poate arata. Cand vizitatorul se apropie de o parte a orasului, nota dispare.
   const framing = useMemo(() => framingForPoints(fitModel.points), [fitModel.points]);
   const outsideCount = viewport.bounds && framing.excluded.length
+    && pointIdsWithinBounds(framing.points, viewport.bounds).length === framing.points.length
     ? framing.excluded.length - pointIdsWithinBounds(framing.excluded, viewport.bounds).length
     : 0;
   const [revealArea, setRevealArea] = useState(null);
@@ -161,7 +163,7 @@ export default function ResultsMap({
       {outsideCount > 0 && (
         <div className="pointer-events-none absolute left-14 right-3 top-3 z-[450] flex justify-center">
           <p role="status" className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-card/95 py-1 pl-3.5 pr-1 text-xs font-medium text-muted-foreground shadow-[0_0_0_1px_rgba(23,23,23,0.06),0_2px_8px_rgba(23,35,55,0.14)]">
-            {outsideCount === 1 ? "O locație e în afara zonei afișate" : `${outsideCount} locații sunt în afara zonei afișate`}
+            {outsideCount === 1 ? "O locație e departe de celelalte" : `${outsideCount} locații sunt departe de celelalte`}
             <button type="button" onClick={revealAll} className="min-h-9 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
               {outsideCount === 1 ? "Arat-o" : "Arată-le"}
             </button>
