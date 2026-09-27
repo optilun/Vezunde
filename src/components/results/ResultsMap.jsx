@@ -43,7 +43,7 @@ function shortTypeLabel(providerType) {
   return SHORT_TYPE_LABELS[providerType] || "Locație";
 }
 
-// Pe ecrane late cardul locatiei plutește deasupra pinului; pe telefon sta jos, pe latimea hartii.
+// Pe ecrane late cardul locatiei pluteste deasupra pinului; pe telefon sta jos, pe latimea hartii.
 const WIDE_MAP_QUERY = "(min-width: 768px)";
 function useWideMap() {
   const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia(WIDE_MAP_QUERY).matches);
@@ -69,7 +69,7 @@ export default function ResultsMap({
   storageKey = null,
   focusArea = null,
   // 2026-09-27: numarul fiecarei locatii in lista (id -> 1, 2, 3...), cand lista are o ordine a
-  // potrivirii. Pinul arata acelasi numar ca, cardul. Harta nu schimba ordinea.
+  // potrivirii. Pinul arata acelasi numar ca si cardul. Harta nu schimba ordinea.
   rankById = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
