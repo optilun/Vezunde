@@ -4,8 +4,10 @@ import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useStat
 import MapLocationCard from "./MapLocationCard";
 import {
   FALLBACK_ZOOM,
+  boundsForPoints,
   buildResultsMapModel,
   clusterPoints,
+  framingForPoints,
   pointIdsWithinBounds,
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
@@ -98,6 +100,15 @@ export default function ResultsMap({
 
   const openCluster = clusters.find((cluster) => cluster.key === openClusterKey && cluster.count > 1);
 
+  // 2026-09-27. Locatiile cu pozitia departe de restul (de obicei coordonate gresite) nu intra in
+  // incadrarea de la deschidere. Harta spune cate au ramas in afara zonei vazute si le poate arata.
+  const framing = useMemo(() => framingForPoints(fitModel.points), [fitModel.points]);
+  const outsideCount = viewport.bounds && framing.excluded.length
+    ? framing.excluded.length - pointIdsWithinBounds(framing.excluded, viewport.bounds).length
+    : 0;
+  const [revealArea, setRevealArea] = useState(null);
+  const revealAll = () => setRevealArea({ bounds: boundsForPoints(fitModel.points) });
+
   // Dreptunghiul vizibil se raporteaza in sus ca lista sa poata fi filtrata la ce se vede.
   // Se trimit ID-URI, nu un criteriu de cautare: serverul nu este intrebat nimic din nou.
   // 2026-09-24: semnatura (toate punctele, sortate) se calculeaza o data per set de puncte, nu la
@@ -144,8 +155,19 @@ export default function ResultsMap({
   return (
     <div className={`relative isolate ${className}`}>
       <Suspense fallback={VECTOR_LOADING}>
-        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} />
+        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} />
       </Suspense>
+
+      {outsideCount > 0 && (
+        <div className="pointer-events-none absolute left-14 right-3 top-3 z-[450] flex justify-center">
+          <p role="status" className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-card/95 py-1 pl-3.5 pr-1 text-xs font-medium text-muted-foreground shadow-[0_0_0_1px_rgba(23,23,23,0.06),0_2px_8px_rgba(23,35,55,0.14)]">
+            {outsideCount === 1 ? "O locație e în afara zonei afișate" : `${outsideCount} locații sunt în afara zonei afișate`}
+            <button type="button" onClick={revealAll} className="min-h-9 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+              {outsideCount === 1 ? "Arat-o" : "Arată-le"}
+            </button>
+          </p>
+        </div>
+      )}
 
       {openCluster && !selectedPoint && (
         <section aria-label="Locații din grup"
