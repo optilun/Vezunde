@@ -328,7 +328,8 @@ githubSetupCheck('workflow-ul zilnic regenereaza sitemap-ul de locatii', () => {
   assert.match(workflow, /generate-sitemap-locations\.mjs/);
   assert.match(workflow, /BASE44_APP_ID/);
   assert.match(workflow, /contents: write/);
-  assert.match(workflow, /git add public\/sitemap-locatii\.xml public\/sitemap-profiluri\.xml/);
+  assert.match(workflow, /git status --porcelain -- public\/sitemap-locatii\.xml public\/sitemap-profiluri\.xml/);
+  assert.match(workflow, /for file in public\/sitemap-locatii\.xml public\/sitemap-profiluri\.xml; do/);
   // Un push facut cu GITHUB_TOKEN nu porneste alte workflow-uri: IndexNow se trimite de aici.
   assert.match(workflow, /indexnow-submit\.mjs/);
 });
