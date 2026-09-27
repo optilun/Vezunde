@@ -178,6 +178,7 @@ export function unmappedNotice(unmappedCount) {
  * Leaflet. Intoarce [{key, lat, lng, points, lead, count}].
  */
 export const CLUSTER_RADIUS_PX = 52;
+export const CLUSTER_MIN_SEPARATION_PX = 40;
 export const CLUSTER_INDIVIDUAL_ZOOM = 15;
 
 function projectToPixels(lat, lng, zoom, tileSize) {
@@ -257,13 +258,55 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
         }
       }
     }
-    // Ordinea primita se pastreaza si in interiorul grupului (primul e mereu punctul de pornire).
-    memberIndexes.sort((a, b) => a - b);
-    groups.push(memberIndexes.map((position) => list[position]));
+    groups.push(memberIndexes);
+  }
+
+  // Al doilea pas: centrul unui grup (media punctelor lui) se poate apropia de un grup vecin, iar
+  // cercurile ar ajunge unul peste altul (in test: Bucurestiul "280" peste un "5"). Grupurile ale
+  // caror centre raman mai aproape de CLUSTER_MIN_SEPARATION_PX se unesc.
+  const minSeparation = CLUSTER_MIN_SEPARATION_PX;
+  const centerOf = (memberIndexes) => {
+    let x = 0;
+    let y = 0;
+    for (const position of memberIndexes) { x += projected[position][0]; y += projected[position][1]; }
+    return [x / memberIndexes.length, y / memberIndexes.length];
+  };
+  const kept = [];
+  const keptCells = new Map();
+  const cellOf = ([x, y]) => [Math.floor(x / minSeparation), Math.floor(y / minSeparation)];
+  const addToCells = (group) => {
+    const [cx, cy] = cellOf(group.center);
+    group.cell = `${cx}:${cy}`;
+    if (!keptCells.has(group.cell)) keptCells.set(group.cell, new Set());
+    keptCells.get(group.cell).add(group);
+  };
+  for (const memberIndexes of groups) {
+    const center = centerOf(memberIndexes);
+    const [cx, cy] = cellOf(center);
+    let target = null;
+    for (let dx = -1; dx <= 1 && !target; dx += 1) {
+      for (let dy = -1; dy <= 1 && !target; dy += 1) {
+        for (const other of keptCells.get(`${cx + dx}:${cy + dy}`) || []) {
+          if (Math.hypot(other.center[0] - center[0], other.center[1] - center[1]) < minSeparation) { target = other; break; }
+        }
+      }
+    }
+    if (!target) {
+      const group = { memberIndexes, center };
+      kept.push(group);
+      addToCells(group);
+      continue;
+    }
+    keptCells.get(target.cell).delete(target);
+    target.memberIndexes = target.memberIndexes.concat(memberIndexes);
+    target.center = centerOf(target.memberIndexes);
+    addToCells(target);
   }
 
   const clusters = [];
-  for (const members of groups) {
+  for (const group of kept) {
+    // Ordinea primita se pastreaza si in interiorul grupului (primul e mereu cel mai bine clasat).
+    const members = group.memberIndexes.sort((a, b) => a - b).map((position) => list[position]);
     const key = members.length > 1 ? `group:${members[0].id}` : `point:${members[0].id}`;
     // Punctul afisat este cel mai bine clasat din grup - deci un grup care contine o optiune
     // din Top 3 arata ca atare, nu ca o bula anonima.
