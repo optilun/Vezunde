@@ -134,7 +134,7 @@ async function sitemapOrganizations(svc, orgStats) {
   const candidates = [...orgStats.entries()]
     .filter(([, stats]) => stats.linked && stats.count >= SITEMAP_ORGANIZATION_MIN_LOCATIONS);
   const rows = await Promise.all(candidates.map(async ([organizationId, stats]) => {
-    const organization = await svc.entities.ProviderOrganization.get(organizationId);
+    const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
     if (!organization || organization.status === 'inactiva') return null;
     return { id: organizationId, lastmod: latestDate([...stats.lastmods, lastmodOf(organization)]) };
   }));
