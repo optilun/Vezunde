@@ -592,3 +592,28 @@ exista dubii. Nu inlocuiesc revizuirea unui medic; de refacut cu un medic cand s
   vascular, un singur link tel:112, optiunea "Nu e o urgenta"). "am keratocon, sunt din Cluj":
   anamneza are "Keratocon" bifat din mesaj, iar ecranul de verificare arata nota pentru keratocon.
   Oprit inainte de "Cauta rezultate".
+
+## 16. Mai putin text pe cardurile chestionarului (2026-09-27)
+
+Cererea owner-ului, dupa ce a parcurs fluxul: prea mult text pe carduri; aceeasi informatie, dar
+explicatiile in spatele unui buton "i". Componenta noua `src/components/intake2/InfoHint.jsx`
+(popover Radix, buton accesibil de 32px, se deschide la atingere, click sau tastatura).
+
+- Confirmarea nevoii: ramane "Confirma si continuam cu cateva intrebari scurte."; sugestiile si
+  nota "AI-ul nu alege furnizorii..." sunt in "i". Alegerea manuala: text scurtat.
+- Intrebarile: textul ajutator din catalog si nota despre varianta marcata "Sugestie" sunt in "i",
+  langa titlu (nu si in faza de siguranta, cand titlul e ascuns).
+- Verificarea de siguranta: explicatia aprobata din catalog (situatii aparute brusc; problemele
+  vechi aleg "Niciuna") este in "i"; titlul si variantele clinice raman vizibile, neschimbate.
+- Descrierea: "Poti adauga: care ochi, de cand, ce ai observat."
+- Localitatea: un rand scurt; regula aprobata ("extinde aria doar daca soliciti explicit") are
+  butonul ei in campul de cautare, cu aceeasi formulare.
+- Anamneza: rostul ei si nota de confidentialitate sunt in "i"; nota "Am bifat din mesajul tau"
+  ramane vizibila.
+- Ecranul de verificare: fara fraza de introducere redundanta; disclaimerul recomandarilor in "i";
+  plasa de siguranta ramane vizibila.
+- Nota de la subsolul intrebarilor: "VIASEE nu ofera diagnostic medical."
+- Ecranul de urgenta ramane complet vizibil (fara "i").
+- Test nou `verify-patient-intake-info-hints` (5 verificari). ESLint si build trec; `verify-all`:
+  157 trec, 1 pica (verify-map-and-profile-loading, pagina de profil la care lucreaza celalalt
+  agent).
