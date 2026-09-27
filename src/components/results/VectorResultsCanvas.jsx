@@ -94,7 +94,7 @@ function releaseMap(entry) {
   entry.element.remove();
 }
 
-export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null }) {
+export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null, revealArea = null }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const markers = useRef(new Map());
@@ -209,8 +209,12 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     }
   },[fitPoints,ready,storageKey,hasSize]);
   useEffect(() => {
-    if (ready && hasSize && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:focusArea.maxZoom ?? 13,duration:focusArea.animate ? 450 : 0});
+    if (ready && hasSize && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
   },[focusArea,ready,hasSize]);
+  // „Arata toate”: include si locatiile lasate in afara incadrarii (coordonate departe de rest).
+  useEffect(() => {
+    if (ready && hasSize && revealArea?.bounds) mapRef.current.fitBounds(revealArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:60,maxZoom:14,duration:450});
+  },[revealArea,ready,hasSize]);
   useEffect(() => {
     if (!ready) return;
     if (skipInitialSelection.current) { skipInitialSelection.current = false; return; }
