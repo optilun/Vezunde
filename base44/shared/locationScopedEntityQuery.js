@@ -205,7 +205,10 @@ export async function loadDirectoryDetailOverlay(svc, locationIds, options = {})
     ids,
     // Aceeasi selectie ca pe pagina publica de profil: doar starea activa, cea mai recenta intai.
     { query: { state_status: 'active' }, sort: '-normalized_at', ...options },
-  ).catch(() => []);
+  ).catch((error) => {
+    if (options.throwOnError) throw error;
+    return [];
+  });
 
   for (const state of states) {
     const locationId = state?.location_id;
