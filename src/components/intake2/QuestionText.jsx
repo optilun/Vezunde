@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import UrgencyInterruption from "./UrgencyInterruption";
+import InfoHint from "./InfoHint";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
 import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../../shared/patientGuidanceQuestionCatalog.js";
 
@@ -84,11 +85,11 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
       <div className="mt-6">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranță</p>
+          {/* 2026-09-27: explicatia aprobata (situatii aparute brusc; problemele vechi de vedere
+              aleg "Niciuna") se deschide cu butonul "i". Variantele clinice raman neschimbate. */}
           <p className="mt-1.5 font-heading text-base font-bold leading-snug tracking-tight text-foreground">
             {SAFETY_QUESTION.title}
-          </p>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            {SAFETY_QUESTION.helper}
+            <InfoHint items={[SAFETY_QUESTION.helper]} />
           </p>
           <div className="mt-4 grid gap-2.5">
             {SAFETY_CHOICES.map((choice) => (
@@ -126,11 +127,9 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
     <div className="mt-6">
       {prefilled ? (
         <p className="-mt-2 mb-3 text-sm leading-relaxed text-muted-foreground">
-          Am preluat ce ai scris deja. Poți adăuga detalii utile: care ochi, de când, ce ai observat.
+          Poți adăuga: care ochi, de când, ce ai observat.
         </p>
-      ) : question.helper && (
-        <p className="-mt-2 mb-3 text-sm leading-relaxed text-muted-foreground">{question.helper}</p>
-      )}
+      ) : null}
       <textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
