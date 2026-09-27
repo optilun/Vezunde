@@ -1,11 +1,93 @@
 import { layoutMapMarkers } from "../../../shared/mapMarkerPresentation.js";
 import { clusterSharesPosition } from "../../../shared/resultsMapLabels.js";
+import { CLUSTER_INDIVIDUAL_ZOOM, clusterExpansionZoom } from "../../../shared/resultsMapPoints.js";
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { readSearchSession } from "@/lib/searchSession";
+import { MAP_STYLE_FALLBACK_URL, MAP_STYLE_URL, transformMapStyle } from "@/lib/viaseeMapStyle";
 
-export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure }) {
+const ATTRIBUTION = '<a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>';
+
+// 2026-09-27. O singura harta pe pagina, pastrata intre cautari.
+// Pana acum fiecare cautare noua (alt oras, alt serviciu, trecerea de la harta Romaniei la o
+// localitate) crea o harta noua: fundalul, fonturile si dalele se descarcau din nou (5-10 s pe
+// telefon). Acum harta ramane in memorie cand pagina de rezultate se schimba: la urmatoarea cautare
+// se muta in noul loc si isi schimba doar punctele si incadrarea.
+// - o harta e „ocupata” cat timp o foloseste o componenta; daca doua harti apar simultan, a doua
+//   este una obisnuita, stearsa la plecare;
+// - evenimentele hartii ajung la componenta care o foloseste acum (`entry.owner`);
+// - o harta care si-a pierdut contextul grafic (WebGL) nu se mai refoloseste.
+let sharedMap = null;
+
+function isStyleRequestError(event) {
+  return String(event?.error?.url || event?.error?.message || "").includes("/styles/positron");
+}
+
+function createMapEntry(host) {
+  const element = document.createElement("div");
+  element.style.width = "100%";
+  element.style.height = "100%";
+  host.appendChild(element);
+  let map;
+  try {
+    map = new maplibregl.Map({container:element, center:[24.9,45.9], zoom:6, maxZoom:19, attributionControl:{compact:true, customAttribution:ATTRIBUTION}});
+  } catch (error) {
+    element.remove();
+    throw error;
+  }
+  const entry = { map, element, inUse: true, styleLoaded: false, broken: false, fallbackStyle: false, owner: null };
+  // Fundalul VIASEE: Positron recolorat, nume romanesti (src/lib/viaseeMapStyle.js).
+  map.setStyle(MAP_STYLE_URL, { transformStyle: (_previous, next) => transformMapStyle(next) });
+  map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-left");
+  map.on("moveend", event => entry.owner?.onMoveEnd(event));
+  for (const event of ["moveend", "zoomend", "rotateend", "pitchend", "resize"]) map.on(event, () => entry.owner?.onLabels());
+  map.on("click", event => entry.owner?.onMapClick(event));
+  map.on("load",() => {
+    if (map.getLayer("building")) map.setLayerZoomRange("building",13,24);
+    if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility","none");
+    entry.styleLoaded = true;
+    entry.owner?.onStyleReady();
+  });
+  map.on("webglcontextlost",() => { entry.broken = true; entry.owner?.onFailure("webgl"); });
+  map.on("error", event => {
+    if (!event.error) return;
+    console.warn("VIASEE vector map resource failed:", event.error.message);
+    // Daca stilul VIASEE nu se poate citi, harta porneste cu stilul standard OpenFreeMap.
+    if (!entry.styleLoaded && !entry.fallbackStyle && isStyleRequestError(event)) {
+      entry.fallbackStyle = true;
+      map.setStyle(MAP_STYLE_FALLBACK_URL);
+    }
+  });
+  return entry;
+}
+
+function acquireMap(host) {
+  if (sharedMap && !sharedMap.inUse && !sharedMap.broken) {
+    host.appendChild(sharedMap.element);
+    sharedMap.inUse = true;
+    sharedMap.map.resize();
+    sharedMap.map.triggerRepaint();
+    return sharedMap;
+  }
+  const entry = createMapEntry(host);
+  if (!sharedMap || sharedMap.broken) sharedMap = entry;
+  return entry;
+}
+
+function releaseMap(entry) {
+  entry.owner = null;
+  entry.inUse = false;
+  if (entry === sharedMap && !entry.broken) {
+    entry.element.remove();
+    return;
+  }
+  if (entry === sharedMap) sharedMap = null;
+  entry.map.remove();
+  entry.element.remove();
+}
+
+export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const markers = useRef(new Map());
@@ -24,16 +106,22 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   const fitted = useRef(null);
   const skipInitialSelection = useRef(false);
   const restoredCamera = useRef(null);
+  const cardAnchor = useRef(null);
+  const hasCard = Boolean(selectedCard);
+  const hasCardRef = useRef(hasCard);
+  hasCardRef.current = hasCard;
   // 2026-09-24. Doua momente distincte:
   // - `ready`: harta exista, deci camera si markerele (elemente HTML) pot fi puse. Punctele apar
   //   imediat, peste fundalul simplu, fara sa astepte fundalul hartii;
   // - `styleReady`: fundalul (stil, texte, dale) s-a incarcat; abia atunci se pot atinge straturile
   //   (cladiri, 3D). Inainte, totul astepta `load`: 6-8 s pe desktop in test, mai mult pe telefon.
+  // 2026-09-27: o harta refolosita are fundalul gata, deci ambele sunt adevarate de la inceput.
   const [ready, setReady] = useState(false);
   const [styleReady, setStyleReady] = useState(false);
   const [threeD, setThreeD] = useState(false);
   const [zoom, setZoom] = useState(6);
   useEffect(() => {
+    let entry;
     let map;
     let observer;
     let timer;
@@ -43,25 +131,29 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       layoutFrame = requestAnimationFrame(() => { if (container.current) layoutMapMarkers(container.current); });
     };
     try {
-      map = new maplibregl.Map({container:container.current, style:"https://tiles.openfreemap.org/styles/liberty", center:[24.9,45.9],zoom:6, maxZoom:19, attributionControl:{compact:true, customAttribution:'<a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>'}});
+      entry = acquireMap(container.current);
+      map = entry.map;
       mapRef.current = map;
-      map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-left");
-      const report = () => {
+      const report = (event) => {
         const b = map.getBounds();
         setZoom(map.getZoom());
-        latest.current.reportViewport({zoom:map.getZoom(),bounds:[[b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]],camera:{center:[map.getCenter().lng,map.getCenter().lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()}});
+        // `reason` spune paginii daca harta s-a mutat pentru ca vizitatorul a ales o locatie (lista
+        // nu se reordoneaza atunci) sau pentru ca a explorat harta.
+        latest.current.reportViewport({zoom:map.getZoom(),bounds:[[b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]],camera:{center:[map.getCenter().lng,map.getCenter().lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reason:event?.viaseeSelection ? "selection" : "move"});
       };
-      map.on("moveend",report);
-      for (const event of ["moveend", "zoomend", "rotateend", "pitchend", "resize"]) map.on(event, scheduleLabels);
-      map.on("load",() => {
-        clearTimeout(timer);
-        if (map.getLayer("building")) map.setLayerZoomRange("building",13,24);
-        if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility","none");
-        setStyleReady(true);
-      });
-      map.on("webglcontextlost",() => latest.current.onFailure("webgl"));
-      map.on("error", event => { if (event.error) console.warn("VIASEE vector map resource failed:", event.error.message); });
-      timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
+      entry.owner = {
+        onMoveEnd: report,
+        onLabels: scheduleLabels,
+        onStyleReady: () => { clearTimeout(timer); setStyleReady(true); },
+        onFailure: (reason) => latest.current.onFailure(reason),
+        // Un clic pe harta (nu pe un pin sau pe card) inchide cardul locatiei, ca pe Airbnb.
+        onMapClick: (event) => {
+          if (event.originalEvent?.target?.closest?.(".viasee-vector-marker")) return;
+          if (markerState.current.selectedId) handlers.current.onSelect?.(null);
+        },
+      };
+      if (entry.styleLoaded) setStyleReady(true);
+      else timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
       observer = new ResizeObserver(() => {
         // Harta ascunsa (lista pe telefon) are 0 px: nu o redimensionam si nu o redesenam degeaba.
         // Cand reapare, observatorul se declanseaza din nou cu marimea reala.
@@ -73,7 +165,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       setReady(true);
     } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(/webgl/i.test(String(error?.message)) ? "webgl" : "initialization"); }
     const currentMarkers = markers.current;
-    return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); map?.remove(); mapRef.current=null; };
+    return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); if (entry) releaseMap(entry); mapRef.current=null; };
   },[]);
   useEffect(() => {
     if (!ready) return;
@@ -108,7 +200,9 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     if (skipInitialSelection.current) { skipInitialSelection.current = false; return; }
     if (!selectedId) return;
     const point=latest.current.points.find(p=>p.id===selectedId);
-    if (point) mapRef.current.easeTo({center:[point.lng,point.lat],duration:350});
+    // Cardul plutitor sta deasupra pinului: pinul coboara putin sub centru, ca sa incapa cardul.
+    // Pe telefon cardul sta jos, deci pinul urca putin.
+    if (point) mapRef.current.easeTo({center:[point.lng,point.lat],offset:hasCardRef.current ? [0,130] : [0,-70],duration:350},{viaseeSelection:true});
   },[selectedId,ready]);
   useEffect(() => {
     if (!styleReady) return;
@@ -154,8 +248,16 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       el.onclick=()=>{
         const {onSelect:select,onCluster:openCluster}=handlers.current;
         if(cluster.count>1) {
-          if(map.getZoom()>=15 || clusterSharesPosition(cluster)){select?.(null);openCluster(cluster.key);}
-          else {openCluster(null);const bounds=new maplibregl.LngLatBounds();cluster.points.forEach(p=>bounds.extend([p.lng,p.lat]));map.fitBounds(bounds,{padding:60,maxZoom:17});}
+          if(map.getZoom()>=CLUSTER_INDIVIDUAL_ZOOM || clusterSharesPosition(cluster)){select?.(null);openCluster(cluster.key);}
+          else {
+            // 2026-09-27. Grupul se desface pe loc: harta se apropie centrata pe grup, pana la zoom-ul
+            // la care grupul se imparte (nu pe dreptunghiul tuturor punctelor lui, care putea sari
+            // pana in orasele vecine).
+            openCluster(null);
+            const current=map.getZoom();
+            const target=Math.min(17,Math.max(current+1,clusterExpansionZoom(cluster.points,current)));
+            map.easeTo({center:[cluster.lng,cluster.lat],zoom:target,duration:450});
+          }
         } else {openCluster(null);select?.(cluster.lead.id);}
       };
       el.onmouseenter=()=>{if(cluster.count===1)handlers.current.onHover?.(cluster.lead.id);};
@@ -193,12 +295,44 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       if (container.current) layoutMapMarkers(container.current);
     });
   },[selectedId,hoveredId,ready]);
+  // 2026-09-27. Cardul locatiei alese sta deasupra pinului si il urmeaza cand harta se misca (ca pe
+  // Airbnb). Nu este un marker al hartii: sta langa ea, ca apasarile din card (profil, inchidere) sa
+  // nu mute harta. Cand pinul e prea sus, cardul trece sub el; nu iese niciodata lateral din harta.
+  useEffect(() => {
+    if (!ready || !hasCard) return;
+    const map=mapRef.current;
+    const anchor=cardAnchor.current;
+    const point=latest.current.points.find(p=>p.id===selectedId);
+    if (!anchor || !point) return;
+    const place = () => {
+      const width=container.current?.clientWidth || 0;
+      const height=container.current?.clientHeight || 0;
+      const card=anchor.firstElementChild;
+      const cardWidth=card?.offsetWidth || 300;
+      const cardHeight=card?.offsetHeight || 320;
+      const {x,y}=map.project([point.lng,point.lat]);
+      const below=y-cardHeight-30 < 8 && y+30+cardHeight <= height-8;
+      const left=Math.min(Math.max(x-cardWidth/2,8),Math.max(8,width-cardWidth-8));
+      const top=below ? y+30 : y-cardHeight-30;
+      anchor.style.transform=`translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+      anchor.style.visibility=x>=0 && x<=width && y>=0 && y<=height ? "visible" : "hidden";
+    };
+    place();
+    const resize=new ResizeObserver(place);
+    if (anchor.firstElementChild) resize.observe(anchor.firstElementChild);
+    map.on("move",place);
+    map.on("resize",place);
+    return () => { resize.disconnect(); map.off("move",place); map.off("resize",place); };
+  },[selectedId,hasCard,ready]);
   return <>
-    <div ref={container} className="h-full w-full bg-secondary" aria-label="Harta detaliată a locațiilor" />
-    {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-secondary text-sm">Se încarcă harta detaliată...</div>}
+    <div ref={container} className="viasee-map-host h-full w-full bg-[#F2EFE8]" aria-label="Harta detaliată a locațiilor" />
+    {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-[#F2EFE8] text-sm">Se încarcă harta detaliată...</div>}
     {ready && !styleReady && <p role="status" className="pointer-events-none absolute bottom-3 left-3 z-40 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm">Se încarcă fundalul hărții...</p>}
-    <div className="absolute left-3 top-32 z-40 flex flex-col items-start gap-2">
-      <button type="button" disabled={!styleReady} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-md hover:bg-secondary disabled:opacity-50">{threeD?"2D":"3D"}</button>
+    {ready && hasCard && <div ref={cardAnchor} className="pointer-events-none absolute left-0 top-0 z-[450]" style={{visibility:"hidden"}}>
+      <div className="pointer-events-auto w-[300px]">{selectedCard}</div>
+    </div>}
+    <div className="absolute left-[10px] top-[132px] z-40 flex flex-col items-start gap-2">
+      <button type="button" disabled={!styleReady} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="viasee-map-control h-9 w-9 text-[12px] font-bold disabled:opacity-50">{threeD?"2D":"3D"}</button>
       {threeD && zoom<14 && <span className="max-w-40 rounded-xl bg-card p-2 text-xs shadow">Apropie harta pentru a vedea clădirile 3D.</span>}
     </div>
   </>;
