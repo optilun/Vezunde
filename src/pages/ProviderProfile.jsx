@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { loadPublicProviderProfile } from "@/lib/publicProfilePrefetch";
 import { isNotFoundError } from "@/lib/transientRetry";
+import { markProfileVisited } from "@/lib/visitedProfiles";
 import ProfileTemporarilyUnavailable from "@/components/common/ProfileTemporarilyUnavailable";
 import { useEntitySeo } from "@/lib/useEntitySeo";
 import {
