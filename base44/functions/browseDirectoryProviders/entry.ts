@@ -61,16 +61,58 @@ function isVisibleInDirectory(loc) {
   return true;
 }
 
+// 2026-09-27. Fotografia locatiei si poza de profil (logo-ul organizatiei) pe cardurile din lista,
+// doar pentru profilurile cu detaliu complet (revendicate sau verificate): aceeasi regula ca
+// pagina de profil, unde `photo_url` si logo-ul apar doar cu `expose_full_details`. Doar adrese
+// https - un data URL ar adauga sute de KB pe fiecare punct al hartii. Un logo care nu se poate
+// citi lipseste pur si simplu; cardul are o coperta generata.
+function publicHttpsImage(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw.length > 1000 || !/^https:\/\//i.test(raw)) return null;
+  try {
+    return new URL(raw).toString();
+  } catch (_error) {
+    return null;
+  }
+}
+
+async function loadOrganizationLogos(svc, organizationIds) {
+  const ids = [...new Set(organizationIds.filter(Boolean).map(String))].slice(0, 200);
+  const entries = await Promise.all(ids.map(async (id) => {
+    const organization = await svc.entities.ProviderOrganization.get(id).catch(() => null);
+    return [id, publicHttpsImage(organization?.logo_url)];
+  }));
+  return new Map(entries.filter(([, logo]) => logo));
+}
+
+function cardImages(loc, disclosure, logos) {
+  if (disclosure.expose_full_details !== true) return {};
+  const images = {};
+  const logo = logos.get(String(loc.organization_id || '')) || null;
+  const photo = publicHttpsImage(loc.photo_url);
+  // Profilurile vechi aveau logo-ul copiat in `photo_url`; acela nu e o fotografie a locatiei.
+  if (photo && photo !== logo) images.photo_url = photo;
+  if (logo) images.logo_url = logo;
+  return images;
+}
+
+function fullDetailOrganizationIds(disclosed) {
+  return disclosed
+    .filter(({ disclosure }) => disclosure.expose_full_details === true)
+    .map(({ loc }) => loc.organization_id);
+}
+
 async function computeNationalMap(svc) {
   const { locations: allLocations } = await loadPublishedLocationsForMap(svc);
   const visible = allLocations.filter(isVisibleInDirectory);
   const { overlay } = await loadDirectoryDetailOverlayForMap(svc, visible.map((loc) => loc.id));
+  const disclosed = visible.map((loc) => ({ loc, disclosure: getPublicLocationDisclosure(withDirectoryDetail(loc, overlay)) }));
+  const logos = await loadOrganizationLogos(svc, fullDetailOrganizationIds(disclosed));
 
   const points = [];
   const localityCounts = {};
   let totalPublished = 0;
-  for (const loc of visible) {
-    const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
+  for (const { loc, disclosure } of disclosed) {
     if (disclosure.profile_control_status === 'suspended') continue;
     totalPublished += 1;
     const countKey = localityCountKey(loc.locality_name || loc.city, loc.county_name || loc.county);
@@ -87,6 +129,7 @@ async function computeNationalMap(svc) {
       lng: disclosure.lng,
       map_precision: disclosure.map_precision,
       profile_control_status: disclosure.profile_control_status,
+      ...cardImages(loc, disclosure, logos),
     });
   }
 
