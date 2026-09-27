@@ -1,6 +1,6 @@
 import { layoutMapMarkers } from "../../../shared/mapMarkerPresentation.js";
 import { clusterSharesPosition } from "../../../shared/resultsMapLabels.js";
-import { CLUSTER_INDIVIDUAL_ZOOM, clusterExpansionZoom } from "../../../shared/resultsMapPoints.js";
+import { CLUSTER_INDIVIDUAL_ZOOM, clusterExpansionZoom, framingForPoints } from "../../../shared/resultsMapPoints.js";
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import maplibregl from "maplibre-gl";
@@ -201,13 +201,15 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     } else if (!fitPoints.length) {
       map.fitBounds([[20.2,43.6],[29.8,48.3]], { padding: 24, duration: 0 });
     } else {
+      // 2026-09-27: coordonatele aberante nu departeaza harta; 1-2 locatii nu se deschid prea aproape.
+      const framing=framingForPoints(fitPoints);
       const bounds=new maplibregl.LngLatBounds();
-      fitPoints.forEach(p=>bounds.extend([p.lng,p.lat]));
-      map.fitBounds(bounds,{padding:60,maxZoom:14,duration:0});
+      framing.points.forEach(p=>bounds.extend([p.lng,p.lat]));
+      map.fitBounds(bounds,{padding:60,maxZoom:framing.maxZoom,duration:0});
     }
   },[fitPoints,ready,storageKey,hasSize]);
   useEffect(() => {
-    if (ready && hasSize && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
+    if (ready && hasSize && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:focusArea.maxZoom ?? 13,duration:focusArea.animate ? 450 : 0});
   },[focusArea,ready,hasSize]);
   useEffect(() => {
     if (!ready) return;
