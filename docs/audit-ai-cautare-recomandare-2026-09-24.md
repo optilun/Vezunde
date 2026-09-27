@@ -552,3 +552,37 @@ celalalt agent ("Scrie acum"). Checkpoint: `6ab6ebc1da74d6ebb8910265`.
   (inainte: "La o optica"). Un singur apel AI; oprit inainte de "Cauta rezultate". La aceeasi
   fraza, modelul propune uneori lentile, alteori problema la ochi; ambele cai duc acum la
   serviciile de specialitate.
+
+## 15. Revizuirea textelor medicale, delegata de owner (2026-09-26/27)
+
+Owner-ul nu are un medic disponibil si a cerut ca revizuirea sa o faca Claude (AI). Deciziile de
+mai jos se bazeaza pe ghidurile publice pentru pacienti (AAO, NHS), cu varianta prudenta acolo unde
+exista dubii. Nu inlocuiesc revizuirea unui medic; de refacut cu un medic cand se poate.
+
+- **Corectie la sectiunea 14:** "de azi vad fulgere si multe puncte negre" ERA deja recunoscuta de
+  stratul de siguranta al formularului (`src/lib/patientSafety.js`, fraza "vad fulgere"). Golul
+  observat exista doar in stratul agentului de conversatie (`shared/patientEyeSafetyPolicy.js`),
+  care nu ruleaza in fluxul pacientului. Goluri reale in formular: "vad dublu de azi dimineata",
+  "de ieri vad ca o umbra la ochiul stang" si "ma doare foarte tare ochiul".
+- **Siguranta (aplicat):** frazele de mai sus si variantele lor cu debut recent intra in aceleasi
+  semnale (`other_possible_urgent_eye_problem`, `severe_eye_pain`); formularile cronice ("vad dublu
+  de cativa ani", "muste zburatoare de cateva luni") raman fara semnal. Intentia recunoaste si
+  "vad ca o umbra". Stratul agentului de conversatie ramane neschimbat (versiune v1.2).
+- **Randul 112 (aplicat):** numeste si semnele de accident vascular (slabiciune intr-o parte a
+  corpului, vorbire greoaie, gura stramba); ramane un singur rand mic, conditionat, dupa indicatia
+  spre urgenta. Politica actualizata (`docs/patient-emergency-guidance-policy.md`).
+- **Recomandari noi (aplicat, `patientVisitGuidance.js`):** keratocon, degenerescenta maculara,
+  conjunctivita sau alergie (fara nota de ochi uscat venita doar din servicii), miopie la copil,
+  ochi lenes sau strabism (doar la controlul pentru copil). Fiecare nota are cel mult 3 puncte,
+  fara diagnostic, doze, 112, UPU sau spital; semnele de agravare trimit la "o evaluare cat mai
+  curand". Picaturile pentru copii: vederea poate ramane incetosata "cateva ore, uneori pana a doua
+  zi".
+- **Anamneza (aplicat):** optiunea "Keratocon", bifata automat cand pacientul o scrie.
+- **Uveita:** semnalul informativ pus de AI la "am uveita" ramane (nu opreste cautarea; uveita
+  activa cere evaluare prompta).
+- **Textele existente** (cataracta, glaucom, diabet, tensiune arteriala, ochi uscati, pregatirea
+  consultului) au fost recitite: corecte, fara schimbari.
+- Teste: 14 verificari in `verify-patient-anamnesis-guidance`, cazuri noi in
+  `verify-patient-intake-safety`, randul 112 in `verify-patient-emergency-guidance-policy`. ESLint si
+  build trec; `verify-all`: 153 trec, aceleasi 4 esecuri din afara modulului. Checkpoint
+  `6ab8c4907b600f3a1fc3166d`.
