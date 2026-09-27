@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ShieldAlert } from "lucide-react";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 import { APPROVED_PATIENT_SAFETY_COPY } from "../../../shared/patientGuidanceQuestionCatalog.js";
+import InfoHint from "./InfoHint";
 
 // 2026-09-02: textul de urgenta vine din APPROVED_PATIENT_SAFETY_COPY, nu mai e copiat aici.
 // Era duplicat, iar duplicatul chiar divergease: ecranul spunea "cat mai curand" acolo unde
@@ -53,7 +54,7 @@ function FieldLabel({ children }) {
   return <p className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-black/40">{children}</p>;
 }
 
-export default function UrgencyInterruption({ assessment, mode = "blocking", onCorrect, correctLabel = "Am selectat greșit. Corectează răspunsul" }) {
+export default function UrgencyInterruption({ assessment, mode = "blocking", onCorrect, correctLabel = "Am selectat greșit" }) {
   const labels = flagLabels(assessment);
   const allFlags = [...(assessment?.blocking_flags || []), ...(assessment?.advisory_flags || [])];
   const blocking = mode === "blocking";
@@ -82,12 +83,17 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
 
           <h2 className="mt-3 font-heading text-lg font-bold leading-snug tracking-[-0.02em] text-[#1c1c1c] sm:text-xl">
             {blocking ? COPY.blocking_title : COPY.advisory_title}
+            {/* 2026-09-27, cererea owner-ului: explicatia aprobata (sus, langa titlu, pentru ca
+                vorbeste despre "situatiile de mai jos"), nota despre garzi si disclaimerul se
+                deschid cu butonul "i". Actiunile raman vizibile: unde mergi, primul ajutor, 112. */}
+            <InfoHint
+              items={[
+                COPY.explanation,
+                "VIASEE nu poate confirma care locații au gardă activă acum.",
+                COPY.disclaimer,
+              ]}
+            />
           </h2>
-
-          {/* Textul aprobat spune "Pentru situatiile de mai jos", deci trebuie sa stea
-              deasupra sectiunilor. Cand il coborasem in subsol, trimitea la nimic. Ramane
-              mic si sters: e o limitare a platformei, nu o instructiune. */}
-          <p className="mt-3 text-[12px] leading-relaxed text-black/45">{COPY.explanation}</p>
         </div>
 
         <div className="mt-6 max-w-[42rem] divide-y divide-[#ece7dc] border-y border-[#ece7dc]">
@@ -118,8 +124,8 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             </p>
             <ul className="mt-2.5 space-y-1.5">
               {[
-                "Nu conduce singur dacă vederea îți este afectată — roagă pe cineva să te ducă.",
-                "VIASEE nu poate confirma care locații au gardă activă acum — sună înainte, sau mergi direct la cea mai apropiată unitate de urgență.",
+                "Nu conduce singur; roagă pe cineva să te ducă.",
+                "Sună înainte sau mergi direct la cea mai apropiată urgență.",
               ].map((line) => (
                 <li key={line} className="flex gap-2 text-[13px] leading-relaxed text-black/55">
                   <span aria-hidden="true" className="mt-[8px] h-[3px] w-[3px] shrink-0 rounded-full bg-black/30" />
@@ -128,7 +134,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
               ))}
             </ul>
             <p className="mt-2.5 text-[12px] leading-relaxed text-black/45">
-              Dacă nu te poți deplasa în siguranță, dacă apar și slăbiciune într-o parte a corpului, vorbire greoaie sau gura strâmbă, ori dacă starea generală se agravează rapid, sună la{" "}
+              Dacă nu te poți deplasa, dacă starea se agravează sau apar slăbiciune pe o parte a corpului, vorbire greoaie ori gura strâmbă, sună la{" "}
               <a href="tel:112" className="font-semibold text-black/60 underline underline-offset-2">112</a>.
             </p>
           </div>
@@ -139,7 +145,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             to="/cauta?q=oftalmolog"
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#171717] px-6 font-heading text-[13.5px] font-bold tracking-[-0.01em] text-white transition-opacity hover:opacity-90"
           >
-            Găsește clinici și cabinete oftalmologice lângă tine <ArrowRight className="h-4 w-4" />
+            Clinici oftalmologice lângă tine <ArrowRight className="h-4 w-4" />
           </Link>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {onCorrect && (
@@ -154,7 +160,6 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           </div>
         </div>
 
-        <p className="mt-6 max-w-[42rem] text-[11.5px] leading-relaxed text-black/40">{COPY.disclaimer}</p>
       </div>
     </section>
   );
