@@ -586,3 +586,9 @@ exista dubii. Nu inlocuiesc revizuirea unui medic; de refacut cu un medic cand s
   `verify-patient-intake-safety`, randul 112 in `verify-patient-emergency-guidance-policy`. ESLint si
   build trec; `verify-all`: 153 trec, aceleasi 4 esecuri din afara modulului. Checkpoint
   `6ab8c4907b600f3a1fc3166d`.
+- **Verificat live dupa publicare (2026-09-27):** bundle-urile servite contin frazele noi, randul
+  112 si notele noi. "vad dublu de azi dimineata" deschide ecranul de urgenta (semnalul
+  identificat, indicatia spre UPU sau urgente oftalmologice, randul 112 cu semnele de accident
+  vascular, un singur link tel:112, optiunea "Nu e o urgenta"). "am keratocon, sunt din Cluj":
+  anamneza are "Keratocon" bifat din mesaj, iar ecranul de verificare arata nota pentru keratocon.
+  Oprit inainte de "Cauta rezultate".
