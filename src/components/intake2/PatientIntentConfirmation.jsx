@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, Pencil, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Search, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import ChoiceCard from "@/components/intake/ChoiceCard";
 import InfoHint from "./InfoHint";
@@ -184,23 +184,10 @@ export default function PatientIntentConfirmation({
           )}
         </div>
       ) : (
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            <Check className="h-4 w-4" />
-            Da, continuă
-          </button>
-          <button
-            type="button"
-            onClick={() => setChoosing(true)}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
-          >
-            <Pencil className="h-4 w-4" />
-            Nu, aleg altă nevoie
-          </button>
+        // 2026-09-27, cererea owner-ului: confirmarea foloseste acelasi card ca variantele.
+        <div className="mt-6 grid gap-2.5">
+          <ChoiceCard label="Da, continuă" onClick={onConfirm} />
+          <ChoiceCard label="Nu, aleg altă nevoie" onClick={() => setChoosing(true)} />
         </div>
       )}
     </div>
