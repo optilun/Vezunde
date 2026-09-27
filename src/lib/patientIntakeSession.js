@@ -93,6 +93,9 @@ function safeState(state = {}) {
     scope: clean(state.scope, 40),
     locality: safeLocality(state.locality),
     clientAddressText: clean(state.clientAddressText, 240),
+    // 2026-09-27: pasul cu datele de contact (salvate sau sarite), ca sa nu apara din nou dupa
+    // o revenire in chestionar. Datele insele nu se pastreaza aici.
+    contactStep: ["saved", "skipped"].includes(state.contactStep) ? state.contactStep : null,
   };
 }
 
