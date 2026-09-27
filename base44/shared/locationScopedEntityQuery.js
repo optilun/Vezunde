@@ -180,8 +180,8 @@ export function paginateRows(rows, options = {}) {
 // aprobarea editoriala nu producea niciun efect in cautare, iar harta rezultatelor nu avea
 // coordonate de desenat.
 //
-// Se imbina DOAR cele trei campuri care decid nivelul de detaliu. Statusul de control, cel de
-// publicare si cel operational raman citite de pe locatie, exact ca pana acum - ele hranesc
+// Se imbina doar campurile care decid nivelul de detaliu si tipul precis al locatiei.
+// Statusul de control, cel de publicare si cel operational raman citite de pe locatie - ele hranesc
 // eligibilitatea si ordonarea, iar acelea nu au voie sa se schimbe aici.
 const DIRECTORY_DETAIL_OVERLAY_FIELDS = Object.freeze([
   'directory_detail_level',
