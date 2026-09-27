@@ -51,12 +51,11 @@ export default function QuestionLocation({ onAnswer, initialQuery = "" }) {
       </div>
       {prefilled && query.trim() === prefilled && (
         <p className="mt-2 text-xs font-medium leading-relaxed text-foreground/80">
-          Am căutat după localitatea din mesajul tău. Alege varianta corectă din listă.
+          Am căutat după localitatea din mesajul tău.
         </p>
       )}
-      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-        Selectează localitatea din lista oficială. VIASEE caută mai întâi numai în localitatea aleasă și extinde aria doar dacă soliciți explicit acest lucru.
-      </p>
+      {/* 2026-09-27: regula de cautare (lista oficiala, intai doar localitatea aleasa) se
+          deschide cu butonul "i" de langa titlu (ConversationalCard.jsx, LOCATION_INFO). */}
       <div className="mt-3 max-h-[min(16rem,42dvh)] space-y-2 overflow-y-auto overscroll-contain pr-1">
         {results?.map((locality) => (
           <button
