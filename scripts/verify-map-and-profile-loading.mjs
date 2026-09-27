@@ -145,7 +145,9 @@ async function listFiles(dir) {
   assert.doesNotMatch(prefetchSource, /^import .*base44Client/m, 'clientul Base44 nu intra in codul principal');
   assert.match(prefetchSource, /await import\("@\/api\/base44Client"\)/);
   const profilePage = await read('src/pages/ProviderProfile.jsx');
-  assert.match(profilePage, /loadPublicProviderProfile\(id\)\.then\(\(res\) => setProfile\(res\.data\?\.profile \|\| null\)\)/);
+  // 2026-09-27: pagina deosebeste 404 (negasit, noindex) de o eroare trecatoare (vezi
+  // src/lib/transientRetry.js si scripts/verify-seo-profiles.mjs).
+  assert.match(profilePage, /loadPublicProviderProfile\(id\)\s*\.then\(\(res\) => \{\s*const next = res\.data\?\.profile \|\| null;\s*setProfile\(next\);/);
   assert.doesNotMatch(profilePage, /functions\.invoke\("getPublicProviderProfile"/);
   const hero = await read('src/components/provider/ProviderLocationHero.jsx');
   assert.match(hero, /if \(!profile\.id \|\| isDirectoryProfile\) \{/, 'aceeasi regula pentru brand');
