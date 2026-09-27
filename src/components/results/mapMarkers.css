@@ -1,46 +1,113 @@
-/* Shared by the vector and raster map. Coordinates stay at the centre of the 44px target. */
+/* Shared by the vector and raster map. Coordinates stay at the centre of the 44px target.
+   2026-09-27: pini in stilul hartilor de cautare (Airbnb). Grupurile sunt cercuri cu numar,
+   marite dupa densitate; locatiile sunt pastile albe (pictograma + nume) care se strang la
+   pictograma cand nu e loc; pinul ales este negru, pinul de sub mouse se mareste, pinul unui
+   profil deja deschis in sesiune este gri. Fara contur punctat pentru pozitia aproximativa. */
 .viasee-vector-marker, .viasee-map-pill {
   width: 44px; height: 44px; border: 0; background: transparent;
   padding: 0; cursor: pointer; font-family: inherit; overflow: visible;
 }
 .viasee-marker {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  box-sizing: border-box; height: 36px; max-width: 200px; width: max-content;
-  padding: 0 11px; border-radius: 999px; border: 1.5px solid hsl(var(--border));
-  background: hsl(var(--card)); color: hsl(var(--foreground));
-  box-shadow: 0 2px 6px #17233720, 0 0 0 1px #ffffff70;
-  font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2;
-  white-space: nowrap; transition: background-color .12s ease, box-shadow .12s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  box-sizing: border-box; height: 32px; max-width: 210px; width: max-content;
+  padding: 0 12px 0 5px; border-radius: 999px; border: 0;
+  background: #ffffff; color: #171717;
+  box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.07), 0 2px 8px rgba(23, 35, 55, 0.18);
+  font-family: inherit; font-size: 12.5px; font-weight: 700; line-height: 1; letter-spacing: -0.005em;
+  white-space: nowrap;
+  transition: transform .16s cubic-bezier(.2, .8, .2, 1), background-color .12s ease, color .12s ease, box-shadow .16s ease;
 }
-.viasee-marker-icon { display: inline-flex; flex: 0 0 auto; color: #4f6080; }
+.viasee-marker-icon, .viasee-marker-rank {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 999px;
+}
+.viasee-marker-icon { background: #eef1f6; color: #4f6080; }
+.viasee-marker-rank {
+  background: #171717; color: #ffffff; font-size: 11.5px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 .viasee-marker-name { overflow: hidden; text-overflow: ellipsis; }
-.viasee-marker-chevron { font-size: 19px; line-height: 1; opacity: .65; }
-.viasee-marker[data-group="true"] { background: hsl(var(--secondary)); font-weight: 700; }
-.viasee-marker[data-approximate="true"] { border-style: dashed; }
-.viasee-marker[data-request="true"] { border-color: #4f6080; box-shadow: 0 0 0 2px #dce3ee, 0 2px 6px #17233720; }
-.viasee-marker[data-top="true"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
-.viasee-marker[data-top="true"] .viasee-marker-icon,
-.viasee-marker[data-active="true"] .viasee-marker-icon { color: inherit; }
-.viasee-marker[data-compact="true"] { width: 36px; padding: 0; gap: 0; }
+
+/* Loc putin: ramane doar pictograma (sau numarul din lista). */
+.viasee-marker[data-compact="true"] { width: 32px; padding: 0; gap: 0; }
 .viasee-marker[data-compact="true"] .viasee-marker-name { display: none; }
-.viasee-marker[data-active="true"] {
-  background: #4f6080; color: #fff; border-color: #4f6080;
-  box-shadow: 0 0 0 3px #ffffffee, 0 4px 14px #17233740;
+
+/* Rezultat al cererii pacientului (ecranul de recomandari). */
+.viasee-marker[data-request="true"] { box-shadow: 0 0 0 2px #4f6080, 0 2px 8px rgba(23, 35, 55, 0.18); }
+.viasee-marker[data-top="true"] { background: #171717; color: #ffffff; }
+.viasee-marker[data-top="true"] .viasee-marker-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
+
+/* Profil deja deschis in aceasta sesiune. */
+.viasee-marker[data-visited="true"] { background: #ecebe7; color: #6b6b6b; }
+.viasee-marker[data-visited="true"] .viasee-marker-icon { background: #dfddd7; color: #7c7a74; }
+.viasee-marker[data-visited="true"] .viasee-marker-rank { background: #8a877f; }
+
+/* Grup: cerc cu numarul de locatii, mai mare cand grupul e mai dens. */
+.viasee-marker[data-group="true"] {
+  width: 34px; height: 34px; padding: 0; gap: 0;
+  background: #2b3445; color: #ffffff; font-size: 12.5px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 3px 10px rgba(23, 35, 55, 0.3);
 }
+.viasee-marker[data-group="true"][data-size="m"] { width: 40px; height: 40px; font-size: 13px; }
+.viasee-marker[data-group="true"][data-size="l"] { width: 46px; height: 46px; font-size: 13.5px; }
+.viasee-marker[data-group="true"][data-size="xl"] { width: 54px; height: 54px; font-size: 14px; }
+
+/* Sub mouse, cu tastatura sau evidentiat din lista: pinul se mareste si isi arata numele. */
 .viasee-map-pill:hover, .viasee-vector-marker:hover,
 .viasee-map-pill:focus-visible, .viasee-vector-marker:focus-visible { z-index: 50 !important; }
 .viasee-map-pill:hover .viasee-marker, .viasee-vector-marker:hover .viasee-marker,
 .viasee-map-pill:focus-visible .viasee-marker, .viasee-vector-marker:focus-visible .viasee-marker,
 .viasee-marker[data-hovered="true"], .viasee-marker[data-active="true"] {
-  width: max-content; padding: 0 11px; gap: 7px;
-  box-shadow: 0 0 0 2px #ffffffee, 0 4px 14px #17233740;
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.1), 0 6px 18px rgba(23, 35, 55, 0.28);
+}
+.viasee-map-pill:hover .viasee-marker:not([data-group="true"]),
+.viasee-vector-marker:hover .viasee-marker:not([data-group="true"]),
+.viasee-map-pill:focus-visible .viasee-marker:not([data-group="true"]),
+.viasee-vector-marker:focus-visible .viasee-marker:not([data-group="true"]),
+.viasee-marker[data-hovered="true"]:not([data-group="true"]),
+.viasee-marker[data-active="true"]:not([data-group="true"]) {
+  width: max-content; padding: 0 12px 0 5px; gap: 6px;
 }
 .viasee-map-pill:hover .viasee-marker-name, .viasee-vector-marker:hover .viasee-marker-name,
 .viasee-map-pill:focus-visible .viasee-marker-name, .viasee-vector-marker:focus-visible .viasee-marker-name,
 .viasee-marker[data-hovered="true"] .viasee-marker-name,
 .viasee-marker[data-active="true"] .viasee-marker-name { display: inline; }
+.viasee-marker[data-group="true"][data-hovered="true"],
+.viasee-vector-marker:hover .viasee-marker[data-group="true"],
+.viasee-map-pill:hover .viasee-marker[data-group="true"] {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 6px 16px rgba(23, 35, 55, 0.35);
+}
+
+/* Pinul ales: negru, ca pe Airbnb. */
+.viasee-marker[data-active="true"] { background: #171717; color: #ffffff; }
+.viasee-marker[data-active="true"] .viasee-marker-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
+.viasee-marker[data-active="true"] .viasee-marker-rank { background: #ffffff; color: #171717; }
+.viasee-marker[data-group="true"][data-active="true"] {
+  background: #171717;
+  box-shadow: 0 0 0 3px #ffffff, 0 6px 18px rgba(23, 35, 55, 0.35);
+}
+
 .viasee-map-pill:focus-visible, .viasee-vector-marker:focus-visible {
   outline: 2px solid #4f6080; outline-offset: 3px; border-radius: 999px;
 }
+
+/* Controalele hartii (zoom, busola, 3D): butoane albe, rotunjite, fara chenar greu. */
+.viasee-map-host .maplibregl-ctrl-group:not(:empty), .viasee-map-control {
+  border: 0; border-radius: 12px; background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.06), 0 2px 8px rgba(23, 35, 55, 0.14);
+}
+.viasee-map-host .maplibregl-ctrl-group:not(:empty) { overflow: hidden; }
+.viasee-map-host .maplibregl-ctrl-group button { width: 36px; height: 36px; }
+.viasee-map-host .maplibregl-ctrl-group button + button { border-top: 1px solid #efede8; }
+.viasee-map-host .maplibregl-ctrl-group button:not(:disabled):hover { background-color: #f4f3f0; }
+.viasee-map-control { display: inline-flex; align-items: center; justify-content: center; color: #171717; cursor: pointer; }
+.viasee-map-control:not(:disabled):hover { background: #f4f3f0; }
+.viasee-map-control[aria-pressed="true"] { background: #171717; color: #ffffff; }
+.viasee-map-control[aria-pressed="true"]:not(:disabled):hover { background: #2b2b2b; }
+.viasee-map-control:focus-visible { outline: 2px solid #4f6080; outline-offset: 2px; }
+.viasee-map-host .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(247, 246, 243, 0.9); }
+
 @media (prefers-reduced-motion: reduce) { .viasee-marker { transition: none; } }
