@@ -88,4 +88,16 @@ check('the emergency screen keeps its actions visible', () => {
   assert.doesNotMatch(urgency, /<p[^>]*>\{COPY\.disclaimer\}<\/p>/);
 });
 
+// 2026-09-27, cererea owner-ului: toate variantele din chestionar arata la fel (ChoiceCard).
+check('every questionnaire option uses the same card', () => {
+  for (const file of ['QuestionChoice', 'QuestionText', 'QuestionLocation', 'PatientAnamnesis', 'PatientIntentConfirmation']) {
+    assert.match(source(`src/components/intake2/${file}.jsx`), /import ChoiceCard from "@\/components\/intake\/ChoiceCard";/, file);
+  }
+  assert.doesNotMatch(source('src/components/intake2/QuestionText.jsx'), /min-h-\[56px\]/, 'fara butoane proprii pe verificarea de siguranta');
+  const anamnesis = source('src/components/intake2/PatientAnamnesis.jsx');
+  assert.doesNotMatch(anamnesis, /rounded-full border px-4 py-2/, 'fara butoane tip pastila in anamneza');
+  assert.match(anamnesis, /pressed=\{isSelected\}/, 'alegerile multiple raman anuntate ca bifate');
+  assert.match(source('src/components/intake/ChoiceCard.jsx'), /compact = false/);
+});
+
 console.log(`Patient intake info hints verified: ${checks} checks.`);
