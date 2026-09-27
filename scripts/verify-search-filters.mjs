@@ -17,6 +17,7 @@ const rows = [
   { location_id:'hidden', service_key:'oct', cas_reimbursed:true },
 ];
 let handler;
+let failAdvancedServiceRead = false;
 const entities = Object.fromEntries(['LocationService','ProfessionalLocationAssignment','LocationEquipment','LocationFacility','ProfessionalProfile'].map(name => [name,{ name, get:async()=>null }]));
 vm.runInNewContext(source,{
   Deno:{serve:fn=>handler=fn}, Response,
@@ -29,7 +30,10 @@ vm.runInNewContext(source,{
   loadPublicLocationsForLocality:async()=>locations,
   loadDirectoryDetailOverlay:async()=>({}),
   withDirectoryDetail:loc=>loc,
-  loadRowsForLocationIds:async(entity,ids)=>entity.name==='LocationService'?rows.filter(row=>ids.includes(row.location_id)):[],
+  loadRowsForLocationIds:async(entity,ids,options)=>{
+    if (failAdvancedServiceRead && entity.name==='LocationService' && options.throwOnError) throw new Error('Service table unavailable');
+    return entity.name==='LocationService'?rows.filter(row=>ids.includes(row.location_id)):[];
+  },
   paginateRows:(items,{pageSize,offset})=>({page:items.slice(offset,offset+pageSize),pagination:{total:items.length,has_more:offset+pageSize<items.length,next_offset:offset+pageSize}}),
 });
 const run = async payload => (await handler({json:async()=>({locality_siruta_code:'123',...payload})})).json();
@@ -60,6 +64,9 @@ const unknownServices = await run({filter_service_keys:['oct']});
 assert.equal(unknownServices.pagination.total,0);
 assert.equal(unknownServices.filter_context.unfiltered_total,56);
 assert.equal(unknownServices.filter_context.locations_with_published_services,0, 'Zero results do not imply that local businesses do not offer the service');
+failAdvancedServiceRead = true;
+assert.match((await run({filter_service_keys:['oct']})).error,/Service table unavailable/, 'A failed data read must not appear as zero confirmed services');
+failAdvancedServiceRead = false;
 const typeOverlay = await loadDirectoryDetailOverlay({ entities: { ProviderLocationDirectoryState: { filter: async () => [{ location_id: 'loc-1', location_type_code: 'hospital_outpatient_unit', state_status: 'active' }] } } }, ['loc-1']);
 assert.equal(withDirectoryDetail({ id: 'loc-1' }, typeOverlay).location_type_code,'hospital_outpatient_unit');
 console.log('Search filters: CAS tied to selected service; hidden/ineligible/migration rows excluded; OR selections; pagination after filtering; invalid keys rejected — OK');
