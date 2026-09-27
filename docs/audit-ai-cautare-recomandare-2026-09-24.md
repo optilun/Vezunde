@@ -617,3 +617,17 @@ explicatiile in spatele unui buton "i". Componenta noua `src/components/intake2/
 - Test nou `verify-patient-intake-info-hints` (5 verificari). ESLint si build trec; `verify-all`:
   157 trec, 1 pica (verify-map-and-profile-loading, pagina de profil la care lucreaza celalalt
   agent).
+- **A doua trecere, dupa publicare (owner: "si mai putin, verifica toate variantele"):**
+  - variantele de siguranta scurtate, cu acelasi sens (ex. "Am pierdut brusc vederea la un
+    ochi", "Durere foarte mare la ochi", "Fulgerari, umbra sau vedere dubla aparute brusc");
+    detaliile (debut, simptome insotitoare, dupa operatie) sunt in `helper`, deschis cu "i";
+    cheile raman aceleasi;
+  - etichetele cu explicatie dupa linie de pauza au devenit simple ("Vreau un control", "Nu sunt
+    sigur", "Un control de vedere"); "Pentru altcineva" fara paranteza; trimiterea: "Nu o am sau
+    nu o inteleg"; lentila: "Lentila sparta sau zgariata";
+  - ecranul de urgenta: explicatia, nota despre garzi si disclaimerul sunt in "i"; raman vizibile
+    titlul, semnalul, unde mergi, primul ajutor si randul 112, scurtat;
+  - anamneza, recomandarile (unde, pregatire, note) si ecranul de interpretare au propozitii
+    scurte, fara sa se piarda niciun sfat medical;
+  - catalogul (`shared/` si copia identica din `base44/shared/`), testele de siguranta si politica
+    de urgenta actualizate. `verify-all`: 157 trec, acelasi 1 esec din zona profilului.
