@@ -10,28 +10,47 @@ const typeLabels = {
   laborator_optic: "Laborator",
 };
 // Small line icons in the same visual family as LocationThumb.
-function markerIcon(type, group) {
-  const paths = group ? '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
-    : type === "optica_medicala" || type === "laborator_optic"
+function markerIcon(type) {
+  const paths = type === "optica_medicala" || type === "laborator_optic"
       ? '<circle cx="6" cy="15" r="4"/><circle cx="18" cy="15" r="4"/><path d="M10 15h4M2 15l2-9h3m15 9-2-9h-3"/>'
       : type === "clinica_oftalmologica"
         ? '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 21v-5h6v5M12 6v6m-3-3h6"/>'
         : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>';
-  return '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg>';
+  return '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg>';
 }
 
+// Marimea cercului unui grup creste cu numarul de locatii din el (vezi mapMarkers.css).
+export function clusterSizeClass(count) {
+  if (count >= 200) return "xl";
+  if (count >= 50) return "l";
+  if (count >= 10) return "m";
+  return "s";
+}
+
+// 2026-09-27. Pinii noi, in stilul hartilor de cautare (Airbnb):
+// - un grup este un cerc cu numarul de locatii, mai mare cand grupul e mai dens;
+// - o locatie este o pastila alba cu pictograma tipului si numele; cand nu e loc, ramane doar
+//   pictograma (numele apare la trecerea cu mouse-ul si la selectie);
+// - `map_rank` (ordinea din lista potrivirii) inlocuieste pictograma cu numarul din lista;
+// - `visited` (profil deschis in aceasta sesiune) face pinul gri;
+// - pozitia aproximativa nu mai are contur punctat pe harta: se spune in cardul locatiei.
+//   Atributul `data-approximate` ramane pentru cititoare si teste, fara stil propriu.
 export function pillHtml(cluster, { active = false, hovered = false } = {}) {
   const group = cluster.count > 1;
   const lead = cluster.lead;
   const type = typeLabels[lead.provider_type] || "Locație";
-  const accessible = group ? `Explorează grupul de ${cluster.count} locații` : `${lead.name}, ${type}`;
+  const rank = !group && Number.isInteger(lead.map_rank) && lead.map_rank > 0 ? lead.map_rank : null;
+  const accessible = group ? `Explorează grupul de ${cluster.count} locații` : `${rank ? `${rank}. ` : ""}${lead.name}, ${type}`;
+  const badge = group ? ""
+    : rank ? `<span class="viasee-marker-rank">${rank}</span>`
+      : `<span class="viasee-marker-icon">${markerIcon(lead.provider_type)}</span>`;
   return `<span class="viasee-marker" data-map-marker="${escapeHtml(cluster.key)}"
     data-request="${!group && lead.is_request_result === true}" data-group="${group}" data-active="${active}" data-hovered="${hovered}"
     data-top="${!group && lead.tier === "top3"}" data-approximate="${!group && lead.map_precision !== "exact"}"
+    data-visited="${!group && lead.visited === true}" data-ranked="${Boolean(rank)}" data-size="${group ? clusterSizeClass(cluster.count) : "one"}"
     data-label="${escapeHtml(accessible)}" data-compact="false">
-    <span class="viasee-marker-icon">${markerIcon(lead.provider_type, group)}</span>
-    <span class="viasee-marker-name">${escapeHtml(mapMarkerLabel(cluster))}</span>
-    ${group ? '<span class="viasee-marker-chevron" aria-hidden="true">›</span>' : ""}
+    ${badge}
+    <span class="viasee-marker-name">${escapeHtml(group ? String(cluster.count) : mapMarkerLabel(cluster))}</span>
   </span>`;
 }
 
