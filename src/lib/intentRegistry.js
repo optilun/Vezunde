@@ -157,7 +157,8 @@ export const INTENTS = {
   simptome_oftalmologice: {
     label: "O problema la ochi",
     service_keys: ["consult_oftalmologic"],
-    notice: "VIASEE nu oferă diagnostic medical. Te ajutăm să găsești unde poți merge pentru evaluare.",
+    // 2026-09-27: nota ramane scurta pe fiecare card al chestionarului.
+    notice: "VIASEE nu oferă diagnostic medical.",
     questions: [
       {
         key: "descriere", type: "text", title: "Spune-ne pe scurt ce se întâmplă.",
