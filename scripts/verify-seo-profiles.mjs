@@ -263,6 +263,17 @@ scenario('sitemap-ul de profiluri: organizatii si specialisti, fara dubluri, ord
   assert.deepEqual(buildProfileSitemapEntries({}), []);
 });
 
+scenario('pagina de organizatie citeste starea de director doar pentru locatiile ei', () => {
+  // 2026-09-27. Citirea globala a primelor 2000 de stari active lasa locatiile vechi fara stare,
+  // deci pagina de organizatie raspundea 404 pentru lanturi publicate. Sitemap-ul de profiluri
+  // include pagini de organizatie, asa ca poarta asta tine de el.
+  const profile = source('base44/functions/getPublicProviderProfile/entry.ts');
+  const orgHandler = profile.slice(profile.indexOf('async function handleOrganizationProfile'), profile.indexOf('Deno.serve('));
+  assert.ok(orgHandler.length > 0);
+  assert.doesNotMatch(orgHandler, /ProviderLocationDirectoryState\.filter\(\s*\{ state_status: 'active' \},\s*'-normalized_at',\s*2000/);
+  assert.match(orgHandler, /loadRowsForLocationIds\(\s*svc\.entities\.ProviderLocationDirectoryState,\s*rawLocations\.map\(\(location\) => location\.id\),\s*\{ query: \{ state_status: 'active' \}, sort: '-normalized_at'/);
+});
+
 scenario('robots declara toate sitemap-urile', () => {
   const robots = source('public/robots.txt');
   assert.match(robots, /^Sitemap: https:\/\/viasee\.ro\/sitemap\.xml$/m);
