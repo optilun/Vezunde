@@ -128,6 +128,9 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
   const [threeD, setThreeD] = useState(false);
   const [zoom, setZoom] = useState(6);
   const [controlSlot, setControlSlot] = useState(null);
+  // 2026-09-27: pe telefon harta poate porni ascunsa (lista intai). Incadrarea pe puncte se face abia
+  // cand harta are marime: un fitBounds pe 0 px alegea un zoom gresit, pastrat apoi in sesiune.
+  const [hasSize, setHasSize] = useState(false);
   useEffect(() => {
     let entry;
     let map;
@@ -161,12 +164,14 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
         },
       };
       setControlSlot(entry.controlSlot);
+      setHasSize(container.current.clientWidth > 0 && container.current.clientHeight > 0);
       if (entry.styleLoaded) setStyleReady(true);
       else timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
       observer = new ResizeObserver(() => {
         // Harta ascunsa (lista pe telefon) are 0 px: nu o redimensionam si nu o redesenam degeaba.
         // Cand reapare, observatorul se declanseaza din nou cu marimea reala.
         const element = container.current;
+        setHasSize(Boolean(element && element.clientWidth > 0 && element.clientHeight > 0));
         if (!element || element.clientWidth === 0 || element.clientHeight === 0) return;
         map.resize();
       });
@@ -177,7 +182,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); if (entry) releaseMap(entry); mapRef.current=null; };
   },[]);
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !hasSize) return;
     const map=mapRef.current;
     const signature=fitPoints.map(p=>`${p.id}:${p.lat}:${p.lng}`).sort().join("|");
     if (signature===fitted.current) return;
@@ -200,10 +205,10 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       fitPoints.forEach(p=>bounds.extend([p.lng,p.lat]));
       map.fitBounds(bounds,{padding:60,maxZoom:14,duration:0});
     }
-  },[fitPoints,ready,storageKey]);
+  },[fitPoints,ready,storageKey,hasSize]);
   useEffect(() => {
-    if (ready && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
-  },[focusArea,ready]);
+    if (ready && hasSize && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
+  },[focusArea,ready,hasSize]);
   useEffect(() => {
     if (!ready) return;
     if (skipInitialSelection.current) { skipInitialSelection.current = false; return; }
