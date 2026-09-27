@@ -696,3 +696,25 @@ vedea deloc. Verificat live: la "Vreau un control" anamneza apare.
   "Datele de contact lasate in timpul unei cautari, fara o cerere trimisa, sunt pastrate cel mult
   90 de zile, apoi sunt sterse." (dupa ce stergerea automata e activa). Data versiunii
   (`LEGAL_LAST_UPDATED`) este comuna tuturor paginilor legale.
+
+### Verificat live dupa publicare (2026-09-27)
+
+- Reparatii: fara anamneza, direct "Date de contact"; "Sari peste" duce la verificare;
+  "Modifica ultimul raspuns" revine la contact, "Inapoi" la ultima intrebare.
+- Ochelari cu reteta recenta si lentile purtate deja: anamneza "pentru specialist", apoi contact.
+- Control "Pentru altcineva": campul "Varsta persoanei (optional)". Copil: anamneza pentru copii,
+  contact fara varsta. "Nu sunt sigur" -> interpretare AI -> control -> anamneza -> contact.
+- Validarea fara date ("Completeaza numele.") nu trimite nimic. Niciun formular cu date reale nu a
+  fost trimis.
+- Telefon (375 px): campurile unul sub altul, fara derulare orizontala; fereastra "i" lipea de
+  marginea din dreapta, corectat cu `collisionPadding={16}` in `InfoHint.jsx` (neplublicat inca).
+
+### Gol gasit in planificatorul de intrebari (propunere, asteapta "da")
+
+Cand nevoia nu are un traseu clar (control + "Nu sunt sigur" la "Ce te aduce la noi?", "Nu sunt
+sigur" ca nevoie, trimitere pe care pacientul nu o intelege), `sufficient_for_search` ramane fals,
+iar `nextApprovedQuestion` (`shared/patientGuidanceRouting.js`) cere faptele pentru cerere
+(`timing`) doar dupa ce cautarea e suficienta. Rezultat: dupa localitate chestionarul se incheie si
+"Cat de repede ai nevoie?" nu se mai pune. Corectia propusa: cand toate faptele de cautare sunt
+raspunse, se cer si cele pentru cerere. Simulata pe o copie: la control + "Nu sunt sigur",
+urmatoarea intrebare devine `timing`. Nu schimba potrivirea, ordinea sau Top 3.
