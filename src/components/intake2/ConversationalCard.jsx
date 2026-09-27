@@ -933,7 +933,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       || current
       || ["pending", "blocked"].includes(questionSelection.status)
     ) return;
-    // Chestionarul s-a incheiat. Pentru un consult, intai scurta anamneza, apoi verificarea.
+    // Chestionarul s-a incheiat. Intai scurta anamneza (la toate nevoile, mai putin reparatiile),
+    // apoi datele de contact, apoi verificarea.
     if (patientNeedsAnamnesis({ intent: state.intent, answers: state.answers })) {
       setPhase("anamnesis");
       return;
