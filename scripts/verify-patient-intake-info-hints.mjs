@@ -5,7 +5,8 @@
 //  1. explicatiile lungi nu mai stau vizibil pe carduri, ci in InfoHint;
 //  2. textele aprobate (catalogul, nota despre AI, confidentialitatea anamnezei, disclaimerul
 //     recomandarilor) exista in continuare, doar mutate;
-//  3. ecranul de urgenta si plasa de siguranta raman vizibile, fara buton "i".
+//  3. pe ecranul de urgenta raman vizibile actiunile (unde mergi, primul ajutor, 112); doar
+//     explicatia si disclaimerul se deschid cu "i". Plasa de siguranta ramane vizibila.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -77,10 +78,14 @@ check('confirmation, anamnesis and review keep their texts in InfoHint', () => {
   assert.doesNotMatch(review, /Verifică nevoia și localitatea, apoi caută/);
 });
 
-check('the emergency screen stays fully visible', () => {
+check('the emergency screen keeps its actions visible', () => {
   const urgency = source('src/components/intake2/UrgencyInterruption.jsx');
-  assert.doesNotMatch(urgency, /InfoHint/);
-  assert.match(urgency, /COPY\.primary_instruction/);
+  assert.match(urgency, /\{COPY\.primary_instruction\}/, 'unde mergi ramane vizibil');
+  assert.match(urgency, /\{firstAid\}/, 'primul ajutor ramane vizibil');
+  assert.match(urgency, /href="tel:112"/);
+  assert.match(urgency, /<InfoHint\n\s+items=\{\[\n\s+COPY\.explanation,/, 'explicatia se deschide cu butonul i');
+  assert.match(urgency, /\n\s+COPY\.disclaimer,\n/);
+  assert.doesNotMatch(urgency, /<p[^>]*>\{COPY\.disclaimer\}<\/p>/);
 });
 
 console.log(`Patient intake info hints verified: ${checks} checks.`);
