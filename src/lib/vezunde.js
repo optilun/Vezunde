@@ -42,6 +42,13 @@ export const PROVIDER_TYPES = {
   medic_oftalmolog_independent: "Medic oftalmolog independent",
 };
 
+// Director filters use broad provider codes; this label also covers hospital units
+// whose precise location type is shown separately on result cards.
+export const DIRECTORY_PROVIDER_FILTER_LABELS = {
+  ...PROVIDER_TYPES,
+  clinica_oftalmologica: "Clinici, spitale și ambulatorii",
+};
+
 export const PROVIDER_PROFILE_TYPES = {
   independent_optical_store: "Optică independentă",
   optical_chain: "Lanț de optici",
