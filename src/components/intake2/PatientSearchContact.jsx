@@ -95,7 +95,8 @@ export default function PatientSearchContact({ forWhom = "", search = {}, onDone
     setFormError("");
     try {
       const data = await savePatientSearchContact({ contact, search: payload.search });
-      rememberPatientContact(contact);
+      // Varsta altei persoane nu se propune la urmatoarea cautare.
+      rememberPatientContact({ ...contact, age: ageRefersTo === "contact" ? contact.age : "" });
       onDone?.({ status: "saved", contactId: data?.contact_id || "" });
     } catch (error) {
       const message = serverErrorMessage(error) || (error?.field ? String(error.message || "") : "");
