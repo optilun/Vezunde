@@ -78,6 +78,9 @@ export default function SearchFilters({ providerType, professionalType, serviceK
   const applyLabel = previewReady && preview.total > 0
     ? `Arată ${formatLocationCount(preview.total)}`
     : `Arată rezultatele${draftCount > 0 ? ` · ${draftCount} ${draftCount === 1 ? "filtru" : "filtre"}` : ""}`;
+  const zeroPreviewMessage = draft.services?.length || draft.cas
+    ? `Nicio locație din ${browseLocality?.name || "această localitate"} nu are serviciul sau marcajul CAS confirmat în VIASEE pentru aceste filtre. Poți elimina filtrul pentru a vedea celelalte locații.`
+    : `Nicio locație din ${browseLocality?.name || "această localitate"} nu corespunde acestor filtre. Încearcă să scoți unul.`;
 
   return <>
     <button type="button" onClick={begin} className="inline-flex min-h-12 shrink-0 items-center gap-2.5 rounded-full border border-[#d7dce4] bg-card px-5 text-sm font-semibold shadow-sm transition hover:border-[#4f6080] hover:bg-[#eff1f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f6080]">
@@ -157,7 +160,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
         </div>
         <div className="shrink-0 border-t border-border bg-card px-6 py-4">
           {signature && <p aria-live="polite" className={`mb-3 text-xs ${previewReady && preview.total === 0 ? "font-medium text-[#8a4b2a]" : "text-muted-foreground"}`}>
-            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : `${draft.services?.length || draft.cas ? `Nicio locație din ${browseLocality.name} nu are serviciul sau marcajul CAS confirmat în VIASEE pentru aceste filtre. Poți elimina filtrul pentru a vedea celelalte locații.` : `Nicio locație din ${browseLocality.name} nu corespunde acestor filtre. Încearcă să scoți unul.`}`) : ""}
+            {preview.status === "loading" ? "Se numără locațiile..." : previewReady ? (preview.total > 0 ? `${formatLocationCount(preview.total)} în ${browseLocality.name} cu aceste filtre.` : zeroPreviewMessage) : ""}
           </p>}
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={() => setDraft({types:[],profession:"",services:[],cas:false})} className="min-h-11 text-sm underline">Resetează filtrele</button>
