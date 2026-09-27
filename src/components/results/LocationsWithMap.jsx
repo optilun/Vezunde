@@ -184,7 +184,7 @@ export default function LocationsWithMap({
         </div>
 
         {hasPositions && (
-          <aside className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
+          <aside className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={results || []}
               selectedId={selectedId}
