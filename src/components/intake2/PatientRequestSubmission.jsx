@@ -17,6 +17,7 @@ import {
 } from "@/lib/patientRequestIdempotency";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
 import { buildPatientAnamnesisMessage, isPatientAnamnesisKey } from "@/lib/patientAnamnesis";
+import { readRememberedPatientContact } from "@/lib/patientSearchContact";
 import UrgencyInterruption from "./UrgencyInterruption";
 
 function track(eventName, properties = {}) {
@@ -67,7 +68,17 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   // mai jos e deterministica, aceeasi folosita pe mesajul initial si pe raspunsurile
   // ghidate, deci nu depinde de LLM si nu poate da timeout.
   const [messageAssessment, setMessageAssessment] = useState(null);
-  const [contact, setContact] = useState({ name: "", email: "", phone: "", preference: "email" });
+  // 2026-09-27: datele lasate la pasul "Date de contact" din aceeasi fila pornesc completate,
+  // ca pacientul sa nu le scrie de doua ori. Le vede si le poate schimba inainte de salvare.
+  const [contact, setContact] = useState(() => {
+    const remembered = readRememberedPatientContact();
+    return {
+      name: remembered?.name || "",
+      email: remembered?.email || "",
+      phone: remembered?.phone || "",
+      preference: !remembered?.email && remembered?.phone ? "phone" : "email",
+    };
+  });
   // 2026-09-01: pana acum, formularul nu arata nimic din ce se colectase deja - nici
   // nevoia, nici localitatea, nici ce scrisese pacientul la inceput. Ii cerea sa descrie
   // din nou, in gol. De aceea oamenii rescriau tot: nu aveau nicio dovada ca raspunsurile
