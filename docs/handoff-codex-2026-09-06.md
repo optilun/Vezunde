@@ -265,3 +265,6 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Anamneza nu lipsea din eroare: regula din 24.09 o dadea doar consulturilor. Decizia owner-ului: la toate nevoile, mai putin reparatiile (`patientNeedsAnamnesis`).
 - Pas nou "Date de contact" dupa anamneza, inainte de verificare (`PatientSearchContact.jsx`): nume + email sau telefon obligatorii, varsta optionala, acord nebifat implicit, "Sari peste" discret (decizii owner). Salvare prin `createPatientRequest` cu `mode: save_search_contact` (tot 49 de functii fizice), entitate noua `PatientSearchContact` doar pentru admin. Datele nu ajung la AI, in potrivire sau la locatii.
 - De facut: stergerea automata dupa 90 de zile si textul din politica de confidentialitate (propus in audit, sectiunea 17). `verify-all` 161 OK / 0.
+- Verificat live dupa publicare: toate variantele (reparatii fara anamneza; ochelari/lentile cu anamneza "pentru specialist"; varsta "persoanei" la altcineva; fara varsta la copil) si telefonul (375 px). Fereastra "i" primeste `collisionPadding={16}`.
+- Dupa "da": planificatorul (`shared/patientGuidanceRouting.js` + copia din `base44/shared/`) intreaba si `timing` cand traseul e nerezolvat dar faptele de cautare sunt raspunse (control + "Nu sunt sigur", nevoia "Nu sunt sigur", trimitere neinteleasa). Inainte chestionarul se oprea dupa localitate. `verify-all` 162 OK / 0.
+

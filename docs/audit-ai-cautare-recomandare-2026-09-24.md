@@ -709,7 +709,7 @@ vedea deloc. Verificat live: la "Vreau un control" anamneza apare.
 - Telefon (375 px): campurile unul sub altul, fara derulare orizontala; fereastra "i" lipea de
   marginea din dreapta, corectat cu `collisionPadding={16}` in `InfoHint.jsx` (nepublicat inca).
 
-### Gol gasit in planificatorul de intrebari (propunere, asteapta "da")
+### Gol gasit in planificatorul de intrebari (aplicat dupa "da", 2026-09-27)
 
 Cand nevoia nu are un traseu clar (control + "Nu sunt sigur" la "Ce te aduce la noi?", "Nu sunt
 sigur" ca nevoie, trimitere pe care pacientul nu o intelege), `sufficient_for_search` ramane fals,
@@ -718,3 +718,12 @@ iar `nextApprovedQuestion` (`shared/patientGuidanceRouting.js`) cere faptele pen
 "Cat de repede ai nevoie?" nu se mai pune. Corectia propusa: cand toate faptele de cautare sunt
 raspunse, se cer si cele pentru cerere. Simulata pe o copie: la control + "Nu sunt sigur",
 urmatoarea intrebare devine `timing`. Nu schimba potrivirea, ordinea sau Top 3.
+
+Aplicat: in `buildPatientGuidanceRoutingProfile`, cand toate faptele de cautare sunt raspunse, dar
+traseul e nerezolvat, fara regula clinica neaprobata si fara blocaj de siguranta, urmatoarea
+intrebare este primul fapt lipsa pentru cerere (`timing`); motivul devine
+`provider_request_completeness`. `sufficient_for_search` ramane fals pentru traseele nerezolvate.
+Copiile din `shared/` si `base44/shared/` sunt identice. Verificat cu selectia de pe server: la
+control + "Nu sunt sigur", "Nu sunt sigur" ca nevoie si trimiterea neinteleasa se cere `timing`,
+apoi chestionarul se incheie. `verify-patient-guidance-routing`: 100 de scenarii (2 noi, unul
+actualizat); `verify-all`: 162 trec, 0 esecuri.
