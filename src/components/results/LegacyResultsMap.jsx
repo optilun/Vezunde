@@ -18,10 +18,10 @@ import {
 } from "../../../shared/resultsMapPoints.js";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { readVisitedProfiles } from "@/lib/visitedProfiles";
+import { withCartoApiKey } from "@/lib/cartoBasemap";
 
 // 2026-09-27: dalele Leaflet au 256 px (MapLibre are 512), deci gruparea pe ecran trebuie sa stie.
 const LEAFLET_TILE = { tileSize: 256 };
-import { withCartoApiKey } from "@/lib/cartoBasemap";
 
 // Harta rezultatelor, in stilul hartilor de cautare (Airbnb, Booking).
 //
