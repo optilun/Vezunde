@@ -147,7 +147,7 @@ export default function LocationsWithMap({
                 onBlur={() => onHover(null)}
                 data-selected={selectedId === location.id ? "" : undefined}
                 className={gridLayout
-                  ? `h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
+                  ? `group/cell h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
                     selectedId === location.id ? "bg-[#eaeff7]" : hoveredId === location.id ? "bg-white/70" : ""
                   }`
                   : `h-full rounded-[22px] transition-shadow ${
