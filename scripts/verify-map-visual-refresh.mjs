@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { transformMapStyle, ROMANIAN_NAME, MAP_STYLE_URL } from '../src/lib/viaseeMapStyle.js';
-import { clusterPoints, clusterExpansionZoom, CLUSTER_RADIUS_PX } from '../shared/resultsMapPoints.js';
+import { clusterPoints, clusterExpansionZoom, clusterMarkerSize, CLUSTER_RADIUS_PX } from '../shared/resultsMapPoints.js';
 import { pillHtml, clusterSizeClass } from '../shared/mapMarkerPresentation.js';
 import { mapCenterForOrdering, orderByDistanceFrom, MAP_CENTER_ORDER_ZOOM } from '../shared/nearbyDirectory.js';
 
@@ -86,6 +86,18 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
       assert.ok(Math.hypot(leads[a][0] - leads[b][0], leads[a][1] - leads[b][1]) > CLUSTER_RADIUS_PX - 1e-6, 'grupurile nu se suprapun');
     }
   }
+  // Nici cercurile afisate (in centrul fiecarui grup) nu se ating.
+  for (const zoom of [6, 8, 10, 12]) {
+    const clusters = clusterPoints(points, zoom);
+    const centers = clusters.map((cluster) => project(cluster, zoom));
+    for (let a = 0; a < clusters.length; a += 1) {
+      for (let b = a + 1; b < clusters.length; b += 1) {
+        const gap = Math.hypot(centers[a][0] - centers[b][0], centers[a][1] - centers[b][1]);
+        assert.ok(gap >= (clusterMarkerSize(clusters[a].count) + clusterMarkerSize(clusters[b].count)) / 2, `zoom ${zoom}: markere suprapuse`);
+      }
+    }
+  }
+  assert.deepEqual([1, 2, 10, 50, 200].map(clusterMarkerSize), [32, 34, 40, 46, 54], 'aceleasi marimi ca in mapMarkers.css');
   assert.ok(clusterPoints(points, 8, { tileSize: 256 }).length <= clusterPoints(points, 8).length, 'Leaflet (256 px) grupeaza la fel de mult sau mai mult');
   const bucharest = clusterPoints(points, 6).sort((a, b) => b.count - a.count)[0];
   const expansion = clusterExpansionZoom(bucharest.points, 6);
