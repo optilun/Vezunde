@@ -65,12 +65,14 @@ const safetyOptions = PATIENT_GUIDANCE_QUESTION_CATALOG.safety_targeted_check.op
 for (const label of [
   // Formularea a fost clarificata (2026-08-06): varianta veche "vederea a scazut mult"
   // prindea si miopia cronica, generand alarme false. Acum e explicit acuta.
-  'vederea a dispărut brusc la un ochi',
-  'A ajuns o substanță chimică în ochi',
-  'Un obiect a pătruns în ochi sau a existat o lovitură puternică',
-  'Am durere oculară foarte mare',
-  'Au apărut brusc fulgerări',
-  'după operație ori injecție oculară recentă',
+  // 2026-09-27: etichete scurtate la cererea owner-ului; sensul acut ramane ("brusc"), iar
+  // detaliile sunt in `helper`, deschis cu butonul "i".
+  'Am pierdut brusc vederea la un ochi',
+  'Mi-a intrat o substanță chimică în ochi',
+  'Un obiect în ochi sau o lovitură puternică',
+  'Durere foarte mare la ochi',
+  'Fulgerări, umbră sau vedere dublă apărute brusc',
+  'Probleme după o operație sau injecție la ochi',
   'Niciuna dintre acestea',
 ]) {
   assert.ok(
@@ -83,7 +85,7 @@ for (const label of [
 assert.match(questionText, /PATIENT_GUIDANCE_QUESTION_CATALOG\.safety_targeted_check/);
 assert.doesNotMatch(
   questionText,
-  /A ajuns o substan/,
+  /substanță chimică/,
   'etichetele de triaj nu au voie sa fie copiate din nou in QuestionText',
 );
 assert.match(interruption, /APPROVED_PATIENT_SAFETY_COPY/);
