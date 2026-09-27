@@ -11,11 +11,16 @@ import {
   FALLBACK_ZOOM,
   boundsForPoints,
   buildResultsMapModel,
+  clusterExpansionZoom,
   clusterPoints,
   pointIdsWithinBounds,
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import { readVisitedProfiles } from "@/lib/visitedProfiles";
+
+// 2026-09-27: dalele Leaflet au 256 px (MapLibre are 512), deci gruparea pe ecran trebuie sa stie.
+const LEAFLET_TILE = { tileSize: 256 };
 import { withCartoApiKey } from "@/lib/cartoBasemap";
 
 // Harta rezultatelor, in stilul hartilor de cautare (Airbnb, Booking).
@@ -183,8 +188,18 @@ export default function ResultsMap({
   className = "",
   storageKey = null,
   focusArea = null,
+  rankById = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
+  const [visited] = useState(readVisitedProfiles);
+  const mapPoints = useMemo(() => {
+    if (!rankById && visited.size === 0) return model.points;
+    return model.points.map((point) => {
+      const rank = rankById?.get(point.id) || null;
+      const seen = visited.has(point.id);
+      return rank || seen ? { ...point, map_rank: rank, visited: seen } : point;
+    });
+  }, [model.points, rankById, visited]);
   const fitModel = useMemo(() => fitResults === null ? model : buildResultsMapModel(fitResults), [fitResults, model]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
   const [openClusterKey, setOpenClusterKey] = useState(null);
@@ -192,8 +207,8 @@ export default function ResultsMap({
   const notice = unmappedNotice(model.unmappedCount);
 
   const clusters = useMemo(
-    () => clusterPoints(model.points, viewport.zoom),
-    [model.points, viewport.zoom],
+    () => clusterPoints(mapPoints, viewport.zoom, LEAFLET_TILE),
+    [mapPoints, viewport.zoom],
   );
 
   const openCluster = clusters.find((cluster) => cluster.key === openClusterKey && cluster.count > 1);
@@ -271,9 +286,11 @@ export default function ResultsMap({
                       if (onSelect) onSelect(null);
                       setOpenClusterKey(cluster.key);
                     } else if (map) {
+                      // Ca pe harta vectoriala: apropiere centrata pe grup, pana se desface.
                       setOpenClusterKey(null);
-                      const bounds = boundsForPoints(cluster.points);
-                      if (bounds) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
+                      const current = map.getZoom();
+                      const target = Math.min(17, Math.max(current + 1, clusterExpansionZoom(cluster.points, current, LEAFLET_TILE)));
+                      map.setView([cluster.lat, cluster.lng], target);
                     }
                     return;
                   }
