@@ -4,6 +4,7 @@ import { storePatientRequestDraft } from "@/lib/patientRequestPersistenceClient"
 import { intentDisplayLabel } from "@/lib/intentRegistry";
 import { PATIENT_ANAMNESIS_KEY_PREFIX, isPatientAnamnesisKey } from "@/lib/patientAnamnesis";
 import { buildPatientVisitGuidance } from "@/lib/patientVisitGuidance";
+import InfoHint from "./InfoHint";
 import { getCanonicalServiceDefinition, normalizeServiceKey } from "../../../shared/canonicalServiceRegistryExtended.js";
 
 const FREE_TEXT_KEYS = new Set(["descriere", "symptom_description", "investigation_reference_text"]);
@@ -80,9 +81,6 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
       <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
         Am pregătit cererea ta
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Verifică nevoia și localitatea, apoi caută opțiunile disponibile.
-      </p>
 
       <div className="mt-6 rounded-2xl border border-border bg-secondary/35 p-4 sm:p-5">
         <div>
@@ -146,6 +144,8 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
           <p id="visit-guidance-title" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Recomandări pentru vizită
           </p>
+          {/* 2026-09-27: mentiunea ca recomandarile sunt orientative se deschide cu "i". */}
+          <InfoHint items={[guidance.disclaimer]} className="-my-2" />
         </div>
         <p className="mt-2.5 text-sm font-medium leading-relaxed text-foreground">{guidance.where}</p>
         {guidance.prepare.length > 0 && (
@@ -177,7 +177,6 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
         {guidance.safety_net && (
           <p className="mt-3 border-t border-border/70 pt-3 text-xs leading-relaxed text-foreground/80">{guidance.safety_net}</p>
         )}
-        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{guidance.disclaimer}</p>
       </section>
 
       <div className="mt-7 flex flex-col gap-3 sm:flex-row">
