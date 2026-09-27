@@ -94,6 +94,36 @@ export function buildLocationSitemapEntries(locations, options = {}) {
   return entries.sort((a, b) => a.loc.localeCompare(b.loc));
 }
 
+export function organizationSitemapUrl(organizationId, siteUrl = SITEMAP_SITE_URL) {
+  return `${siteUrl}/organizatie/${String(organizationId || '').trim()}`;
+}
+
+export function professionalSitemapUrl(professionalId, siteUrl = SITEMAP_SITE_URL) {
+  return `${siteUrl}/specialist/${String(professionalId || '').trim()}`;
+}
+
+// 2026-09-27. Al doilea fisier, public/sitemap-profiluri.xml: paginile de organizatie (lanturi
+// cu cel putin doua locatii, catre care site-ul trimite deja) si profilurile publice de
+// specialist. Eligibilitatea se decide pe server (browseDirectoryProviders, map_scope
+// 'sitemap'), cu aceleasi porti ca paginile publice; aici doar se construiesc URL-urile.
+export function buildProfileSitemapEntries({ organizations = [], professionals = [] } = {}, options = {}) {
+  const siteUrl = options.siteUrl || SITEMAP_SITE_URL;
+  const seen = new Set();
+  const entries = [];
+  const add = (loc, lastmod, priority) => {
+    if (seen.has(loc)) return;
+    seen.add(loc);
+    entries.push({ loc, lastmod: lastmod || '', changefreq: 'weekly', priority });
+  };
+  for (const row of Array.isArray(organizations) ? organizations : []) {
+    if (row?.id) add(organizationSitemapUrl(row.id, siteUrl), row.lastmod, '0.8');
+  }
+  for (const row of Array.isArray(professionals) ? professionals : []) {
+    if (row?.id) add(professionalSitemapUrl(row.id, siteUrl), row.lastmod, '0.6');
+  }
+  return entries.sort((a, b) => a.loc.localeCompare(b.loc));
+}
+
 export function extractSitemapLocations(xml) {
   return [...String(xml || '').matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1].trim()).filter(Boolean);
 }
