@@ -27,6 +27,10 @@ const functionConfig = JSON.parse(read('base44/functions/listProviderMemberInvit
 //
 // Deci garda ramane rosie pana cand cineva le sterge din aplicatie. Mesajul spune exact ce
 // e de facut, ca sa nu mai fie citita ca zgomot inca o luna.
+//
+// 2026-09-27: ambele entitati au fost sterse din Base44 de owner (0 inregistrari in Production
+// si Test, verificat inainte); schemele live nu mai exista, iar fisierele au fost scoase din
+// repo. Garda ramane, ca sa prinda o eventuala reaparitie.
 for (const placeholder of ['_noop_invalid', '_temp_never_use']) {
   assert.equal(
     fs.existsSync(`base44/entities/${placeholder}.jsonc`),
