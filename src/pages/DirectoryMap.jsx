@@ -5,7 +5,7 @@ import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 
-import { nearestDirectory } from "../../shared/nearbyDirectory.js";
+import { distanceKm, nearestDirectory } from "../../shared/nearbyDirectory.js";
 
 // Directorul pe harta Romaniei.
 //
@@ -242,7 +242,8 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               mapStatus={geoMessage}
               results={visiblePoints}
               listResults={listedPoints}
-              renderCard={(point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} />}
+              renderCard={(point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} distanceKm={origin ? distanceKm(origin, point) : null} />}
+              listLayout="grid"
               integratedMapAction
               focusArea={focusArea}
               selectedId={selectedId}
