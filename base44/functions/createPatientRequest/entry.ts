@@ -9,7 +9,6 @@ import {
 import { notifyPatientRequestReceived } from '../../shared/patientCommunicationNotifications.js';
 import {
   PATIENT_SEARCH_CONTACT_MODE,
-  PATIENT_SEARCH_CONTACT_RETENTION_DAYS,
   PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
   PatientSearchContactValidationError,
   sanitizePatientSearchContact,
@@ -126,8 +125,9 @@ async function saveSearchContact(base44, svc, input) {
     processing_consent: true,
     processing_consent_version: submission.consent.version,
     processing_consent_at: nowIso,
+    // 2026-09-28, decizia owner-ului: fara stergere automata; datele raman pana la retragerea
+    // acordului sau o cerere de stergere (vezi shared/patientSearchContact.js).
     retention_policy_key: PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
-    retention_until: addDays(now, PATIENT_SEARCH_CONTACT_RETENTION_DAYS),
     status: 'active',
   };
   if (record.age_years === null) delete record.age_years;
