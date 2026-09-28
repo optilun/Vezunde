@@ -49,10 +49,7 @@ Deno.serve(async (req) => {
     const q = norm(String(p.q || '').trim().slice(0, 80));
     if (q.length < 2) return Response.json({ locations: [] });
 
-    const [locations, organizations] = await Promise.all([
-      svc.entities.ProviderLocation.filter({ status: 'publicata' }, 'name', 500),
-      svc.entities.ProviderOrganization.list(null, 200),
-    ]);
+    const { locations, organizations } = await searchIndex(svc);
     const organizationNames = Object.fromEntries(organizations.map((organization) => [organization.id, organization.name]));
 
     const publicList = locations
