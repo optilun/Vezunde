@@ -168,6 +168,9 @@ Deno.serve(async (req) => {
       const alreadyHasAccess = membershipRows[index]?.some((membership) => membership.user_id === user.id) || false;
       return safeLocation(location, linkStatus, controlled, alreadyHasAccess);
     }).filter((location) => !['conflict', 'rejected'].includes(location.organization_link_status) || location.id === primaryLocationId);
+    if (['conflict', 'rejected'].includes(primaryLinkStatus)) {
+      candidateLocations.splice(0, candidateLocations.length, candidateLocations.find((location) => location.id === primaryLocationId));
+    }
 
     candidateLocations.sort((left, right) => {
       if (left.id === primaryLocationId) return -1;
