@@ -278,9 +278,15 @@ Deno.serve(async (req) => {
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
     // 2026-09-28: ce tip de locatie vine intai pentru aceasta nevoie (optica sau cabinet medical).
+    // Decid doar cheile confirmate de pacient (`need_service_keys`, trimise separat de client);
+    // `service_keys` contine si cheile gasite in text. Vezi matchProvidersSemantic/entry.ts.
+    const needServiceKeys = Array.isArray(payload.need_service_keys)
+      ? normalizeRequestKeys(payload.need_service_keys.map(String)).canonicalKeys
+      : requestKeys.canonicalKeys;
     const typePreference = resolveProviderTypePreference({
       intent: intent || '',
-      serviceKeys: requestKeys.canonicalKeys,
+      serviceKeys: needServiceKeys.length > 0 ? needServiceKeys : requestKeys.canonicalKeys,
+      text: String(payload.search_text || payload.query || ''),
       getDefinition: getCanonicalServiceDefinition,
     });
 
