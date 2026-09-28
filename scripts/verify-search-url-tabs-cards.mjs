@@ -65,6 +65,7 @@ const search = read('src/pages/Search.jsx');
   const scrollToTop = read('src/components/ScrollToTop.jsx');
   assert.match(scrollToTop, /\}, \[pathname, hash, navigationType\]\);/, 'schimbarea parametrilor nu deruleaza pagina');
   assert.doesNotMatch(scrollToTop, /\bsearch\b/);
+  assert.match(scrollToTop, /if \(samePage\) return undefined;/, 'actualizarea adresei cu replace nu muta pagina sau focusul');
 }
 
 // B1
