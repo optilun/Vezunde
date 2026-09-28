@@ -46,7 +46,7 @@ export default function ResultModeTabs({ mode, onChange, counts = {}, compact = 
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="h-4 w-4" strokeWidth={1.75} />
+            <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
             <span>{entry.label}</span>
             {Number.isFinite(Number(count)) && Number(count) > 0 && (
               <span className={`rounded-full px-1.5 text-[11px] font-bold ${active ? "bg-secondary text-foreground" : "text-muted-foreground"}`}>
