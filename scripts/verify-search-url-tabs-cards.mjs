@@ -114,8 +114,10 @@ const search = read('src/pages/Search.jsx');
   assert.match(card, /rank = null, details = null/);
   assert.match(card, /<span className="sr-only">Pinul <\/span>\{rank\}/);
   const layout = read('src/components/results/LocationsWithMap.jsx');
-  assert.match(layout, /\{!gridLayout && rankById\?\.has\(location\.id\)/, 'in grila numarul sta pe coperta, nu deasupra');
-  assert.match(layout, /rankById\?\.has\(location\.id\) && mapPointFromResult\(location\) \? rankById\.get\(location\.id\) : null,/);
+  // 2026-09-28 (B7): randurile sunt in ResultRow (memoizat); aceleasi reguli, alte nume.
+  assert.match(layout, /\{!gridLayout && shownRank !== null && \(/, 'in grila numarul sta pe coperta, nu deasupra');
+  assert.match(layout, /const shownRank = hasPoint \? rank : null;/, 'numar doar pentru locatiile cu pin');
+  assert.match(layout, /renderCard\(location, showThis, shownRank\)/);
   assert.match(read('src/components/intake2/MatchResultCard.jsx'), /ResultCard/, 'recomandarile raman cu cardul lor');
 }
 

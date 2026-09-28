@@ -51,7 +51,10 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(card, /card\.focus\(\{ preventScroll: true \}\);/);
   assert.match(card, /const close = \(\) => \{ onClose\(\); restoreMapCardOpener\(\); \};/);
   const layout = read('src/components/results/LocationsWithMap.jsx');
-  assert.equal((layout.match(/requestMapCardFocus\(\); onSelect\(location\.id\);/g) || []).length, 2, 'butoanele „Arată pe hartă”');
+  // 2026-09-28 (B7): ambele butoane „Arată pe hartă” din rand trec prin showOnMap (un singur loc).
+  assert.match(layout, /requestMapCardFocus\(\);\s*select\(id\);/, 'butoanele „Arată pe hartă”');
+  assert.match(layout, /const showThis = useMemo\(\(\) => \(hasPoint \? \(\) => onShowMap\(location\.id\) : undefined\)/);
+  assert.match(layout, /onClick=\{showThis\}/);
   assert.match(layout, /data-map-toggle/);
   assert.match(read('src/components/results/VectorResultsCanvas.jsx'), /openCluster\(null\);requestMapCardFocus\(\);select\?\.\(cluster\.lead\.id\);/, 'pinul apasat');
   assert.match(read('src/components/results/ResultsMap.jsx'), /setOpenClusterKey\(null\); requestMapCardFocus\(\);/, 'locatia aleasa din grup');
