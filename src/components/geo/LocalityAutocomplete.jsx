@@ -69,11 +69,21 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
   const [geo, setGeo] = useState({ status: "idle", nearby: [] });
   const [resolving, setResolving] = useState("");
   const inputRef = useRef(null);
+  const clearRef = useRef(null);
+  // 2026-09-28 (audit /cauta, C2): dupa alegere, campul de text dispare (ramane eticheta cu
+  // localitatea). Focusul trecea pe <body>, iar cine navigheaza din tastatura o lua de la capat.
+  // Acum trece pe butonul de stergere de langa eticheta aleasa.
+  const focusChosen = useRef(false);
   const alive = useRef(true);
   const listId = useId();
   const optionId = (index) => `${listId}-option-${index}`;
 
-  useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
+  useImperativeHandle(ref, () => ({ focus: () => (inputRef.current || clearRef.current)?.focus() }), []);
+  useEffect(() => {
+    if (!value || !focusChosen.current) return;
+    focusChosen.current = false;
+    clearRef.current?.focus();
+  }, [value]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   useEffect(() => {
@@ -148,6 +158,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     setQuery("");
     setResults([]);
     setOpen(false);
+    focusChosen.current = true;
     onSelect(chosen);
   };
 
@@ -183,10 +194,11 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
           {shown.display_label || shown.name}
         </span>
         <button
+          ref={clearRef}
           type="button"
           onClick={() => { onSelect(null); if (guided) window.requestAnimationFrame(() => inputRef.current?.focus()); }}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-          aria-label="Șterge localitatea"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f6080]"
+          aria-label={`Șterge localitatea ${shown.name || shown.display_label || ""}`.trim()}
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
