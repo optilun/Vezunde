@@ -156,12 +156,33 @@ export default function Search() {
     writeSearchSession({ sourceSearch: criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
   }, [criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, results]);
 
+  // 2026-09-28 (audit /cauta, B5): pozitia paginii se salveaza dupa ce derularea se opreste (si la
+  // plecare), nu la fiecare eveniment. Fiecare salvare citeste si rescrie toata sesiunea de cautare
+  // (pana la ~35 KB), iar pe telefon asta facea derularea sacadata. Ca in DirectoryMap.
   useEffect(() => {
+    let timer = 0;
+    let lastY = window.scrollY;
+    let pending = false;
+    const save = () => {
+      clearTimeout(timer);
+      timer = 0;
+      if (!pending) return;
+      pending = false;
+      if (restoredScroll.current) writeSearchSession({ scrollY: lastY });
+    };
     const rememberScroll = () => {
-      if (restoredScroll.current) writeSearchSession({ scrollY: window.scrollY });
+      lastY = window.scrollY;
+      pending = true;
+      clearTimeout(timer);
+      timer = setTimeout(save, 200);
     };
     window.addEventListener("scroll", rememberScroll, { passive: true });
-    return () => window.removeEventListener("scroll", rememberScroll);
+    window.addEventListener("pagehide", save);
+    return () => {
+      window.removeEventListener("scroll", rememberScroll);
+      window.removeEventListener("pagehide", save);
+      save();
+    };
   }, []);
   useEffect(() => {
     // B1: in fila Specialisti lista de locatii poate sa nu fie ceruta deloc, deci se asteapta doar specialistii.
