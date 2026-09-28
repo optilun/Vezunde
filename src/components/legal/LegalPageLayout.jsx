@@ -19,7 +19,9 @@ export function LegalNote({ children }) {
   );
 }
 
-export default function LegalPageLayout({ eyebrow = "LEGAL", title, intro, sections }) {
+// `lastUpdated`: data versiunii paginii. Implicit data comuna a paginilor legale; o pagina
+// modificata separat (ex. politica de confidentialitate, 2026-09-28) isi trimite propria data.
+export default function LegalPageLayout({ eyebrow = "LEGAL", title, intro, sections, lastUpdated = LEGAL_LAST_UPDATED }) {
   useEffect(() => {
     document.title = `${title} — VIASEE`;
     return () => {
@@ -61,7 +63,7 @@ export default function LegalPageLayout({ eyebrow = "LEGAL", title, intro, secti
               <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-[#77736d]">
                 Ultima actualizare
               </div>
-              <div className="mt-2 font-semibold text-[#171717]">{LEGAL_LAST_UPDATED}</div>
+              <div className="mt-2 font-semibold text-[#171717]">{lastUpdated}</div>
             </div>
           </div>
         </div>
