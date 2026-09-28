@@ -83,6 +83,7 @@ export default function Privacy() {
             <li>Datele se salvează numai dacă bifezi acordul și apeși „Continuă”. Dacă sari peste pas, nu păstrăm nimic din ce ai scris.</li>
             <li>Împreună cu ele păstrăm nevoia căutată (de exemplu un control de vedere), localitatea și termenul ales. Răspunsurile din anamneză nu fac parte din aceste date.</li>
             <li>Le folosim ca să te putem contacta în legătură cu căutarea ta. Temeiul este consimțământul tău, pe care îl poți retrage oricând.</li>
+            <li>Separat și opțional, poți alege să primești noutăți și oferte de la VIASEE pe email sau telefon. Fără această bifă nu îți trimitem oferte. Te poți dezabona oricând, scriindu-ne; fiecare mesaj cu oferte include și o opțiune de dezabonare.</li>
             <li>Au acces doar echipa VIASEE și furnizorii tehnici de mai jos. Nu le transmitem locațiilor: o cerere către locații se trimite separat, numai cu acordul tău.</li>
             <li>Dacă salvezi apoi o cerere, legăm aceste date de cererea ta.</li>
           </LegalList>
