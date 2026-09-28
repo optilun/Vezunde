@@ -112,7 +112,9 @@ const filters = read("src/components/results/SearchFilters.jsx");
 assert.match(filters, /patientServicesByGroup/);
 assert.ok(!filters.includes("max-h-56"), "fara derulare in derulare in panoul de filtre");
 assert.match(filters, /Cauți deja/, "filtrele spun ca doar restrang cautarea de sus");
-assert.match(filters, /browseDirectoryProviders", \{ locality_siruta_code: siruta, provider_types: types, filter_service_keys: services, cas_only: cas, limit: 1 \}/, "numarul din buton vine din aceeasi cerere ca lista");
+// 2026-09-27 (audit /cauta, A5): cererea trece prin invokeDirectoryBrowse (aceeasi functie, cu limita de timp).
+assert.match(filters, /invokeDirectoryBrowse\(\{ locality_siruta_code: siruta, provider_types: types, filter_service_keys: services, cas_only: cas, limit: 1 \}/, "numarul din buton vine din aceeasi cerere ca lista");
+assert.match(read("src/lib/directoryBrowse.js"), /base44\.functions\.invoke\("browseDirectoryProviders", payload\)/, "aceeasi functie de backend ca lista");
 assert.match(search, /browseLocality=\{isDirectoryBrowseView \? locality : null\}/, "numarul se arata doar la rasfoire, nu la potrivire");
 
 console.log("Search guided fields: service suggestions, quick localities, diacritics, keyboard and grouped filters — OK");
