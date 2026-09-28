@@ -220,7 +220,10 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // cabinete, apoi optici (o treime); control sau lentile -> optici, apoi cabinete (o treime);
   // produse si reparatii -> optici, cabinetele doar pe locurile ramase. Ordinea in fiecare tip
   // ramane contact public, apoi nume. Vezi scripts/verify-provider-type-preference.mjs.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "60f56d96");
+  // 2026-09-28, a doua trecere dupa testul live: tipul de locatie se decide pe cheile confirmate
+  // de pacient (`need_service_keys`, trimise separat de client) si pe textul lui (keratocon), nu pe
+  // cheile adaugate de cautarea in text. Restul ramurii ramane ca mai sus.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "0ad10233");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
