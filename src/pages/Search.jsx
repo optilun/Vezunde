@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { MapPin, Search as SearchIcon, X } from "lucide-react";
 import { invokeDirectoryBrowse } from "@/lib/directoryBrowse";
 import { SERVICES, DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
@@ -22,6 +22,7 @@ import ServiceSearchField from "@/components/results/ServiceSearchField";
 import { MAJOR_CITIES, readRecentLocalities, rememberLocality, prettyLocality } from "@/lib/localityQuickPicks";
 
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor } from "@/lib/searchUrl";
 
 function useDebouncedValue(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -44,19 +45,25 @@ function useDebouncedValue(value, delay) {
 export default function Search() {
   // Harta vectoriala se descarca in paralel cu datele, fara sa blocheze pagina si lista.
   useEffect(() => { preloadVectorCanvas(); }, []);
-  const [urlParams] = useState(
-    () => new URLSearchParams(window.location.search),
-  );
-  const [saved] = useState(() => {
+  const routerLocation = useLocation();
+  const navigate = useNavigate();
+  // 2026-09-28 (audit /cauta, B4): criteriile vin din adresa cand exista. Un link primit castiga in
+  // fata ultimei cautari din sesiune; aceeasi adresa ca la plecare (inapoi de pe un profil) reia
+  // sesiunea intreaga (pagini incarcate, selectie, derulare). Fara criterii in adresa, /cauta reia
+  // ultima cautare. Un link fara localitate pastreaza localitatea din ultima cautare.
+  const [{ saved, fromUrl }] = useState(() => {
     const previous = readSearchSession();
-    return !window.location.search || previous.sourceSearch === window.location.search ? previous : {};
+    const incoming = criteriaQuery(window.location.search);
+    if (!incoming || previous.sourceSearch === incoming) return { saved: previous, fromUrl: searchStateFromUrl("", SERVICES) };
+    const linked = searchStateFromUrl(window.location.search, SERVICES);
+    return { saved: {}, fromUrl: { ...linked, locality: linked.locality || previous.locality || null } };
   });
   const [results, setResults] = useState(null);
   const [mapResults, setMapResults] = useState(null);
-  const [providerType, setProviderType] = useState(saved.providerType || "");
-  const [professionalType, setProfessionalType] = useState(saved.professionalType || "");
-  const [filterServiceKeys, setFilterServiceKeys] = useState(saved.filterServiceKeys || []);
-  const [casOnly, setCasOnly] = useState(saved.casOnly || false);
+  const [providerType, setProviderType] = useState(saved.providerType ?? fromUrl.providerType);
+  const [professionalType, setProfessionalType] = useState(saved.professionalType ?? fromUrl.professionalType);
+  const [filterServiceKeys, setFilterServiceKeys] = useState(saved.filterServiceKeys ?? fromUrl.filterServiceKeys);
+  const [casOnly, setCasOnly] = useState(saved.casOnly ?? fromUrl.casOnly);
   const [pagination, setPagination] = useState(null);
   const [directoryFilterContext, setDirectoryFilterContext] = useState(null);
   const [moreLoading, setMoreLoading] = useState(false);
@@ -100,33 +107,51 @@ export default function Search() {
   // 2026-09-03: /cauta rasfoia doar locatii. Pacientul care stie ca vrea "un oftalmolog din Sibiu"
   // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
   // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
-  const [searchMode, setSearchMode] = useState(saved.searchMode || RESULT_MODES.locations.key);
+  const [searchMode, setSearchMode] = useState(saved.searchMode || fromUrl.searchMode);
   // 2026-09-06: aceeasi harta ca pe ecranul de recomandari, ca rasfoirea unei localitati sa arate
   // si UNDE sunt locatiile, nu doar care sunt. Selectia si evidentierea merg in ambele sensuri.
   const [selectedId, setSelectedId] = useState(saved.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
   const [mobileView, setMobileView] = useState(saved.mobileView || "list");
   const [professionals, setProfessionals] = useState(null);
-  const [service, setService] = useState(saved.service ?? urlParams.get("serviciu") ?? "");
-  const [query, setQuery] = useState(saved.query ?? (urlParams.get("q") || SERVICES[urlParams.get("serviciu")] || ""));
+  const [service, setService] = useState(saved.service ?? fromUrl.service);
+  const [query, setQuery] = useState(saved.query ?? fromUrl.query);
   const localityFieldRef = useRef(null);
-  const initialLocalityName = urlParams.get("oras");
-  const initialSirutaCode = urlParams.get("siruta");
   const [locality, setLocality] = useState(
-    Object.prototype.hasOwnProperty.call(saved, "locality") ? saved.locality : initialLocalityName && initialSirutaCode
-      ? {
-          name: initialLocalityName,
-          display_label: initialLocalityName,
-          county_name: "",
-          siruta_code: initialSirutaCode,
-        }
-      : saved.locality || null,
+    Object.prototype.hasOwnProperty.call(saved, "locality") ? saved.locality : fromUrl.locality,
   );
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
+  // B4: adresa urmeaza criteriile asezate (fara intrari noi in istoric, fara derulare).
+  const criteriaSearch = searchCriteriaFor({ service, query: debouncedQuery, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType }, SERVICES);
+  const settling = debouncedQuery !== query.trim();
+  const writtenCriteria = useRef(criteriaQuery(window.location.search));
+  const replaceCriteria = (criteria) => {
+    writtenCriteria.current = criteria;
+    navigate({ pathname: routerLocation.pathname, search: searchUrlFor(routerLocation.search, criteria), hash: routerLocation.hash }, { replace: true, state: routerLocation.state });
+  };
+  // Un link deschis cat timp /cauta e deja pe ecran (ex. „Caută un oftalmolog” din avertisment)
+  // inlocuieste criteriile; un link simplu catre /cauta (meniul) pastreaza cautarea curenta.
   useEffect(() => {
-    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
-  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch, providerType, professionalType, filterServiceKeys, casOnly, results]);
+    const incoming = criteriaQuery(routerLocation.search);
+    if (incoming === writtenCriteria.current) return;
+    if (!incoming) { if (criteriaSearch) replaceCriteria(criteriaSearch); else writtenCriteria.current = ""; return; }
+    const next = searchStateFromUrl(routerLocation.search, SERVICES);
+    writtenCriteria.current = incoming;
+    setService(next.service); setQuery(next.query); setLocality(next.locality || locality);
+    setProviderType(next.providerType); setFilterServiceKeys(next.filterServiceKeys); setCasOnly(next.casOnly);
+    setSearchMode(next.searchMode); setProfessionalType(next.professionalType);
+    setSelectedId(null); setHoveredId(null);
+  }, [routerLocation.search]);
+  useEffect(() => {
+    if (settling) return;
+    if (criteriaQuery(routerLocation.search) === criteriaSearch) { writtenCriteria.current = criteriaSearch; return; }
+    replaceCriteria(criteriaSearch);
+  }, [criteriaSearch, settling]);
+
+  useEffect(() => {
+    writeSearchSession({ sourceSearch: criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
+  }, [criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, results]);
 
   useEffect(() => {
     const rememberScroll = () => {
@@ -136,7 +161,9 @@ export default function Search() {
     return () => window.removeEventListener("scroll", rememberScroll);
   }, []);
   useEffect(() => {
-    if (!locality || restoredScroll.current || results === null || (searchMode === RESULT_MODES.professionals.key && professionals === null)) return;
+    // B1: in fila Specialisti lista de locatii poate sa nu fie ceruta deloc, deci se asteapta doar specialistii.
+    const waiting = searchMode === RESULT_MODES.professionals.key ? professionals === null : results === null;
+    if (!locality || restoredScroll.current || waiting) return;
     const frame = requestAnimationFrame(() => {
       window.scrollTo({ top: window.matchMedia("(min-width: 1024px)").matches && searchMode === RESULT_MODES.locations.key ? 0 : saved.scrollY || 0, behavior: "instant" });
       restoredScroll.current = true;
