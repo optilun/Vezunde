@@ -26,8 +26,12 @@
 //    cabinetele numai cand in zona nu sunt destule optici.
 //
 // Regulile nu citesc anamneza sau datele de contact (acestea nu schimba potrivirea): doar nevoia
-// confirmata si cheile de serviciu ale cererii. Folosit de matchProvidersSemantic si matchProviders
-// (base44/functions/*/entry.ts). Copie identica in base44/shared/.
+// confirmata, cheile de serviciu CONFIRMATE de pacient (categoria, raspunsurile, propunerea AI
+// acceptata) si, pentru keratocon, textul lui. Cheile adaugate de cautarea in text raman pentru
+// potrivire, dar nu decid tipul: testul live din 2026-09-28 a aratat ca "lentile de contact"
+// aduce din text si ortokeratologie sau lentile sclerale, iar "copil" aduce supraspecialitati.
+// Folosit de matchProvidersSemantic si matchProviders (base44/functions/*/entry.ts). Copie
+// identica in base44/shared/.
 
 export const PROVIDER_TYPE_PREFERENCE_VERSION = 'provider-type-preference-v1';
 
@@ -105,10 +109,13 @@ function preference(mode, reason) {
   };
 }
 
+// Keratoconul (si forma "cheratocon"), aceeasi forma ca in shared/confirmedNeedServiceKeys.js.
+const KERATOCONUS_PATTERN = /\b(?:k|ch)eratocon/i;
+
 /**
- * @param {{ intent?: string, serviceKeys?: string[], getDefinition?: ((key: string) => any) | null }} [input]
+ * @param {{ intent?: string, serviceKeys?: string[], text?: string, getDefinition?: ((key: string) => any) | null }} [input]
  */
-export function resolveProviderTypePreference({ intent = '', serviceKeys = [], getDefinition = null } = {}) {
+export function resolveProviderTypePreference({ intent = '', serviceKeys = [], text = '', getDefinition = null } = {}) {
   const need = clean(intent);
   const keys = [...new Set((Array.isArray(serviceKeys) ? serviceKeys : []).map(clean).filter(Boolean))];
   const definitions = typeof getDefinition === 'function'
@@ -122,8 +129,10 @@ export function resolveProviderTypePreference({ intent = '', serviceKeys = [], g
   // nu ca 'doar medicul', ca opticile sa nu dispara.
   if (need === 'unknown') return preference('medical_first', 'unclear_need');
   if (MEDICAL_INTENTS.has(need)) return preference('medical_only', 'medical_need');
-  if (hasGroup(MEDICAL_GROUPS)) return preference('medical_only', 'medical_service');
+  // Copiii: intai medicul, dar opticile raman (ochelarii se fac tot acolo).
   if (MEDICAL_FIRST_INTENTS.has(need) || hasGroup(PEDIATRIC_GROUPS)) return preference('medical_first', 'child');
+  if (hasGroup(MEDICAL_GROUPS)) return preference('medical_only', 'medical_service');
+  if (KERATOCONUS_PATTERN.test(String(text || ''))) return preference('medical_first', 'keratoconus');
   if (hasKey(SPECIALTY_CONTACT_LENS_KEYS)) return preference('medical_first', 'specialty_contact_lenses');
   if (need === 'control_vedere' || hasGroup(EXAMINATION_GROUPS) || hasKey(CONTACT_LENS_EXAMINATION_KEYS)) {
     return preference('optical_first', 'routine_examination');
