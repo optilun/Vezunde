@@ -31,7 +31,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
         setResults(res.data?.locations || []);
         setOrganizations(res.data?.organizations || []);
         setSearchError(false);
-      } catch (_error) {
+      } catch {
         if (reqId !== reqRef.current) return;
         setResults([]);
         setOrganizations([]);
