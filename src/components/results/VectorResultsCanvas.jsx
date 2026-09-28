@@ -137,6 +137,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     let observer;
     let timer;
     let layoutFrame;
+    let onVisibility;
     const scheduleLabels = () => {
       cancelAnimationFrame(layoutFrame);
       layoutFrame = requestAnimationFrame(() => { if (container.current) layoutMapMarkers(container.current); });
@@ -165,8 +166,23 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       };
       setControlSlot(entry.controlSlot);
       setHasSize(container.current.clientWidth > 0 && container.current.clientHeight > 0);
+      // 2026-09-27 (audit /cauta, A3): cele 20 s se numara doar cat fila e vizibila. Intr-o fila din
+      // fundal browserul nu deseneaza, dalele nu se incarca, iar harta trecea definitiv pe 2D pentru
+      // cine deschidea cautarea intr-o fila noua si revenea mai tarziu.
+      const startTimer = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
+      };
+      onVisibility = () => {
+        if (entry.styleLoaded) return;
+        if (document.visibilityState === "hidden") clearTimeout(timer);
+        else startTimer();
+      };
       if (entry.styleLoaded) setStyleReady(true);
-      else timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
+      else {
+        if (document.visibilityState !== "hidden") startTimer();
+        document.addEventListener("visibilitychange", onVisibility);
+      }
       observer = new ResizeObserver(() => {
         // Harta ascunsa (lista pe telefon) are 0 px: nu o redimensionam si nu o redesenam degeaba.
         // Cand reapare, observatorul se declanseaza din nou cu marimea reala.
@@ -179,7 +195,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       setReady(true);
     } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(/webgl/i.test(String(error?.message)) ? "webgl" : "initialization"); }
     const currentMarkers = markers.current;
-    return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); if (entry) releaseMap(entry); mapRef.current=null; };
+    return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); if (onVisibility) document.removeEventListener("visibilitychange", onVisibility); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); if (entry) releaseMap(entry); mapRef.current=null; };
   },[]);
   useEffect(() => {
     if (!ready || !hasSize) return;
@@ -285,7 +301,8 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       el.onfocus=el.onmouseenter;
       el.onblur=el.onmouseleave;
     });
-    const frame = requestAnimationFrame(() => layoutMapMarkers(container.current));
+    // La demontare React goleste `container` inaintea curatarii efectelor; cadrul poate rula intre.
+    const frame = requestAnimationFrame(() => { if (container.current) layoutMapMarkers(container.current); });
     return () => cancelAnimationFrame(frame);
   },[clusters,ready,pillHtml]);
   // Selectia si hover-ul: doar markerele a caror stare se schimba primesc atributele noi (aceleasi pe
