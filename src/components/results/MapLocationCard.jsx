@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, BadgeCheck, X } from "lucide-react";
 import { typeVisual } from "./LocationThumb";
 import { PROFILE_STATUS_LABELS, coverTone } from "@/lib/locationCover";
+import { mapCardFocused, restoreMapCardOpener, wantsMapCardFocus } from "@/lib/mapCardFocus";
 
 // 2026-09-27. Fereastra pinului, in stilul noilor carduri: coperta (fotografia locatiei, cand
 // exista; altfel coperta generata din tip si localitate), numele, adresa, starea profilului si
@@ -44,7 +45,24 @@ export default function MapLocationCard({ point, onClose, variant = "sheet" }) {
   const profileHref = `/furnizor/${point.id}`;
   const statusLabel = PROFILE_STATUS_LABELS[point.profile_control_status] || "";
   const approximate = point.map_precision !== "exact";
-  const onKeyDown = (event) => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } };
+  // 2026-09-28 (audit /cauta, C2): fereastra ceruta acum primeste focusul; la inchidere, focusul
+  // revine de unde a pornit. Fereastra plutitoare poate fi ascunsa cateva sute de ms (pana ajunge
+  // pinul in cadru), deci se mai incearca o data.
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (!wantsMapCardFocus()) return undefined;
+    const focusCard = () => {
+      const card = cardRef.current;
+      if (!card) return;
+      card.focus({ preventScroll: true });
+      if (document.activeElement === card) mapCardFocused();
+    };
+    focusCard();
+    const timer = window.setTimeout(() => { if (wantsMapCardFocus()) focusCard(); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [point.id]);
+  const close = () => { onClose(); restoreMapCardOpener(); };
+  const onKeyDown = (event) => { if (event.key === "Escape") { event.stopPropagation(); close(); } };
 
   const title = (
     <p className={`font-heading font-bold leading-snug tracking-tight text-foreground ${floating ? "text-base" : "text-[15px]"}`}>
@@ -77,13 +95,14 @@ export default function MapLocationCard({ point, onClose, variant = "sheet" }) {
       </Link>
     </div>
   );
-  const close = (
+  const closeButton = (
     <button
       type="button"
-      onClick={onClose}
+      onClick={close}
       aria-label="Închide"
+      // C3: cercul ramane de 36 px, dar zona de apasare are 44 px (pseudo-elementul).
       className={floating
-        ? "absolute right-2.5 top-2.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-foreground shadow-[0_1px_4px_rgba(23,23,23,0.18)] transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2"
+        ? "absolute right-2.5 top-2.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-foreground shadow-[0_1px_4px_rgba(23,23,23,0.18)] transition-transform before:absolute before:-inset-1 before:rounded-full before:content-[''] hover:scale-105 focus-visible:outline focus-visible:outline-2"
         : "-mr-1.5 -mt-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline focus-visible:outline-2"}
     >
       <X aria-hidden="true" className="h-4 w-4" />
@@ -92,9 +111,9 @@ export default function MapLocationCard({ point, onClose, variant = "sheet" }) {
 
   if (floating) {
     return (
-      <section aria-label={"Detalii locație: " + point.name} onKeyDown={onKeyDown} className="relative overflow-hidden rounded-2xl bg-card shadow-[0_0_0_1px_rgba(23,23,23,0.05),0_14px_36px_rgba(23,35,55,0.24)]">
+      <section ref={cardRef} tabIndex={-1} aria-label={"Detalii locație: " + point.name} onKeyDown={onKeyDown} className="relative overflow-hidden rounded-2xl bg-card shadow-[0_0_0_1px_rgba(23,23,23,0.05),0_14px_36px_rgba(23,35,55,0.24)] outline-none">
         <Cover point={point} />
-        {close}
+        {closeButton}
         <div className="p-4">
           {title}
           {details}
@@ -105,7 +124,7 @@ export default function MapLocationCard({ point, onClose, variant = "sheet" }) {
   }
 
   return (
-    <section aria-label={"Detalii locație: " + point.name} onKeyDown={onKeyDown} className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
+    <section ref={cardRef} tabIndex={-1} aria-label={"Detalii locație: " + point.name} onKeyDown={onKeyDown} className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-lg outline-none sm:inset-x-auto sm:left-3 sm:w-80">
       <div className="flex items-start gap-3">
         <Cover point={point} compact />
         <div className="min-w-0 flex-1">
@@ -114,7 +133,7 @@ export default function MapLocationCard({ point, onClose, variant = "sheet" }) {
               <div className="text-[10px] font-bold uppercase tracking-widest text-[#4f6080]">{visual.label}</div>
               <div className="mt-0.5">{title}</div>
             </div>
-            {close}
+            {closeButton}
           </div>
           {details}
         </div>
