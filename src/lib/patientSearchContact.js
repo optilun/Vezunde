@@ -2,6 +2,7 @@ import { base44 } from "@/api/base44Client";
 import { withPatientOperationTimeout } from "./patientOperationControl.js";
 import {
   PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
+  PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION,
   PATIENT_SEARCH_CONTACT_MODE,
 } from "../../shared/patientSearchContact.js";
 
@@ -66,6 +67,7 @@ export function readRememberedPatientContact({ storage, now = Date.now() } = {})
 export async function savePatientSearchContact({
   contact,
   search,
+  marketingConsent = false,
   timeoutMs = PATIENT_SEARCH_CONTACT_SAVE_TIMEOUT_MS,
 }) {
   const response = await withPatientOperationTimeout(
@@ -76,6 +78,9 @@ export async function savePatientSearchContact({
       consent: {
         processing: true,
         version: PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
+        // Bifa optionala pentru noutati si oferte; nebifata implicit.
+        marketing: marketingConsent === true,
+        marketing_version: PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION,
       },
     }),
     { timeoutMs, operation: "patient_search_contact_save" },
