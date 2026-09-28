@@ -25,7 +25,10 @@ export default function SearchFilters({ providerType, professionalType, serviceK
   const [draft, setDraft] = useState({});
   const [needle, setNeedle] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
-  const count = professionalMode ? Number(Boolean(professionalType)) : providerType.split(",").filter(Boolean).length + serviceKeys.length + Number(casOnly);
+  // 2026-09-28 (audit /cauta, B3): pe harta Romaniei se aplica doar tipul locatiei. Serviciile si CAS
+  // raman alese (in asteptare) si se aplica dupa alegerea localitatii, dar nu se numara ca active.
+  const count = professionalMode ? Number(Boolean(professionalType)) : providerType.split(",").filter(Boolean).length + (hasLocality ? serviceKeys.length + Number(casOnly) : 0);
+  const pendingCount = !professionalMode && !hasLocality ? serviceKeys.length + Number(casOnly) : 0;
   const groups = useMemo(() => patientServicesByGroup(), []);
   const previewCache = useRef(new Map());
   const [preview, setPreview] = useState({ status: "idle", total: null });
@@ -84,7 +87,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
 
   return <>
     <button type="button" onClick={begin} className="inline-flex min-h-12 shrink-0 items-center gap-2.5 rounded-full border border-[#d7dce4] bg-card px-5 text-sm font-semibold shadow-sm transition hover:border-[#4f6080] hover:bg-[#eff1f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f6080]">
-      <SlidersHorizontal className="h-4 w-4" /> Filtre {count > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{count}</span>}
+      <SlidersHorizontal className="h-4 w-4" aria-hidden="true" /> Filtre {count > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground"><span className="sr-only">, active: </span>{count}</span>}
     </button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="viasee-filter-panel flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-3xl p-0">
@@ -116,7 +119,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
             <fieldset disabled={!hasLocality} className="mt-6 border-t border-border pt-5 disabled:opacity-60">
               <legend className="flex items-center gap-2 font-semibold"><ScanEye className="h-5 w-5 text-[#4f6080]" aria-hidden="true" /> Servicii confirmate în VIASEE</legend>
               {!hasLocality
-                ? <p className="mt-2 text-sm text-muted-foreground">Alege mai întâi localitatea din bara de căutare. Apoi poți filtra după servicii și decontare CAS.</p>
+                ? <p className="mt-2 text-sm text-muted-foreground">Alege mai întâi localitatea din bara de căutare. Apoi poți filtra după servicii și decontare CAS.{pendingCount > 0 && ` Filtrele alese deja (${pendingCount}) se aplică atunci; „Resetează filtrele” le scoate.`}</p>
                 : searchedLabel
                   ? <p className="mt-3 rounded-xl bg-[#eff1f5] px-3.5 py-2.5 text-xs leading-relaxed text-[#3f4e6a]">Cauți deja <strong className="font-semibold">„{searchedLabel}”</strong> din bara de sus. Aici poți păstra doar locațiile pentru care VIASEE are confirmarea a cel puțin unuia dintre serviciile bifate mai jos.</p>
                   : <p className="mt-2 text-xs text-muted-foreground">Apar doar locațiile cu cel puțin unul dintre serviciile bifate confirmat în VIASEE. O locație fără servicii listate poate totuși să îl ofere.</p>}
@@ -164,7 +167,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
           </p>}
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={() => setDraft({types:[],profession:"",services:[],cas:false})} className="min-h-11 text-sm underline">Resetează filtrele</button>
-            <button type="button" onClick={() => { onApply({providerType:draft.types.join(","),professionalType:draft.profession,serviceKeys:hasLocality?draft.services:[],casOnly:hasLocality&&draft.cas}); setOpen(false); }} className="min-h-11 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground">{applyLabel}</button>
+            <button type="button" onClick={() => { onApply({providerType:draft.types.join(","),professionalType:draft.profession,serviceKeys:draft.services||[],casOnly:Boolean(draft.cas)}); setOpen(false); }} className="min-h-11 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground">{applyLabel}</button>
           </div>
         </div>
       </DialogContent>
