@@ -332,8 +332,9 @@ export default function Search() {
   // Cheia listei si a hartii se schimba doar dupa pauza de tastare, altfel lista si harta s-ar
   // remonta la prima litera (cand se sterge serviciul ales).
   const liveMapKey = JSON.stringify(["local", locality?.siruta_code, service, debouncedQuery, providerType, [...filterServiceKeys].sort(), casOnly]);
-  const [searchMapKey, setSearchMapKey] = useState(liveMapKey);
-  useEffect(() => { if (!typing) setSearchMapKey(liveMapKey); }, [typing, liveMapKey]);
+  const [settledMapKey, setSettledMapKey] = useState(liveMapKey);
+  useEffect(() => { if (!typing) setSettledMapKey(liveMapKey); }, [typing, liveMapKey]);
+  const searchMapKey = settledMapKey;
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
     ? mapResults?.find(row => row.id === selectedId) : null;
   const locationList = extraSelection ? [extraSelection, ...(results || [])] : results;
