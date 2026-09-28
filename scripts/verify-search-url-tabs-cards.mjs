@@ -11,6 +11,7 @@ import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor, SEA
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const LABELS = { consult_oftalmologic: 'Consult oftalmologic' };
+const labelFor = (key) => LABELS[key] || '';
 
 // B4: functiile pure
 {
@@ -24,9 +25,9 @@ const LABELS = { consult_oftalmologic: 'Consult oftalmologic' };
     providerType: 'clinica,optica', filterServiceKeys: ['a', 'b'], casOnly: true,
     searchMode: 'professionals', professionalType: 'medic_oftalmolog',
   };
-  const criteria = searchCriteriaFor(state, LABELS);
-  assert.ok(!criteria.includes('q='), 'textul egal cu eticheta serviciului nu se repeta in adresa');
-  const back = searchStateFromUrl(`?${criteria}`, LABELS);
+  const criteria = searchCriteriaFor(state);
+  assert.ok(!criteria.includes('q='), 'textul nu intra in adresa');
+  const back = searchStateFromUrl(`?${criteria}`, labelFor);
   assert.equal(back.service, state.service);
   assert.equal(back.query, 'Consult oftalmologic', 'eticheta revine din serviciu');
   assert.deepEqual({ name: back.locality.name, siruta: back.locality.siruta_code }, { name: 'Cluj-Napoca', siruta: '54975' });
@@ -35,10 +36,13 @@ const LABELS = { consult_oftalmologic: 'Consult oftalmologic' };
   assert.equal(back.casOnly, true);
   assert.equal(back.searchMode, 'professionals');
   assert.equal(back.professionalType, 'medic_oftalmolog');
-  assert.equal(searchCriteriaFor(back, LABELS), criteria, 'dus-intors fara pierderi');
+  assert.equal(searchCriteriaFor(back), criteria, 'dus-intors fara pierderi');
 
-  assert.equal(searchCriteriaFor({ query: 'vad in ceata' }, LABELS), 'q=vad+in+ceata');
-  assert.equal(searchCriteriaFor({ searchMode: 'locations', professionalType: 'x' }, LABELS), '', 'specialistul conteaza doar in fila Specialisti');
+  // Textul liber poate descrie simptome: nu ajunge in adresa, in istoric sau in linkurile trimise.
+  assert.equal(searchCriteriaFor({ query: 'vad in ceata' }), '');
+  assert.equal(searchStateFromUrl('?q=oftalmolog', labelFor).query, 'oftalmolog', 'linkurile vechi cu text se citesc in continuare');
+  assert.equal(searchStateFromUrl('?q=oftalmolog&serviciu=consult_oftalmologic', labelFor).query, 'oftalmolog');
+  assert.equal(searchCriteriaFor({ searchMode: 'locations', professionalType: 'x' }), '', 'specialistul conteaza doar in fila Specialisti');
   assert.equal(searchStateFromUrl('?oras=Cluj-Napoca').locality, null, 'fara cod SIRUTA nu exista localitate');
   assert.equal(searchStateFromUrl('').searchMode, 'locations');
 
@@ -57,6 +61,7 @@ const search = read('src/pages/Search.jsx');
   assert.match(search, /writeSearchSession\(\{ sourceSearch: criteriaSearch,/);
   assert.match(search, /if \(settling\) return;/, 'adresa se scrie dupa pauza de tastare');
   assert.doesNotMatch(search, /urlParams/, 'criteriile nu se mai citesc direct din adresa la initializare');
+  assert.match(search, /const criteriaSearch = searchCriteriaFor\(\{ service, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType \}\);/, 'fara textul liber');
   const scrollToTop = read('src/App.jsx');
   assert.doesNotMatch(scrollToTop, /\[pathname, search\]|location\.search\]/, 'schimbarea adresei nu deruleaza pagina');
 }
