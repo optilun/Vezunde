@@ -161,11 +161,18 @@ export default function Search() {
   // rezultatele. Inainte urma textul brut: la prima litera tastata pagina trecea pe alt aspect
   // ("Opțiuni", pini numerotati) peste rezultatele vechi, apoi golea lista si harta.
   const isDirectoryBrowseView = isDirectoryBrowse;
+  // Textul din campul de serviciu inca se tasteaza (nu a trecut pauza de 350 ms). Cat timp e asa,
+  // nimic nu se reseteaza si nu se cere nimic: ramane pe ecran ultima cautare. Si alegerea unui
+  // serviciu se sterge la prima litera (onQueryChange), deci si ea asteapta pauza.
+  const typing = hasCanonicalLocality && debouncedQuery !== query.trim();
 
   const previousCriteria = useRef(null);
   useEffect(() => {
+    if (typing) return;
     const criteria = JSON.stringify([service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
-    if (previousCriteria.current !== null && previousCriteria.current !== criteria) { setSelectedId(null); setHoveredId(null); }
+    // Aceleasi criterii (ex. „Arată rezultatele” fara nicio schimbare): nimic de resetat.
+    if (previousCriteria.current === criteria) return;
+    if (previousCriteria.current !== null) { setSelectedId(null); setHoveredId(null); }
     previousCriteria.current = criteria;
     pageRequest.current += 1;
     setPagination(null); setDirectoryFilterContext(null); setMoreLoading(false); setMoreError(false);
@@ -175,7 +182,7 @@ export default function Search() {
     setMatchContext(null);
     setLoadError(false);
     setProfessionalError(false);
-  }, [service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
+  }, [typing, service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
 
   useEffect(() => {
     let active = true;
@@ -322,7 +329,11 @@ export default function Search() {
   };
   const chooseLocality = (value) => { setLocality(value); setSelectedId(null); };
 
-  const searchMapKey = JSON.stringify(["local", locality?.siruta_code, service, debouncedQuery, providerType, [...filterServiceKeys].sort(), casOnly]);
+  // Cheia listei si a hartii se schimba doar dupa pauza de tastare, altfel lista si harta s-ar
+  // remonta la prima litera (cand se sterge serviciul ales).
+  const liveMapKey = JSON.stringify(["local", locality?.siruta_code, service, debouncedQuery, providerType, [...filterServiceKeys].sort(), casOnly]);
+  const [searchMapKey, setSearchMapKey] = useState(liveMapKey);
+  useEffect(() => { if (!typing) setSearchMapKey(liveMapKey); }, [typing, liveMapKey]);
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
     ? mapResults?.find(row => row.id === selectedId) : null;
   const locationList = extraSelection ? [extraSelection, ...(results || [])] : results;
