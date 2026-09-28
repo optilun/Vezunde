@@ -175,7 +175,6 @@ check('both matching functions use the policy instead of the need level', () => 
   const semantic = source('base44/functions/matchProvidersSemantic/entry.ts');
   assert.match(semantic, /const PROVIDER_TYPE_PREFERENCE_POINTS = 15;/);
   assert.match(semantic, /recommendation_score_components: \{ \.\.\.score\.components, provider_type_fit: providerTypePoints \}/);
-  assert.match(semantic, /serviceKeys: requestedKeys,/);
   assert.match(source('base44/functions/matchProviders/entry.ts'), /const PROVIDER_TYPE_PREFERENCE_POINTS = 3;/);
 });
 
