@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { deriveCanonicalDirectoryState } from '../../shared/directoryCanonicalModel.js';
+import { loadRowsForLocationIds } from '../../shared/locationScopedEntityQuery.js';
+import { activeLinksByLocation, claimOrganizationLinkStatus } from '../../shared/providerOrganizationLinkIntegrity.js';
 import {
   PROVIDER_CLAIM_SCOPE_CONTRACT_VERSION,
   claimLocationIdsFromPayload,
