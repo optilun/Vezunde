@@ -324,7 +324,7 @@ export default function OrganizationProfile() {
               ...locations[0],
               organization_id: organization.id,
               organization_name: organization.name,
-              claim_action: ["claimed", "verified"].includes(locations[0].profile_control_status) ? "request_access" : "claim_profile",
+              claim_action: ["claimed", "verified"].includes(organization.profile_control_status) || ["claimed", "verified"].includes(locations[0].profile_control_status) ? "request_access" : "claim_profile",
             },
             preferredScope: "organization",
           } : undefined}
