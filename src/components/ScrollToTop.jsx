@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigationType } from "react-router-dom";
 
 const getHashId = (hash) => {
@@ -17,8 +17,15 @@ const prefersReducedMotion = () =>
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation();
   const navigationType = useNavigationType();
+  const shown = useRef(null);
 
   useEffect(() => {
+    // 2026-09-28: /cauta tine criteriile in adresa si o actualizeaza cu `replace`. Tipul navigarii
+    // se schimba atunci (PUSH -> REPLACE) fara ca pagina sa se schimbe; fara garda de mai jos,
+    // pagina sarea sus si focusul (ex. pe localitatea aleasa) trecea pe continutul principal.
+    const samePage = shown.current?.pathname === pathname && shown.current?.hash === hash;
+    shown.current = { pathname, hash };
+    if (samePage) return undefined;
     if (navigationType === "POP") return undefined;
 
     if (hash) {
