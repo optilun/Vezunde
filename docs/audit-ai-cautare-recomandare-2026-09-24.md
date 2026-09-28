@@ -798,3 +798,90 @@ Cererea owner-ului: "sa le vad si eu in panoul de admin, in contul de admin de p
 - Export CSV al listei filtrate (separator ";", BOM, protectie la formule prin `buildCsv`).
 - Test nou `verify-admin-search-contacts` (5 verificari). `verify-all`: 165 trec, 0 esecuri.
 
+## 18. Optica sau oftalmolog: audit, documentare si decizie (2026-09-28)
+
+Cererea owner-ului: "majoritatea recomandarilor se dau pe clinici de oftalmologie, optici nu prea.
+LLM-ul trebuie sa trateze diferenta dintre recomandarea unui oftalmolog si a unei optici/optometrist.
+Pentru controale regulate fara alte afectiuni, reparatii sau cautarea unui model de ochelari ori brand
+de lentile sa fie recomandate inainte opticile. Fa un research puternic si apoi ia o decizie de expert."
+
+### Ce am gasit (cod, date, test live)
+
+- Date: in tot directorul exista 26 de randuri LocationService, toate pentru o singura locatie; doar
+  8 locatii sunt verificate (3 optici, 5 clinici) si niciuna nu are servicii declarate. Deci aproape
+  toate rezultatele vin din fallbackul structural (profiluri fara servicii), ordonat doar dupa tip.
+- Regula veche: nivelul nevoii = maximul peste toate cheile cererii; la `specialized_medical`
+  fallbackul pastra DOAR profilurile medicale, altfel opticile primele si lista de 12 se umplea cu
+  optici.
+- Test live pe server (interpret_only + potrivire, Sibiu, Cluj-Napoca, Oradea, Craiova):
+  - control de rutina, 45 de ani cu presbiopie, "nu vad la distanta": AI -> optometrie (corect);
+    rezultate 12 optici, 0 cabinete (nicio alternativa medicala);
+  - ochelari, rame Ray-Ban, lentile progresive: AI -> produse; 12 optici (corect);
+  - "lentile de contact Acuvue": AI adauga consult si adaptare -> nevoie medicala -> doar cabinete,
+    0 optici (gresit: e o cumparare de produs);
+  - prima pereche de lentile, copil, "Nu sunt sigur": doar cabinete, 0 optici;
+  - diabet, ochi rosu dureros, "consult la medic oftalmolog": doar cabinete (corect);
+  - "am nevoie de reteta pentru ochelari": produse (ochelari), fara examinare.
+- Stratul de traseu (`shared/patientGuidanceRouting.js`, care deosebeste optometrie, oftalmologie si
+  optica) exista, dar era folosit doar la alegerea intrebarilor, nu la ordonarea rezultatelor.
+
+### Documentare (rezumat)
+
+- AAO, Comprehensive Adult Medical Eye Evaluation PPP: adultii fara simptome si fara factori de risc,
+  evaluare medicala la 5-10 ani sub 40 de ani, la 2-4 ani intre 40 si 54, mai des cu factori de risc
+  (de exemplu glaucom in familie).
+- AOA, Comprehensive Adult Eye and Vision Examination: examinare de vedere periodica, anual peste 65 de
+  ani sau cu factori de risc; optometristul face examinarea si trimite la medic cand gaseste semne.
+- ECOO (Europa): opticianul elibereaza ochelari si lentile; optometristul face refractia, examinarea
+  vederii si adaptarea lentilelor de contact si trimite la oftalmolog cand suspecteaza o boala.
+- WCO: optometristul este furnizor de ingrijire primara a vederii (refractie, ochelari, lentile,
+  detectie si trimitere).
+- ADA 2025: la diabet, examinare cu dilatatie la diagnostic si apoi anual, de oftalmolog sau
+  optometrist; progresia se urmareste la oftalmolog.
+- AAO/AAPOS 2022: copiii care nu trec screeningul merg la un specialist cu experienta la copii.
+- Romania: optometristul are autorizatie de libera practica (Ordinul MS 1992/2023, DSP); lanturile mari
+  (OPTIblu, Optiplaza, Lensa) ofera consult optometric gratuit; ghidurile publice ale opticilor trimit la
+  oftalmolog pentru durere, scadere brusca a vederii, secretii, glaucom, retina, diabet.
+
+### Decizia (politica `provider-type-preference-v1`, `shared/providerTypePreference.js`)
+
+| Nevoie | Intai | Apoi |
+|---|---|---|
+| Simptom sau boala oculara, investigatie cu trimitere, consult medical cerut explicit, supraspecialitati | cabinete si clinici | - (opticile nu apar) |
+| Copil, nevoie neclara ("Nu sunt sigur"), lentile speciale (ortokeratologie, sclerale) | cabinete si clinici | optici (o treime din lista), "Pentru ochelari sau lentile, dupa consult." |
+| Control de rutina, reteta sau dioptrii noi, adaptarea lentilelor de contact | optici | cabinete (o treime), "Pentru un consult medical complet, de exemplu dupa 40 de ani sau daca ai o afectiune a ochilor." |
+| Ochelari, rame, branduri, lentile, lentile de contact cumparate, reparatii si reglaje | optici | cabinete doar pe locurile ramase libere |
+
+- Locatiile cu servicii confirmate primesc `provider_type_fit`: 15 puncte pentru tipul potrivit
+  (3 in functia deterministica `matchProviders`), adaugate la `recommendation_score`. Formula
+  `buildRecommendationScore`, bucket-urile si regula "doar verificate" pentru nevoile medicale raman.
+- O singura cheie medicala nu mai scoate opticile la o cerere de produs; nivelul nevoii ramane folosit
+  doar pentru eligibilitatea Top 3 si distribuire, ca pana acum.
+- Politica nu citeste anamneza sau datele de contact (regula aprobata: acestea nu schimba potrivirea).
+- Pagina de rezultate arata fiecare tip ca grup separat, cu titlul lui si nota pentru alternativa.
+- Interpretarea AI (v2.2): cine poarta deja lentile si cumpara un brand -> `contact_lenses`; reteta sau
+  dioptrii noi -> `refraction`/`optometry_consultation`; rame, ochelari sau ochelari de soare de brand
+  -> produse. Doua exemple noi.
+
+### Efect asteptat (Sibiu: 23 de optici, 8 cabinete si clinici)
+
+- control de rutina: 8 optici + 4 cabinete (inainte 12 optici, 0 cabinete);
+- lentile de contact de brand: optici (inainte 8 cabinete, 0 optici);
+- prima pereche de lentile: 8 optici + 4 cabinete (inainte doar cabinete);
+- copil sau "Nu sunt sigur": 8 cabinete + 4 optici (inainte doar cabinete);
+- simptome, diabet, medic cerut: doar cabinete (neschimbat).
+
+### Teste si urmatorii pasi
+
+- Test nou `verify-provider-type-preference` (10 verificari: matricea deciziei pe cheile din testul
+  live, puncte, alocarea 8+4 si 2+1, completarea locurilor libere, note, fara anamneza, legarea in
+  ambele functii, pagina de rezultate, promptul AI). Amprenta ramurii de potrivire 658a02d0 ->
+  60f56d96 in trei teste si blob-uri noi aprobate in testul de izolare, cu motivul scris.
+- `verify-all`: 169 trec, 1 esec in afara acestei schimbari (`verify-map-and-profile-loading`,
+  `src/main.jsx`, in lucru la celalalt agent).
+- De facut (date): servicii declarate de furnizori (azi aproape zero); marcarea locatiilor pediatrice
+  (in Sibiu, ambulatoriul de pediatrie apare si la cautarile adultilor); optional, marcarea opticilor
+  cu optometrist.
+- De facut (clinic): regula de varsta pentru copii (`pediatric_age_to_care_path`) asteapta validare
+  medicala; pana atunci, la copii intai medicul.
+

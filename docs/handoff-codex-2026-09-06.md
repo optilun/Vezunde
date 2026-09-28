@@ -272,3 +272,9 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - 2026-09-28 (aprobat de owner): a doua bifa pe cardul de contact, optionala si nebifata, pentru noutati si oferte (`marketing_consent*` in `PatientSearchContact`); fara bifa "de acord cu politica" (linkul "Politica de confidentialitate" sta sub bife). Politica actualizata cu randul despre oferte si dezabonare. `verify-all` 163 OK / 0.
 - 2026-09-28: sectiune noua in admin, "Pacienti" -> "Contacte din cautari" (`AdminSearchContacts.jsx`): lista, cautare, filtre, detaliu, urmarire cu nota, dezabonare, stergere confirmata, export CSV. `verify-all` 165 OK / 0.
 
+### 2026-09-28 — optica sau oftalmolog in recomandari (audit sectiunea 18)
+
+- Cauza: la nivel `specialized_medical` fallbackul structural (aproape toate rezultatele; o singura locatie are servicii) pastra doar cabinetele, iar o singura cheie medicala (ex. adaptare propusa de AI la "Acuvue") scotea toate opticile; la control, 12 optici si niciun cabinet.
+- Decizie (cerere explicita a owner-ului, dupa documentare AAO/AOA/ECOO/WCO/ADA/Ordin MS 1992/2023): `shared/providerTypePreference.js` (+ copia din `base44/shared/`) - medical_only / medical_first / optical_first / optical_products, folosita in matchProvidersSemantic si matchProviders (puncte `provider_type_fit` si alocare 8+4 in fallback). Pagina de rezultate grupeaza pe tip. Prompt AI v2.2.
+- Checkpoint inainte: 6aba6b8b18c327182c9c2601. `verify-all` 169 OK / 1 (verify-map-and-profile-loading, zona celuilalt agent).
+
