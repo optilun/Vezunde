@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import { prefetchProfileForCurrentUrl } from '@/lib/publicProfilePrefetch'
+import { startNationalMapEarly } from '@/lib/nationalMapEarly'
 import '@/styles/fonts.css'
 import '@/index.css'
 import '@/styles/public-mobile.css'
@@ -16,6 +17,8 @@ import '@/styles/provider-overview-width-fix.css'
 
 // Pe /furnizor/:id, datele profilului se cer in paralel cu codul paginii (vezi fisierul).
 prefetchProfileForCurrentUrl()
+// Pe /cauta deschisa pe harta Romaniei, fisierul static al hartii si lista actuala (vezi fisierul).
+startNationalMapEarly()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
