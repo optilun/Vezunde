@@ -17,7 +17,12 @@
 //    16 ani este varsta de la care o persoana isi poate da singura acordul online;
 //  - pastrare: 2026-09-28, decizia owner-ului ("nu stergem datele clientilor, le pastram"). Nu
 //    exista stergere automata; datele raman pana cand persoana isi retrage acordul sau cere
-//    stergerea (politica de confidentialitate, sectiunea "Datele lasate in timpul unei cautari").
+//    stergerea (politica de confidentialitate, sectiunea "Datele lasate in timpul unei cautari");
+//  - oferte: 2026-09-28, aprobat de owner. Acordul pentru salvare acopera doar contactul despre
+//    acea cautare. Noutatile si ofertele pe email sau telefon cer un acord separat, optional si
+//    nebifat implicit (GDPR art. 7; Legea 506/2004 art. 12). Refuzul nu blocheaza salvarea.
+//    Nu exista o bifa "sunt de acord cu politica de confidentialitate": politica se citeste
+//    (link sub bife), nu se accepta.
 //
 // Folosit de ecranul src/components/intake2/PatientSearchContact.jsx (validare in browser) si de
 // base44/functions/createPatientRequest/entry.ts (validare pe server). Copie identica in
@@ -25,6 +30,7 @@
 
 export const PATIENT_SEARCH_CONTACT_MODE = 'save_search_contact';
 export const PATIENT_SEARCH_CONTACT_CONSENT_VERSION = 'patient-search-contact-v1';
+export const PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION = 'patient-search-contact-marketing-v1';
 export const PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY = 'patient-search-contact-until-withdrawal-v1';
 export const PATIENT_SEARCH_CONTACT_MIN_SELF_AGE = 16;
 
@@ -108,6 +114,11 @@ export function sanitizePatientSearchContact(input = {}) {
   if (consent.version !== PATIENT_SEARCH_CONTACT_CONSENT_VERSION) {
     throw new PatientSearchContactValidationError('Versiunea acordului nu este acceptată.', 'consent');
   }
+  // Acordul pentru oferte e optional: doar un `true` explicit, pe textul curent, conteaza.
+  const marketing = consent.marketing === true;
+  if (marketing && consent.marketing_version !== PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION) {
+    throw new PatientSearchContactValidationError('Versiunea acordului pentru oferte nu este acceptată.', 'marketing');
+  }
 
   return {
     contact: {
@@ -130,6 +141,8 @@ export function sanitizePatientSearchContact(input = {}) {
     consent: {
       processing: true,
       version: PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
+      marketing,
+      marketing_version: marketing ? PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION : '',
     },
   };
 }
