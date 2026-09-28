@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       status: 'active',
     }, '-created_date', 1).catch(() => [])));
     const snapshots = eligibleCandidates.map((location, index) => {
-      const linkStatus = linkByLocationId.get(location.id)?.link_status || (location.organization_id ? 'probable' : 'unassigned');
+      const linkStatus = linkStatusFor(location);
       const controlled = membershipRows[index]?.length > 0
         || CONTROLLED_PROFILE_STATUSES.has(clean(location.profile_control_status))
         || clean(location.claim_verification_status) === 'approved';
