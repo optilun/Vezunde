@@ -159,12 +159,7 @@ export function selectStructuralByPreference(candidates, typePreference, { maxRe
   return [...primaryTaken, ...secondaryTaken];
 }
 
-// Eticheta si nota grupului secundar, afisate pacientului deasupra listei.
-export const PROVIDER_TYPE_GROUP_LABELS = Object.freeze({
-  optical: 'Optici din zonă',
-  medical: 'Cabinete și clinici oftalmologice din zonă',
-});
-
+// Nota grupului secundar, afisata pacientului sub titlul grupului.
 export function providerTypeSecondaryNote(typePreference) {
   if (typePreference?.mode === 'optical_first') {
     return 'Pentru un consult medical complet, de exemplu după 40 de ani sau dacă ai o afecțiune a ochilor.';
