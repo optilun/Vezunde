@@ -15,10 +15,10 @@ import '@/styles/provider-access-redesign.css'
 import '@/styles/provider-overview-refinement.css'
 import '@/styles/provider-overview-width-fix.css'
 
-// Pe /furnizor/:id, datele profilului se cer in paralel cu codul paginii (vezi fisierul).
-prefetchProfileForCurrentUrl()
 // Pe /cauta deschisa pe harta Romaniei, fisierul static al hartii si lista actuala (vezi fisierul).
 startNationalMapEarly()
+// Pe /furnizor/:id, datele profilului se cer in paralel cu codul paginii (vezi fisierul).
+prefetchProfileForCurrentUrl()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
