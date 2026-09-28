@@ -25,6 +25,17 @@ import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor } from "@/lib/searchUrl";
 
 const serviceLabel = (key) => SERVICES[key] || CANONICAL_SERVICE_REGISTRY[key]?.label || "";
+// Dintr-un link se pastreaza doar valorile cunoscute; restul (scrise gresit sau vechi) se ignora,
+// ca pe ecran sa nu apara chei tehnice drept filtre.
+function knownLinkedState(state) {
+  return {
+    ...state,
+    service: serviceLabel(state.service) ? state.service : "",
+    providerType: state.providerType.split(",").filter((key) => DIRECTORY_PROVIDER_FILTER_LABELS[key]).join(","),
+    filterServiceKeys: state.filterServiceKeys.filter((key) => CANONICAL_SERVICE_REGISTRY[key]),
+    professionalType: PROFESSIONAL_TYPES[state.professionalType] ? state.professionalType : "",
+  };
+}
 
 function useDebouncedValue(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -57,7 +68,7 @@ export default function Search() {
     const previous = readSearchSession();
     const incoming = criteriaQuery(window.location.search);
     if (!incoming || previous.sourceSearch === incoming) return { saved: previous, fromUrl: searchStateFromUrl("") };
-    const linked = searchStateFromUrl(window.location.search, serviceLabel);
+    const linked = knownLinkedState(searchStateFromUrl(window.location.search, serviceLabel));
     return { saved: {}, fromUrl: { ...linked, locality: linked.locality || previous.locality || null } };
   });
   const [results, setResults] = useState(null);
@@ -139,7 +150,7 @@ export default function Search() {
     const incoming = criteriaQuery(routerLocation.search);
     if (incoming === writtenCriteria.current) return;
     if (!incoming) { if (criteriaSearch) replaceCriteria(criteriaSearch); else writtenCriteria.current = ""; return; }
-    const next = searchStateFromUrl(routerLocation.search, serviceLabel);
+    const next = knownLinkedState(searchStateFromUrl(routerLocation.search, serviceLabel));
     writtenCriteria.current = incoming;
     setService(next.service); setQuery(next.query); setLocality(next.locality || locality);
     setProviderType(next.providerType); setFilterServiceKeys(next.filterServiceKeys); setCasOnly(next.casOnly);
