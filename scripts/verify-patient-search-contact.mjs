@@ -18,6 +18,7 @@ import {
   PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
   PATIENT_SEARCH_CONTACT_MIN_SELF_AGE,
   PATIENT_SEARCH_CONTACT_MODE,
+  PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
   PatientSearchContactValidationError,
   sanitizePatientSearchContact,
   searchContactAgeRefersTo,
@@ -147,7 +148,11 @@ check('server saves through createPatientRequest, before the request contract', 
   assert.match(saveFunction, /PatientSearchContact\.create/);
   assert.match(saveFunction, /MAX_SEARCH_CONTACTS_PER_CONTACT_PER_HOUR/, 'limita pe ora impotriva abuzului');
   assert.match(saveFunction, /contact_identity_hash/);
-  assert.match(saveFunction, /retention_until/);
+  // 2026-09-28, decizia owner-ului: datele se pastreaza pana la retragerea acordului sau o cerere
+  // de stergere; nu exista termen de stergere automata.
+  assert.match(saveFunction, /retention_policy_key: PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY/);
+  assert.doesNotMatch(saveFunction, /retention_until/);
+  assert.equal(PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY, 'patient-search-contact-until-withdrawal-v1');
   assert.doesNotMatch(saveFunction, /PatientRequest\.create|ProviderLead|RequestMatch|InvokeLLM/, 'nu creeaza cereri, leaduri sau apeluri AI');
   assert.match(entry, /linkSearchContactToRequest\(svc, contactIdentityHash, requestRecord\.id, now\)\.catch\(\(\) => null\)/, 'legarea de cerere nu poate strica salvarea cererii');
   assert.match(entry, /error instanceof PatientSearchContactValidationError/);
@@ -225,6 +230,18 @@ check('the request form starts with the data left at the contact step', () => {
   assert.doesNotMatch(client, /localStorage/, 'nu ramane in browser dupa inchiderea filei');
   assert.match(client, /functions\.invoke\("createPatientRequest"/);
   assert.match(client, /mode: PATIENT_SEARCH_CONTACT_MODE/);
+});
+
+check('privacy policy describes the data left during a search', () => {
+  const privacy = source('src/pages/Privacy.jsx');
+  assert.match(privacy, /vârsta \(dacă alegi să o comunici\)/);
+  assert.match(privacy, /id: "date-cautare"/);
+  assert.match(privacy, /Datele lăsate în timpul unei căutări/);
+  assert.match(privacy, /Poți sări peste acest pas/);
+  assert.match(privacy, /Nu le transmitem locațiilor/);
+  assert.match(privacy, /până când îți retragi acordul sau ne ceri ștergerea lor/);
+  assert.match(privacy, /lastUpdated="28 septembrie 2026"/);
+  assert.match(source('src/components/legal/LegalPageLayout.jsx'), /lastUpdated = LEGAL_LAST_UPDATED/, 'celelalte pagini legale isi pastreaza data');
 });
 
 console.log(`Patient search contact checks passed: ${checks}.`);
