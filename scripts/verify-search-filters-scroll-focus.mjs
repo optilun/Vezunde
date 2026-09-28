@@ -81,4 +81,17 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(read('src/components/results/SearchFilters.jsx'), /<div role="group" className="mt-3 flex flex-wrap gap-2" aria-label="Servicii bifate">/);
 }
 
+// Serverul de dezvoltare nu serveste base44/ (fs.deny in @base44/vite-plugin): codul din src/ importa
+// din shared/. Copia de frontend a numelor de judete trebuie sa dea exact acelasi rezultat.
+{
+  for (const file of ['src/lib/localityQuickPicks.js']) {
+    assert.doesNotMatch(read(file), /^\s*(import|export)[^;\n]*base44\/shared/m, `${file} nu importa din base44/ (previzualizarea nu s-ar mai incarca)`);
+  }
+  const front = await import('../shared/romanianCountyNames.js');
+  const back = await import('../base44/shared/romanianCountyNames.js');
+  for (const name of ['Arges', 'Bacau', 'Bistrita-Nasaud', 'Iași', 'Cluj', 'Valcea', '', null, 'Caras-Severin']) {
+    assert.equal(front.prettyCountyName(name), back.prettyCountyName(name), `aceleasi nume de judet: ${name}`);
+  }
+}
+
 console.log('Search audit fixes B3, B5, C2, C3, C4 checks passed.');
