@@ -13,6 +13,7 @@ import {
 import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
 import { loadRowsForLocationIds } from '../../shared/locationScopedEntityQuery.js';
 import { getRecordOrNull } from '../../shared/entityReadErrors.js';
+import { prettyCountyName } from '../../../shared/romanianCountyNames.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
