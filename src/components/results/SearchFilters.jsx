@@ -124,7 +124,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
                   ? <p className="mt-3 rounded-xl bg-[#eff1f5] px-3.5 py-2.5 text-xs leading-relaxed text-[#3f4e6a]">Cauți deja <strong className="font-semibold">„{searchedLabel}”</strong> din bara de sus. Aici poți păstra doar locațiile pentru care VIASEE are confirmarea a cel puțin unuia dintre serviciile bifate mai jos.</p>
                   : <p className="mt-2 text-xs text-muted-foreground">Apar doar locațiile cu cel puțin unul dintre serviciile bifate confirmat în VIASEE. O locație fără servicii listate poate totuși să îl ofere.</p>}
 
-              {hasLocality && draft.services?.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Servicii bifate">
+              {hasLocality && draft.services?.length > 0 && <div role="group" className="mt-3 flex flex-wrap gap-2" aria-label="Servicii bifate">
                 {draft.services.map((key) => <button key={key} type="button" onClick={() => toggle("services", key)} aria-label={`Scoate ${getServiceLabel(key)}`} className="relative inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#4f6080] px-3 text-xs font-medium text-white before:absolute before:-inset-1 before:rounded-full before:content-[''] hover:bg-[#3f4e6a]">{getServiceLabel(key)}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
               </div>}
 
