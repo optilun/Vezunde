@@ -780,9 +780,16 @@ Deno.serve(async (request) => {
     const needLevel = requestNeedLevel(requestedKeys);
     const intent = clean(payload.intent);
     // 2026-09-28: ce tip de locatie vine intai pentru aceasta nevoie (optica sau cabinet medical).
+    // Decid doar cheile confirmate de pacient: clientul le trimite separat (`need_service_keys`),
+    // pentru ca `service_keys` ajunge deja completat cu cheile gasite in text. Fara ele, cheile
+    // explicite din cerere; fara chei explicite (cautarea libera), cele rezolvate.
+    const needServiceKeys = Array.isArray(payload.need_service_keys)
+      ? payload.need_service_keys.map((value) => normalizeServiceKey(value).canonicalKey).filter(Boolean)
+      : explicitKeys;
     const typePreference = resolveProviderTypePreference({
       intent,
-      serviceKeys: requestedKeys,
+      serviceKeys: needServiceKeys.length > 0 ? needServiceKeys : requestedKeys,
+      text: searchText,
       getDefinition: getCanonicalServiceDefinition,
     });
     let configuredMatchingProviderCount = 0;
