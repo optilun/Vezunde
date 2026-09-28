@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { MapPin, Search as SearchIcon, X } from "lucide-react";
+import { invokeDirectoryBrowse } from "@/lib/directoryBrowse";
 import { SERVICES, DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { CANONICAL_SERVICE_REGISTRY } from "@/lib/canonicalServiceCatalog";
 import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
@@ -253,10 +253,11 @@ export default function Search() {
       setProfessionals([]);
       return undefined;
     }
+    // A4: specialistii raman pe ecran cat timp textul inca se tasteaza.
+    if (debouncedQuery !== query.trim()) return undefined;
     let active = true;
     setProfessionals(null);
     setProfessionalError(false);
-    if (debouncedQuery !== query.trim()) return () => { active = false; };
     if (!isDirectoryBrowse && !matchContext) return () => { active = false; };
     const keys = matchContext?.resolved_service_keys || matchContext?.service_keys || [];
     if (!isDirectoryBrowse && keys.length === 0) { setProfessionals([]); return () => { active = false; }; }
