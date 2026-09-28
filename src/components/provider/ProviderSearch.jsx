@@ -12,6 +12,8 @@ export default function ProviderSearch({ onClaim, onNew }) {
   const [results, setResults] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [searchRetry, setSearchRetry] = useState(0);
   const [googleMode, setGoogleMode] = useState(false);
   const [similar, setSimilar] = useState(null);
   const reqRef = useRef(0);
