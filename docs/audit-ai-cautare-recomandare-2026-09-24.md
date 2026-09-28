@@ -754,3 +754,23 @@ Decizia owner-ului: "nu stergem datele clientilor, le pastram. Fa si politica de
 - `verify-patient-search-contact`: 14 verificari (una noua pentru politica). `verify-all`: 163
   trec, 0 esecuri.
 
+### Acordul separat pentru oferte (2026-09-28, aprobat de owner)
+
+Intrebarea owner-ului: bifa "de acord cu politica de confidentialitate" pe cardul de contact?
+Recomandarea aplicata: nu. Politica se citeste, nu se accepta; un acord valabil e legat de un scop.
+
+- Cardul "Date de contact" are doua bife, ambele nebifate implicit: (1) acordul pentru salvare si
+  contact despre cautare, necesar doar pentru "Continua"; (2) "Vreau sa primesc noutati si oferte
+  de la VIASEE pe email sau telefon (optional)" - nu blocheaza nimic. Sub ele: "Detalii in
+  Politica de confidentialitate" (link, fila noua).
+- Validare comuna: conteaza doar `marketing: true` pe versiunea curenta
+  (`patient-search-contact-marketing-v1`). Server: `marketing_consent`,
+  `marketing_consent_version`, `marketing_consent_at`; schema are si `marketing_unsubscribed_at`
+  pentru dezabonari. Salvarea din nou a aceleiasi cautari pastreaza alegerea cea mai recenta.
+- Analytics: `patient_search_contact_resolved` primeste `marketing_opt_in` (da/nu), fara date
+  personale.
+- Politica de confidentialitate: rand nou despre acordul optional pentru oferte si dezabonare.
+- La trimiterea ofertelor: doar catre inregistrarile cu `marketing_consent` adevarat si fara
+  `marketing_unsubscribed_at`; fiecare mesaj trebuie sa aiba link de dezabonare (Legea 506/2004).
+- `verify-patient-search-contact`: 15 verificari. `verify-all`: 163 trec, 0 esecuri.
+
