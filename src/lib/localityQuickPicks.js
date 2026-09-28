@@ -5,14 +5,8 @@
 // doar pentru judete si resedintele de judet; codul SIRUTA ramane cel oficial, deci cautarea
 // primeste exact aceeasi localitate.
 
-const COUNTY_NAMES = {
-  Arges: "Argeș", Bacau: "Bacău", "Bistrita-Nasaud": "Bistrița-Năsăud", Botosani: "Botoșani",
-  Brasov: "Brașov", Braila: "Brăila", Bucuresti: "București", Buzau: "Buzău",
-  "Caras-Severin": "Caraș-Severin", Calarasi: "Călărași", Constanta: "Constanța",
-  Dambovita: "Dâmbovița", Galati: "Galați", Ialomita: "Ialomița", Iasi: "Iași",
-  Maramures: "Maramureș", Mehedinti: "Mehedinți", Mures: "Mureș", Neamt: "Neamț",
-  Salaj: "Sălaj", Timis: "Timiș", Valcea: "Vâlcea",
-};
+import { prettyCountyName } from "../../shared/romanianCountyNames.js";
+export { prettyCountyName } from "../../shared/romanianCountyNames.js";
 
 const COUNTY_SEAT_NAMES = {
   Bucuresti: "București", Constanta: "Constanța", Calarasi: "Călărași", Timisoara: "Timișoara",
