@@ -192,9 +192,9 @@ export default function LocationsWithMap({
           {fixedDesktop && <nav aria-label="Informații VIASEE" className="mt-8 hidden flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground lg:flex"><Link to="/confidentialitate" className="min-h-8 underline">Confidențialitate</Link><Link to="/termeni" className="min-h-8 underline">Termeni</Link><Link to="/ajutor-si-suport" className="min-h-8 underline">Ajutor</Link></nav>}
         </div>
 
+        {/* C4 (2026-09-28): div, nu element aside: harta e parte din rezultate, nu continut complementar
+            (axe: „landmark-complementary-is-top-level”). Harta are propria regiune etichetata. */}
         {hasPositions && (
-          {/* C4 (2026-09-28): div, nu element aside: harta e parte din rezultate, nu continut complementar
-              (axe: „landmark-complementary-is-top-level”). Harta are propria regiune etichetata. */}
           <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={results || []}
