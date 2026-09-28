@@ -89,7 +89,8 @@ const STRUCTURAL_FALLBACK_MAX_RESULTS = 12;
 // 2026-09-28 (cererea owner-ului, audit sectiunea 18): puncte pentru tipul de locatie potrivit
 // nevoii (optica sau cabinet medical), adaugate scorului locatiilor cu servicii confirmate. Cat o
 // cheie potrivita in plus si ceva peste diferenta verified/claimed, ca tipul potrivit sa treaca
-// inainte la acelasi set de servicii. Vezi shared/providerTypePreference.js.
+// inainte la acelasi set de servicii. Vezi shared/providerTypePreference.js (copie identica in
+// base44/shared/) si aceeasi regula in matchProviders/entry.ts.
 const PROVIDER_TYPE_PREFERENCE_POINTS = 15;
 
 // 2026-09-02: textele de mai jos ajung direct pe ecranul pacientului, deci poarta diacritice.
