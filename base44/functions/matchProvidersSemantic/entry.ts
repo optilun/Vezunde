@@ -25,6 +25,12 @@ import {
   sanitizePatientNeedInterpretation,
 } from '../../shared/patientNeedInterpretation.js';
 import { filterTextServiceKeysForConfirmedNeed } from '../../shared/confirmedNeedServiceKeys.js';
+import {
+  providerTypePreferencePoints,
+  providerTypeSecondaryNote,
+  resolveProviderTypePreference,
+  selectStructuralByPreference,
+} from '../../shared/providerTypePreference.js';
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
@@ -80,6 +86,11 @@ const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
 // De revizuit in jos pe masura ce creste numarul de profiluri cu servicii confirmate.
 const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 8;
 const STRUCTURAL_FALLBACK_MAX_RESULTS = 12;
+// 2026-09-28 (cererea owner-ului, audit sectiunea 18): puncte pentru tipul de locatie potrivit
+// nevoii (optica sau cabinet medical), adaugate scorului locatiilor cu servicii confirmate. Cat o
+// cheie potrivita in plus si ceva peste diferenta verified/claimed, ca tipul potrivit sa treaca
+// inainte la acelasi set de servicii. Vezi shared/providerTypePreference.js.
+const PROVIDER_TYPE_PREFERENCE_POINTS = 15;
 
 // 2026-09-02: textele de mai jos ajung direct pe ecranul pacientului, deci poarta diacritice.
 // Ideal, copia vizibila pacientului nu ar trai in functia de matching - vezi nota din
@@ -767,6 +778,12 @@ Deno.serve(async (request) => {
     const requestedSet = new Set(requestedKeys);
     const needLevel = requestNeedLevel(requestedKeys);
     const intent = clean(payload.intent);
+    // 2026-09-28: ce tip de locatie vine intai pentru aceasta nevoie (optica sau cabinet medical).
+    const typePreference = resolveProviderTypePreference({
+      intent,
+      serviceKeys: requestedKeys,
+      getDefinition: getCanonicalServiceDefinition,
+    });
     let configuredMatchingProviderCount = 0;
     let localConfiguredMatchingProviderCount = 0;
     const results = [];
@@ -837,6 +854,8 @@ Deno.serve(async (request) => {
         availability,
         timingKey: payload.timing_key,
       });
+      const providerTypePoints = providerTypePreferencePoints(typePreference, location, PROVIDER_TYPE_PREFERENCE_POINTS);
+      const recommendationScore = Math.round((score.total + providerTypePoints) * 1000) / 1000;
       const explanations = buildRecommendationExplanations({
         matchedServiceKeys: publicDisclosure.expose_full_details ? matchedKeys : [],
         profileControlStatus,
@@ -878,8 +897,8 @@ Deno.serve(async (request) => {
         availability_label: publicDisclosure.expose_full_details ? (availability?.label || null) : null,
         recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
         recommendation_group: recommendationGroup,
-        recommendation_score: score.total,
-        recommendation_score_components: score.components,
+        recommendation_score: recommendationScore,
+        recommendation_score_components: { ...score.components, provider_type_fit: providerTypePoints },
         recommendation_confidence: getRecommendationConfidence({
           profileControlStatus,
           matchedServiceKeys: matchedKeys,
@@ -889,7 +908,7 @@ Deno.serve(async (request) => {
         match_reasons: explanations.map((item) => item.label),
         expansion_tier: tier,
         routing_reason: resultRoutingReason(tier, countyName),
-        score: score.total,
+        score: recommendationScore,
       });
     }
 
@@ -905,31 +924,29 @@ Deno.serve(async (request) => {
     // cand nivelul nevoii iese 'unknown' (cheile de serviciu nu sunt canonice) - cadea pe
     // ramura 'optical' si ascundea tot ce e medical.
     //
-    // Acum relatia e asimetrica, pentru ca si realitatea e asimetrica: pentru o nevoie
-    // medicala raman doar profilurile medicale (o optica nu rezolva o problema medicala),
-    // dar pentru orice alta nevoie raman ambele, cu opticile primele. Nimic nu se ascunde
-    // doar pentru ca nevoia n-a putut fi clasificata exact.
-    const preferredCapabilities = needLevel === 'specialized_medical'
-      ? ['medical']
-      : ['optical', 'medical'];
-    const capabilityRank = (entry) => {
-      const index = preferredCapabilities.indexOf(entry.structural_capability);
-      return index === -1 ? preferredCapabilities.length : index;
-    };
+    // 2026-09-28 (cererea owner-ului, audit sectiunea 18): nu mai decide nivelul nevoii, ci
+    // politica de tip (shared/providerTypePreference.js). Inainte, o singura cheie medicala
+    // (ex. adaptarea lentilelor de contact propusa de AI la cumpararea unui brand) scotea toate
+    // opticile, iar la un control de rutina lista se umplea cu optici si niciun cabinet nu mai
+    // aparea. Acum: problema medicala -> doar cabinete; copil sau nevoie neclara -> intai
+    // cabinetele, opticile dupa; control sau lentile de contact -> intai opticile, cabinetele ca
+    // alternativa; produse si reparatii -> opticile, cabinetele doar daca nu sunt destule optici.
     let structuralResults = [];
     if (bucketedResults.length < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
-      structuralResults = structuralCandidates
-        .filter((entry) => preferredCapabilities.includes(entry.structural_capability))
-        .sort((a, b) => {
-          const capabilityDelta = capabilityRank(a) - capabilityRank(b);
-          if (capabilityDelta !== 0) return capabilityDelta;
-          const hasContact = (entry) => (entry.phone || entry.website) ? 1 : 0;
-          const contactDelta = hasContact(b) - hasContact(a);
-          if (contactDelta !== 0) return contactDelta;
-          return String(a.name || '').localeCompare(String(b.name || ''));
-        })
-        .slice(0, STRUCTURAL_FALLBACK_MAX_RESULTS)
-        .map((entry, index) => ({ ...entry, bucket_rank: index + 1 }));
+      const hasContact = (entry) => (entry.phone || entry.website) ? 1 : 0;
+      const orderedCandidates = [...structuralCandidates].sort((a, b) => {
+        const contactDelta = hasContact(b) - hasContact(a);
+        if (contactDelta !== 0) return contactDelta;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
+      const secondaryNote = providerTypeSecondaryNote(typePreference);
+      structuralResults = selectStructuralByPreference(orderedCandidates, typePreference, {
+        maxResults: STRUCTURAL_FALLBACK_MAX_RESULTS,
+      }).map((entry, index) => ({
+        ...entry,
+        structural_group_note: entry.structural_capability === typePreference.primary ? '' : secondaryNote,
+        bucket_rank: index + 1,
+      }));
     }
 
     const visibleResults = [...bucketedResults, ...structuralResults];
@@ -966,6 +983,12 @@ Deno.serve(async (request) => {
       resolved_service_keys: requestedKeys,
       semantic_resolution: semantic,
       need_level: needLevel,
+      provider_type_preference: {
+        version: typePreference.version,
+        mode: typePreference.mode,
+        order: typePreference.order,
+        reason: typePreference.reason,
+      },
       resolved_intent: intent || null,
       routing_mode: queryScope,
       query_scope: queryScope,
