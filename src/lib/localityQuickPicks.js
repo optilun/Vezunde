@@ -5,8 +5,8 @@
 // doar pentru judete si resedintele de judet; codul SIRUTA ramane cel oficial, deci cautarea
 // primeste exact aceeasi localitate.
 
-import { prettyCountyName } from "../../base44/shared/romanianCountyNames.js";
-export { prettyCountyName } from "../../base44/shared/romanianCountyNames.js";
+import { prettyCountyName } from "../../shared/romanianCountyNames.js";
+export { prettyCountyName } from "../../shared/romanianCountyNames.js";
 
 const COUNTY_SEAT_NAMES = {
   Bucuresti: "București", Constanta: "Constanța", Calarasi: "Călărași", Timisoara: "Timișoara",
