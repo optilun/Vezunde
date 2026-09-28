@@ -117,7 +117,8 @@ export default function ProviderSearch({ onClaim, onNew }) {
             </div>
           );
         })}
-        {query.trim().length >= 2 && !loading && results.length === 0 && organizations.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>}
+        {searchError && !loading && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Cautarea nu este disponibila momentan. Incearca din nou.<button type="button" onClick={() => setSearchRetry((value) => value + 1)} className="ml-2 font-semibold underline">Reincearca</button></div>}
+        {query.trim().length >= 2 && !loading && !searchError && results.length === 0 && organizations.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>}
       </div>
 
       {showGoogleTrigger && !googleMode && (
