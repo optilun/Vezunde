@@ -41,7 +41,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, searchRetry]);
 
   const handleClaim = (location, options) => onClaim(location, options);
   const showGoogleTrigger = query.trim().length >= 3 && !loading && results.length === 0 && organizations.length === 0;
