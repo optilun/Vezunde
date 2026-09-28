@@ -774,3 +774,9 @@ Recomandarea aplicata: nu. Politica se citeste, nu se accepta; un acord valabil 
   `marketing_unsubscribed_at`; fiecare mesaj trebuie sa aiba link de dezabonare (Legea 506/2004).
 - `verify-patient-search-contact`: 15 verificari. `verify-all`: 163 trec, 0 esecuri.
 
+Verificat live dupa publicare (2026-09-28): cardul "Date de contact" are cele doua bife, ambele
+nebifate, cu textele aprobate, si linkul "Politica de confidentialitate" (/confidentialitate, fila
+noua); pe telefon (375 px) bifele se citesc, fara derulare orizontala. Pagina de confidentialitate
+arata sectiunea noua, varsta, randul despre oferte si pastrare, cu data 28 septembrie 2026;
+termenii raman la 16 iulie 2026. Nu s-au trimis date.
+
