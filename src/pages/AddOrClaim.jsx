@@ -92,7 +92,7 @@ export default function AddOrClaim() {
   const [selected, setSelected] = useState(initialSelectedLocation);
   const [draft, setDraft] = useState(null);
   // Aria propusa cand solicitarea porneste de la un card de organizatie (2026-08-18).
-  const [preferredScope, setPreferredScope] = useState("");
+  const [preferredScope, setPreferredScope] = useState(navState?.preferredScope || "");
   const [claimStep, setClaimStep] = useState(() => resumedClaimLocation
     ? getResumeClaimStep(resumedClaimContact, resumedClaimScope, resumedClaimStep)
     : "relation");
