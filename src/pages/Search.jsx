@@ -385,11 +385,19 @@ export default function Search() {
     ? (professionalType ? [{ key: "profession", label: PROFESSIONAL_TYPES[professionalType] || professionalType, remove: () => setProfessionalType("") }] : [])
     : [
       ...providerType.split(",").filter(Boolean).map(key => ({ key, label: DIRECTORY_PROVIDER_FILTER_LABELS[key] || key, remove: () => setProviderType(providerType.split(",").filter(value => value !== key).join(",")) })),
-      ...filterServiceKeys.map(key => ({ key, label: CANONICAL_SERVICE_REGISTRY[key]?.label || key, remove: () => setFilterServiceKeys(filterServiceKeys.filter(value => value !== key)) })),
-      ...(casOnly ? [{ key: "cas", label: "Decontare CAS", remove: () => setCasOnly(false) }] : []),
+      // B3: fara localitate (harta Romaniei) serviciile si CAS nu se pot aplica; raman in asteptare.
+      ...filterServiceKeys.map(key => ({ key, pending: !hasCanonicalLocality, label: CANONICAL_SERVICE_REGISTRY[key]?.label || key, remove: () => setFilterServiceKeys(filterServiceKeys.filter(value => value !== key)) })),
+      ...(casOnly ? [{ key: "cas", pending: !hasCanonicalLocality, label: "Decontare CAS", remove: () => setCasOnly(false) }] : []),
     ];
-  const filterSummary = activeFilters.length > 0 && <div aria-label="Filtre active" className="my-3 flex flex-wrap gap-2">
-    {activeFilters.map(filter => <button key={filter.key} type="button" onClick={filter.remove} aria-label={`Elimină filtrul ${filter.label}`} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#d7dce4] bg-[#eff1f5] px-3 text-xs font-medium text-[#4f6080] hover:bg-[#e2e7f0]">{filter.label}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
+  const appliedFilters = activeFilters.filter(filter => !filter.pending);
+  const pendingFilters = activeFilters.filter(filter => filter.pending);
+  const filterChip = (filter) => <button key={filter.key} type="button" onClick={filter.remove} aria-label={`Elimină filtrul ${filter.label}`} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-xs font-medium ${filter.pending ? "border-dashed border-[#a7b4c9] bg-card text-muted-foreground hover:bg-[#eff1f5]" : "border-[#d7dce4] bg-[#eff1f5] text-[#4f6080] hover:bg-[#e2e7f0]"}`}>{filter.label}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>;
+  const filterSummary = activeFilters.length > 0 && <div className="my-3 space-y-2">
+    {appliedFilters.length > 0 && <div role="group" aria-label="Filtre active" className="flex flex-wrap gap-2">{appliedFilters.map(filterChip)}</div>}
+    {pendingFilters.length > 0 && <div role="group" aria-labelledby="pending-filters-note" className="flex flex-wrap items-center gap-2">
+      <span id="pending-filters-note" className="text-xs text-muted-foreground">Se aplică după ce alegi localitatea:</span>
+      {pendingFilters.map(filterChip)}
+    </div>}
   </div>;
   const localListHeader = <div className="mb-4">
     <h2 className="font-heading text-lg font-bold sm:text-xl">{isDirectoryBrowseView ? "Locații" : "Opțiuni"} în {locality?.name}</h2>
