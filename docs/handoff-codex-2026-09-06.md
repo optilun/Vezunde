@@ -267,4 +267,5 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - De facut: stergerea automata dupa 90 de zile si textul din politica de confidentialitate (propus in audit, sectiunea 17). `verify-all` 161 OK / 0.
 - Verificat live dupa publicare: toate variantele (reparatii fara anamneza; ochelari/lentile cu anamneza "pentru specialist"; varsta "persoanei" la altcineva; fara varsta la copil) si telefonul (375 px). Fereastra "i" primeste `collisionPadding={16}`.
 - Dupa "da": planificatorul (`shared/patientGuidanceRouting.js` + copia din `base44/shared/`) intreaba si `timing` cand traseul e nerezolvat dar faptele de cautare sunt raspunse (control + "Nu sunt sigur", nevoia "Nu sunt sigur", trimitere neinteleasa). Inainte chestionarul se oprea dupa localitate. `verify-all` 162 OK / 0.
+- Verificat live (2026-09-28): la control + "Nu sunt sigur" apare "Cat de repede ai nevoie?" dupa localitate; fereastra "i" nu mai lipeste de marginea ecranului pe telefon.
 

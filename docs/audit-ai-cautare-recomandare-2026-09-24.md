@@ -727,3 +727,8 @@ Copiile din `shared/` si `base44/shared/` sunt identice. Verificat cu selectia d
 control + "Nu sunt sigur", "Nu sunt sigur" ca nevoie si trimiterea neinteleasa se cere `timing`,
 apoi chestionarul se incheie. `verify-patient-guidance-routing`: 100 de scenarii (2 noi, unul
 actualizat); `verify-all`: 162 trec, 0 esecuri.
+
+Verificat live dupa publicare (2026-09-28): control + "Nu sunt sigur" + "Pentru mine" + Oradea ->
+"Cat de repede ai nevoie?" -> anamneza -> "Date de contact". Pe telefon (375 px), fereastra "i"
+de la "Date de contact" sta la 24 px de marginea din dreapta (inainte 0 px).
+

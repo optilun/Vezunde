@@ -344,7 +344,10 @@ export default function Search() {
         </p>
       </div>
 
-      <div ref={controlsRef} data-search-controls className="sticky z-30 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ top: "var(--search-nav-height)" }}>
+      {/* 2026-09-27 (audit /cauta, A2): controalele raman fixate sus doar pe desktop. Pe telefon ocupau
+          ~360 px din 816 (44% din ecran) la derulare; acolo o bara compacta ia locul lor cand ies din
+          ecran (CompactSearchBar, mai jos). */}
+      <div ref={controlsRef} data-search-controls className="relative z-30 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:sticky lg:top-[var(--search-nav-height)] lg:-mx-8 lg:px-8">
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
       <section
         className="relative z-40 w-full min-w-0 rounded-3xl border border-[#e1e3e8] bg-card px-2 py-1.5 shadow-[0_2px_10px_rgba(30,40,60,0.07)] transition-shadow focus-within:shadow-md sm:flex-1 md:w-auto md:rounded-full"
@@ -397,6 +400,8 @@ export default function Search() {
 
       </div>
 
+      {controlsOut && <CompactSearchBar query={query.trim()} locality={locality} />}
+
       {showSafetyBanner ? (
         <div className="mt-6">
           <UrgencyInterruption
@@ -406,7 +411,9 @@ export default function Search() {
           />
         </div>
       ) : !hasCanonicalLocality ? (
-        !service && !query.trim()
+        // A4: harta Romaniei nu dispare la prima litera tastata; mesajul „alege localitatea” vine
+        // dupa ce textul se aseaza.
+        !service && !debouncedQuery
           ? <DirectoryMap providerType={providerType} filterSummary={filterSummary} />
           : <SelectLocalityNotice onChoose={(value) => { rememberLocality(value); chooseLocality(value); }} onFocusField={() => localityFieldRef.current?.focus()} />
       ) : (loadError || (searchMode === RESULT_MODES.professionals.key && professionalError)) ? (
