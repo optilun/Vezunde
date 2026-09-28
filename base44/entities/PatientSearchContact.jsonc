@@ -71,6 +71,21 @@
       "type": "string",
       "format": "date-time"
     },
+    "marketing_consent": {
+      "type": "boolean",
+      "default": false
+    },
+    "marketing_consent_version": {
+      "type": "string"
+    },
+    "marketing_consent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "marketing_unsubscribed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "linked_request_id": {
       "type": "string"
     },
