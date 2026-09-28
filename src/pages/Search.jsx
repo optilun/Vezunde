@@ -194,6 +194,8 @@ export default function Search() {
   const typing = hasCanonicalLocality && debouncedQuery !== query.trim();
 
   const previousCriteria = useRef(null);
+  // B1: cheia cererii ale carei rezultate sunt deja pe ecran. Aceeasi cheie = nimic de cerut din nou.
+  const loadedKey = useRef(null);
   useEffect(() => {
     if (typing) return;
     const criteria = JSON.stringify([service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
@@ -201,6 +203,7 @@ export default function Search() {
     if (previousCriteria.current === criteria) return;
     if (previousCriteria.current !== null) { setSelectedId(null); setHoveredId(null); }
     previousCriteria.current = criteria;
+    loadedKey.current = null;
     pageRequest.current += 1;
     setPagination(null); setDirectoryFilterContext(null); setMoreLoading(false); setMoreError(false);
     setMapResults(null);
@@ -217,6 +220,16 @@ export default function Search() {
       // A4: cat timp vizitatorul tasteaza, ramane pe ecran ce era; cererea porneste dupa pauza.
       if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;
       const locationMode = searchMode === RESULT_MODES.locations.key;
+      // 2026-09-28 (audit /cauta, B1): schimbarea filei nu mai reincarca locatiile. La rasfoire,
+      // fila Specialisti are propria cerere, deci lista de locatii (cu paginile deja incarcate)
+      // ramane neatinsa. La cautarea dupa serviciu, cererea se repeta doar daca difera efectiv
+      // (filtrele de locatii nu se aplica specialistilor); aceleasi date intra in potrivire.
+      if (hasCanonicalLocality && isDirectoryBrowse && !locationMode) { setLoadError(false); return; }
+      const requestKey = hasCanonicalLocality ? JSON.stringify(isDirectoryBrowse
+        ? ["browse", locality.siruta_code, providerType, filterServiceKeys, casOnly]
+        : ["match", service, debouncedQuery, locality.siruta_code, locationMode ? providerType : "", locationMode ? filterServiceKeys : [], locationMode && casOnly]) : null;
+      if (requestKey && requestKey === loadedKey.current) return;
+      loadedKey.current = null;
       setLoadError(false);
       setResults(null);
       setMatchContext(null);
@@ -247,7 +260,7 @@ export default function Search() {
             page = next.data?.pagination || null;
             if (rows.size === previousSize) break;
           }
-          if (active) { setResults([...rows.values()]); setMapResults(response.data?.map_results || [...rows.values()]); setPagination(page); setDirectoryFilterContext(response.data?.filter_context || null); }
+          if (active) { loadedKey.current = requestKey; setResults([...rows.values()]); setMapResults(response.data?.map_results || [...rows.values()]); setPagination(page); setDirectoryFilterContext(response.data?.filter_context || null); }
           return;
         }
 
@@ -274,7 +287,7 @@ export default function Search() {
           limit: 50,
         });
         if (response.data?.error) throw new Error(response.data.error);
-        if (active) { setResults(response.data?.results || []); setMapResults(response.data?.results || []); setMatchContext({ ...response.data, selected_locality_siruta_code: locality.siruta_code, query_scope: "locality" }); }
+        if (active) { loadedKey.current = requestKey; setResults(response.data?.results || []); setMapResults(response.data?.results || []); setMatchContext({ ...response.data, selected_locality_siruta_code: locality.siruta_code, query_scope: "locality" }); }
       } catch {
         if (active) { setLoadError(true); setResults([]); }
       }
