@@ -80,6 +80,26 @@ check('decision matrix', () => {
   assert.equal(resolve('', []).mode, 'optical_products', 'cautarea libera fara chei ramane cu opticile primele');
 });
 
+// 2026-09-28, testul live dupa publicare: cautarea in text adauga chei inrudite (la "lentile de
+// contact" si ortokeratologie sau lentile sclerale, la copii supraspecialitati). Tipul se decide
+// doar pe cheile confirmate de pacient; aici se vede de ce.
+check('text-expanded keys would mislead, confirmed keys decide', () => {
+  const expandedLenses = ['contact_lenses', 'contact_lens_followup', 'orthokeratology', 'scleral_lenses', 'myopia_control_contact_lenses'];
+  assert.equal(resolve('lentile_contact', expandedLenses).mode, 'medical_first', 'cu cheile din text ar iesi gresit');
+  assert.equal(resolve('lentile_contact', ['contact_lenses']).mode, 'optical_products', 'cu cheile confirmate iese corect');
+  assert.equal(resolve('control_copil', ['children_eye_exam', 'strabismus_consultation', 'pediatric_ophthalmology']).mode, 'medical_first', 'copilul nu pierde opticile nici cu supraspecialitati');
+  assert.equal(resolveProviderTypePreference({ intent: 'lentile_contact', serviceKeys: ['contact_lens_fitting'], text: 'am keratocon si vreau lentile', getDefinition: getCanonicalServiceDefinition }).mode, 'medical_first');
+  assert.equal(resolveProviderTypePreference({ intent: 'lentile_contact', serviceKeys: ['contact_lens_fitting'], text: 'am cheratocon', getDefinition: getCanonicalServiceDefinition }).reason, 'keratoconus');
+  for (const file of ['base44/functions/matchProvidersSemantic/entry.ts', 'base44/functions/matchProviders/entry.ts']) {
+    const entry = source(file);
+    assert.match(entry, /Array\.isArray\(payload\.need_service_keys\)/, file);
+    assert.match(entry, /serviceKeys: needServiceKeys\.length > 0 \? needServiceKeys : /, file);
+  }
+  assert.match(source('base44/functions/matchProvidersSemantic/entry.ts'), /text: searchText,\n      getDefinition: getCanonicalServiceDefinition,/);
+  const client = source('src/lib/providerSemanticSearch.js');
+  assert.equal(client.match(/need_service_keys: explicitKeys,/g)?.length, 2, 'clientul trimite cheile confirmate la ambele functii');
+});
+
 check('provider capability and score points', () => {
   assert.equal(providerCapability({ provider_type: 'optica_medicala' }), 'optical');
   assert.equal(providerCapability({ provider_type: 'clinica_oftalmologica' }), 'medical');
