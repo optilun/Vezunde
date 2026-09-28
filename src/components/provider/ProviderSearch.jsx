@@ -20,7 +20,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setResults([]); setOrganizations([]); return; }
+    if (q.length < 2) { setResults([]); setOrganizations([]); setSearchError(false); return; }
     const reqId = ++reqRef.current;
     const t = setTimeout(async () => {
       setLoading(true);
