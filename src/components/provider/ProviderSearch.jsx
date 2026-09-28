@@ -44,7 +44,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
   }, [query, searchRetry]);
 
   const handleClaim = (location, options) => onClaim(location, options);
-  const showGoogleTrigger = query.trim().length >= 3 && !loading && results.length === 0 && organizations.length === 0;
+  const showGoogleTrigger = query.trim().length >= 3 && !loading && !searchError && results.length === 0 && organizations.length === 0;
 
   if (similar) {
     return (
