@@ -232,6 +232,29 @@ export async function handle(req: Request) {
       return Response.json({ error: 'Rolul aprobat nu este permis pentru acest tip de solicitare.' }, { status: 400 });
     }
 
+    // Recheck the live organization links before the first membership or status update.
+    // A stale claim must never grant access to a disputed organization relationship.
+    const approvedLocationRows = await Promise.all(approvedLocationIds.map((locationId) =>
+      svc.entities.ProviderLocation.get(locationId)
+    ));
+    if (approvedLocationRows.some((location) => !location)) {
+      return Response.json({ error: 'Una dintre locatiile aprobate nu mai exista.' }, { status: 409 });
+    }
+    if (approvedLocationRows.some((location) => (scope.organization_id || null) !== (location.organization_id || null))) {
+      return Response.json({ error: 'Una dintre locatii nu mai apartine organizatiei verificate.' }, { status: 409 });
+    }
+    const [currentLinks, currentStates] = await Promise.all([
+      loadRowsForLocationIds(svc.entities.DirectoryOrganizationLocationLink, approvedLocationIds, { query: { link_record_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
+      loadRowsForLocationIds(svc.entities.ProviderLocationDirectoryState, approvedLocationIds, { query: { state_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
+    ]);
+    const linksByLocationId = activeLinksByLocation(currentLinks);
+    const stateByLocationId = new Map(currentStates.map((state) => [state.location_id, state]));
+    if (approvedLocationRows.some((location) => ['conflict', 'rejected'].includes(
+      claimOrganizationLinkStatus(location, linksByLocationId.get(location.id) || [], stateByLocationId.get(location.id)),
+    ))) {
+      return Response.json({ error: 'Legatura unei locatii cu organizatia necesita reconciliere inainte de aprobare.' }, { status: 409 });
+    }
+    const approvedLocationById = new Map(approvedLocationRows.map((location) => [location.id, location]));
     const approvedSet = new Set(approvedLocationIds);
     const now = new Date().toISOString();
     const membershipIds = [];
