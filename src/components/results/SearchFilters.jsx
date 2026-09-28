@@ -63,7 +63,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
     setPreview((previous) => ({ status: "loading", total: previous.total }));
     const timer = window.setTimeout(() => {
       const [siruta, types, services, cas] = JSON.parse(signature);
-      base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: siruta, provider_types: types, filter_service_keys: services, cas_only: cas, limit: 1 })
+      invokeDirectoryBrowse({ locality_siruta_code: siruta, provider_types: types, filter_service_keys: services, cas_only: cas, limit: 1 }, "browse_directory_filter_preview")
         .then((response) => {
           if (response.data?.error) throw new Error(response.data.error);
           const total = Number(response.data?.pagination?.total ?? 0);
