@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     }
 
     const organizationResults = organizations
-      .filter((organization) => matchedOrganizationIds.has(organization.id))
+      .filter((organization) => organization.status !== 'inactiva' && matchedOrganizationIds.has(organization.id))
       .map((organization) => {
         const organizationLocations = claimableByOrganization.get(organization.id) || [];
         return {
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
           location_count: organizationLocations.length,
           cities: [...new Set(organizationLocations.map((row) => row.city).filter(Boolean))].slice(0, 6),
           primary_location_id: organizationLocations[0]?.id || null,
-          locations: organizationLocations.slice(0, 25).map((row) => ({
+          locations: organizationLocations.map((row) => ({
             id: row.id,
             name: row.name,
             city: row.city,
