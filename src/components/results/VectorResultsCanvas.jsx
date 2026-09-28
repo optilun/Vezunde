@@ -95,7 +95,7 @@ function releaseMap(entry) {
   entry.element.remove();
 }
 
-export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null, revealArea = null, stableCamera = false }) {
+export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null, revealArea = null, fitKey = null }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const markers = useRef(new Map());
@@ -202,14 +202,15 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     if (!ready || !hasSize) return;
     const map=mapRef.current;
     const signature=fitPoints.map(p=>`${p.id}:${p.lat}:${p.lng}`).sort().join("|");
-    if (signature===fitted.current) return;
-    // 2026-09-28 (audit /cauta, B6): pe harta Romaniei lista actuala inlocuieste fisierul static dupa
-    // prima afisare. Harta ramane unde a lasat-o vizitatorul; la revenire, pozitia salvata se reia
-    // chiar daca lista s-a schimbat intre timp (e aceeasi harta a tarii).
-    if (stableCamera && fitted.current !== null) { fitted.current = signature; return; }
+    // 2026-09-28 (audit /cauta, B6): cu `fitKey`, harta se reincadreaza doar cand se schimba cheia (pe
+    // harta Romaniei: tipul ales), nu si cand aceleasi criterii primesc date noi (lista actuala in
+    // locul fisierului static). Harta ramane unde a lasat-o vizitatorul; la revenire, pozitia salvata
+    // se reia chiar daca lista s-a schimbat intre timp.
+    const fitToken=fitKey===null ? signature : `key:${fitKey}`;
+    if (fitToken===fitted.current) return;
     const saved = fitted.current === null && storageKey ? readSearchSession().maps?.[storageKey] : null;
-    fitted.current=signature;
-    if (saved?.bounds && (saved.signature===signature || stableCamera)) {
+    fitted.current=fitToken;
+    if (saved?.bounds && (saved.signature===signature || fitKey!==null)) {
       skipInitialSelection.current = true;
       const camera = saved.camera;
       if (camera && Array.isArray(camera.center) && camera.center.length === 2 && camera.center.every(Number.isFinite) && [camera.zoom, camera.pitch, camera.bearing].every(Number.isFinite)) {
@@ -228,7 +229,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       framing.points.forEach(p=>bounds.extend([p.lng,p.lat]));
       map.fitBounds(bounds,{padding:60,maxZoom:framing.maxZoom,duration:0});
     }
-  },[fitPoints,ready,storageKey,hasSize,stableCamera]);
+  },[fitPoints,ready,storageKey,hasSize,fitKey]);
   useEffect(() => {
     if (ready && hasSize && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
   },[focusArea,ready,hasSize]);
