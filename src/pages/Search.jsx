@@ -144,12 +144,14 @@ export default function Search() {
 
   const hasCanonicalLocality = Boolean(locality?.siruta_code);
   const isDirectoryBrowse = !service && !debouncedQuery && hasCanonicalLocality;
-  const isDirectoryBrowseView =
-    !service && !query.trim() && hasCanonicalLocality;
+  // 2026-09-27 (audit /cauta, A4): vederea urmeaza textul deja asezat (debouncedQuery), la fel ca
+  // rezultatele. Inainte urma textul brut: la prima litera tastata pagina trecea pe alt aspect
+  // ("Opțiuni", pini numerotati) peste rezultatele vechi, apoi golea lista si harta.
+  const isDirectoryBrowseView = isDirectoryBrowse;
 
   const previousCriteria = useRef(null);
   useEffect(() => {
-    const criteria = JSON.stringify([service, query, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
+    const criteria = JSON.stringify([service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
     if (previousCriteria.current !== null && previousCriteria.current !== criteria) { setSelectedId(null); setHoveredId(null); }
     previousCriteria.current = criteria;
     pageRequest.current += 1;
@@ -160,11 +162,13 @@ export default function Search() {
     setMatchContext(null);
     setLoadError(false);
     setProfessionalError(false);
-  }, [service, query, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
+  }, [service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
 
   useEffect(() => {
     let active = true;
     const run = async () => {
+      // A4: cat timp vizitatorul tasteaza, ramane pe ecran ce era; cererea porneste dupa pauza.
+      if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;
       const locationMode = searchMode === RESULT_MODES.locations.key;
       setLoadError(false);
       setResults(null);
@@ -174,11 +178,9 @@ export default function Search() {
         return;
       }
 
-      if (debouncedQuery !== query.trim()) return;
       try {
         if (isDirectoryBrowse) {
-          const response = await base44.functions.invoke(
-            "browseDirectoryProviders",
+          const response = await invokeDirectoryBrowse(
             {
               locality_siruta_code: locality.siruta_code,
               provider_types: locationMode ? providerType.split(",").filter(Boolean) : [], filter_service_keys: locationMode ? filterServiceKeys : [], cas_only: locationMode && casOnly,
@@ -191,7 +193,7 @@ export default function Search() {
           let page = response.data?.pagination || null;
           const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && JSON.stringify(saved.filterServiceKeys || []) === JSON.stringify(filterServiceKeys) && Boolean(saved.casOnly) === casOnly && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
           while (active && locationMode && page?.has_more && rows.size < restoreCount) {
-            const next = await base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly, limit: 50, offset: page.next_offset });
+            const next = await invokeDirectoryBrowse({ locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly, limit: 50, offset: page.next_offset });
             if (next.data?.error) throw new Error(next.data.error);
             const previousSize = rows.size;
             (next.data?.results || []).forEach((row) => rows.set(row.id, row));
@@ -206,7 +208,7 @@ export default function Search() {
         // never post-filter a truncated Top 50 or turn a CAS label into an inferred promise.
         let directoryFilterIds;
         if (searchMode === RESULT_MODES.locations.key && (filterServiceKeys.length || casOnly)) {
-          const filtered = await base44.functions.invoke("browseDirectoryProviders", {
+          const filtered = await invokeDirectoryBrowse({
             locality_siruta_code: locality.siruta_code,
             provider_types: providerType.split(",").filter(Boolean),
             filter_service_keys: filterServiceKeys.length ? filterServiceKeys : casOnly ? (service ? [service] : resolveServiceSearchQuery(debouncedQuery).service_keys) : [], cas_only: casOnly,
@@ -272,7 +274,7 @@ export default function Search() {
     const token = ++pageRequest.current;
     setMoreLoading(true); setMoreError(false);
     try {
-      const response = await base44.functions.invoke("browseDirectoryProviders", {
+      const response = await invokeDirectoryBrowse({
         locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
         limit: 50, offset: pagination.next_offset,
       });
