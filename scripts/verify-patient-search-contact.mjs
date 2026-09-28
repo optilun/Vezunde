@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
+  PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION,
   PATIENT_SEARCH_CONTACT_MIN_SELF_AGE,
   PATIENT_SEARCH_CONTACT_MODE,
   PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
@@ -107,6 +108,20 @@ check('consent is required, with the current version', () => {
   rejects(valid({ consent: { processing: true, version: 'patient-search-contact-v0' } }), 'consent');
 });
 
+// 2026-09-28 (aprobat de owner): acord separat, optional, pentru noutati si oferte.
+check('marketing consent is separate, optional and off by default', () => {
+  const withoutMarketing = sanitizePatientSearchContact(valid());
+  assert.equal(withoutMarketing.consent.marketing, false, 'fara bifa, fara oferte');
+  assert.equal(withoutMarketing.consent.marketing_version, '');
+  const truthyButNotTrue = sanitizePatientSearchContact(valid({ consent: { ...CONSENT, marketing: 'da', marketing_version: PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION } }));
+  assert.equal(truthyButNotTrue.consent.marketing, false, 'doar un true explicit conteaza');
+  const withMarketing = sanitizePatientSearchContact(valid({ consent: { ...CONSENT, marketing: true, marketing_version: PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION } }));
+  assert.equal(withMarketing.consent.marketing, true);
+  assert.equal(withMarketing.consent.marketing_version, PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION);
+  rejects(valid({ consent: { ...CONSENT, marketing: true, marketing_version: 'vechi' } }), 'marketing');
+  rejects(valid({ consent: { processing: false, version: PATIENT_SEARCH_CONTACT_CONSENT_VERSION, marketing: true, marketing_version: PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION } }), 'consent');
+});
+
 check('only the search summary is kept, never free text or health answers', () => {
   const saved = sanitizePatientSearchContact(valid({
     search: {
@@ -130,7 +145,7 @@ check('entity is admin-only for every operation', () => {
   for (const operation of ['create', 'read', 'update', 'delete']) {
     assert.equal(schema.rls[operation].user_condition.role, 'admin', operation);
   }
-  for (const field of ['contact_name', 'contact_email', 'contact_phone', 'age_years', 'processing_consent_version', 'retention_until', 'linked_request_id']) {
+  for (const field of ['contact_name', 'contact_email', 'contact_phone', 'age_years', 'processing_consent_version', 'retention_until', 'linked_request_id', 'marketing_consent', 'marketing_consent_version', 'marketing_consent_at', 'marketing_unsubscribed_at']) {
     assert.ok(schema.properties[field], `lipseste campul ${field}`);
   }
   assert.ok(schema.required.includes('processing_consent'));
@@ -153,6 +168,8 @@ check('server saves through createPatientRequest, before the request contract', 
   assert.match(saveFunction, /retention_policy_key: PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY/);
   assert.doesNotMatch(saveFunction, /retention_until/);
   assert.equal(PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY, 'patient-search-contact-until-withdrawal-v1');
+  assert.match(saveFunction, /marketing_consent: submission\.consent\.marketing,/);
+  assert.match(saveFunction, /marketing_consent_at: submission\.consent\.marketing \? nowIso : null/);
   assert.doesNotMatch(saveFunction, /PatientRequest\.create|ProviderLead|RequestMatch|InvokeLLM/, 'nu creeaza cereri, leaduri sau apeluri AI');
   assert.match(entry, /linkSearchContactToRequest\(svc, contactIdentityHash, requestRecord\.id, now\)\.catch\(\(\) => null\)/, 'legarea de cerere nu poate strica salvarea cererii');
   assert.match(entry, /error instanceof PatientSearchContactValidationError/);
@@ -172,6 +189,11 @@ const card = source('src/components/intake2/ConversationalCard.jsx');
 
 check('screen: consent unchecked by default, saves only on submit, skip saves nothing', () => {
   assert.match(screen, /const \[consent, setConsent\] = useState\(false\)/);
+  assert.match(screen, /const \[marketingConsent, setMarketingConsent\] = useState\(false\)/, 'bifa pentru oferte porneste nebifata');
+  assert.match(screen, /Vreau să primesc noutăți și oferte de la VIASEE pe email sau telefon\./);
+  assert.match(screen, /\(opțional\)/);
+  assert.match(screen, />\s*Politica de confidențialitate\s*</, 'linkul spune clar ce deschide');
+  assert.doesNotMatch(screen, /de acord cu (politica|Politica)/, 'politica se citeste, nu se accepta cu o bifa');
   assert.equal(screen.match(/savePatientSearchContact\(/g)?.length, 1, 'un singur apel de salvare');
   const submit = screen.slice(screen.indexOf('const submit = async'), screen.indexOf('const invalidProps'));
   assert.match(submit, /savePatientSearchContact\(/, 'salvarea e doar in submit');
@@ -239,6 +261,8 @@ check('privacy policy describes the data left during a search', () => {
   assert.match(privacy, /Datele lăsate în timpul unei căutări/);
   assert.match(privacy, /Poți sări peste acest pas/);
   assert.match(privacy, /Nu le transmitem locațiilor/);
+  assert.match(privacy, /Separat și opțional, poți alege să primești noutăți și oferte/);
+  assert.match(privacy, /opțiune de dezabonare/);
   assert.match(privacy, /până când îți retragi acordul sau ne ceri ștergerea lor/);
   assert.match(privacy, /lastUpdated="28 septembrie 2026"/);
   assert.match(source('src/components/legal/LegalPageLayout.jsx'), /lastUpdated = LEGAL_LAST_UPDATED/, 'celelalte pagini legale isi pastreaza data');
