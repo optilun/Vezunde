@@ -294,7 +294,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
             const target=Math.min(17,Math.max(current+1,clusterExpansionZoom(cluster.points,current)));
             map.easeTo({center:[cluster.lng,cluster.lat],zoom:target,duration:450});
           }
-        } else {openCluster(null);select?.(cluster.lead.id);}
+        } else {openCluster(null);requestMapCardFocus();select?.(cluster.lead.id);}
       };
       el.onmouseenter=()=>{if(cluster.count===1)handlers.current.onHover?.(cluster.lead.id);};
       el.onmouseleave=()=>handlers.current.onHover?.(null);
@@ -369,7 +369,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       <div className="pointer-events-auto w-[300px]">{selectedCard}</div>
     </div>}
     {controlSlot && createPortal(<div className="flex flex-col items-start gap-2">
-      <button type="button" disabled={!styleReady} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="viasee-map-control h-9 w-9 text-[12px] font-bold disabled:opacity-50">{threeD?"2D":"3D"}</button>
+      <button type="button" disabled={!styleReady} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="viasee-map-control relative h-9 w-9 text-[12px] font-bold before:absolute before:-inset-1 before:content-[''] disabled:opacity-50">{threeD?"2D":"3D"}</button>
       {threeD && zoom<14 && <span className="max-w-40 rounded-xl bg-card p-2 text-xs shadow">Apropie harta pentru a vedea clădirile 3D.</span>}
     </div>, controlSlot)}
   </>;
