@@ -10,6 +10,7 @@ import DecisionConfidencePanel from "@/components/results/DecisionConfidencePane
 import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
 import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
+import { requestMapCardFocus } from "@/lib/mapCardFocus";
 
 // Cardul de rezultat.
 //
@@ -187,7 +188,7 @@ export default function ResultCard({
         >
           Vezi profilul <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
         </Link>
-        {onSelect && (hasMapPoint ?? Boolean(mapPointFromResult(location))) && <button type="button" onClick={() => onSelect(location)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"><Map aria-hidden="true" className="h-4 w-4" />Hartă</button>}
+        {onSelect && (hasMapPoint ?? Boolean(mapPointFromResult(location))) && <button type="button" onClick={() => { requestMapCardFocus(); onSelect(location); }} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"><Map aria-hidden="true" className="h-4 w-4" />Hartă</button>}
         {phoneHref && (
           <a
             href={phoneHref}
