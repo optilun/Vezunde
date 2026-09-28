@@ -1,6 +1,7 @@
 import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { NATIONAL_MAP_SNAPSHOT_PATH, nationalMapSnapshotFromResponse } from './shared/nationalMapSnapshot.js'
 
 // Codul unei pagini incepe sa se descarce odata cu scriptul principal, nu abia dupa ce acesta a
 // rulat si a ajuns la ruta. Scriptul injectat nu face nimic pe alte adrese (`skipIf` este o conditie
@@ -45,6 +46,40 @@ function preloadProfileRoute() {
   return preloadRouteChunk('viasee-preload-profile-route', /[\\/]src[\\/]pages[\\/]ProviderProfile\.jsx$/, '!/^\\/furnizor\\/[^\\/]+\\/?$/.test(location.pathname)')
 }
 
+// 2026-09-28 (audit /cauta, B6). La build (Publish), lista publica a hartii Romaniei se scrie intr-un
+// fisier static (vezi shared/nationalMapSnapshot.js). Daca lista nu poate fi citita in 20 s, build-ul
+// continua fara fisier, iar pagina cere lista ca pana acum. Nu schimba ce contine harta.
+const VIASEE_APP_ID = '6a48cb9d04fa7f999d8a8054'
+function nationalMapSnapshot() {
+  return {
+    name: 'viasee-national-map-snapshot',
+    apply: 'build',
+    async buildStart() {
+      if (process.env.VIASEE_SKIP_NATIONAL_MAP_SNAPSHOT === '1') return
+      const appId = process.env.VITE_BASE44_APP_ID || VIASEE_APP_ID
+      const serverUrl = (process.env.BASE44_SERVER_URL || 'https://base44.app').replace(/\/+$/, '')
+      try {
+        const response = await fetch(`${serverUrl}/api/apps/${appId}/functions/browseDirectoryProviders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-App-Id': appId },
+          body: JSON.stringify({ map_scope: 'national' }),
+          signal: AbortSignal.timeout(20_000),
+        })
+        const body = response.ok ? await response.json() : null
+        const snapshot = nationalMapSnapshotFromResponse(body)
+        if (!snapshot) {
+          this.warn(`Harta Romaniei: fisierul static nu s-a scris (HTTP ${response.status}).`)
+          return
+        }
+        this.emitFile({ type: 'asset', fileName: NATIONAL_MAP_SNAPSHOT_PATH.slice(1), source: JSON.stringify(snapshot) })
+        console.log(`Harta Romaniei: ${snapshot.results.length} puncte in ${NATIONAL_MAP_SNAPSHOT_PATH}.`)
+      } catch (error) {
+        this.warn(`Harta Romaniei: fisierul static nu s-a scris (${error?.message || error}).`)
+      }
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -60,5 +95,6 @@ export default defineConfig({
     react(),
     preloadHomeRoute(),
     preloadProfileRoute(),
+    nationalMapSnapshot(),
   ]
 });
