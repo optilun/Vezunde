@@ -50,8 +50,13 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 // A4
 {
   const search = read('src/pages/Search.jsx');
-  assert.match(search, /\}, \[service, debouncedQuery, locality\?\.siruta_code, providerType, filterServiceKeys, casOnly\]\);/, 'resetarea urmeaza textul asezat');
+  assert.match(search, /const typing = hasCanonicalLocality && debouncedQuery !== query\.trim\(\);/);
+  const reset = search.slice(search.indexOf('const previousCriteria = useRef(null);'), search.indexOf('}, [typing, service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);'));
+  assert.ok(reset.length > 50, 'resetarea urmeaza textul asezat');
+  assert.match(reset, /if \(typing\) return;/, 'nimic nu se reseteaza cat timp se tasteaza');
+  assert.match(reset, /if \(previousCriteria\.current === criteria\) return;/, 'aceleasi criterii: fara resetare');
   assert.doesNotMatch(search, /\}, \[service, query, locality\?\.siruta_code/);
+  assert.match(search, /useEffect\(\(\) => \{ if \(!typing\) setSearchMapKey\(liveMapKey\); \}, \[typing, liveMapKey\]\);/, 'lista si harta nu se remonteaza la prima litera');
   const run = search.slice(search.indexOf('const run = async () => {'), search.indexOf('try {', search.indexOf('const run = async () => {')));
   assert.ok(run.indexOf('if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;') >= 0, 'asteapta pauza');
   assert.ok(run.indexOf('if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;') < run.indexOf('setResults(null);'), 'nu goleste lista inainte de pauza');
