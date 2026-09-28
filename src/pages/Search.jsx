@@ -8,8 +8,8 @@ import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
-import ProviderCard from "@/components/ProviderCard";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
+import ServiceMatchDetails from "@/components/results/ServiceMatchDetails";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
@@ -518,12 +518,14 @@ export default function Search() {
               results={mapResults || results}
               listResults={locationList}
               storageKey={searchMapKey}
-              integratedMapAction={isDirectoryBrowseView}
-              listLayout={isDirectoryBrowseView ? "grid" : "cards"}
+              integratedMapAction
+              // 2026-09-28 (audit /cauta, E1): un singur card pe /cauta. La cautarea dupa serviciu,
+              // cardul poarta numarul pinului si detaliile potrivirii; ordinea ramane cea primita.
+              listLayout="grid"
               numbered={!isDirectoryBrowseView}
-              renderCard={(location, onShowMap) => isDirectoryBrowseView
+              renderCard={(location, onShowMap, rank) => isDirectoryBrowseView
                 ? <DirectoryResultCard location={location} onShowMap={onShowMap} />
-                : <ProviderCard location={location} />}
+                : <DirectoryResultCard location={location} onShowMap={onShowMap} rank={rank} details={<ServiceMatchDetails location={location} />} />}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={setSelectedId}
