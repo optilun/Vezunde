@@ -514,6 +514,32 @@ function EmptyProfessionals({ locality }) {
 
 // Serviciul e ales, localitatea lipseste: pasul urmator spus clar, cu orasele mari si
 // localitatile recente la un click distanta.
+// 2026-09-27 (audit /cauta, A2): pe telefon si tableta, cand controalele de cautare ies din ecran,
+// ramane sub antet o singura bara (ca la Airbnb) care spune ce cauti si unde. Apasata, duce inapoi
+// la controale. Pe desktop controalele raman fixate si bara nu se afiseaza.
+function CompactSearchBar({ query, locality }) {
+  const backToControls = () => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "instant" : "smooth" });
+  };
+  return (
+    <div data-compact-search className="fixed inset-x-0 z-30 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden" style={{ top: "var(--search-nav-height)" }}>
+      <button
+        type="button"
+        onClick={backToControls}
+        className="mx-auto flex min-h-11 w-full max-w-xl items-center gap-3 rounded-full border border-[#e1e3e8] bg-card py-1 pl-4 pr-1 text-left shadow-[0_2px_10px_rgba(30,40,60,0.07)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <SearchIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-[#4f6080]" />
+        <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="font-semibold text-foreground">{query || "Orice serviciu"}</span>
+          <span className="text-muted-foreground"> · {locality?.name || "Toată România"}</span>
+        </span>
+        <span className="inline-flex min-h-9 shrink-0 items-center rounded-full bg-secondary px-3 text-xs font-semibold text-foreground">Modifică</span>
+      </button>
+    </div>
+  );
+}
+
 function SelectLocalityNotice({ onChoose, onFocusField }) {
   const [recent] = useState(() => readRecentLocalities().map(prettyLocality));
   const recentCodes = new Set(recent.map((item) => item.siruta_code));
