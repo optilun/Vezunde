@@ -19,7 +19,9 @@ import { getApprovedPatientGuidanceQuestion } from './patientGuidanceQuestionCat
 // confirma, codul VIASEE alege intrebarile, potrivirea si ordinea rezultatelor.
 // v2.1 (2026-09-24, dupa testul live): regula pentru afectiunile cronice fara simptom nou si
 // exemplul pentru tensiunea oculara; versiunea separata face vizibila intrarea in productie.
-export const PATIENT_NEED_INTERPRETATION_VERSION = 'patient-need-ai-v2.1';
+// v2.2 (2026-09-28, audit sectiunea 18): reguli pentru produse cu brand, lentile de contact
+// cumparate de cine le poarta deja si reteta noua de ochelari (optometrie, nu consult medical).
+export const PATIENT_NEED_INTERPRETATION_VERSION = 'patient-need-ai-v2.2';
 
 export const PATIENT_INTENT_KEYS = Object.freeze([
   'control_vedere',
@@ -96,6 +98,11 @@ const SERVICE_RULES = Object.freeze([
   'Do not add products or services the patient did not ask for: no sunglasses, accessories or safety glasses for a repair, and no surgery or treatment for a symptom unless the patient explicitly asks for it.',
   'For a symptom or an eye disease prefer consultation services (the general ophthalmology consultation or the matching sub-specialty consultation). For a repair use the specific repair or adjustment key. For a referral use the exact investigation key.',
   'Each catalog entry has performed_by listing which professionals deliver it. When the patient explicitly asks for a doctor ("medic", "doctor", "oftalmolog"), prefer services performed_by ophthalmologist. When the request is a routine vision check without asking for a doctor, prefer optometry services. Do not silently upgrade a routine request into a medical consultation.',
+  // 2026-09-28, audit sectiunea 18: in testul live, "vreau lentile de contact Acuvue" primea
+  // adaptare si consult (nevoie medicala), deci opticile disparea din rezultate.
+  'A patient who already wears contact lenses and wants to buy or replace them (a brand such as Acuvue, Air Optix, Biofinity or Dailies, or monthly or daily lenses) needs the product: use contact_lenses or the specific lens type. Use contact_lens_consultation or contact_lens_fitting only for a first fitting, a problem with the lenses, or when the patient asks for an examination.',
+  'A request for a new prescription, new diopters or an eye test for glasses ("reteta", "dioptrii", "consult pentru ochelari") without a symptom or a known eye disease is a routine optometry need: use refraction or optometry_consultation, not an ophthalmology consultation, unless the patient explicitly asks for a doctor.',
+  'A brand or model of frames, glasses or sunglasses (for example Ray-Ban, Oakley, Gucci) is a product: use frames, eyeglasses or sunglasses.',
 ]);
 
 const SAFETY_RULES = Object.freeze([
@@ -200,6 +207,26 @@ export const PATIENT_NEED_INTERPRETATION_EXAMPLES = Object.freeze([
       for_whom: 'adult',
       age_group: 'adult',
       evidence_phrases: ['tensiune oculara mare', 'un control'],
+    }),
+  },
+  {
+    text: 'port lentile de contact Acuvue si vreau o cutie noua',
+    output: exampleOutput({
+      intent: 'lentile_contact',
+      service_keys: ['contact_lenses'],
+      for_whom: 'adult',
+      age_group: 'adult',
+      evidence_phrases: ['port lentile de contact', 'cutie noua'],
+    }),
+  },
+  {
+    text: 'am nevoie de o reteta noua pentru ochelari',
+    output: exampleOutput({
+      intent: 'ochelari_lentile',
+      service_keys: ['refraction', 'optometry_consultation', 'eyeglasses'],
+      for_whom: 'adult',
+      age_group: 'adult',
+      evidence_phrases: ['reteta noua pentru ochelari'],
     }),
   },
   {

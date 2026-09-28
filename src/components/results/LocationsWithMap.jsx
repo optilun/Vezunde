@@ -32,9 +32,9 @@ export default function LocationsWithMap({
   // card si pinul lui de pe harta poarta acelasi numar (1, 2, 3...). Numerotarea doar afiseaza
   // ordinea primita de la server; nu o schimba.
   numbered = false,
-  // 2026-09-28 (audit /cauta, B6): harta nu se reincadreaza cand datele se schimba dupa prima afisare
-  // (harta Romaniei: fisierul static, apoi lista actuala).
-  stableCamera = false,
+  // 2026-09-28 (audit /cauta, B6): cu `fitKey`, harta se reincadreaza doar cand se schimba cheia, nu
+  // si cand aceleasi criterii primesc date noi (harta Romaniei: fisierul static, apoi lista actuala).
+  fitKey = null,
 }) {
   const gridLayout = listLayout === "grid";
   // Cheia este ordinea id-urilor, nu tabloul: o lista reconstruita cu aceeasi ordine nu redeseneaza pinii.
@@ -209,7 +209,7 @@ export default function LocationsWithMap({
               storageKey={storageKey}
               focusArea={focusArea}
               rankById={rankById}
-              stableCamera={stableCamera}
+              fitKey={fitKey}
               className={fixedDesktop ? "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-full" : "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"}
             />
             {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}

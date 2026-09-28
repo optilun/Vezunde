@@ -96,7 +96,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       snapshotAt,
     });
     // 2026-09-28 (audit /cauta, B6): fisierul static al hartii (scris la Publish) apare imediat;
-    // lista actuala il inlocuieste cand soseste, fara sa mute harta (stableCamera). Daca lista
+    // lista actuala il inlocuieste cand soseste, fara sa mute harta (fitKey). Daca lista
     // actuala nu vine, harta ramane cu fisierul si spune de cand este.
     loadNationalMapSnapshot().then((snapshot) => {
       if (!active || !snapshot || live === "ok") return;
@@ -299,7 +299,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               onToggleMobileView={() => setMobileView((view) => view === "map" ? "list" : "map")}
               onViewportChange={handleViewport}
               storageKey="national"
-              stableCamera
+              fitKey={`national:${type}`}
             >
               {inView.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-sm">Nu sunt locații în această zonă. Deplasează harta sau micșorează zoom-ul.</p>}
               {inView.length > pageSize && <button type="button" onClick={() => setPageSize((size) => size + 24)} className="mt-5 min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold hover:bg-secondary">Arată mai multe</button>}

@@ -75,7 +75,7 @@ export default function ResultsMap({
   // potrivirii. Pinul arata acelasi numar ca si cardul. Harta nu schimba ordinea.
   rankById = null,
   // 2026-09-28 (audit /cauta, B6): vezi VectorResultsCanvas (fara reincadrare la date noi).
-  stableCamera = false,
+  fitKey = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
   // Starea „vazut” se citeste o data la deschiderea hartii (revenirea de pe un profil o redeschide).
@@ -160,7 +160,7 @@ export default function ResultsMap({
   return (
     <div className={`relative isolate ${className}`}>
       <Suspense fallback={VECTOR_LOADING}>
-        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} stableCamera={stableCamera} />
+        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} fitKey={fitKey} />
       </Suspense>
 
       {outsideCount > 0 && (
