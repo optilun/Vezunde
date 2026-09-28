@@ -261,7 +261,7 @@ export async function handle(req: Request) {
     const approvedLocations = [];
     for (const child of includedChildren) {
       if (!approvedSet.has(child.location_id)) continue;
-      const location = await svc.entities.ProviderLocation.get(child.location_id).catch(() => null);
+      const location = approvedLocationById.get(child.location_id);
       if (!location) return Response.json({ error: 'Una dintre locatiile aprobate nu mai exista.' }, { status: 409 });
       if ((scope.organization_id || null) !== (location.organization_id || null)) {
         return Response.json({ error: 'Una dintre locatii nu mai apartine organizatiei verificate.' }, { status: 409 });
