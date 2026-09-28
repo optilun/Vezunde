@@ -14,6 +14,7 @@ import {
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { readVisitedProfiles } from "@/lib/visitedProfiles";
 import { loadVectorCanvas } from "./vectorCanvasLoader";
+import { requestMapCardFocus } from "@/lib/mapCardFocus";
 const LegacyResultsMap = lazy(() => import("./LegacyResultsMap"));
 
 // 2026-09-24. Harta vectoriala (MapLibre) se incarca separat de pagina (vezi vectorCanvasLoader.js):
@@ -164,7 +165,8 @@ export default function ResultsMap({
         <div className="pointer-events-none absolute left-14 right-3 top-3 z-[450] flex justify-center">
           <p role="status" className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-card/95 py-1 pl-3.5 pr-1 text-xs font-medium text-muted-foreground shadow-[0_0_0_1px_rgba(23,23,23,0.06),0_2px_8px_rgba(23,35,55,0.14)]">
             {outsideCount === 1 ? "O locație e departe de celelalte" : `${outsideCount} locații sunt departe de celelalte`}
-            <button type="button" onClick={revealAll} className="min-h-9 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            {/* C3: pastila ramane de 36 px, zona de apasare are 44 px (pseudo-elementul). */}
+            <button type="button" onClick={revealAll} className="relative min-h-9 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition-colors before:absolute before:-inset-1 before:rounded-full before:content-[''] hover:bg-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
               {outsideCount === 1 ? "Arat-o" : "Arată-le"}
             </button>
           </p>
@@ -183,7 +185,7 @@ export default function ResultsMap({
           <ul className="divide-y divide-border">
             {openCluster.points.map((point) => (
               <li key={point.id}>
-                <button type="button" onClick={() => { setOpenClusterKey(null); if (onSelect) onSelect(point.id); }}
+                <button type="button" onClick={() => { setOpenClusterKey(null); requestMapCardFocus(); if (onSelect) onSelect(point.id); }}
                   className="min-h-11 w-full rounded-lg px-2 py-3 text-left hover:bg-secondary focus-visible:outline focus-visible:outline-2">
                   <span className="block text-sm font-semibold">{point.name}</span>
                   <span className="block text-xs text-muted-foreground">{shortTypeLabel(point.provider_type)}{point.address ? ` · ${point.address}` : ""}</span>
