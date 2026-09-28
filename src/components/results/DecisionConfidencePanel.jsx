@@ -46,7 +46,7 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
   );
 
   const segments = (
-    <span className="inline-flex shrink-0 items-center gap-1" aria-label={`${filled} din 3 niveluri de dovezi confirmate`}>
+    <span className="inline-flex shrink-0 items-center gap-1" role="img" aria-label={`${filled} din 3 niveluri de dovezi confirmate`}>
       {[1, 2, 3].map((segment) => (
         <span
           key={segment}
@@ -59,7 +59,7 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
 
   if (compact) {
     return (
-      <section className="mt-3 rounded-xl border border-[#d8dee8] bg-[#eff1f5]/60 px-3 py-1" aria-label="Increderea in potrivire">
+      <div className="mt-3 rounded-xl border border-[#d8dee8] bg-[#eff1f5]/60 px-3 py-1" role="group" aria-label="Încrederea în potrivire">
         <button
           type="button"
           onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
@@ -74,12 +74,14 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
           </span>
         </button>
         {expanded && details}
-      </section>
+      </div>
     );
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-3.5" aria-label="Increderea in potrivire">
+    // 2026-09-28 (audit /cauta, C1): grup, nu regiune. Fiecare card avea o regiune cu acelasi nume,
+    // deci lista de repere a cititorului de ecran se umplea cu zeci de intrari identice.
+    <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-3.5" role="group" aria-label="Încrederea în potrivire">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-extrabold text-foreground">{confidence.label}</p>
@@ -88,7 +90,7 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-1.5" aria-label={`${filled} din 3 niveluri de dovezi confirmate`}>
+      <div className="mt-3 grid grid-cols-3 gap-1.5" role="img" aria-label={`${filled} din 3 niveluri de dovezi confirmate`}>
         {[1, 2, 3].map((segment) => (
           <span
             key={segment}
@@ -109,6 +111,6 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
       </button>
 
       {expanded && details}
-    </section>
+    </div>
   );
 }
