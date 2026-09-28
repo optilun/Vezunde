@@ -193,7 +193,9 @@ export default function LocationsWithMap({
         </div>
 
         {hasPositions && (
-          <aside className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
+          {/* C4 (2026-09-28): div, nu <aside>: harta e parte din rezultate, nu continut complementar
+              (axe: „landmark-complementary-is-top-level”). Harta are propria regiune etichetata. */}
+          <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={results || []}
               selectedId={selectedId}
@@ -208,7 +210,7 @@ export default function LocationsWithMap({
             />
             {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
             {mapActions && <div className="absolute right-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]">{mapActions}</div>}
-          </aside>
+          </div>
         )}
       </div>
     </>
