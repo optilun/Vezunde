@@ -217,6 +217,16 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // buildRecommendationScore, assignRecommendationBuckets, selectia Top 3 si ordinea
     // fallbackului structural raman identice. Vezi scripts/verify-locality-equivalent-codes.mjs.
     '1ec025eafd514771a3c3a47afec1d2a22e8e7f40',
+    // 2026-09-28, politica de tip de locatie (cerut explicit de Alex: "sa fie recomandate
+    // inainte opticile... ia o decizie de expert", audit sectiunea 18). Din
+    // base44/shared/providerTypePreference.js: locatiile cu servicii confirmate primesc
+    // `provider_type_fit` (15 puncte pentru tipul potrivit nevoii) adaugat la recommendation_score,
+    // iar fallbackul structural alege dupa politica (doar cabinete la probleme medicale; cabinete
+    // apoi optici la copii si nevoie neclara; optici apoi cabinete la control si lentile; optici
+    // la produse si reparatii), nu dupa nivelul nevoii. buildRecommendationScore si
+    // assignRecommendationBuckets raman identice; amprenta ramurii de potrivire devine '60f56d96'.
+    // Raspunsul include `provider_type_preference`, iar intrarile structurale `structural_group_note`.
+    '5d60a542733ff96bf475e175d684a88c48cd063c',
   ]),
 });
 
