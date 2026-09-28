@@ -22,6 +22,13 @@ import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom
 // Filtrarea dupa tip se face in browser, pe punctele deja primite: sunt sub o mie, iar o
 // re-interogare la fiecare bifa ar fi mai lenta decat filtrarea locala.
 
+function formatSnapshotDate(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })
+    : "ultima actualizare";
+}
+
 export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [saved] = useState(() => readSearchSession().national || {});
   const scrollRestored = useRef(false);
@@ -91,13 +98,11 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     // 2026-09-28 (audit /cauta, B6): fisierul static al hartii (scris la Publish) apare imediat;
     // lista actuala il inlocuieste cand soseste, fara sa mute harta (stableCamera). Daca lista
     // actuala nu vine, harta ramane cu fisierul si spune de cand este.
-    if (retry === 0) {
-      loadNationalMapSnapshot().then((snapshot) => {
-        if (!active || !snapshot || live === "ok") return;
-        snapshotBuiltAt = snapshot.snapshot_built_at;
-        show(snapshot, live === "failed" ? snapshotBuiltAt : null);
-      });
-    }
+    loadNationalMapSnapshot().then((snapshot) => {
+      if (!active || !snapshot || live === "ok") return;
+      snapshotBuiltAt = snapshot.snapshot_built_at;
+      show(snapshot, live === "failed" ? snapshotBuiltAt : null);
+    });
     // Incarcatorul comun reincearca singur la erori trecatoare (limita de trafic, 5xx) si tine
     // harta cateva minute; vizitatorul vede un mesaj clar, nu textul tehnic al erorii.
     loadNationalDirectoryMap({ force: retry > 0 })
@@ -221,6 +226,10 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         </div>
       </details>
       <p aria-live="polite" className="sr-only">{announcedCount === null ? "" : `${announcedCount} ${announcedCount === 1 ? "locație" : "locații"} în zona vizibilă`}</p>
+      {state.snapshotAt && <p role="status" className="mt-2 text-xs leading-relaxed text-[#8a4b2a]">
+        Harta arată locațiile din {formatSnapshotDate(state.snapshotAt)}. Lista actuală nu s-a putut încărca acum.{" "}
+        <button type="button" onClick={() => setRetry((value) => value + 1)} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Reîncearcă</button>
+      </p>}
       {geoMessage && <p role="status" className="mt-2 text-sm text-muted-foreground">{geoMessage}</p>}
       {origin && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>Zonă inițială: aprox. {radiusKm} km.</span>
@@ -290,6 +299,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               onToggleMobileView={() => setMobileView((view) => view === "map" ? "list" : "map")}
               onViewportChange={handleViewport}
               storageKey="national"
+              stableCamera
             >
               {inView.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-sm">Nu sunt locații în această zonă. Deplasează harta sau micșorează zoom-ul.</p>}
               {inView.length > pageSize && <button type="button" onClick={() => setPageSize((size) => size + 24)} className="mt-5 min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold hover:bg-secondary">Arată mai multe</button>}
