@@ -330,7 +330,7 @@ export default function OrganizationProfile() {
           } : undefined}
           className="font-medium text-foreground underline underline-offset-2"
         >
-          revendica profilul
+          {['claimed', 'verified'].includes(organization.profile_control_status) ? 'solicita acces la profil' : 'revendica profilul'}
         </Link>{" "}
         pentru a actualiza datele.
       </p>
