@@ -4,6 +4,7 @@ import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
+import { requestMapCardFocus } from "@/lib/mapCardFocus";
 
 export default function LocationsWithMap({
   results,
@@ -130,12 +131,15 @@ export default function LocationsWithMap({
     <>
       {hasPositions && (
         <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 lg:hidden">
+          {/* Eticheta se schimba („Vezi lista” / „Vezi pe hartă”), deci butonul nu are si aria-pressed:
+              cele doua impreuna s-ar contrazice. */}
           <button
             type="button"
+            data-map-toggle
             onClick={onToggleMobileView}
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-lg transition-colors hover:border-foreground/40"
           >
-            {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
+            {mobileView === "map" ? <List aria-hidden="true" className="h-4 w-4" /> : <MapIcon aria-hidden="true" className="h-4 w-4" />}
             {mobileView === "map" ? "Vezi lista" : "Vezi pe hartă"}
           </button>
         </div>
@@ -176,10 +180,10 @@ export default function LocationsWithMap({
                 )}
                 {renderCard(
                   location,
-                  mapPointFromResult(location) ? () => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined,
+                  mapPointFromResult(location) ? () => { requestMapCardFocus(); onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined,
                   rankById?.has(location.id) && mapPointFromResult(location) ? rankById.get(location.id) : null,
                 )}
-                {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
+                {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { requestMapCardFocus(); onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon aria-hidden="true" className="h-4 w-4" /> Vezi pe hartă</button>}
               </div>
             ))}
           </div>
