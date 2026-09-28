@@ -76,7 +76,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   useEffect(() => {
     let active = true;
     let live = "pending";
-    let showingSnapshot = false;
+    let snapshotBuiltAt = null;
     setState({ status: "loading", points: [], meta: null, error: "" });
     const show = (data, snapshotAt = null) => setState({
       status: "ready",
@@ -94,8 +94,8 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     if (retry === 0) {
       loadNationalMapSnapshot().then((snapshot) => {
         if (!active || !snapshot || live === "ok") return;
-        showingSnapshot = true;
-        show(snapshot, live === "failed" ? snapshot.snapshot_built_at : null);
+        snapshotBuiltAt = snapshot.snapshot_built_at;
+        show(snapshot, live === "failed" ? snapshotBuiltAt : null);
       });
     }
     // Incarcatorul comun reincearca singur la erori trecatoare (limita de trafic, 5xx) si tine
@@ -108,11 +108,8 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       .catch(() => {
         live = "failed";
         if (!active) return;
-        if (showingSnapshot) {
-          setState((current) => current.status === "ready" ? { ...current, snapshotAt: current.snapshotAt || "unknown" } : current);
-          loadNationalMapSnapshot().then((snapshot) => {
-            if (active && snapshot) setState((current) => current.status === "ready" ? { ...current, snapshotAt: snapshot.snapshot_built_at } : current);
-          });
+        if (snapshotBuiltAt) {
+          setState((current) => ({ ...current, snapshotAt: snapshotBuiltAt }));
           return;
         }
         setState({
