@@ -362,7 +362,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     return () => { resize.disconnect(); map.off("move",place); map.off("resize",place); };
   },[selectedId,hasCard,ready]);
   return <>
-    <div ref={container} className="viasee-map-host h-full w-full bg-[#F2EFE8]" aria-label="Harta detaliată a locațiilor" />
+    <div ref={container} className="viasee-map-host h-full w-full bg-[#F2EFE8]" role="region" aria-label="Harta detaliată a locațiilor" />
     {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-[#F2EFE8] text-sm">Se încarcă harta detaliată...</div>}
     {ready && !styleReady && <p role="status" className="pointer-events-none absolute bottom-3 left-3 z-40 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm">Se încarcă fundalul hărții...</p>}
     {ready && hasCard && <div ref={cardAnchor} className="pointer-events-none absolute left-0 top-0 z-[450]" style={{visibility:"hidden"}}>
