@@ -18,6 +18,7 @@ import {
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import { requestMapCardFocus } from "@/lib/mapCardFocus";
 import { readVisitedProfiles } from "@/lib/visitedProfiles";
 import { withCartoApiKey } from "@/lib/cartoBasemap";
 
@@ -299,6 +300,7 @@ export default function ResultsMap({
                     return;
                   }
                   setOpenClusterKey(null);
+                  requestMapCardFocus();
                   if (onSelect) onSelect(cluster.lead.id);
                 },
                 mouseover: () => { if (onHover && cluster.count === 1) onHover(cluster.lead.id); },
@@ -321,7 +323,7 @@ export default function ResultsMap({
           <ul className="divide-y divide-border">
             {openCluster.points.map((point) => (
               <li key={point.id}>
-                <button type="button" onClick={() => { setOpenClusterKey(null); if (onSelect) onSelect(point.id); }}
+                <button type="button" onClick={() => { setOpenClusterKey(null); requestMapCardFocus(); if (onSelect) onSelect(point.id); }}
                   className="min-h-11 w-full rounded-lg px-2 py-3 text-left hover:bg-secondary focus-visible:outline focus-visible:outline-2">
                   <span className="block text-sm font-semibold">{point.name}</span>
                   <span className="block text-xs text-muted-foreground">{shortTypeLabel(point.provider_type)}{point.address ? ` · ${point.address}` : ""}</span>
