@@ -188,7 +188,8 @@ Deno.serve(async (req) => {
       } : null,
       candidate_locations: candidateLocations,
       supports_selected_locations: candidateLocations.filter((location) => !location.already_has_access).length > 1,
-      supports_organization_claim: Boolean(organization),
+      supports_organization_claim: Boolean(organization) && !['conflict', 'rejected'].includes(primaryLinkStatus),
+      organization_link_review_required: ['conflict', 'rejected'].includes(primaryLinkStatus),
       // Sugestii de retea, doar cand nu exista organizatie (2026-08-19). Interfata le
       // propune explicit; nu intra automat in revendicare.
       network_suggestions: networkSuggestions,
