@@ -32,7 +32,9 @@ assert.match(card, /Public directory information only\. No paid rank or recommen
 const map = read('src/pages/DirectoryMap.jsx');
 assert.match(map, /distanceKm=\{origin \? distanceKm\(origin, point\) : null\}/);
 assert.match(map, /listLayout="grid"/);
-assert.match(read('src/pages/Search.jsx'), /listLayout=\{isDirectoryBrowseView \? "grid" : "cards"\}/);
+// 2026-09-28 (audit /cauta, E1): /cauta foloseste grila si cardul directorului si pentru cautarea
+// dupa serviciu (inainte: `listLayout={isDirectoryBrowseView ? "grid" : "cards"}`).
+assert.match(read('src/pages/Search.jsx'), /listLayout="grid"/);
 
 const layout = read('src/components/results/LocationsWithMap.jsx');
 assert.match(layout, /listLayout = "cards"/, 'celelalte rezultate raman carduri');
