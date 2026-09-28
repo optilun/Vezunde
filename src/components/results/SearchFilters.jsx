@@ -108,7 +108,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
                   const checked = draft.types?.includes(key) || false;
                   return <label key={key} className="relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-medium transition hover:border-[#a7b4c9] hover:bg-[#f7f8fa] has-[:checked]:border-[#4f6080] has-[:checked]:bg-[#eff1f5] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#4f6080]">
                     <input className="sr-only" type="checkbox" checked={checked} onChange={() => toggle("types",key)} />
-                    <span className="text-[#4f6080]"><TypeIcon type={key} /></span>
+                    <span aria-hidden="true" className="text-[#4f6080]"><TypeIcon type={key} /></span>
                     <span className="min-w-0 flex-1">{label}</span>
                     <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${checked ? "border-[#4f6080] bg-[#4f6080] text-white" : "border-[#c5ccd8] bg-white"}`}>{checked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</span>
                   </label>;
@@ -125,7 +125,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
                   : <p className="mt-2 text-xs text-muted-foreground">Apar doar locațiile cu cel puțin unul dintre serviciile bifate confirmat în VIASEE. O locație fără servicii listate poate totuși să îl ofere.</p>}
 
               {hasLocality && draft.services?.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Servicii bifate">
-                {draft.services.map((key) => <button key={key} type="button" onClick={() => toggle("services", key)} aria-label={`Scoate ${getServiceLabel(key)}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#4f6080] px-3 text-xs font-medium text-white hover:bg-[#3f4e6a]">{getServiceLabel(key)}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
+                {draft.services.map((key) => <button key={key} type="button" onClick={() => toggle("services", key)} aria-label={`Scoate ${getServiceLabel(key)}`} className="relative inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#4f6080] px-3 text-xs font-medium text-white before:absolute before:-inset-1 before:rounded-full before:content-[''] hover:bg-[#3f4e6a]">{getServiceLabel(key)}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
               </div>}
 
               <div className="relative my-3">
