@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, Glasses, Building2, Stethoscope, Eye, Microscope, UserRound, ScanEye, WalletCards, Search, ChevronDown, Check, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { base44 } from "@/api/base44Client";
+import { invokeDirectoryBrowse } from "@/lib/directoryBrowse";
 import { formatLocationCount } from "@/lib/localityQuickPicks";
 import { DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { SERVICE_GROUP_UI, getServiceLabel, patientServicesByGroup, serviceMatchesNeedle } from "@/lib/serviceAutocomplete";
