@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
@@ -97,6 +97,19 @@ export default function LocationsWithMap({
     rememberLatest.current();
   }, []);
   const cardRefs = useRef(new Map());
+  // 2026-09-28 (audit /cauta, B7): callback-uri stabile pentru randuri (ResultRow e memoizat). Un hover
+  // redeseneaza doar cele doua randuri care isi schimba starea, nu toata lista (300+ carduri).
+  const registerCard = useCallback((id, element) => {
+    if (element) cardRefs.current.set(id, element); else cardRefs.current.delete(id);
+  }, []);
+  const latestShowOnMap = useRef(null);
+  latestShowOnMap.current = { onSelect, onToggleMobileView, mobileView };
+  const showOnMap = useCallback((id) => {
+    const { onSelect: select, onToggleMobileView: toggle, mobileView: view } = latestShowOnMap.current;
+    requestMapCardFocus();
+    select(id);
+    if (!window.matchMedia("(min-width: 1024px)").matches && view !== "map") toggle();
+  }, []);
   const previousSelection = useRef({ id: selectedId, view: mobileView });
   useEffect(() => {
     if (previousSelection.current.id === selectedId && previousSelection.current.view === mobileView) return;
@@ -159,35 +172,20 @@ export default function LocationsWithMap({
             ? (hasPositions ? "grid border-t border-border sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid border-t border-border sm:grid-cols-2")
             : (hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2")}>
             {(listResults || []).map((location) => (
-              <div
+              <ResultRow
                 key={location.id}
-                ref={(element) => { if (element) cardRefs.current.set(location.id, element); else cardRefs.current.delete(location.id); }}
-                onMouseEnter={() => onHover(location.id)}
-                onMouseLeave={() => onHover(null)}
-                onFocus={() => onHover(location.id)}
-                onBlur={() => onHover(null)}
-                data-selected={selectedId === location.id ? "" : undefined}
-                className={gridLayout
-                  ? `group/cell h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
-                    selectedId === location.id ? "bg-[#eaeff7]" : hoveredId === location.id ? "bg-white/70" : ""
-                  }`
-                  : `relative h-full rounded-[22px] transition-shadow ${
-                  selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-                } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
-              >
-                {/* In grila, numarul pinului sta pe coperta cardului (al treilea argument al renderCard). */}
-                {!gridLayout && rankById?.has(location.id) && mapPointFromResult(location) && (
-                  <span aria-hidden="true" title={`Pinul ${rankById.get(location.id)} pe hartă`} className={`pointer-events-none absolute -left-1 -top-1.5 z-10 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-1.5 text-xs font-extrabold tabular-nums shadow-[0_0_0_3px_hsl(var(--background))] ${selectedId === location.id ? "bg-[#4f6080] text-white" : "bg-[#171717] text-white"}`}>
-                    {rankById.get(location.id)}
-                  </span>
-                )}
-                {renderCard(
-                  location,
-                  mapPointFromResult(location) ? () => { requestMapCardFocus(); onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined,
-                  rankById?.has(location.id) && mapPointFromResult(location) ? rankById.get(location.id) : null,
-                )}
-                {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { requestMapCardFocus(); onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon aria-hidden="true" className="h-4 w-4" /> Vezi pe hartă</button>}
-              </div>
+                location={location}
+                selected={selectedId === location.id}
+                hovered={hoveredId === location.id}
+                rank={rankById?.get(location.id) ?? null}
+                gridLayout={gridLayout}
+                hasPositions={hasPositions}
+                integratedMapAction={integratedMapAction}
+                renderCard={renderCard}
+                onHover={onHover}
+                onShowMap={showOnMap}
+                registerCard={registerCard}
+              />
             ))}
           </div>
           {children}
@@ -220,3 +218,55 @@ export default function LocationsWithMap({
     </>
   );
 }
+
+// 2026-09-28 (audit /cauta, B7). Un rand din lista, memoizat: se redeseneaza doar cand i se schimba
+// locatia, selectia, hover-ul sau numarul. Punctul de harta se calculeaza o data pe rand (inainte:
+// de trei ori la fiecare randare a listei), iar cardul se reconstruieste doar cand se schimba ce
+// primeste (renderCard trebuie sa fie stabil in pagina care il da).
+const ResultRow = memo(function ResultRow({
+  location,
+  selected,
+  hovered,
+  rank,
+  gridLayout,
+  hasPositions,
+  integratedMapAction,
+  renderCard,
+  onHover,
+  onShowMap,
+  registerCard,
+}) {
+  const hasPoint = useMemo(() => mapPointFromResult(location) !== null, [location]);
+  const shownRank = hasPoint ? rank : null;
+  const showThis = useMemo(() => (hasPoint ? () => onShowMap(location.id) : undefined), [hasPoint, onShowMap, location.id]);
+  const setRef = useCallback((element) => registerCard(location.id, element), [registerCard, location.id]);
+  const card = useMemo(() => renderCard(location, showThis, shownRank), [renderCard, location, showThis, shownRank]);
+  const enter = () => onHover(location.id);
+  const leave = () => onHover(null);
+  return (
+    <div
+      ref={setRef}
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+      onFocus={enter}
+      onBlur={leave}
+      data-selected={selected ? "" : undefined}
+      className={gridLayout
+        ? `group/cell h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
+          selected ? "bg-[#eaeff7]" : hovered ? "bg-white/70" : ""
+        }`
+        : `relative h-full rounded-[22px] transition-shadow ${
+        selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+      } ${hovered && !selected ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
+    >
+      {/* In grila, numarul pinului sta pe coperta cardului (al treilea argument al renderCard). */}
+      {!gridLayout && shownRank !== null && (
+        <span aria-hidden="true" title={`Pinul ${shownRank} pe hartă`} className={`pointer-events-none absolute -left-1 -top-1.5 z-10 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-1.5 text-xs font-extrabold tabular-nums shadow-[0_0_0_3px_hsl(var(--background))] ${selected ? "bg-[#4f6080] text-white" : "bg-[#171717] text-white"}`}>
+          {shownRank}
+        </span>
+      )}
+      {card}
+      {!integratedMapAction && showThis && <button type="button" onClick={showThis} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon aria-hidden="true" className="h-4 w-4" /> Vezi pe hartă</button>}
+    </div>
+  );
+});
