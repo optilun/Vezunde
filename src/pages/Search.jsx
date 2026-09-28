@@ -512,8 +512,6 @@ function EmptyProfessionals({ locality }) {
   );
 }
 
-// Serviciul e ales, localitatea lipseste: pasul urmator spus clar, cu orasele mari si
-// localitatile recente la un click distanta.
 // 2026-09-27 (audit /cauta, A2): pe telefon si tableta, cand controalele de cautare ies din ecran,
 // ramane sub antet o singura bara (ca la Airbnb) care spune ce cauti si unde. Apasata, duce inapoi
 // la controale. Pe desktop controalele raman fixate si bara nu se afiseaza.
@@ -540,6 +538,8 @@ function CompactSearchBar({ query, locality }) {
   );
 }
 
+// Serviciul e ales, localitatea lipseste: pasul urmator spus clar, cu orasele mari si
+// localitatile recente la un click distanta.
 function SelectLocalityNotice({ onChoose, onFocusField }) {
   const [recent] = useState(() => readRecentLocalities().map(prettyLocality));
   const recentCodes = new Set(recent.map((item) => item.siruta_code));
