@@ -32,14 +32,15 @@ export function criteriaQuery(search) {
   return out.toString();
 }
 
-export function searchStateFromUrl(search, serviceLabels = {}) {
+// `labelFor(cheie)` da eticheta serviciului, afisata in campul de cautare cand linkul nu are text.
+export function searchStateFromUrl(search, labelFor = () => "") {
   const params = toParams(search);
   const service = params.get("serviciu") || "";
   const siruta = params.get("siruta") || "";
   const name = params.get("oras") || "";
   return {
     service,
-    query: params.get("q") || serviceLabels[service] || "",
+    query: params.get("q") || (service && labelFor(service)) || "",
     locality: siruta && name ? { name, display_label: name, county_name: "", siruta_code: siruta } : null,
     providerType: params.get("tip") || "",
     filterServiceKeys: (params.get("filtre") || "").split(",").map((key) => key.trim()).filter(Boolean),
