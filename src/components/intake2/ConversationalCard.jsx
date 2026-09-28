@@ -1012,6 +1012,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           coverage_status: res.data.coverage_status || null,
           coverage_counts: res.data.coverage_counts || null,
           need_level: res.data.need_level || null,
+          // 2026-09-28: ce tip de locatie a venit intai (optica sau cabinet), pentru afisare si analitice.
+          provider_type_preference: res.data.provider_type_preference || null,
           resolved_intent: res.data.resolved_intent || requestDraft.intent || null,
           // 2026-09-03: contextul rezolvat al cererii merge mai departe in `meta`, ca sa poata fi
           // reutilizat de recomandarea de specialisti fara sa reinterpreteze nimic. Fara aceste
