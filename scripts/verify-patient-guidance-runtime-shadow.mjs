@@ -387,7 +387,18 @@ await scenario("matching and ranking implementation remains byte-stable", () => 
   // candidati pe localitate (locatiile salvate cu codul componentei, ex. Pascani 95408, nu mai
   // lipsesc) si eticheta 'oras' pentru ele. buildRecommendationScore, bucketurile, Top 3 si
   // ordinea fallbackului structural raman neatinse. Vezi scripts/verify-locality-equivalent-codes.mjs.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "658a02d0");
+  // 2026-09-28, cerut explicit de Alex ("sa fie recomandate inainte opticile... ia o decizie de
+  // expert"), audit sectiunea 18: politica de tip de locatie (shared/providerTypePreference.js).
+  // Doua schimbari in ramura de potrivire: (1) locatiile cu servicii confirmate primesc
+  // provider_type_fit (15 puncte pentru tipul potrivit nevoii: optica la control, produse si
+  // lentile; cabinet la copii, nevoie neclara si probleme medicale), adaugat la
+  // recommendation_score - buildRecommendationScore si assignRecommendationBuckets raman identice;
+  // (2) fallbackul structural nu mai filtreaza dupa nivelul nevoii, ci alege dupa politica
+  // (selectStructuralByPreference): problema medicala -> doar cabinete; copil sau nevoie neclara ->
+  // cabinete, apoi optici (o treime); control sau lentile -> optici, apoi cabinete (o treime);
+  // produse si reparatii -> optici, cabinetele doar pe locurile ramase. Ordinea in fiecare tip
+  // ramane contact public, apoi nume. Vezi scripts/verify-provider-type-preference.mjs.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "60f56d96");
   assert.match(entry, /error: 'Cererea nu a putut fi procesata\.'/);
   assert.match(entry, /headers: \{ 'Cache-Control': 'no-store' \}/);
 
