@@ -8,6 +8,12 @@ import {
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import {
+  providerTypePreferencePoints,
+  providerTypeSecondaryNote,
+  resolveProviderTypePreference,
+  selectStructuralByPreference,
+} from '../../shared/providerTypePreference.js';
+import {
   loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
@@ -77,6 +83,10 @@ const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
 // Se activeaza doar cand rezultatele confirmate sunt insuficiente pentru localitate.
 const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 3;
 const STRUCTURAL_FALLBACK_MAX_RESULTS = 3;
+// 2026-09-28 (cererea owner-ului, audit sectiunea 18): puncte pentru tipul de locatie potrivit
+// nevoii, pe scara acestui scor (cat o cheie potrivita). Vezi shared/providerTypePreference.js si
+// aceeasi regula in matchProvidersSemantic/entry.ts.
+const PROVIDER_TYPE_PREFERENCE_POINTS = 3;
 
 // Texte distincte: optica este o nevoie generala, oftalmologia este o nevoie medicala si
 // primeste un indemn explicit de verificare telefonica prealabila.
@@ -267,6 +277,12 @@ Deno.serve(async (req) => {
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
+    // 2026-09-28: ce tip de locatie vine intai pentru aceasta nevoie (optica sau cabinet medical).
+    const typePreference = resolveProviderTypePreference({
+      intent: intent || '',
+      serviceKeys: requestKeys.canonicalKeys,
+      getDefinition: getCanonicalServiceDefinition,
+    });
 
     if (!sirutaCode) {
       return Response.json({
@@ -407,6 +423,7 @@ Deno.serve(async (req) => {
       }
       if (eligibility.pcs === 'verified') score += 2;
       else if (eligibility.pcs === 'claimed') score += 1;
+      score += providerTypePreferencePoints(typePreference, loc, PROVIDER_TYPE_PREFERENCE_POINTS);
       if (availabilityLabel) {
         score += 1;
         reasons.push('Mod de primire publicat de furnizor');
@@ -452,33 +469,28 @@ Deno.serve(async (req) => {
     // doar profilurile medicale, dar pentru orice alta nevoie raman ambele, cu opticile
     // primele. Un cabinet oftalmologic face si control de rutina si dioptrii - nu are sens
     // sa dispara complet de la o cautare non-medicala.
-    const preferredCapabilities = needLevel === 'specialized_medical'
-      ? ['medical']
-      : ['optical', 'medical'];
-    const capabilityRank = (entry) => {
-      const index = preferredCapabilities.indexOf(entry.capability);
-      return index === -1 ? preferredCapabilities.length : index;
-    };
+    // 2026-09-28 (cererea owner-ului, audit sectiunea 18): tipul de locatie nu mai depinde de
+    // nivelul nevoii, ci de politica din shared/providerTypePreference.js (aceeasi ca in
+    // matchProvidersSemantic/entry.ts).
     // Pragul numara si rezultatele extended_directory: acelea au inregistrari reale de serviciu,
     // chiar daca profilul nu e revendicat. Sunt intotdeauna preferabile unui fallback structural.
     const confirmedCount = eligibleSorted.length + directorySorted.length;
     let structuralSorted = [];
     if (confirmedCount < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
-      structuralSorted = structuralList
-        .filter((entry) => preferredCapabilities.includes(entry.capability))
-        .sort((a, b) => {
-          const capabilityDelta = capabilityRank(a) - capabilityRank(b);
-          if (capabilityDelta !== 0) return capabilityDelta;
-          // Prioritizeaza profilurile cu date de contact publice, ca pacientul sa poata verifica.
-          // Variantele de camp trebuie sa le oglindeasca pe cele din getPublicLocationDisclosure.
-          const hasContact = (loc) => (
-            loc.public_phone || loc.phone_public || loc.website_url || loc.website
-          ) ? 1 : 0;
-          const contactDelta = hasContact(b.loc) - hasContact(a.loc);
-          if (contactDelta !== 0) return contactDelta;
-          return String(a.loc.name || '').localeCompare(String(b.loc.name || ''));
-        })
-        .slice(0, STRUCTURAL_FALLBACK_MAX_RESULTS);
+      // Prioritizeaza profilurile cu date de contact publice, ca pacientul sa poata verifica.
+      // Variantele de camp trebuie sa le oglindeasca pe cele din getPublicLocationDisclosure.
+      const hasContact = (loc) => (
+        loc.public_phone || loc.phone_public || loc.website_url || loc.website
+      ) ? 1 : 0;
+      const orderedCandidates = [...structuralList].sort((a, b) => {
+        const contactDelta = hasContact(b.loc) - hasContact(a.loc);
+        if (contactDelta !== 0) return contactDelta;
+        return String(a.loc.name || '').localeCompare(String(b.loc.name || ''));
+      });
+      structuralSorted = selectStructuralByPreference(orderedCandidates, typePreference, {
+        maxResults: STRUCTURAL_FALLBACK_MAX_RESULTS,
+        capabilityOf: (entry) => entry.capability,
+      });
       structuralSorted.forEach((entry, index) => {
         entry.finalBucket = 'structural_directory';
         entry.bucketRank = index + 1;
@@ -535,6 +547,9 @@ Deno.serve(async (req) => {
         structural_group_label: entry.bucket === 'structural_directory'
           ? STRUCTURAL_FALLBACK_GROUP_LABELS[entry.capability]
           : null,
+        structural_group_note: entry.bucket === 'structural_directory' && entry.capability !== typePreference.primary
+          ? providerTypeSecondaryNote(typePreference)
+          : '',
         has_service_records: entry.bucket !== 'structural_directory',
         directory_match_type: entry.directoryMatchType || null,
         expansion_tier: entry.tier,
@@ -548,6 +563,12 @@ Deno.serve(async (req) => {
     return Response.json({
       results,
       need_level: needLevel,
+      provider_type_preference: {
+        version: typePreference.version,
+        mode: typePreference.mode,
+        order: typePreference.order,
+        reason: typePreference.reason,
+      },
       safety_message_keys: SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key),
       routing_mode: 'locality',
       query_scope: 'locality',
