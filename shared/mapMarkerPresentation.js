@@ -70,6 +70,7 @@ export function compactMarkerKeys(items, gap = 6) {
 }
 
 export function layoutMapMarkers(container) {
+  if (!container?.querySelectorAll) return;
   const pills = [...container.querySelectorAll("[data-map-marker]")];
   // Batch writes, then reads: no repeated forced layout per marker.
   pills.forEach(pill => { pill.dataset.compact = "false"; });
