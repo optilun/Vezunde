@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { readSearchSession } from "@/lib/searchSession";
+import { requestMapCardFocus } from "@/lib/mapCardFocus";
 import { MAP_STYLE_FALLBACK_URL, MAP_STYLE_URL, transformMapStyle } from "@/lib/viaseeMapStyle";
 
 const ATTRIBUTION = '<a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>';
