@@ -168,12 +168,17 @@ export default function LocationsWithMap({
                   selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
                 } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
               >
-                {rankById?.has(location.id) && mapPointFromResult(location) && (
+                {/* In grila, numarul pinului sta pe coperta cardului (al treilea argument al renderCard). */}
+                {!gridLayout && rankById?.has(location.id) && mapPointFromResult(location) && (
                   <span aria-hidden="true" title={`Pinul ${rankById.get(location.id)} pe hartă`} className={`pointer-events-none absolute -left-1 -top-1.5 z-10 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-1.5 text-xs font-extrabold tabular-nums shadow-[0_0_0_3px_hsl(var(--background))] ${selectedId === location.id ? "bg-[#4f6080] text-white" : "bg-[#171717] text-white"}`}>
                     {rankById.get(location.id)}
                   </span>
                 )}
-                {renderCard(location, mapPointFromResult(location) ? () => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined)}
+                {renderCard(
+                  location,
+                  mapPointFromResult(location) ? () => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined,
+                  rankById?.has(location.id) && mapPointFromResult(location) ? rankById.get(location.id) : null,
+                )}
                 {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
               </div>
             ))}
