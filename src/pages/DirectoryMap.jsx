@@ -212,7 +212,14 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     [origin],
   );
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
-  const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
+  // 2026-09-28 (audit /cauta, B8): o locatie aleasa pe harta dincolo de pagina curenta se afiseaza
+  // prima, ca pe /cauta la rasfoirea unei localitati. Inainte lista se extindea pana la ea: un pin
+  // de pe pozitia 800 randa 800 de carduri deodata.
+  const selectedOutsidePage = selectedIndex >= pageSize;
+  const listedPoints = useMemo(() => {
+    const page = inView.slice(0, pageSize);
+    return selectedIndex >= pageSize ? [inView[selectedIndex], ...page] : page;
+  }, [inView, pageSize, selectedIndex]);
 
   const geoMessage = geoStatus === "denied" ? "Accesul la locație nu este permis. Alege localitatea din bara de căutare." : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
   const listHeader = <div className="mb-4">
@@ -230,6 +237,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
           {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații din director nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
         </div>
       </details>
+      {selectedOutsidePage && <p className="mt-2 text-xs text-[#4f6080]">Locația aleasă pe hartă este afișată prima.</p>}
       <p aria-live="polite" className="sr-only">{announcedCount === null ? "" : `${announcedCount} ${announcedCount === 1 ? "locație" : "locații"} în zona vizibilă`}</p>
       {state.snapshotAt && <p role="status" className="mt-2 text-xs leading-relaxed text-[#8a4b2a]">
         Harta arată locațiile din {formatSnapshotDate(state.snapshotAt)}. Lista actuală nu s-a putut încărca acum.{" "}
