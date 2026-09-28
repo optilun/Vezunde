@@ -50,25 +50,28 @@ function preloadProfileRoute() {
 // fisier static (vezi shared/nationalMapSnapshot.js). Daca lista nu poate fi citita in 20 s, build-ul
 // continua fara fisier, iar pagina cere lista ca pana acum. Nu schimba ce contine harta.
 const VIASEE_APP_ID = '6a48cb9d04fa7f999d8a8054'
+async function fetchNationalMapSnapshot() {
+  const appId = process.env.VITE_BASE44_APP_ID || VIASEE_APP_ID
+  const serverUrl = (process.env.BASE44_SERVER_URL || 'https://base44.app').replace(/\/+$/, '')
+  const response = await fetch(`${serverUrl}/api/apps/${appId}/functions/browseDirectoryProviders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-App-Id': appId },
+    body: JSON.stringify({ map_scope: 'national' }),
+    signal: AbortSignal.timeout(20_000),
+  })
+  const body = response.ok ? await response.json() : null
+  return { status: response.status, snapshot: nationalMapSnapshotFromResponse(body) }
+}
 function nationalMapSnapshot() {
   return {
     name: 'viasee-national-map-snapshot',
     apply: 'build',
     async buildStart() {
       if (process.env.VIASEE_SKIP_NATIONAL_MAP_SNAPSHOT === '1') return
-      const appId = process.env.VITE_BASE44_APP_ID || VIASEE_APP_ID
-      const serverUrl = (process.env.BASE44_SERVER_URL || 'https://base44.app').replace(/\/+$/, '')
       try {
-        const response = await fetch(`${serverUrl}/api/apps/${appId}/functions/browseDirectoryProviders`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-App-Id': appId },
-          body: JSON.stringify({ map_scope: 'national' }),
-          signal: AbortSignal.timeout(20_000),
-        })
-        const body = response.ok ? await response.json() : null
-        const snapshot = nationalMapSnapshotFromResponse(body)
+        const { status, snapshot } = await fetchNationalMapSnapshot()
         if (!snapshot) {
-          this.warn(`Harta Romaniei: fisierul static nu s-a scris (HTTP ${response.status}).`)
+          this.warn(`Harta Romaniei: fisierul static nu s-a scris (HTTP ${status}).`)
           return
         }
         this.emitFile({ type: 'asset', fileName: NATIONAL_MAP_SNAPSHOT_PATH.slice(1), source: JSON.stringify(snapshot) })
@@ -76,6 +79,31 @@ function nationalMapSnapshot() {
       } catch (error) {
         this.warn(`Harta Romaniei: fisierul static nu s-a scris (${error?.message || error}).`)
       }
+    },
+  }
+}
+// In previzualizare (serverul de dezvoltare), acelasi fisier se construieste la cerere, ca pagina sa
+// mearga pe acelasi drum ca pe viasee.ro. Daca lista nu vine, raspunsul e 404 (pagina cere lista).
+function nationalMapSnapshotDev() {
+  let cached = null
+  return {
+    name: 'viasee-national-map-snapshot-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(NATIONAL_MAP_SNAPSHOT_PATH, async (_req, res) => {
+        try {
+          if (!cached || Date.now() - cached.at > 10 * 60_000) {
+            const { snapshot } = await fetchNationalMapSnapshot()
+            cached = snapshot ? { at: Date.now(), body: JSON.stringify(snapshot) } : null
+          }
+          if (!cached) throw new Error('unavailable')
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.end(cached.body)
+        } catch (_error) {
+          res.statusCode = 404
+          res.end('')
+        }
+      })
     },
   }
 }
@@ -96,5 +124,6 @@ export default defineConfig({
     preloadHomeRoute(),
     preloadProfileRoute(),
     nationalMapSnapshot(),
+    nationalMapSnapshotDev(),
   ]
 });
