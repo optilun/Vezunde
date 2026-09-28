@@ -480,7 +480,7 @@ export default function ProviderProfile() {
             <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
               <h2 className="font-heading text-sm font-bold">Informații publice disponibile</h2>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Pentru acest profil afișăm numai datele generale care nu identifică adresa exactă sau contactul locației.
+                Datele afișate provin din surse publice și pot fi confirmate sau actualizate după revendicarea profilului.
               </p>
               <dl className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
                 <div>
