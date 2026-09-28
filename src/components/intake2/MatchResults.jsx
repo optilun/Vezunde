@@ -60,6 +60,7 @@ function metaFromExpandedResponse(data, previousMeta) {
     coverage_status: data.coverage_status || null,
     coverage_counts: data.coverage_counts || null,
     need_level: data.need_level || previousMeta?.need_level || null,
+    provider_type_preference: data.provider_type_preference || previousMeta?.provider_type_preference || null,
     resolved_intent: data.resolved_intent || previousMeta?.resolved_intent || null,
     // 2026-09-03: dupa o extindere de arie, cheile rezolvate sunt cele ale raspunsului nou. Fara
     // linia asta, tabul de specialisti ar fi cerut in aria noua serviciile rezolvate in cea veche.
@@ -219,7 +220,25 @@ export default function MatchResults({
   const directory = shownList.filter((result) => result.result_bucket === "extended_directory");
   // Profiluri din director fara servicii declarate, afisate doar cand nu exista optiuni mai bune.
   const structural = shownList.filter((result) => result.result_bucket === "structural_directory");
-  const structuralCapability = structural[0]?.structural_capability || null;
+  // 2026-09-28 (audit sectiunea 18): lista de rezerva poate avea acum ambele tipuri - intai cel
+  // potrivit nevoii, apoi alternativa. Fiecare tip are titlul lui si, pentru alternativa, o nota
+  // scurta primita de la server. Ordinea ramane exact cea primita.
+  const structuralGroups = structural.reduce((groups, result) => {
+    const capability = result.structural_capability === "medical" ? "medical" : "optical";
+    let group = groups.find((item) => item.capability === capability);
+    if (!group) {
+      group = {
+        capability,
+        label: result.structural_group_label
+          || (capability === "medical" ? "Alte cabinete și clinici oftalmologice din zonă" : "Alte optici din zonă"),
+        note: result.structural_group_note || "",
+        items: [],
+      };
+      groups.push(group);
+    }
+    group.items.push(result);
+    return groups;
+  }, []);
   const moreCount = confirmed.length + directory.length + structural.length;
   // Starea recomandarii descrie ce a gasit serverul, nu cat se vede acum pe ecran: o deplasare
   // a hartii nu are voie sa declanseze fluxul de recuperare "nu am gasit nimic".
@@ -266,6 +285,7 @@ export default function MatchResults({
           recommendation_state: recommendationState,
           query_scope: queryScope,
           need_level: activeMeta?.need_level || "unknown",
+          provider_type_mode: activeMeta?.provider_type_preference?.mode || "unknown",
           resolved_intent: activeMeta?.resolved_intent || "unknown",
           used_semantic_fallback: activeMeta?.used_semantic_fallback === true,
           result_count: list.length,
@@ -659,29 +679,31 @@ export default function MatchResults({
         </div>
       )}
 
-      {expanded && structural.length > 0 && (
-        <div className="mt-8">
+      {expanded && structuralGroups.map((group, groupIndex) => (
+        <div key={group.capability} className="mt-8">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
-              {structural[0]?.structural_group_label
-                || (structuralCapability === "medical"
-                  ? "Alte cabinete și clinici oftalmologice din zonă"
-                  : "Alte optici din zonă")}
+              {group.label}
             </div>
-            <a href="/adauga-sau-revendica" className="text-[11px] font-medium text-foreground underline underline-offset-2">
-              Sunteți reprezentantul uneia dintre acestea?
-            </a>
+            {groupIndex === 0 && (
+              <a href="/adauga-sau-revendica" className="text-[11px] font-medium text-foreground underline underline-offset-2">
+                Sunteți reprezentantul uneia dintre acestea?
+              </a>
+            )}
           </div>
+          {group.note && (
+            <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">{group.note}</p>
+          )}
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            {structuralCapability === "medical"
+            {group.capability === "medical"
               ? "Servicii neconfirmate de furnizor — sunați înainte să mergeti."
               : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
+            <ResultScopeGroups items={group.items} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
-      )}
+      ))}
 
       {!hideRequestSubmission && <section data-request-followup tabIndex={-1} aria-label="Cererea și conversațiile tale" className="mt-6 rounded-[22px] border border-border bg-card p-4 sm:p-5">
         <h2 className="font-heading text-lg font-bold">Cererea și conversațiile tale</h2>
