@@ -118,8 +118,8 @@ export function resolveProviderTypePreference({ intent = '', serviceKeys = [], g
   const hasGroup = (groups) => definitions.some((definition) => groups.has(clean(definition.group)));
   const hasKey = (set) => [...canonicalKeys].some((key) => set.has(key));
 
-  // Nevoia neclara are si o cheie de consult in lista implicita; o tratam ca \"intai medicul\",
-  // nu ca \"doar medicul\", ca opticile sa nu dispara.
+  // Nevoia neclara are si o cheie de consult in lista implicita; o tratam ca 'intai medicul',
+  // nu ca 'doar medicul', ca opticile sa nu dispara.
   if (need === 'unknown') return preference('medical_first', 'unclear_need');
   if (MEDICAL_INTENTS.has(need)) return preference('medical_only', 'medical_need');
   if (hasGroup(MEDICAL_GROUPS)) return preference('medical_only', 'medical_service');
