@@ -27,7 +27,10 @@ function distanceLabel(km) {
 }
 
 // Public directory information only. No paid rank or recommendation claims.
-export default function DirectoryResultCard({ location, onShowMap, distanceKm = null }) {
+// 2026-09-28 (audit /cauta, E1): acelasi card si pentru cautarea dupa serviciu. `rank` este doar
+// numarul pinului de pe harta (ordinea primita de la server, redata ca atare), iar `details` sunt
+// detaliile potrivirii (ServiceMatchDetails). Ambele lipsesc la rasfoirea localitatii.
+export default function DirectoryResultCard({ location, onShowMap, distanceKm = null, rank = null, details = null }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const phoneHref = publicPhoneLink(location.phone);
@@ -65,10 +68,17 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
               {city && <span aria-hidden="true" className="absolute bottom-4 left-4 right-16 truncate font-display text-[26px] font-semibold leading-tight tracking-tight text-[#2b3445]/80">{city}</span>}
             </>
           )}
-          <span className="absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#4f6080] shadow-sm backdrop-blur-sm">
-            <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
-            <span className="truncate">{typeLabel}</span>
-          </span>
+          <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5">
+            {rank && (
+              <span className="inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-[#171717] px-1.5 text-xs font-extrabold tabular-nums text-white shadow-sm group-data-[selected]/cell:bg-[#4f6080]">
+                <span className="sr-only">Pinul </span>{rank}<span className="sr-only"> pe hartă. </span>
+              </span>
+            )}
+            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#4f6080] shadow-sm backdrop-blur-sm">
+              <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
+              <span className="truncate">{typeLabel}</span>
+            </span>
+          </div>
         </div>
         {logo && (
           <img
@@ -108,6 +118,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
       </div>
       <p className="mt-1.5 line-clamp-2 break-words text-[15px] leading-relaxed text-muted-foreground">{addressLabel || "Adresa nu este publicată"}</p>
       {location.service_coverage_status === "not_listed" && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Serviciile nu sunt încă listate sau confirmate.</p>}
+      {details}
 
       <div className="mt-auto flex items-end justify-between gap-4 pt-5">
         <p className="min-w-0 text-sm leading-snug text-muted-foreground">
