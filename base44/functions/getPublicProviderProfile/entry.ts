@@ -212,7 +212,7 @@ async function handleOrganizationProfile(svc, organizationId) {
     const disclosure = getPublicLocationDisclosure(merged);
     if (disclosure?.is_publicly_available !== true) continue;
 
-    const county = location.county_name || location.county || null;
+    const county = prettyCountyName(location.county_name || location.county) || null;
     if (county) countyCounts.set(county, (countyCounts.get(county) || 0) + 1);
 
     publicLocations.push({
