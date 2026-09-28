@@ -24,6 +24,8 @@ import { MAJOR_CITIES, readRecentLocalities, rememberLocality, prettyLocality } 
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor } from "@/lib/searchUrl";
 
+const serviceLabel = (key) => SERVICES[key] || CANONICAL_SERVICE_REGISTRY[key]?.label || "";
+
 function useDebouncedValue(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -54,8 +56,8 @@ export default function Search() {
   const [{ saved, fromUrl }] = useState(() => {
     const previous = readSearchSession();
     const incoming = criteriaQuery(window.location.search);
-    if (!incoming || previous.sourceSearch === incoming) return { saved: previous, fromUrl: searchStateFromUrl("", SERVICES) };
-    const linked = searchStateFromUrl(window.location.search, SERVICES);
+    if (!incoming || previous.sourceSearch === incoming) return { saved: previous, fromUrl: searchStateFromUrl("") };
+    const linked = searchStateFromUrl(window.location.search, serviceLabel);
     return { saved: {}, fromUrl: { ...linked, locality: linked.locality || previous.locality || null } };
   });
   const [results, setResults] = useState(null);
@@ -122,8 +124,9 @@ export default function Search() {
   );
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
-  // B4: adresa urmeaza criteriile asezate (fara intrari noi in istoric, fara derulare).
-  const criteriaSearch = searchCriteriaFor({ service, query: debouncedQuery, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType }, SERVICES);
+  // B4: adresa urmeaza criteriile asezate (fara intrari noi in istoric, fara derulare). Textul scris
+  // liber nu intra in adresa (poate descrie simptome); ramane in pagina si in sesiune.
+  const criteriaSearch = searchCriteriaFor({ service, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType });
   const settling = debouncedQuery !== query.trim();
   const writtenCriteria = useRef(criteriaQuery(window.location.search));
   const replaceCriteria = (criteria) => {
@@ -136,7 +139,7 @@ export default function Search() {
     const incoming = criteriaQuery(routerLocation.search);
     if (incoming === writtenCriteria.current) return;
     if (!incoming) { if (criteriaSearch) replaceCriteria(criteriaSearch); else writtenCriteria.current = ""; return; }
-    const next = searchStateFromUrl(routerLocation.search, SERVICES);
+    const next = searchStateFromUrl(routerLocation.search, serviceLabel);
     writtenCriteria.current = incoming;
     setService(next.service); setQuery(next.query); setLocality(next.locality || locality);
     setProviderType(next.providerType); setFilterServiceKeys(next.filterServiceKeys); setCasOnly(next.casOnly);
