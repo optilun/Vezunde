@@ -347,10 +347,13 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
   // intr-un oras cu furnizori publicati. Acum decizia se ia pe server, care are datele.
   // Statusul 'query_not_mapped' vine tot de acolo, deci suprafetele de recuperare si
   // analiticele raman neschimbate.
+  // 2026-09-28 (audit sectiunea 18): cheile confirmate de pacient pleaca si separat, fara cele
+  // gasite in text, ca serverul sa aleaga tipul de locatie (optica sau cabinet) doar dupa ele.
   const semanticPayload = {
     ...payload,
     search_text: searchText,
     service_keys: serviceKeys,
+    need_service_keys: explicitKeys,
   };
   const timeoutMs = options.timeoutMs || PATIENT_MATCHING_TIMEOUT_MS;
 
@@ -375,6 +378,7 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
     const response = await invokePatientFunction("matchProviders", {
       ...payload,
       service_keys: serviceKeys,
+      need_service_keys: explicitKeys,
     }, {
       timeoutMs,
       operation: "patient_provider_matching_deterministic",
