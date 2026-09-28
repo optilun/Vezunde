@@ -19,7 +19,7 @@ import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom
 // cereri. Cine vrea o recomandare merge prin `/cerere`, unde intrebarile si potrivirea sunt
 // facute pentru asta. De aici pacientul intra pe un profil.
 //
-// Filtrarea dupa tip se face in browser, pe punctele deja primite: sunt sub o mie, iar o
+// Filtrarea dupa tip se face in browser, pe punctele deja primite (~1.300 la 2026-09-28), iar o
 // re-interogare la fiecare bifa ar fi mai lenta decat filtrarea locala.
 
 function formatSnapshotDate(value) {
