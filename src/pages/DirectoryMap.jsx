@@ -206,6 +206,11 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     const timer = window.setTimeout(() => setAnnouncedCount(inView.length), 1200);
     return () => window.clearTimeout(timer);
   }, [inView.length, state.status]);
+  // 2026-09-28 (audit /cauta, B7): aceeasi functie intre randari (randurile listei sunt memoizate).
+  const renderPointCard = useCallback(
+    (point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} distanceKm={origin ? distanceKm(origin, point) : null} />,
+    [origin],
+  );
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
@@ -287,7 +292,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               mapStatus={geoMessage}
               results={visiblePoints}
               listResults={listedPoints}
-              renderCard={(point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} distanceKm={origin ? distanceKm(origin, point) : null} />}
+              renderCard={renderPointCard}
               listLayout="grid"
               integratedMapAction
               focusArea={focusArea}

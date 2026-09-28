@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { MapPin, Search as SearchIcon, X } from "lucide-react";
 import { invokeDirectoryBrowse } from "@/lib/directoryBrowse";
@@ -410,6 +410,11 @@ export default function Search() {
   const [settledMapKey, setSettledMapKey] = useState(liveMapKey);
   useEffect(() => { if (!typing) setSettledMapKey(liveMapKey); }, [typing, liveMapKey]);
   const searchMapKey = settledMapKey;
+  // 2026-09-28 (audit /cauta, B7): aceeasi functie intre randari, ca randurile listei (memoizate in
+  // LocationsWithMap) sa nu se redeseneze toate la fiecare hover.
+  const renderLocationCard = useCallback((location, onShowMap, rank) => isDirectoryBrowseView
+    ? <DirectoryResultCard location={location} onShowMap={onShowMap} />
+    : <DirectoryResultCard location={location} onShowMap={onShowMap} rank={rank} details={<ServiceMatchDetails location={location} />} />, [isDirectoryBrowseView]);
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
     ? mapResults?.find(row => row.id === selectedId) : null;
   const locationList = extraSelection ? [extraSelection, ...(results || [])] : results;
@@ -566,9 +571,7 @@ export default function Search() {
               // cardul poarta numarul pinului si detaliile potrivirii; ordinea ramane cea primita.
               listLayout="grid"
               numbered={!isDirectoryBrowseView}
-              renderCard={(location, onShowMap, rank) => isDirectoryBrowseView
-                ? <DirectoryResultCard location={location} onShowMap={onShowMap} />
-                : <DirectoryResultCard location={location} onShowMap={onShowMap} rank={rank} details={<ServiceMatchDetails location={location} />} />}
+              renderCard={renderLocationCard}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={setSelectedId}
