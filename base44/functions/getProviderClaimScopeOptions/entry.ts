@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
       ? await svc.entities.ProviderOrganization.get(organizationId).catch(() => null)
       : null;
     const rawCandidates = organizationId
-      ? await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, 'name', 1000).catch(() => [])
+      ? await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, 'name', 1000)
       : [primaryLocation];
 
     // Fara organizatie legata, sistemul arata doar locatia curenta - chiar daca in
