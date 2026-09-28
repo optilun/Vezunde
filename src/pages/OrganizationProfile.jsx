@@ -317,7 +317,19 @@ export default function OrganizationProfile() {
       <p className="mt-10 rounded-2xl border border-border bg-secondary/30 p-4 text-xs leading-relaxed text-muted-foreground">
         Informațiile provin din surse oficiale și din datele declarate de furnizor. Dacă reprezentați această
         organizație, puteți{" "}
-        <Link to="/adauga-sau-revendica" className="font-medium text-foreground underline underline-offset-2">
+        <Link
+          to="/adauga-sau-revendica"
+          state={locations[0] ? {
+            selectedLocation: {
+              ...locations[0],
+              organization_id: organization.id,
+              organization_name: organization.name,
+              claim_action: ["claimed", "verified"].includes(locations[0].profile_control_status) ? "request_access" : "claim_profile",
+            },
+            preferredScope: "organization",
+          } : undefined}
+          className="font-medium text-foreground underline underline-offset-2"
+        >
           revendica profilul
         </Link>{" "}
         pentru a actualiza datele.
