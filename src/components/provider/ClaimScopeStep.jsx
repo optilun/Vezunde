@@ -157,7 +157,12 @@ export default function ClaimScopeStep({
             ))}
           </div>
 
-          {options.organization && !canRequestOrganization && (
+          {options.organization_link_review_required && (
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
+              Asocierea acestei locatii cu organizatia necesita verificare. Poti solicita numai locatia selectata; accesul se acorda dupa clarificarea legaturii.
+            </p>
+          )}
+          {options.organization && !canRequestOrganization && !options.organization_link_review_required && (
             <p className="mt-3 rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
               Administrarea intregii organizatii este disponibila numai proprietarului sau reprezentantului autorizat. Poti solicita una sau mai multe locatii.
             </p>
