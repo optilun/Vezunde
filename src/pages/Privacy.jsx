@@ -33,7 +33,7 @@ export default function Privacy() {
       title: "Ce date putem colecta",
       content: (
         <LegalList>
-          <li>Date de identificare și contact: nume, email, telefon și datele contului.</li>
+          <li>Date de identificare și contact: nume, email, telefon, vârsta (dacă alegi să o comunici) și datele contului.</li>
           <li>Informații despre solicitare: serviciul căutat, localitatea, intervalul dorit și preferințele comunicate.</li>
           <li>Informații care pot privi vederea sau sănătatea, numai atunci când alegi să le comunici.</li>
           <li>Fotografii sau fișiere încărcate pentru evaluarea unei cereri, de exemplu pentru o reparație.</li>
@@ -74,6 +74,23 @@ export default function Privacy() {
       ),
     },
     {
+      id: "date-cautare",
+      title: "Datele lăsate în timpul unei căutări",
+      content: (
+        <>
+          <p>La finalul unei căutări îți cerem, opțional, numele, emailul sau telefonul și vârsta. Poți sări peste acest pas, iar rezultatele se afișează oricum.</p>
+          <LegalList>
+            <li>Datele se salvează numai dacă bifezi acordul și apeși „Continuă”. Dacă sari peste pas, nu păstrăm nimic din ce ai scris.</li>
+            <li>Împreună cu ele păstrăm nevoia căutată (de exemplu un control de vedere), localitatea și termenul ales. Răspunsurile din anamneză nu fac parte din aceste date.</li>
+            <li>Le folosim ca să te putem contacta în legătură cu căutarea ta. Temeiul este consimțământul tău, pe care îl poți retrage oricând.</li>
+            <li>Le vede doar echipa VIASEE. Nu le transmitem locațiilor: o cerere către locații se trimite separat, numai cu acordul tău.</li>
+            <li>Dacă salvezi apoi o cerere, legăm aceste date de cererea ta.</li>
+          </LegalList>
+          <p>Păstrăm aceste date până când îți retragi acordul sau ne ceri ștergerea lor, la <a className="font-semibold text-[#171717] underline underline-offset-4" href={`mailto:${VIASEE_COMPANY.contactEmail}`}>{VIASEE_COMPANY.contactEmail}</a> sau din pagina <a className="font-semibold text-[#171717] underline underline-offset-4" href="/drepturile-tale">Drepturile tale</a>.</p>
+        </>
+      ),
+    },
+    {
       id: "destinatari",
       title: "Cui putem transmite datele",
       content: (
@@ -109,6 +126,7 @@ export default function Privacy() {
           <LegalList>
             <li>Datele contului și profilului sunt păstrate cât timp contul este activ și ulterior doar cât este justificat.</li>
             <li>Cererile, mesajele și fișierele sunt păstrate cât este necesar gestionării și urmăririi solicitării, apoi sunt șterse sau anonimizate.</li>
+            <li>Datele de contact lăsate în timpul unei căutări sunt păstrate până când îți retragi acordul sau ne ceri ștergerea lor.</li>
             <li>Documentele și evidențele de facturare sunt păstrate pe durata prevăzută de legislația contabilă și fiscală.</li>
             <li>Dovezile consimțământului și jurnalele de securitate pot fi păstrate cât este necesar demonstrării conformității și protejării platformei.</li>
           </LegalList>
@@ -160,6 +178,7 @@ export default function Privacy() {
       title="Politica de confidențialitate"
       intro="Explicăm clar ce date folosim, de ce sunt necesare și cum îți poți exercita drepturile atunci când folosești VIASEE."
       sections={sections}
+      lastUpdated="28 septembrie 2026"
     />
   );
 }
