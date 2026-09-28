@@ -10,6 +10,7 @@ import {
   Flag,
   Mail,
   CreditCard,
+  Users,
 } from "lucide-react";
 
 // Meniul admin e grupat pe intentie, nu ca lista plata: primele elemente sunt cele
@@ -30,6 +31,9 @@ export const ADMIN_NAV_PRIMARY = [
   { key: "dashboard", label: "Panou general", icon: LayoutDashboard, groupLabel: "De lucru" },
   { key: "workspace_reviews", label: "Coada de verificare", icon: ClipboardCheck },
   { key: "revendicari", label: "Revendicari", icon: UserCheck },
+
+  // 2026-09-28, cererea owner-ului: datele de contact lasate de pacienti la cautare.
+  { key: "contacte_pacienti", label: "Contacte din căutări", icon: Users, groupLabel: "Pacienți" },
 
   { key: "profiluri", label: "Profiluri si locatii", icon: Building2, groupLabel: "Director" },
   { key: "servicii", label: "Catalog si eligibilitate", icon: Wrench },
