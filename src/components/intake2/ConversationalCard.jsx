@@ -692,11 +692,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   // si inainte de verificarea cererii. Pasul se poate sari. Starea lui (salvate sau sarite)
   // ramane in `contactStep`, ca sa nu apara din nou; datele insele nu intra in cerere, in
   // potrivire sau la modelul AI.
-  const handleSearchContact = ({ status }) => {
+  const handleSearchContact = ({ status, marketingConsent = false }) => {
     matchingRequestRef.current.invalidate();
     trackPatientSearchEvent("patient_search_contact_resolved", {
       intent: state.intent || "unknown",
       status: status === "saved" ? "saved" : "skipped",
+      marketing_opt_in: status === "saved" && marketingConsent === true,
     });
     pushHistory();
     prepareAdaptiveSelection();
