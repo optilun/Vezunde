@@ -140,16 +140,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    const links = organizationId
-      ? await svc.entities.DirectoryOrganizationLocationLink.filter({
-          organization_id: organizationId,
-          link_record_status: 'active',
-        }, '-reviewed_at', 1000).catch(() => [])
-      : [];
-    const linkByLocationId = new Map();
-    for (const link of links) {
-      if (!linkByLocationId.has(link.location_id)) linkByLocationId.set(link.location_id, link);
-    }
+    const candidateIds = rawCandidates.map((location) => location.id);
+    const [links, states] = await Promise.all([
+      loadRowsForLocationIds(svc.entities.DirectoryOrganizationLocationLink, candidateIds, { query: { link_record_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
+      loadRowsForLocationIds(svc.entities.ProviderLocationDirectoryState, candidateIds, { query: { state_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
+    ]);
+    const linksByLocationId = activeLinksByLocation(links);
+    const stateByLocationId = new Map(states.map((state) => [state.location_id, state]));
+    const linkStatusFor = (location) => claimOrganizationLinkStatus(
+      location, linksByLocationId.get(location.id) || [], stateByLocationId.get(location.id),
+    );
+    const primaryLinkStatus = linkStatusFor(primaryLocation);
 
     const candidates = rawCandidates.filter(isClaimCandidate);
     if (!candidates.some((location) => location.id === primaryLocationId)) candidates.unshift(primaryLocation);
