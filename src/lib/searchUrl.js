@@ -2,8 +2,13 @@
 // trimite cuiva, salva sau redeschide exact asa, iar un link primit are prioritate fata de ultima
 // cautare din sesiune. Fara parametri, /cauta reia ultima cautare (alegerea din 2026-09-27).
 //
-// Doar criteriile intra in adresa: ce cauta pacientul, unde si cu ce filtre. Selectia de pe harta,
-// derularea si paginile incarcate raman in sesiune.
+// Doar criteriile structurate intra in adresa: serviciul ales din sugestii, localitatea, filtrele si
+// fila. Selectia de pe harta, derularea si paginile incarcate raman in sesiune.
+//
+// Textul scris liber NU se scrie in adresa: poate descrie simptome („vad in ceata”), iar adresa
+// ajunge in istoricul browserului, in linkurile trimise si (cu acord) in statisticile de trafic.
+// Linkurile care il au deja (ex. /cauta?q=oftalmolog) se citesc in continuare; dupa deschidere,
+// textul ramane doar in pagina si in sesiune.
 
 export const SEARCH_URL_KEYS = ["serviciu", "q", "oras", "siruta", "tip", "filtre", "cas", "mod", "specialist"];
 
@@ -44,13 +49,10 @@ export function searchStateFromUrl(search, serviceLabels = {}) {
   };
 }
 
-// Criteriile curente ca text de adresa (fara `?`). Textul cautat se scrie doar daca difera de
-// eticheta serviciului ales, ca adresa sa ramana scurta.
-export function searchCriteriaFor(state, serviceLabels = {}) {
+// Criteriile curente ca text de adresa (fara `?`). Fara textul liber (vezi mai sus).
+export function searchCriteriaFor(state) {
   const out = new URLSearchParams();
-  const query = (state.query || "").trim();
   if (state.service) out.set("serviciu", state.service);
-  if (query && query !== serviceLabels[state.service]) out.set("q", query);
   if (state.locality?.siruta_code && state.locality?.name) {
     out.set("oras", state.locality.name);
     out.set("siruta", String(state.locality.siruta_code));
