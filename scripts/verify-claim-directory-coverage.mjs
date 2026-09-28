@@ -22,10 +22,9 @@ const locations = Array.from({ length: 550 }, (_, index) => ({
   status: 'publicata', active_status: 'activa', profile_control_status: 'directory',
   provider_profile_type: 'optical_chain', provider_type: 'optica_medicala',
 }));
-locations.push(
-  { ...locations[0], id: 'lensa-1', name: 'Lensa Alba Iulia', organization_id: 'org-lensa' },
-  { ...locations[0], id: 'lensa-2', name: 'Lensa Arad', organization_id: 'org-lensa' },
-);
+locations.push(...Array.from({ length: 87 }, (_, index) => ({
+  ...locations[0], id: `lensa-${index}`, name: `Lensa location ${index}`, organization_id: 'org-lensa',
+})));
 const pages = [];
 const svc = { entities: {
   ProviderLocation: { filter: async (_query, _sort, limit, skip) => { pages.push(['location', skip]); return locations.slice(skip, skip + limit); } },
