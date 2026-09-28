@@ -80,6 +80,14 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // buildRecommendationScore, assignRecommendationBuckets, selectia Top 3 sau ordinea
     // fallbackului structural.
     'ab029d06d9da4332c155207c2dba8c6a0b0b5549',
+    // 2026-09-28, politica de tip de locatie (cerut explicit de Alex: "sa fie recomandate
+    // inainte opticile... ia o decizie de expert", audit sectiunea 18). Aceeasi regula ca in
+    // matchProvidersSemantic/entry.ts, din base44/shared/providerTypePreference.js: scorul
+    // primeste 3 puncte pentru tipul de locatie potrivit nevoii, iar fallbackul structural alege
+    // dupa politica (doar cabinete la probleme medicale; cabinete apoi optici la copii si nevoie
+    // neclara; optici apoi cabinete la control si lentile; optici la produse si reparatii), nu dupa
+    // nivelul nevoii. Rezultatul include `provider_type_preference` si `structural_group_note`.
+    '012e86423988fc726ae91a10ebfeca9a968c8b95',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
