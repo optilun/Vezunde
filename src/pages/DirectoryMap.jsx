@@ -173,6 +173,14 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     const shown = ids ? orderedPoints.filter((point) => ids.has(point.id)) : orderedPoints;
     return centerOrder ? orderByDistanceFrom(shown, mapCenter) : shown;
   }, [orderedPoints, visibleIds, centerOrder, mapCenter]);
+  // 2026-09-28 (audit /cauta, C4): numarul din zona vizibila se schimba la fiecare mutare a hartii.
+  // Cititorul de ecran il primeste o singura data, dupa ce harta se opreste, nu la fiecare cadru.
+  const [announcedCount, setAnnouncedCount] = useState(null);
+  useEffect(() => {
+    if (state.status !== "ready") return undefined;
+    const timer = window.setTimeout(() => setAnnouncedCount(inView.length), 1200);
+    return () => window.clearTimeout(timer);
+  }, [inView.length, state.status]);
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
@@ -182,8 +190,8 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         {origin || saved.nearbyOrder || centerOrder ? "Locații în zona explorată" : "Explorează România"}
       </h2>
       <details className="group mt-1 text-muted-foreground">
-        <summary className="flex min-h-9 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
-          <span aria-live="polite">{inView.length} {inView.length === 1 ? "locație" : "locații"} în zona vizibilă</span>
+        <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
+          <span>{inView.length} {inView.length === 1 ? "locație" : "locații"} în zona vizibilă</span>
           <span className="inline-flex items-center gap-1 text-xs text-[#4f6080]">Despre rezultate <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></span>
         </summary>
         <div className="mt-2 space-y-2 rounded-xl border border-border bg-secondary/50 p-3 text-xs leading-relaxed">
@@ -192,6 +200,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
           {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații din director nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
         </div>
       </details>
+      <p aria-live="polite" className="sr-only">{announcedCount === null ? "" : `${announcedCount} ${announcedCount === 1 ? "locație" : "locații"} în zona vizibilă`}</p>
       {geoMessage && <p role="status" className="mt-2 text-sm text-muted-foreground">{geoMessage}</p>}
       {origin && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>Zonă inițială: aprox. {radiusKm} km.</span>
@@ -207,7 +216,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       <div className="min-h-[max(24rem,calc(70vh+0.75rem))] lg:min-h-[24rem]">
         {state.status === "loading" && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Se încarcă directorul...
+            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> Se încarcă directorul...
           </div>
         )}
 
@@ -226,7 +235,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         {state.status === "ready" && visiblePoints.length === 0 && (
           <div className="flex h-full items-center justify-center px-6">
             <div className="max-w-sm text-center">
-              <MapPin className="mx-auto h-5 w-5 text-muted-foreground" />
+              <MapPin aria-hidden="true" className="mx-auto h-5 w-5 text-muted-foreground" />
               <p className="mt-2 text-sm font-semibold text-foreground">
                 Nicio locație de acest tip pe hartă
               </p>
@@ -243,7 +252,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               fixedDesktop
               listHeader={listHeader}
               mapActions={<button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-white shadow-md px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
-            {geoStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+            {geoStatus === "loading" ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <LocateFixed aria-hidden="true" className="h-4 w-4" />}
             {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
           </button>}
               mapStatus={geoMessage}
