@@ -3,6 +3,7 @@ import { ArrowLeft, UserRound } from "lucide-react";
 import InfoHint from "./InfoHint";
 import {
   PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
+  PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION,
   PatientSearchContactValidationError,
   sanitizePatientSearchContact,
   searchContactAgeRefersTo,
@@ -18,6 +19,8 @@ import {
 // rezultate (regulile: shared/patientSearchContact.js). Datele pleaca spre server doar la
 // "Continua", cu acordul bifat; "Sari peste" nu salveaza nimic. Nu schimba rezultatele si nu
 // ajung la locatii.
+// 2026-09-28 (aprobat de owner): a doua bifa, optionala si nebifata, pentru noutati si oferte.
+// Politica de confidentialitate se citeste din linkul de sub bife; nu se "accepta" cu o bifa.
 const CONTACT_INFO = [
   "Le folosim ca să te putem contacta despre această căutare.",
   "Datele rămân la VIASEE. Nu le trimitem locațiilor și nu schimbă rezultatele.",
@@ -52,6 +55,7 @@ export default function PatientSearchContact({ forWhom = "", search = {}, onDone
     age: ageRefersTo === "contact" ? remembered?.age || "" : "",
   }));
   const [consent, setConsent] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [fieldError, setFieldError] = useState({ field: "", message: "" });
   const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -78,7 +82,12 @@ export default function PatientSearchContact({ forWhom = "", search = {}, onDone
     const payload = {
       contact,
       search: { ...search, for_whom: forWhom },
-      consent: { processing: consent, version: PATIENT_SEARCH_CONTACT_CONSENT_VERSION },
+      consent: {
+        processing: consent,
+        version: PATIENT_SEARCH_CONTACT_CONSENT_VERSION,
+        marketing: marketingConsent,
+        marketing_version: PATIENT_SEARCH_CONTACT_MARKETING_CONSENT_VERSION,
+      },
     };
     try {
       sanitizePatientSearchContact(payload);
@@ -94,10 +103,10 @@ export default function PatientSearchContact({ forWhom = "", search = {}, onDone
     setFieldError({ field: "", message: "" });
     setFormError("");
     try {
-      const data = await savePatientSearchContact({ contact, search: payload.search });
+      const data = await savePatientSearchContact({ contact, search: payload.search, marketingConsent });
       // Varsta altei persoane nu se propune la urmatoarea cautare.
       rememberPatientContact({ ...contact, age: ageRefersTo === "contact" ? contact.age : "" });
-      onDone?.({ status: "saved", contactId: data?.contact_id || "" });
+      onDone?.({ status: "saved", contactId: data?.contact_id || "", marketingConsent });
     } catch (error) {
       const message = serverErrorMessage(error) || (error?.field ? String(error.message || "") : "");
       setFormError(isPatientOperationTimeout(error)
@@ -197,26 +206,44 @@ export default function PatientSearchContact({ forWhom = "", search = {}, onDone
         )}
       </div>
 
-      <label className={`mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border bg-background p-4 ${fieldError.field === "consent" ? "border-destructive" : "border-border"}`}>
-        <input
-          type="checkbox"
-          checked={consent}
-          onChange={(event) => {
-            setConsent(event.target.checked);
-            if (fieldError.field === "consent") setFieldError({ field: "", message: "" });
-          }}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border"
-        />
-        <span className="text-xs leading-relaxed text-muted-foreground">
-          Sunt de acord ca VIASEE să păstreze aceste date și ce am căutat, ca să mă contacteze despre această căutare.{" "}
-          <a href="/confidentialitate" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline underline-offset-2">
-            Detalii
-          </a>
-        </span>
-      </label>
+      <div className={`mt-6 space-y-3 rounded-2xl border bg-background p-4 ${fieldError.field === "consent" ? "border-destructive" : "border-border"}`}>
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => {
+              setConsent(event.target.checked);
+              if (fieldError.field === "consent") setFieldError({ field: "", message: "" });
+            }}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-border"
+          />
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            Sunt de acord ca VIASEE să păstreze aceste date și ce am căutat, ca să mă contacteze despre această căutare.
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={marketingConsent}
+            onChange={(event) => setMarketingConsent(event.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-border"
+          />
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            Vreau să primesc noutăți și oferte de la VIASEE pe email sau telefon.{" "}
+            <span className="text-muted-foreground/80">(opțional)</span>
+          </span>
+        </label>
+      </div>
       {fieldError.field === "consent" && (
         <p className="mt-1.5 text-xs font-medium text-destructive">{fieldError.message}</p>
       )}
+      <p className="mt-2 text-xs text-muted-foreground">
+        Detalii în{" "}
+        <a href="/confidentialitate" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline underline-offset-2">
+          Politica de confidențialitate
+        </a>
+        .
+      </p>
 
       {formError && (
         <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
