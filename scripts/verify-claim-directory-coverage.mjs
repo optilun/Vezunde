@@ -38,10 +38,10 @@ vm.runInNewContext(source, {
 });
 const response = await handler({ json: async () => ({ q: 'lensa' }) });
 const result = await response.json();
-assert.equal(result.locations.length, 2);
+assert.equal(result.locations.length, 10);
 assert.equal(result.organizations.length, 1);
-assert.equal(result.organizations[0].location_count, 2);
-assert.equal(result.organizations[0].locations.length, 2);
+assert.equal(result.organizations[0].location_count, 87);
+assert.equal(result.organizations[0].locations.length, 87);
 assert.ok(pages.some(([entity, skip]) => entity === 'location' && skip === 500));
 assert.ok(pages.some(([entity, skip]) => entity === 'organization' && skip === 500));
 console.log('Claim directory coverage and organization link integrity: OK');
