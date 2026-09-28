@@ -84,6 +84,19 @@ export default function Search() {
     window.addEventListener("resize", measure);
     return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
+  // A2: pe telefon si tableta controalele nu mai sunt fixate; cand ies de sub antet, apare bara
+  // compacta. Pe desktop controalele sunt `lg:sticky`, deci raman vizibile si bara nu apare (lg:hidden).
+  const [controlsOut, setControlsOut] = useState(false);
+  useEffect(() => {
+    const element = controlsRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => setControlsOut(!entry.isIntersecting && entry.boundingClientRect.top < stickySize.nav),
+      { rootMargin: `-${stickySize.nav}px 0px 0px 0px` },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [stickySize.nav]);
   // 2026-09-03: /cauta rasfoia doar locatii. Pacientul care stie ca vrea "un oftalmolog din Sibiu"
   // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
   // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
