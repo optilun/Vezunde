@@ -780,3 +780,21 @@ noua); pe telefon (375 px) bifele se citesc, fara derulare orizontala. Pagina de
 arata sectiunea noua, varsta, randul despre oferte si pastrare, cu data 28 septembrie 2026;
 termenii raman la 16 iulie 2026. Nu s-au trimis date.
 
+### Contactele in panoul de admin VIASEE (2026-09-28)
+
+Cererea owner-ului: "sa le vad si eu in panoul de admin, in contul de admin de pe viasee".
+
+- `/admin/operatiuni`, meniul "Pacienti" -> "Contacte din cautari"
+  (`src/components/admin/patients/AdminSearchContacts.jsx`, logica in
+  `src/lib/adminSearchContacts.js`). Citire si modificari direct din contul de admin (entitatea
+  are RLS doar pentru admin; pagina e in spatele `RequireAdmin`).
+- Sumar: contacte noi, pot primi oferte, au salvat o cerere, total. Cautare dupa nume, telefon,
+  email, nevoie sau localitate (fara diacritice); filtre pe status si "Doar cei care pot primi
+  oferte".
+- Detaliu: telefon (apel), email, varsta, nevoia, localitatea, pentru cine, termenul, acordurile
+  cu data, cererea salvata; status de urmarire + nota interna; "Dezabonează de la oferte";
+  "Sterge datele (la cererea persoanei)" cu confirmare in doi pasi.
+- "Poate primi oferte" = acord separat, fara dezabonare, fara "Nu mai contacta" si activ.
+- Export CSV al listei filtrate (separator ";", BOM, protectie la formule prin `buildCsv`).
+- Test nou `verify-admin-search-contacts` (5 verificari). `verify-all`: 165 trec, 0 esecuri.
+
