@@ -14,7 +14,10 @@
 //  - varsta este a persoanei care completeaza sau, cand cauta pentru altcineva, a acelei persoane.
 //    La copii nu o cerem: varsta copilului e deja intrebata in chestionar;
 //  - sub 16 ani, datele unei persoane care cauta pentru sine le completeaza un parinte. In Romania,
-//    16 ani este varsta de la care o persoana isi poate da singura acordul online.
+//    16 ani este varsta de la care o persoana isi poate da singura acordul online;
+//  - pastrare: 2026-09-28, decizia owner-ului ("nu stergem datele clientilor, le pastram"). Nu
+//    exista stergere automata; datele raman pana cand persoana isi retrage acordul sau cere
+//    stergerea (politica de confidentialitate, sectiunea "Datele lasate in timpul unei cautari").
 //
 // Folosit de ecranul src/components/intake2/PatientSearchContact.jsx (validare in browser) si de
 // base44/functions/createPatientRequest/entry.ts (validare pe server). Copie identica in
@@ -22,8 +25,7 @@
 
 export const PATIENT_SEARCH_CONTACT_MODE = 'save_search_contact';
 export const PATIENT_SEARCH_CONTACT_CONSENT_VERSION = 'patient-search-contact-v1';
-export const PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY = 'patient-search-contact-retention-90d-v1';
-export const PATIENT_SEARCH_CONTACT_RETENTION_DAYS = 90;
+export const PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY = 'patient-search-contact-until-withdrawal-v1';
 export const PATIENT_SEARCH_CONTACT_MIN_SELF_AGE = 16;
 
 export class PatientSearchContactValidationError extends Error {
