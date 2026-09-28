@@ -19,10 +19,6 @@ const COUNTY_SEAT_NAMES = {
 
 const SEAT_TYPES = new Set(["municipality_county_seat", "bucharest_municipality"]);
 
-export function prettyCountyName(name) {
-  return COUNTY_NAMES[name] || name || "";
-}
-
 // Aceeasi localitate, cu numele afisat corect. Restul campurilor raman neschimbate.
 export function prettyLocality(locality) {
   if (!locality) return locality;
