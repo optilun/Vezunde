@@ -304,7 +304,7 @@ check('confirmation v2', () => {
 
 // --- 5. Promptul si contractul LLM v2 -------------------------------------------------------
 check('interpretation v2 contract', () => {
-  assert.equal(PATIENT_NEED_INTERPRETATION_VERSION, 'patient-need-ai-v2.1');
+  assert.equal(PATIENT_NEED_INTERPRETATION_VERSION, 'patient-need-ai-v2.2');
   const schema = getPatientNeedResponseSchema();
   assert.ok(schema.required.includes('alternative_intent'));
   assert.ok(schema.properties.for_whom.enum.includes('other_adult'));
