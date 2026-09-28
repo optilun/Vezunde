@@ -102,18 +102,24 @@ Deno.serve(async (req) => {
     const candidates = rawCandidates.filter(isClaimCandidate);
     if (!candidates.some((location) => location.id === primaryLocationId)) candidates.unshift(primaryLocation);
 
-    const links = organizationId
-      ? await svc.entities.DirectoryOrganizationLocationLink.filter({
-          organization_id: organizationId,
-          link_record_status: 'active',
-        }, '-reviewed_at', 1000).catch(() => [])
-      : [];
-    const linkByLocationId = new Map();
-    for (const link of links) if (!linkByLocationId.has(link.location_id)) linkByLocationId.set(link.location_id, link);
+    const allCandidateIds = candidates.map((location) => location.id);
+    const [links, states] = await Promise.all([
+      loadRowsForLocationIds(svc.entities.DirectoryOrganizationLocationLink, allCandidateIds, { query: { link_record_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
+      loadRowsForLocationIds(svc.entities.ProviderLocationDirectoryState, allCandidateIds, { query: { state_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
+    ]);
+    const linksByLocationId = activeLinksByLocation(links);
+    const stateByLocationId = new Map(states.map((state) => [state.location_id, state]));
+    const linkStatusFor = (location) => claimOrganizationLinkStatus(
+      location, linksByLocationId.get(location.id) || [], stateByLocationId.get(location.id),
+    );
+    const primaryLinkStatus = linkStatusFor(primaryLocation);
+    if (['conflict', 'rejected'].includes(primaryLinkStatus) && input.claim_scope !== 'location') {
+      return Response.json({ error: 'Asocierea locatiei cu organizatia necesita verificare. Solicita doar aceasta locatie.' }, { status: 409 });
+    }
 
     const eligibleCandidates = candidates.filter((location) => {
-      const linkStatus = linkByLocationId.get(location.id)?.link_status || (location.organization_id ? 'probable' : 'unassigned');
-      return location.id === primaryLocationId || !['conflict', 'rejected'].includes(linkStatus);
+      if (['conflict', 'rejected'].includes(primaryLinkStatus)) return location.id === primaryLocationId;
+      return location.id === primaryLocationId || !['conflict', 'rejected'].includes(linkStatusFor(location));
     });
     const candidateIds = eligibleCandidates.map((location) => location.id);
 
