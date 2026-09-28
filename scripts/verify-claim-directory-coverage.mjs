@@ -13,7 +13,7 @@ assert.equal(claimOrganizationLinkStatus(location, [aligned, aligned]), 'conflic
 assert.deepEqual(activeLinksByLocation([aligned, { ...disputed, link_record_status: 'superseded' }]).get('loc-1'), [aligned]);
 
 const source = fs.readFileSync('base44/functions/getClaimableProviderLocations/entry.ts', 'utf8').replace(/^import[\s\S]*?;\n/gm, '');
-const organizations = Array.from({ length: 250 }, (_, index) => ({
+const organizations = Array.from({ length: 550 }, (_, index) => ({
   id: `org-${index}`, name: `Other ${index}`, status: 'activa',
 }));
 organizations.push({ id: 'org-lensa', name: 'Lensa', status: 'activa', organization_type: 'optical_chain' });
