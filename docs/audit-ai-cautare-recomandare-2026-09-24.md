@@ -688,8 +688,8 @@ vedea deloc. Verificat live: la "Vreau un control" anamneza apare.
 
 - Datele se vad in Base44, la Data, entitatea `PatientSearchContact` (`follow_up_status` si
   `follow_up_note` sunt pentru urmarirea manuala).
-- Stergerea automata dupa `retention_until` nu este inca programata.
-- Politica de confidentialitate (`src/pages/Privacy.jsx`) mentioneaza deja numele, emailul,
+- ~~Stergerea automata dupa `retention_until` nu este inca programata.~~ Renuntat: owner-ul pastreaza datele (vezi mai jos, 2026-09-28).
+- (Rezolvat 2026-09-28, vezi mai jos.) Politica de confidentialitate (`src/pages/Privacy.jsx`) mentioneaza deja numele, emailul,
   telefonul si serviciul cautat, dar nu varsta si nici pastrarea datelor lasate fara cerere. Text
   propus, de verificat juridic inainte de publicare: la "Ce date putem colecta", "... nume, email,
   telefon, varsta (daca alegi sa o comunici) si datele contului"; la "Cat timp pastram datele",
@@ -731,4 +731,26 @@ actualizat); `verify-all`: 162 trec, 0 esecuri.
 Verificat live dupa publicare (2026-09-28): control + "Nu sunt sigur" + "Pentru mine" + Oradea ->
 "Cat de repede ai nevoie?" -> anamneza -> "Date de contact". Pe telefon (375 px), fereastra "i"
 de la "Date de contact" sta la 24 px de marginea din dreapta (inainte 0 px).
+
+### Pastrarea datelor si politica de confidentialitate (2026-09-28)
+
+Decizia owner-ului: "nu stergem datele clientilor, le pastram. Fa si politica de confidentialitate."
+
+- Fara stergere automata. Inregistrarile noi `PatientSearchContact` au
+  `retention_policy_key: patient-search-contact-until-withdrawal-v1` si nu mai primesc
+  `retention_until` (campul ramane in schema, gol). Nu existau inregistrari create cu termenul de
+  90 de zile.
+- `src/pages/Privacy.jsx`: varsta la "Ce date putem colecta"; sectiune noua "Datele lasate in
+  timpul unei cautari" (pas optional, salvare doar cu acordul bifat si "Continua", ce se pastreaza,
+  scop, temei = consimtamant retractabil, cine are acces, fara transmitere catre locatii, legarea de
+  o cerere ulterioara, pastrare pana la retragerea acordului sau cererea de stergere); rand nou la
+  "Cat timp pastram datele". Data versiunii: 28 septembrie 2026, doar pe aceasta pagina
+  (`LegalPageLayout` primeste `lastUpdated`; celelalte pagini legale raman la 16 iulie 2026).
+- Observatie pentru owner: GDPR cere ca datele sa nu fie pastrate mai mult decat e necesar scopului
+  (art. 5 alin. 1 lit. e). Criteriul scris ("pana la retragerea acordului sau cererea de
+  stergere") este unul acceptat, dar scopul din acord este contactarea despre acea cautare. Pentru
+  alte oferte sau mesaje de marketing mai tarziu este nevoie de un acord separat si optional.
+  Recomandat: textul sa fie verificat de un jurist inainte de o campanie.
+- `verify-patient-search-contact`: 14 verificari (una noua pentru politica). `verify-all`: 163
+  trec, 0 esecuri.
 
