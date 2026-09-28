@@ -56,7 +56,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(reset, /if \(typing\) return;/, 'nimic nu se reseteaza cat timp se tasteaza');
   assert.match(reset, /if \(previousCriteria\.current === criteria\) return;/, 'aceleasi criterii: fara resetare');
   assert.doesNotMatch(search, /\}, \[service, query, locality\?\.siruta_code/);
-  assert.match(search, /useEffect\(\(\) => \{ if \(!typing\) setSearchMapKey\(liveMapKey\); \}, \[typing, liveMapKey\]\);/, 'lista si harta nu se remonteaza la prima litera');
+  assert.match(search, /useEffect\(\(\) => \{ if \(!typing\) setSettledMapKey\(liveMapKey\); \}, \[typing, liveMapKey\]\);\s*const searchMapKey = settledMapKey;/, 'lista si harta nu se remonteaza la prima litera');
   const run = search.slice(search.indexOf('const run = async () => {'), search.indexOf('try {', search.indexOf('const run = async () => {')));
   assert.ok(run.indexOf('if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;') >= 0, 'asteapta pauza');
   assert.ok(run.indexOf('if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;') < run.indexOf('setResults(null);'), 'nu goleste lista inainte de pauza');
