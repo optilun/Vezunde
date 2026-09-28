@@ -6,6 +6,38 @@ const STATUS_LABELS = {
   verified: 'Profil verificat de VIASEE',
 };
 const MAX_RESULTS = 10;
+const PAGE_SIZE = 500;
+const MAX_PAGES = 10;
+const CACHE_MS = 60_000;
+let cachedIndex = null;
+let indexPromise = null;
+
+async function allPages(entity, query = null) {
+  const rows = [];
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const batch = query
+      ? await entity.filter(query, 'name', PAGE_SIZE, page * PAGE_SIZE)
+      : await entity.list('name', PAGE_SIZE, page * PAGE_SIZE);
+    rows.push(...batch);
+    if (batch.length < PAGE_SIZE) return rows;
+  }
+  throw new Error('Directorul este prea mare pentru cautarea curenta.');
+}
+
+async function searchIndex(svc) {
+  if (cachedIndex && Date.now() - cachedIndex.at < CACHE_MS) return cachedIndex;
+  if (!indexPromise) {
+    indexPromise = Promise.all([
+      allPages(svc.entities.ProviderLocation, { status: 'publicata' }),
+      allPages(svc.entities.ProviderOrganization),
+    ]).then(([locations, organizations]) => {
+      cachedIndex = { at: Date.now(), locations, organizations };
+      return cachedIndex;
+    }).finally(() => { indexPromise = null; });
+  }
+  return indexPromise;
+}
+
 const EXCLUDED_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 const norm = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
