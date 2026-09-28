@@ -83,7 +83,7 @@ export default function Privacy() {
             <li>Datele se salvează numai dacă bifezi acordul și apeși „Continuă”. Dacă sari peste pas, nu păstrăm nimic din ce ai scris.</li>
             <li>Împreună cu ele păstrăm nevoia căutată (de exemplu un control de vedere), localitatea și termenul ales. Răspunsurile din anamneză nu fac parte din aceste date.</li>
             <li>Le folosim ca să te putem contacta în legătură cu căutarea ta. Temeiul este consimțământul tău, pe care îl poți retrage oricând.</li>
-            <li>Le vede doar echipa VIASEE. Nu le transmitem locațiilor: o cerere către locații se trimite separat, numai cu acordul tău.</li>
+            <li>Au acces doar echipa VIASEE și furnizorii tehnici de mai jos. Nu le transmitem locațiilor: o cerere către locații se trimite separat, numai cu acordul tău.</li>
             <li>Dacă salvezi apoi o cerere, legăm aceste date de cererea ta.</li>
           </LegalList>
           <p>Păstrăm aceste date până când îți retragi acordul sau ne ceri ștergerea lor, la <a className="font-semibold text-[#171717] underline underline-offset-4" href={`mailto:${VIASEE_COMPANY.contactEmail}`}>{VIASEE_COMPANY.contactEmail}</a> sau din pagina <a className="font-semibold text-[#171717] underline underline-offset-4" href="/drepturile-tale">Drepturile tale</a>.</p>
