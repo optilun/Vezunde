@@ -70,7 +70,7 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
           <span className="min-w-0 flex-1 text-xs font-extrabold text-foreground">{confidence.label}</span>
           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
             {expanded ? "Ascunde" : "Vezi de ce"}
-            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? <ChevronUp aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />}
           </span>
         </button>
         {expanded && details}
@@ -107,7 +107,7 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
         aria-expanded={expanded}
       >
         {expanded ? "Ascunde explicatia" : "Vezi de ce"}
-        {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        {expanded ? <ChevronUp aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />}
       </button>
 
       {expanded && details}
