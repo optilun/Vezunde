@@ -62,8 +62,9 @@ const search = read('src/pages/Search.jsx');
   assert.match(search, /if \(settling\) return;/, 'adresa se scrie dupa pauza de tastare');
   assert.doesNotMatch(search, /urlParams/, 'criteriile nu se mai citesc direct din adresa la initializare');
   assert.match(search, /const criteriaSearch = searchCriteriaFor\(\{ service, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType \}\);/, 'fara textul liber');
-  const scrollToTop = read('src/App.jsx');
-  assert.doesNotMatch(scrollToTop, /\[pathname, search\]|location\.search\]/, 'schimbarea adresei nu deruleaza pagina');
+  const scrollToTop = read('src/components/ScrollToTop.jsx');
+  assert.match(scrollToTop, /\}, \[pathname, hash, navigationType\]\);/, 'schimbarea parametrilor nu deruleaza pagina');
+  assert.doesNotMatch(scrollToTop, /\bsearch\b/);
 }
 
 // B1
