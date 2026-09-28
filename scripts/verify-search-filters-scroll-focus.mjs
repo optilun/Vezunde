@@ -23,6 +23,10 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(search, /pending: !hasCanonicalLocality, label: "Decontare CAS"/);
   assert.match(search, /Se aplică după ce alegi localitatea:/);
   assert.match(search, /role="group" aria-label="Filtre active"/);
+  // Dintr-un link se pastreaza doar valorile cunoscute (fara chei tehnice afisate drept filtre).
+  assert.match(search, /filterServiceKeys: state\.filterServiceKeys\.filter\(\(key\) => CANONICAL_SERVICE_REGISTRY\[key\]\)/);
+  assert.match(search, /providerType: state\.providerType\.split\(","\)\.filter\(\(key\) => DIRECTORY_PROVIDER_FILTER_LABELS\[key\]\)/);
+  assert.equal((search.match(/knownLinkedState\(searchStateFromUrl\(/g) || []).length, 2, 'la deschidere si pentru un link deschis peste pagina');
   // Harta Romaniei primeste in continuare doar tipul.
   assert.match(search, /<DirectoryMap providerType=\{providerType\} filterSummary=\{filterSummary\} \/>/);
 }
