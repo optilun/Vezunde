@@ -193,7 +193,7 @@ export default function LocationsWithMap({
         </div>
 
         {hasPositions && (
-          {/* C4 (2026-09-28): div, nu <aside>: harta e parte din rezultate, nu continut complementar
+          {/* C4 (2026-09-28): div, nu element aside: harta e parte din rezultate, nu continut complementar
               (axe: „landmark-complementary-is-top-level”). Harta are propria regiune etichetata. */}
           <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
