@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MapPin, LocateFixed, ChevronDown } from "lucide-react";
 import { loadNationalDirectoryMap, NATIONAL_MAP_ERROR_MESSAGE } from "@/lib/nationalDirectoryMap";
+import { loadNationalMapSnapshot } from "@/lib/nationalMapEarly";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
@@ -74,24 +75,46 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
 
   useEffect(() => {
     let active = true;
+    let live = "pending";
+    let showingSnapshot = false;
     setState({ status: "loading", points: [], meta: null, error: "" });
+    const show = (data, snapshotAt = null) => setState({
+      status: "ready",
+      points: Array.isArray(data?.results) ? data.results : [],
+      meta: {
+        total: Number(data?.total_published) || 0,
+        withoutPosition: Number(data?.without_position) || 0,
+      },
+      error: "",
+      snapshotAt,
+    });
+    // 2026-09-28 (audit /cauta, B6): fisierul static al hartii (scris la Publish) apare imediat;
+    // lista actuala il inlocuieste cand soseste, fara sa mute harta (stableCamera). Daca lista
+    // actuala nu vine, harta ramane cu fisierul si spune de cand este.
+    if (retry === 0) {
+      loadNationalMapSnapshot().then((snapshot) => {
+        if (!active || !snapshot || live === "ok") return;
+        showingSnapshot = true;
+        show(snapshot, live === "failed" ? snapshot.snapshot_built_at : null);
+      });
+    }
     // Incarcatorul comun reincearca singur la erori trecatoare (limita de trafic, 5xx) si tine
     // harta cateva minute; vizitatorul vede un mesaj clar, nu textul tehnic al erorii.
     loadNationalDirectoryMap({ force: retry > 0 })
       .then((data) => {
-        if (!active) return;
-        setState({
-          status: "ready",
-          points: Array.isArray(data?.results) ? data.results : [],
-          meta: {
-            total: Number(data?.total_published) || 0,
-            withoutPosition: Number(data?.without_position) || 0,
-          },
-          error: "",
-        });
+        live = "ok";
+        if (active) show(data);
       })
       .catch(() => {
+        live = "failed";
         if (!active) return;
+        if (showingSnapshot) {
+          setState((current) => current.status === "ready" ? { ...current, snapshotAt: current.snapshotAt || "unknown" } : current);
+          loadNationalMapSnapshot().then((snapshot) => {
+            if (active && snapshot) setState((current) => current.status === "ready" ? { ...current, snapshotAt: snapshot.snapshot_built_at } : current);
+          });
+          return;
+        }
         setState({
           status: "error",
           points: [],
