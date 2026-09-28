@@ -24,11 +24,21 @@ export default function ProviderSearch({ onClaim, onNew }) {
     const reqId = ++reqRef.current;
     const t = setTimeout(async () => {
       setLoading(true);
-      const res = await base44.functions.invoke("getClaimableProviderLocations", { q }).catch(() => ({ data: {} }));
-      if (reqId !== reqRef.current) return;
-      setLoading(false);
-      setResults(res.data?.locations || []);
-      setOrganizations(res.data?.organizations || []);
+      try {
+        const res = await base44.functions.invoke("getClaimableProviderLocations", { q });
+        if (res.data?.error) throw new Error(res.data.error);
+        if (reqId !== reqRef.current) return;
+        setResults(res.data?.locations || []);
+        setOrganizations(res.data?.organizations || []);
+        setSearchError(false);
+      } catch (_error) {
+        if (reqId !== reqRef.current) return;
+        setResults([]);
+        setOrganizations([]);
+        setSearchError(true);
+      } finally {
+        if (reqId === reqRef.current) setLoading(false);
+      }
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
