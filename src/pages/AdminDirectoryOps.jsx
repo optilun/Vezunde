@@ -65,9 +65,13 @@ const OutreachWorkspace = lazy(
 );
 
 const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBillingCenter"));
+// 2026-09-28: datele de contact lasate de pacienti la cautare (PatientSearchContact).
+const AdminSearchContacts = lazy(() => import("@/components/admin/patients/AdminSearchContacts"));
 
 const SIMPLE_HEADERS = {
   billing: "Urmărește facturile, încasările și abonamentele Pro ale locațiilor VIASEE.",
+  contacte_pacienti:
+    "Pacienții care și-au lăsat datele la finalul unei căutări, cu acordul lor. Ofertele se trimit doar celor marcați „Poate primi oferte”.",
   adauga:
     "Creeaza o organizatie si prima locatie sau adauga manual un profil nou in director, cu provenienta obligatorie.",
   profiluri:
@@ -218,6 +222,7 @@ export default function AdminDirectoryOps() {
     "data_integrity",
     "outreach",
     "billing",
+    "contacte_pacienti",
   ];
 
   return (
@@ -270,6 +275,7 @@ export default function AdminDirectoryOps() {
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "outreach" && <OutreachWorkspace />}
               {tab === "billing" && <AdminBillingCenter />}
+              {tab === "contacte_pacienti" && <AdminSearchContacts />}
               {tab === "geografie" && <GeoImport />}
               {tab === "audit" && <DirOpsAudit />}
               {tab === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
