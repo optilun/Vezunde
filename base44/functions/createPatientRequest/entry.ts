@@ -125,6 +125,11 @@ async function saveSearchContact(base44, svc, input) {
     processing_consent: true,
     processing_consent_version: submission.consent.version,
     processing_consent_at: nowIso,
+    // Acordul optional pentru noutati si oferte (2026-09-28). Salvarea din nou a aceleiasi
+    // cautari pastreaza alegerea cea mai recenta.
+    marketing_consent: submission.consent.marketing,
+    marketing_consent_version: submission.consent.marketing_version,
+    marketing_consent_at: submission.consent.marketing ? nowIso : null,
     // 2026-09-28, decizia owner-ului: fara stergere automata; datele raman pana la retragerea
     // acordului sau o cerere de stergere (vezi shared/patientSearchContact.js).
     retention_policy_key: PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
