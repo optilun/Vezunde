@@ -64,7 +64,7 @@ const OutreachWorkspace = lazy(
   () => import("@/components/admin/outreach/OutreachWorkspace"),
 );
 const AutomaticEmailWorkspace = lazy(
-  () => import("@/components/admin/outreach/AutomaticEmailWorkspace"),
+  () => import("@/components/admin/automatic-emails/AutomaticEmailWorkspace"),
 );
 
 const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBillingCenter"));
