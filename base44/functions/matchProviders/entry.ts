@@ -8,6 +8,8 @@ import {
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import {
+  isChildSearch,
+  isPediatricOnlyLocation,
   providerTypePreferencePoints,
   providerTypeSecondaryNote,
   resolveProviderTypePreference,
@@ -289,6 +291,13 @@ Deno.serve(async (req) => {
       text: String(payload.search_text || payload.query || ''),
       getDefinition: getCanonicalServiceDefinition,
     });
+    // 2026-09-30: locatiile doar pentru copii nu apar la cautarile pentru adulti si vin primele la
+    // cele pentru copii (vezi isPediatricOnlyLocation si matchProvidersSemantic/entry.ts).
+    const childSearch = isChildSearch({
+      intent: intent || '',
+      forWhom: String(payload.for_whom || ''),
+      ageGroup: String(payload.age_group || ''),
+    });
 
     if (!sirutaCode) {
       return Response.json({
@@ -366,6 +375,7 @@ Deno.serve(async (req) => {
     const structuralList = [];
 
     for (const loc of locations) {
+      if (!childSearch && isPediatricOnlyLocation(loc)) continue;
       const locRows = serviceRowsByLocation[loc.id] || [];
       const locFacilities = facilitiesByLocation[loc.id] || [];
       const locAssignments = assignmentsByLocation[loc.id] || [];
@@ -489,6 +499,10 @@ Deno.serve(async (req) => {
         loc.public_phone || loc.phone_public || loc.website_url || loc.website
       ) ? 1 : 0;
       const orderedCandidates = [...structuralList].sort((a, b) => {
+        if (childSearch) {
+          const pediatricDelta = Number(isPediatricOnlyLocation(b.loc)) - Number(isPediatricOnlyLocation(a.loc));
+          if (pediatricDelta !== 0) return pediatricDelta;
+        }
         const contactDelta = hasContact(b.loc) - hasContact(a.loc);
         if (contactDelta !== 0) return contactDelta;
         return String(a.loc.name || '').localeCompare(String(b.loc.name || ''));
