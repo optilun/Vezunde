@@ -179,7 +179,7 @@ const CHILD_FOR_WHOM = new Set(['copil', 'child']);
 const CHILD_AGE_GROUPS = new Set(['sub_3_ani', '3_6_ani', '7_12_ani', '13_18_ani', 'under_3', '3_6', '7_12', '13_18']);
 
 function normalizedName(value) {
-  return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 export function isPediatricOnlyLocation(location) {

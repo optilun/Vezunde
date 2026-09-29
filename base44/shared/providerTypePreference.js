@@ -168,6 +168,35 @@ export function selectStructuralByPreference(candidates, typePreference, { maxRe
   return [...primaryTaken, ...secondaryTaken];
 }
 
+// 2026-09-30, aprobat de owner ("Incepe tot"): locatiile doar pentru copii (ambulatorii si spitale
+// de pediatrie). In director sunt 8, toate recunoscute dupa nume ("Pediatrie", "Oftalmopediatrie",
+// "Spitalul de Copii", "Ambulatoriu Copii"); la Sibiu, ambulatoriul de pediatrie aparea primul la
+// un control pentru adult. La cautarile pentru adulti nu mai apar; la cele pentru copii vin primele
+// in grupul lor. Un camp explicit `pediatric_only` pe locatie, daca va exista, are prioritate.
+const PEDIATRIC_NAME_PATTERN = /pediatri|\bcopii\b/;
+const ADULT_NAME_PATTERN = /\badult/;
+const CHILD_FOR_WHOM = new Set(['copil', 'child']);
+const CHILD_AGE_GROUPS = new Set(['sub_3_ani', '3_6_ani', '7_12_ani', '13_18_ani', 'under_3', '3_6', '7_12', '13_18']);
+
+function normalizedName(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+export function isPediatricOnlyLocation(location) {
+  if (typeof location?.pediatric_only === 'boolean') return location.pediatric_only;
+  const name = normalizedName(`${location?.public_display_name || ''} ${location?.name || ''}`);
+  return PEDIATRIC_NAME_PATTERN.test(name) && !ADULT_NAME_PATTERN.test(name);
+}
+
+/**
+ * @param {{ intent?: string, forWhom?: string, ageGroup?: string }} [input]
+ */
+export function isChildSearch({ intent = '', forWhom = '', ageGroup = '' } = {}) {
+  return clean(intent) === 'control_copil'
+    || CHILD_FOR_WHOM.has(clean(forWhom))
+    || CHILD_AGE_GROUPS.has(clean(ageGroup));
+}
+
 // Nota grupului secundar, afisata pacientului sub titlul grupului.
 export function providerTypeSecondaryNote(typePreference) {
   if (typePreference?.mode === 'optical_first') {
