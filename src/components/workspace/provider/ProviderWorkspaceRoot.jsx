@@ -398,6 +398,10 @@ export default function ProviderWorkspaceRoot({
     await loadOverview(selectedLocationId, { silent: true });
     await onRefresh?.();
   };
+  // 2026-09-29 (lint exhaustive-deps): efectele de mai jos cheama mereu ultima versiune (inainte,
+  // ascultatorul de focus o pastra pe cea de la abonare, cu `onRefresh` de atunci).
+  const refreshOverviewLatest = useRef(refreshOverviewInPlace);
+  refreshOverviewLatest.current = refreshOverviewInPlace;
 
   useEffect(() => {
     if (!selectedOrganizationId || !hasWideOrganizationAccess || wideAccessSyncStarted.current.has(selectedOrganizationId)) return;
@@ -547,12 +551,12 @@ export default function ProviderWorkspaceRoot({
     // that races the mount-time load in loadOverview.
     const isInitialSectionSync = !hasCompletedInitialSectionSyncRef.current;
     hasCompletedInitialSectionSyncRef.current = true;
-    if (!isInitialSectionSync && safeSection === "overview" && previousSection !== "overview" && selectedLocationId) void refreshOverviewInPlace();
+    if (!isInitialSectionSync && safeSection === "overview" && previousSection !== "overview" && selectedLocationId) void refreshOverviewLatest.current();
   }, [safeSection, selectedLocationId]);
 
   useEffect(() => {
     if (safeSection !== "overview" || !selectedLocationId) return undefined;
-    const refreshOnFocus = () => { void refreshOverviewInPlace(); };
+    const refreshOnFocus = () => { void refreshOverviewLatest.current(); };
     window.addEventListener("focus", refreshOnFocus);
     return () => window.removeEventListener("focus", refreshOnFocus);
   }, [safeSection, selectedLocationId]);
