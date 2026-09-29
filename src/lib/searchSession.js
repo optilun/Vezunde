@@ -10,3 +10,15 @@ export function readSearchSession() {
 export function writeSearchSession(patch) {
   try { sessionStorage.setItem(KEY, JSON.stringify({ ...readSearchSession(), ...patch, savedAt: Date.now() })); } catch { /* Storage is optional. */ }
 }
+
+// 2026-09-29 (audit /cauta, E2). Pe telefon, harta Romaniei porneste pe harta (1.300 de locatii,
+// lista alfabetica spune putin), iar o localitate porneste pe lista (cateva zeci de locatii, de
+// comparat). Cand vizitatorul alege singur lista sau harta, alegerea lui se pastreaza pentru
+// ambele vederi, in aceasta fila.
+export function readMobileViewChoice(fallback) {
+  const choice = readSearchSession().mobileViewChoice;
+  return choice === "map" || choice === "list" ? choice : fallback;
+}
+export function rememberMobileViewChoice(view) {
+  if (view === "map" || view === "list") writeSearchSession({ mobileViewChoice: view });
+}
