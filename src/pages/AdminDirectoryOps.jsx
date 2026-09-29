@@ -90,7 +90,7 @@ const SIMPLE_HEADERS = {
     "Gestioneaza serviciile existente, nivelul de confirmare si eligibilitatea pentru rezultate.",
   revendicari: "Analizeaza cererile de revendicare a profilurilor.",
   outreach:
-    "Trimite email-uri informative catre opticieni, clinici si cabinete deja din director, cu sabloane, segmentare si tracking de livrare.",
+    "Gestioneaza campaniile si previzualizeaza sau editeaza emailurile automate trimise de VIASEE. Mesajele Base44 si Stripe sunt indicate separat.",
   geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
   audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
   data_integrity:
