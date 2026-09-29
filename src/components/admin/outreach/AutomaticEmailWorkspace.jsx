@@ -268,7 +268,7 @@ export default function AutomaticEmailWorkspace() {
             ))}
           </div>
 
-          <div className="grid items-start gap-4 xl:grid-cols-[minmax(250px,320px)_minmax(0,1fr)]">
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(230px,300px)_minmax(0,1fr)]">
             <aside className="overflow-hidden rounded-2xl border border-border bg-card">
               <div className="border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground">{listed.length} mesaje gasite</div>
               <div className="max-h-[min(70vh,720px)] overflow-y-auto p-2">
@@ -331,7 +331,7 @@ export default function AutomaticEmailWorkspace() {
                         </button>
                       </div>
 
-                      <div className={mode === "edit" ? "grid items-start gap-4 lg:grid-cols-2" : ""}>
+                      <div className={mode === "edit" ? "grid items-start gap-4 2xl:grid-cols-2" : ""}>
                         {mode === "edit" && (
                           <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
                             <div>
