@@ -5,6 +5,7 @@ import { loadNationalMapSnapshot } from "@/lib/nationalMapEarly";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
+import useRememberScroll from "@/hooks/useRememberScroll";
 
 import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom } from "../../shared/nearbyDirectory.js";
 
@@ -149,36 +150,11 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     });
     return () => cancelAnimationFrame(frame);
   }, [state.status]);
-  useEffect(() => {
-    // 2026-09-24. Pozitia se salveaza dupa ce derularea se opreste (si la plecarea de pe pagina),
-    // nu la fiecare eveniment: fiecare salvare citeste si rescrie toata sesiunea de cautare, iar pe
-    // telefon asta facea lista sa se deruleze sacadat.
-    // Ultima pozitie se tine la fiecare eveniment (citire ieftina), ca salvarea de la plecare sa nu
-    // citeasca pozitia paginii urmatoare.
-    let timer = 0;
-    let lastY = window.scrollY;
-    let pending = false;
-    const save = () => {
-      clearTimeout(timer);
-      timer = 0;
-      if (!pending) return;
-      pending = false;
-      if (scrollRestored.current && !window.matchMedia("(min-width: 1024px)").matches) writeSearchSession({ nationalScroll: lastY });
-    };
-    const onScroll = () => {
-      lastY = window.scrollY;
-      pending = true;
-      clearTimeout(timer);
-      timer = setTimeout(save, 200);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("pagehide", save);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("pagehide", save);
-      save();
-    };
-  }, []);
+  // 2026-09-24. Pozitia se salveaza dupa ce derularea se opreste (si la plecarea de pe pagina),
+  // nu la fiecare eveniment (vezi useRememberScroll; 2026-09-29, audit /cauta D3: comun cu /cauta).
+  useRememberScroll((y) => {
+    if (scrollRestored.current && !window.matchMedia("(min-width: 1024px)").matches) writeSearchSession({ nationalScroll: y });
+  });
 
   const orderedPoints = useMemo(() => {
     if (origin) return nearestDirectory(visiblePoints, origin);
