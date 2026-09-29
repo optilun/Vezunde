@@ -88,7 +88,8 @@ export default function ProviderServicesEditor(props) {
   useEffect(() => {
     if (unitIndex >= m.visibleUnits.length) setUnitIndex(0);
   }, [unitIndex, m.visibleUnits.length]);
-  useEffect(() => { props.onDirtyChange?.(m.dirty); }, [m.dirty, props.onDirtyChange]);
+  const onDirtyChange = props.onDirtyChange;
+  useEffect(() => { onDirtyChange?.(m.dirty); }, [m.dirty, onDirtyChange]);
   useEffect(() => {
     if (!m.dirty) return;
     const warn = event => { event.preventDefault(); event.returnValue = ""; };
