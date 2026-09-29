@@ -26,6 +26,11 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // (`text: searchText`), ca la keratocon cheile de adaptare speciala si cele medicale sa nu
     // mai fie scoase. Nicio schimbare de scor, bucket sau selectie Top 3.
     '4ad1e595b2cac79a2262d08aa847e4c2a8ea0dba',
+    // 2026-09-28, politica de tip de locatie (cerut explicit de Alex, audit sectiunea 18):
+    // clientul trimite si `need_service_keys` (cheile confirmate de pacient, fara cele gasite in
+    // text) la ambele functii de potrivire, ca serverul sa aleaga optica sau cabinetul doar dupa
+    // ele. `service_keys` trimise pentru potrivire raman aceleasi.
+    '68e528fd27ca1e19f0378b2ff27048c2128f16b3',
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
