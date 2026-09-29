@@ -1,0 +1,63 @@
+{
+  "name": "AutomaticEmailTemplate",
+  "type": "object",
+  "properties": {
+    "template_key": {
+      "type": "string",
+      "description": "Cheia unica din catalogul emailurilor automate VIASEE"
+    },
+    "subject_template": {
+      "type": "string",
+      "description": "Subiect text simplu cu variabile {{nume}}"
+    },
+    "body_template": {
+      "type": "string",
+      "description": "Corp text simplu cu variabile {{nume}}"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "revision": {
+      "type": "number",
+      "default": 1
+    },
+    "updated_by_user_id": {
+      "type": "string"
+    },
+    "updated_by_email": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "template_key",
+    "subject_template",
+    "body_template"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
