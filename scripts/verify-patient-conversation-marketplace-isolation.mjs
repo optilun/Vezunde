@@ -31,6 +31,11 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // text) la ambele functii de potrivire, ca serverul sa aleaga optica sau cabinetul doar dupa
     // ele. `service_keys` trimise pentru potrivire raman aceleasi.
     '68e528fd27ca1e19f0378b2ff27048c2128f16b3',
+    // 2026-09-30, aprobat de owner ("Incepe tot"): o singura reincercare, dupa 1,5 secunde, cand
+    // matchProvidersSemantic raspunde 429/500/502/503/504 la un varf de trafic (verificat live pe
+    // 2026-09-29: aceeasi cerere trecea dupa cateva secunde). Timeout-ul nu se reincearca; cererea,
+    // cheile, scorul si ordinea raman aceleasi.
+    '0e41bbd9c917eb5214934d5ebda33c97ae082abb',
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
@@ -357,6 +362,8 @@ const PR265_PROVIDER_SEMANTIC_BLOBS = Object.freeze([
   '4ad1e595b2cac79a2262d08aa847e4c2a8ea0dba',
   // 2026-09-28: `need_service_keys` pentru politica de tip de locatie (vezi blob-ul aprobat mai sus).
   '68e528fd27ca1e19f0378b2ff27048c2128f16b3',
+  // 2026-09-30: reincercarea la eroare trecatoare de server (vezi blob-ul aprobat mai sus).
+  '0e41bbd9c917eb5214934d5ebda33c97ae082abb',
 ]);
 const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
 const providerSemanticComposition = PR265_PROVIDER_SEMANTIC_BLOBS.includes(providerSemanticBlob)
