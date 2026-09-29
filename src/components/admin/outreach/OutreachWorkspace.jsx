@@ -3,13 +3,11 @@ import OutreachCampaignList from "./OutreachCampaignList";
 import OutreachCampaignDetail from "./OutreachCampaignDetail";
 import OutreachContactsList from "./OutreachContactsList";
 import OutreachTemplateEditor from "./OutreachTemplateEditor";
-import AutomaticEmailWorkspace from "./AutomaticEmailWorkspace";
 
 const SUBTABS = [
   { key: "campanii", label: "Campanii" },
   { key: "contacte", label: "Contacte" },
   { key: "sabloane", label: "Sabloane marketing" },
-  { key: "automate", label: "Emailuri automate" },
 ];
 
 export default function OutreachWorkspace() {
@@ -41,7 +39,6 @@ export default function OutreachWorkspace() {
         )}
         {subTab === "contacte" && <OutreachContactsList />}
         {subTab === "sabloane" && <OutreachTemplateEditor />}
-        {subTab === "automate" && <AutomaticEmailWorkspace />}
       </div>
     </div>
   );
