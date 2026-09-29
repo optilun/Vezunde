@@ -8,6 +8,7 @@ import {
   providerMembershipAccessRole,
   roleRequiresOrganizationWideAccess,
 } from '../../shared/providerOrganizationOwnerScope.js';
+import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 const ROLE_LABELS = {
@@ -295,7 +296,20 @@ Deno.serve(async (req) => {
     const organizationName = organization?.public_display_name || organization?.name || 'organizatia ta';
     const locationNames = loaded.locations.map((location) => location.public_display_name || location.name || 'Locatie');
     const copy = invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt, organizationWide });
-    const delivery = await deliverInvitation(base44, existingUser, { to: invitedEmail, ...copy });
+    const locationsText = organizationWide
+      ? ['Toate locatiile actuale si viitoare ale organizatiei. Locatii active acum:', ...locationNames.map((name) => '- ' + name)].join('\n')
+      : (locationNames.length === 1 ? locationNames[0] : locationNames.map((name) => '- ' + name).join('\n'));
+    const rendered = existingUser ? await renderAutomaticEmail({
+      svc, key: 'provider_member_invitation_existing', fallback: copy,
+      variables: {
+        organization_name: organizationName,
+        role_label: ROLE_LABELS[proposedRole] || proposedRole,
+        locations_text: locationsText,
+        invitation_link: invitationLink,
+        expiry_date: new Date(expiresAt).toLocaleDateString('ro-RO'),
+      },
+    }) : copy;
+    const delivery = await deliverInvitation(base44, existingUser, { to: invitedEmail, ...rendered });
     const attemptedAt = new Date().toISOString();
     const deliveryUpdate = {
       delivery_status: delivery.sent ? 'sent' : 'manual_required',
