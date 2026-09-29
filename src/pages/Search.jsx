@@ -711,24 +711,16 @@ function EmptyMatch({ locality, filtered }) {
           <p className="font-heading font-bold">Nu am găsit rezultate pentru această căutare cu filtrele selectate.</p>
           <p className="mt-2 text-sm text-muted-foreground">Elimină un filtru de mai sus pentru a vedea mai multe opțiuni. Căutarea ta rămâne păstrată.</p>
         </>
-      ) : locality ? (
+      ) : (
+        // 2026-09-29 (audit /cauta, cod mort): lista apare doar cu o localitate aleasa, deci ramura
+        // „fara localitate” nu se afisa niciodata si a fost scoasa.
         <>
           <p className="font-heading font-bold">
-            Nu există momentan rezultate pentru această nevoie în localitate.
+            Nu există momentan rezultate pentru această nevoie în {locality?.name || "localitate"}.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             Poți verifica din nou mai târziu sau poți alege manual altă
             localitate.
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="font-heading font-bold">
-            Nu am găsit profiluri care să corespundă căutării tale.
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Încearcă o formulare mai generală sau alege un serviciu din
-            sugestii.
           </p>
         </>
       )}
