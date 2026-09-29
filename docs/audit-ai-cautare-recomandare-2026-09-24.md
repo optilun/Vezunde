@@ -940,4 +940,8 @@ de lentile sa fie recomandate inainte opticile. Fa un research puternic si apoi 
   activ), plus adresele de organizatie. Campaniile se creeaza din admin (Comunicare furnizori), care
   calculeaza destinatarii si cere confirmarea tastata inainte de trimitere.
 - `verify-provider-type-preference`: 13 verificari. `verify-all`: 174 trec, 0 esecuri.
+- Verificat live dupa publicare (2026-09-30): control pentru adult in Sibiu -> fara ambulatoriul de
+  pediatrie (cabinete: Holhos, Ofta Total, Saneos, Spitalul Judetean); control pentru copil -> primul
+  "Spitalul Clinic de Pediatrie Sibiu — Ambulatoriu Oftalmologie Pediatrica", apoi celelalte;
+  reincercarea la 429/5xx si `need_service_keys` sunt in codul publicat (providerSemanticSearch).
 
