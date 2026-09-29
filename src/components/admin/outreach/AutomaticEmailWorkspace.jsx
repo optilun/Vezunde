@@ -124,7 +124,7 @@ export default function AutomaticEmailWorkspace() {
 
       {!loading && (
         <div className="grid gap-5 lg:grid-cols-[minmax(240px,310px)_minmax(0,1fr)]">
-          <aside className="space-y-4">
+          <aside className="space-y-4 lg:max-h-[min(75vh,780px)] lg:overflow-y-auto lg:pr-1">
             <label className="relative block">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <span className="sr-only">Cauta email</span>
