@@ -83,6 +83,7 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   // nevoia, nici localitatea, nici ce scrisese pacientul la inceput. Ii cerea sa descrie
   // din nou, in gol. De aceea oamenii rescriau tot: nu aveau nicio dovada ca raspunsurile
   // lor s-au pastrat. Citim draftul si il aratam, ca sa ceara doar ce chiar lipseste.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- draftul se reciteste din sesiune la deschiderea formularului si la rezultate noi
   const storedDraft = useMemo(() => readPatientRequestDraft(), [isOpen, meta]);
   // Textul cu care pacientul a pornit cautarea. Daca exista, e deja o descriere reala a
   // nevoii si ajunge la furnizor (contract full-details v2), deci caseta de la final
@@ -94,8 +95,10 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   const hasEmail = Boolean(contact.email.trim());
 
   useEffect(() => {
-    submissionGuardRef.current.activate();
-    return () => submissionGuardRef.current.dispose();
+    // Garda este acelasi obiect pe toata durata componentei (2026-09-29, lint exhaustive-deps).
+    const submissionGuard = submissionGuardRef.current;
+    submissionGuard.activate();
+    return () => submissionGuard.dispose();
   }, []);
 
   const openForm = () => {
