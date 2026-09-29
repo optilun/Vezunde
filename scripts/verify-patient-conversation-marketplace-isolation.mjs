@@ -102,6 +102,10 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // confirmate de pacient, trimise separat de client) si pe textul cererii (keratocon), nu pe
     // cheile completate din text.
     '01f63ad0e4337563d0b7a7aac74559e187b94897',
+    // 2026-09-30, aprobat de owner ("Incepe tot"): locatiile doar pentru copii
+    // (isPediatricOnlyLocation) nu mai intra la cautarile pentru adulti si vin primele in
+    // fallbackul structural la cele pentru copii (isChildSearch: control_copil, for_whom sau varsta).
+    'e7f528ff1cf878a918168720825ddbc85f438b93',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
