@@ -8,6 +8,7 @@ import {
   professionalLegacyRole,
   professionalTypeLabel,
 } from '../../shared/professionalIdentity.js';
+import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 
 // 2026-09-03: lista de tipuri, traducerea tip -> rol si etichetele romanesti vin acum din
 // shared/professionalIdentity.js. Erau scrise identic si in manageMyProfessionalProfile.
@@ -234,9 +235,18 @@ async function createInvitation(base44, svc, user, payload, req) {
     invitationLink,
     expiresAt,
   });
+  const rendered = await renderAutomaticEmail({
+    svc, key: 'professional_invitation', fallback: copy,
+    variables: {
+      location_name: locationName,
+      professional_label: professionalTypeLabel(professionalType),
+      invitation_link: invitationLink,
+      expiry_date: new Date(expiresAt).toLocaleDateString('ro-RO'),
+    },
+  });
   const delivery = await deliverInvitation(base44, {
     to: invitedEmail,
-    ...copy,
+    ...rendered,
   });
   const attemptedAt = new Date().toISOString();
   const deliveryUpdate = {
