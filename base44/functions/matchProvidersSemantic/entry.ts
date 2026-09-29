@@ -26,6 +26,8 @@ import {
 } from '../../shared/patientNeedInterpretation.js';
 import { filterTextServiceKeysForConfirmedNeed } from '../../shared/confirmedNeedServiceKeys.js';
 import {
+  isChildSearch,
+  isPediatricOnlyLocation,
   providerTypePreferencePoints,
   providerTypeSecondaryNote,
   resolveProviderTypePreference,
@@ -792,6 +794,13 @@ Deno.serve(async (request) => {
       text: searchText,
       getDefinition: getCanonicalServiceDefinition,
     });
+    // 2026-09-30: locatiile doar pentru copii nu apar la cautarile pentru adulti si vin primele la
+    // cele pentru copii (vezi isPediatricOnlyLocation).
+    const childSearch = isChildSearch({
+      intent,
+      forWhom: clean(payload.for_whom),
+      ageGroup: clean(payload.age_group),
+    });
     let configuredMatchingProviderCount = 0;
     let localConfiguredMatchingProviderCount = 0;
     const results = [];
@@ -803,6 +812,7 @@ Deno.serve(async (request) => {
     const detailOverlay = await loadDirectoryDetailOverlay(svc, scopedLocations.map((row) => row.id));
 
     for (const location of scopedLocations) {
+      if (!childSearch && isPediatricOnlyLocation(location)) continue;
       const locationRows = servicesByLocation[location.id] || [];
       const candidateRows = locationRows.filter((row) => {
         const canonicalKey = normalizeServiceKey(row.service_key).canonicalKey;
@@ -943,6 +953,10 @@ Deno.serve(async (request) => {
     if (bucketedResults.length < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
       const hasContact = (entry) => (entry.phone || entry.website) ? 1 : 0;
       const orderedCandidates = [...structuralCandidates].sort((a, b) => {
+        if (childSearch) {
+          const pediatricDelta = Number(isPediatricOnlyLocation(b)) - Number(isPediatricOnlyLocation(a));
+          if (pediatricDelta !== 0) return pediatricDelta;
+        }
         const contactDelta = hasContact(b) - hasContact(a);
         if (contactDelta !== 0) return contactDelta;
         return String(a.name || '').localeCompare(String(b.name || ''));
