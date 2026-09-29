@@ -234,7 +234,11 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // filterTextServiceKeysForConfirmedNeed cand cererea are o nevoie confirmata. Cautarea
   // libera ramane neschimbata; scorul si ordonarea nu se ating.
   // 2026-09-26, keratocon (aprobat explicit de owner): filtrul primeste si textul pacientului.
-  assert.equal(fnv1a(client.slice(client.indexOf(clientMarker))), "6af22c57");
+  // 2026-09-28 (audit sectiunea 18, cerut explicit de Alex): clientul trimite si
+  // `need_service_keys` (cheile confirmate de pacient, fara cele gasite in text), la ambele
+  // functii de potrivire, ca serverul sa aleaga tipul de locatie doar dupa ele. Cheile trimise
+  // pentru potrivire (`service_keys`) raman aceleasi.
+  assert.equal(fnv1a(client.slice(client.indexOf(clientMarker))), "f98a2496");
 });
 
 scenario("physical Base44 function count remains 48", () => {
