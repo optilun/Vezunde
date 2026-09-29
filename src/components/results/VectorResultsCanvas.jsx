@@ -9,7 +9,9 @@ import { readSearchSession } from "@/lib/searchSession";
 import { requestMapCardFocus } from "@/lib/mapCardFocus";
 import { MAP_STYLE_FALLBACK_URL, MAP_STYLE_URL, transformMapStyle } from "@/lib/viaseeMapStyle";
 
-const ATTRIBUTION = '<a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>';
+// 2026-09-29 (audit /cauta, E3): fara atribuire proprie. Stilurile OpenFreeMap (positron si liberty)
+// isi aduc singure atribuirea completa („OpenFreeMap © OpenMapTiles Data from OpenStreetMap”);
+// cea adaugata aici o repeta pe jumatate.
 
 // 2026-09-27. O singura harta pe pagina, pastrata intre cautari.
 // Pana acum fiecare cautare noua (alt oras, alt serviciu, trecerea de la harta Romaniei la o
@@ -33,7 +35,7 @@ function createMapEntry(host) {
   host.appendChild(element);
   let map;
   try {
-    map = new maplibregl.Map({container:element, center:[24.9,45.9], zoom:6, maxZoom:19, attributionControl:{compact:true, customAttribution:ATTRIBUTION}});
+    map = new maplibregl.Map({container:element, center:[24.9,45.9], zoom:6, maxZoom:19, attributionControl:{compact:true}});
   } catch (error) {
     element.remove();
     throw error;
