@@ -145,8 +145,9 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(canvas, /if \(sharedMap && !sharedMap\.inUse && !sharedMap\.broken\) \{\s*host\.appendChild\(sharedMap\.element\);/, 'harta libera se refoloseste');
   assert.match(canvas, /if \(entry === sharedMap && !entry\.broken\) \{\s*entry\.element\.remove\(\);\s*return;\s*\}/, 'la plecare harta ramane in memorie');
   assert.match(canvas, /map\.on\("webglcontextlost",\(\) => \{ entry\.broken = true;/, 'o harta fara WebGL nu se refoloseste');
-  assert.match(canvas, /map\.setStyle\(MAP_STYLE_URL, \{ transformStyle: \(_previous, next\) => transformMapStyle\(next\) \}\);/);
-  assert.match(canvas, /map\.setStyle\(MAP_STYLE_FALLBACK_URL\)/, 'stilul standard ramane rezerva');
+  // 2026-09-29 (audit /cauta, E3): ambele stiluri trec prin withAttribution (o singura atribuire OSM).
+  assert.match(canvas, /map\.setStyle\(MAP_STYLE_URL, \{ transformStyle: \(_previous, next\) => withAttribution\(transformMapStyle\(next\)\) \}\);/);
+  assert.match(canvas, /map\.setStyle\(MAP_STYLE_FALLBACK_URL, \{ transformStyle: \(_previous, next\) => withAttribution\(next\) \}\)/, 'stilul standard ramane rezerva');
   assert.doesNotMatch(canvas, /styles\/liberty/, 'URL-urile stilului vin dintr-un singur loc');
   const click = canvas.slice(canvas.indexOf('el.onclick=()=>{'), canvas.indexOf('el.onmouseenter='));
   assert.match(click, /clusterExpansionZoom\(cluster\.points,current\)/, 'apropiere pana la desfacerea grupului');
