@@ -34,6 +34,7 @@ async function deliverPatientEvent({
   sourceEntityId,
   variant = '',
   email,
+  templateVariables = {},
 }) {
   const contact = await patientContact(svc, request.id, explicitContact);
   if (!contact) {
@@ -79,6 +80,7 @@ async function deliverPatientEvent({
     variant,
     subject: email.subject,
     body: email.body,
+    templateVariables,
   });
   return {
     sent: result.status === 'sent' ? 1 : 0,
@@ -115,6 +117,7 @@ export async function notifyPatientRequestReceived({ base44, svc, request, conta
     sourceEntityId: request.id,
     variant: clean(request.submitted_at, 80),
     email,
+    templateVariables: { public_reference: request.public_reference || '', city: request.city || 'localitatea selectata' },
   });
 }
 
@@ -149,6 +152,7 @@ export async function notifyPatientRequestDistributed({ base44, svc, request, co
     sourceEntityId: request.id,
     variant,
     email,
+    templateVariables: { public_reference: request.public_reference || '', lead_count: Math.max(0, Number(leadCount) || 0) },
   });
 }
 
@@ -189,5 +193,6 @@ export async function notifyPatientRequestLifecycle({ base44, svc, request, cont
     sourceEntityId: request.id,
     variant,
     email,
+    templateVariables: { public_reference: request.public_reference || '' },
   });
 }
