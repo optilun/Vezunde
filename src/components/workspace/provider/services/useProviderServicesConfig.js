@@ -347,7 +347,9 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       pendingReview,
       ...stableActions,
     };
-  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, draftPrerequisites, editable, error, message, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, reviewState, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
+    // 2026-09-29 (lint exhaustive-deps): fara `operationalLayout` si `selectableCapabilities`, care nu
+    // intra in rezultat (erau recalculari degeaba).
+  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, draftPrerequisites, editable, error, message, pendingReview, persistenceMode, profileSections, readiness, reviewState, saving, sectionsByUnit, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
