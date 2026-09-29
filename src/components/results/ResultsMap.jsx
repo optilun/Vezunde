@@ -14,7 +14,7 @@ import {
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { readVisitedProfiles } from "@/lib/visitedProfiles";
 import { loadVectorCanvas } from "./vectorCanvasLoader";
-import { requestMapCardFocus } from "@/lib/mapCardFocus";
+import MapClusterList from "./MapClusterList";
 const LegacyResultsMap = lazy(() => import("./LegacyResultsMap"));
 
 // 2026-09-24. Harta vectoriala (MapLibre) se incarca separat de pagina (vezi vectorCanvasLoader.js):
@@ -33,18 +33,6 @@ function VectorCanvasUnavailable({ onFailure }) {
 }
 const VectorResultsCanvas = lazy(() => loadVectorCanvas().catch(() => ({ default: VectorCanvasUnavailable })));
 const VECTOR_LOADING = <div role="status" className="absolute inset-0 flex items-center justify-center bg-secondary text-sm">Se încarcă harta detaliată...</div>;
-
-const SHORT_TYPE_LABELS = {
-  optica_medicala: "Optică",
-  cabinet_optometric: "Optometrie",
-  clinica_oftalmologica: "Clinică",
-  cabinet_oftalmologic: "Cabinet",
-  laborator_optic: "Laborator",
-};
-
-function shortTypeLabel(providerType) {
-  return SHORT_TYPE_LABELS[providerType] || "Locație";
-}
 
 // Pe ecrane late cardul locatiei pluteste deasupra pinului; pe telefon sta jos, pe latimea hartii.
 const WIDE_MAP_QUERY = "(min-width: 768px)";
@@ -176,26 +164,7 @@ export default function ResultsMap({
       )}
 
       {openCluster && !selectedPoint && (
-        <section aria-label="Locații din grup"
-          className="absolute inset-x-3 bottom-3 z-[500] max-h-[60%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold">{openCluster.count} locații în acest grup</h2>
-            <button type="button" aria-label="Închide lista locațiilor" onClick={() => setOpenClusterKey(null)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-secondary">×</button>
-          </div>
-          <p className="mb-2 text-xs text-muted-foreground">Mai multe profiluri sunt grupate pe hartă. Coordonatele pot fi aproximative; verifică adresa fiecăruia.</p>
-          <ul className="divide-y divide-border">
-            {openCluster.points.map((point) => (
-              <li key={point.id}>
-                <button type="button" onClick={() => { setOpenClusterKey(null); requestMapCardFocus(); if (onSelect) onSelect(point.id); }}
-                  className="min-h-11 w-full rounded-lg px-2 py-3 text-left hover:bg-secondary focus-visible:outline focus-visible:outline-2">
-                  <span className="block text-sm font-semibold">{point.name}</span>
-                  <span className="block text-xs text-muted-foreground">{shortTypeLabel(point.provider_type)}{point.address ? ` · ${point.address}` : ""}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <MapClusterList cluster={openCluster} onClose={() => setOpenClusterKey(null)} onSelect={onSelect} />
       )}
 
       {selectedPoint && !floatingCard && (
