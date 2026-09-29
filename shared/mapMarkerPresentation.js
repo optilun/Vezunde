@@ -1,14 +1,9 @@
-import { mapMarkerLabel } from "./resultsMapLabels.js";
+import { mapMarkerLabel, shortTypeLabel } from "./resultsMapLabels.js";
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[char]);
 
-const typeLabels = {
-  optica_medicala: "Optică", cabinet_optometric: "Optometrie",
-  cabinet_oftalmologic: "Cabinet oftalmologic", clinica_oftalmologica: "Clinică",
-  laborator_optic: "Laborator",
-};
 // Small line icons in the same visual family as LocationThumb.
 function markerIcon(type) {
   const paths = type === "optica_medicala" || type === "laborator_optic"
@@ -38,7 +33,7 @@ export function clusterSizeClass(count) {
 export function pillHtml(cluster, { active = false, hovered = false } = {}) {
   const group = cluster.count > 1;
   const lead = cluster.lead;
-  const type = typeLabels[lead.provider_type] || "Locație";
+  const type = shortTypeLabel(lead.provider_type);
   const rank = !group && Number.isInteger(lead.map_rank) && lead.map_rank > 0 ? lead.map_rank : null;
   const accessible = group ? `Explorează grupul de ${cluster.count} locații` : `${rank ? `${rank}. ` : ""}${lead.name}, ${type}`;
   const badge = group ? ""
