@@ -26,7 +26,7 @@ const OFFICIAL_PREFIX = /^(MUNICIPIUL|ORA[ŞȘ]UL|ORA[ŞȘ]|COMUNA|SATUL|SAT)\s+
 const LOWERCASE_WORDS = new Set(["de", "din", "pe", "la", "sub", "lui", "cu"]);
 
 function plainLetters(value) {
-  return String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 export function nameFromOfficial(officialName, plainName) {
