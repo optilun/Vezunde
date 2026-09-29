@@ -57,6 +57,9 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
     </span>
   );
 
+  // 2026-09-29 (audit /cauta, E3): in varianta compacta randul nu se mai rupe. In celulele inguste
+  // (grila pe 2 coloane la 768 px) segmentele, eticheta si „Vezi de ce” cadeau pe 3 randuri; acum
+  // segmentele si butonul raman pe acelasi rand, iar doar eticheta trece, daca e nevoie, pe 2 randuri.
   if (compact) {
     return (
       <div className="mt-3 rounded-xl border border-[#d8dee8] bg-[#eff1f5]/60 px-3 py-1" role="group" aria-label="Încrederea în potrivire">
@@ -64,10 +67,10 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
           type="button"
           onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
           aria-expanded={expanded}
-          className="flex min-h-11 w-full flex-wrap items-center gap-2 text-left"
+          className="flex min-h-11 w-full items-center gap-2 text-left"
         >
           {segments}
-          <span className="min-w-0 flex-1 text-xs font-extrabold text-foreground">{confidence.label}</span>
+          <span className="min-w-0 flex-1 text-xs font-extrabold leading-snug text-foreground">{confidence.label}</span>
           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
             {expanded ? "Ascunde" : "Vezi de ce"}
             {expanded ? <ChevronUp aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />}
