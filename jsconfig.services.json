@@ -17,7 +17,7 @@
     "shared/patientRequestLifecycleLock.js",
     "shared/patientRequestLifecycleOps.js",
     "shared/locationOperationalRegistry.js",
-    "shared/locationScopedEntityQuery.js",
+    "base44/shared/locationScopedEntityQuery.js",
     "shared/providerContactAccessPolicy.js",
     "shared/providerLeadFullDetailsPolicy.js",
     "shared/controlledChatPolicy.js",
