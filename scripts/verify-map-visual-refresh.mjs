@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { transformMapStyle, ROMANIAN_NAME, MAP_STYLE_URL } from '../src/lib/viaseeMapStyle.js';
-import { clusterPoints, clusterExpansionZoom, clusterMarkerSize, CLUSTER_RADIUS_PX, framingForPoints, FIT_MAX_ZOOM, FIT_MAX_ZOOM_FEW_POINTS } from '../shared/resultsMapPoints.js';
+import { clusterPoints, clusterExpansionZoom, clusterIndividualZoom, clusterMarkerSize, CLUSTER_RADIUS_PX, framingForPoints, FIT_MAX_ZOOM, FIT_MAX_ZOOM_FEW_POINTS } from '../shared/resultsMapPoints.js';
 import { pillHtml, clusterSizeClass } from '../shared/mapMarkerPresentation.js';
 import { mapCenterForOrdering, orderByDistanceFrom, MAP_CENTER_ORDER_ZOOM } from '../shared/nearbyDirectory.js';
 
@@ -103,6 +103,11 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   const expansion = clusterExpansionZoom(bucharest.points, 6);
   assert.ok(expansion > 6 && expansion <= 15, 'zoomul de desfacere este mai mare decat cel curent');
   assert.ok(clusterPoints(bucharest.points, expansion).length > 1, 'la zoomul de desfacere grupul se imparte');
+  // 2026-09-29 (audit /cauta, D1): pragul de desfacere tine cont de marimea dalelor.
+  assert.equal(clusterIndividualZoom(), 15, 'MapLibre (512 px)');
+  assert.equal(clusterIndividualZoom({ tileSize: 256 }), 16, 'Leaflet (256 px): o treapta mai sus');
+  assert.ok(clusterPoints(bucharest.points, 15, { tileSize: 256 }).every((cluster) => !cluster.key.startsWith('position:')) , 'Leaflet 15 inca grupeaza pe ecran (= MapLibre 14)');
+  assert.ok(clusterExpansionZoom(bucharest.points, 6, { tileSize: 256 }) <= 16);
 }
 
 // 3. Pinii.
@@ -156,6 +161,16 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   const legacy = read('src/components/results/LegacyResultsMap.jsx');
   assert.match(legacy, /clusterPoints\(mapPoints, viewport\.zoom, LEAFLET_TILE\)/, 'harta 2D grupeaza cu dale de 256 px');
   assert.match(legacy, /const LEAFLET_TILE = \{ tileSize: 256 \};/);
+  // 2026-09-29 (audit /cauta, D1): harta 2D si cea vectoriala impart eticheta tipului si lista grupului.
+  assert.match(legacy, /map\.getZoom\(\) >= LEAFLET_INDIVIDUAL_ZOOM/, 'fara prag 15 scris direct');
+  assert.match(legacy, /ICON_CACHE\.get\(html\)/, 'iconitele se refolosesc intre randari');
+  assert.match(legacy, /const fitSignature = useMemo\(/, 'semnatura se calculeaza o data per set de puncte');
+  for (const file of ['ResultsMap.jsx', 'LegacyResultsMap.jsx']) {
+    const source = read(`src/components/results/${file}`);
+    assert.ok(!source.includes('SHORT_TYPE_LABELS'), `${file}: etichetele tipului vin din shared/resultsMapLabels.js`);
+    assert.ok(!source.includes('aria-label="Locații din grup"'), `${file}: lista grupului vine din MapClusterList`);
+    assert.match(source, /<MapClusterList cluster=\{openCluster\}/);
+  }
 }
 
 // 5. Fereastra pinului.

@@ -57,7 +57,8 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(layout, /onClick=\{showThis\}/);
   assert.match(layout, /data-map-toggle/);
   assert.match(read('src/components/results/VectorResultsCanvas.jsx'), /openCluster\(null\);requestMapCardFocus\(\);select\?\.\(cluster\.lead\.id\);/, 'pinul apasat');
-  assert.match(read('src/components/results/ResultsMap.jsx'), /setOpenClusterKey\(null\); requestMapCardFocus\(\);/, 'locatia aleasa din grup');
+  // 2026-09-29 (audit /cauta, D1): lista grupului este acum un singur component, folosit de ambele harti.
+  assert.match(read('src/components/results/MapClusterList.jsx'), /onClose\(\);\s*requestMapCardFocus\(\);\s*if \(onSelect\) onSelect\(id\);/, 'locatia aleasa din grup');
   assert.match(read('src/components/results/LegacyResultsMap.jsx'), /requestMapCardFocus\(\);\s*if \(onSelect\) onSelect\(cluster\.lead\.id\);/, 'harta 2D');
 }
 
