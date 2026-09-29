@@ -205,9 +205,10 @@ export function unmappedNotice(unmappedCount) {
   const count = Math.max(0, Number(unmappedCount) || 0);
   if (count === 0) return '';
   if (count === 1) {
-    return 'O opțiune din listă nu are poziție exactă publicată și nu apare pe hartă.';
+    // 2026-09-29 (audit /cauta, E3): aceste locatii nu au deloc pozitie, nu doar una aproximativa.
+    return 'O opțiune din listă nu are poziție publicată și nu apare pe hartă.';
   }
-  return `${count} opțiuni din listă nu au poziție exactă publicată și nu apar pe hartă.`;
+  return `${count} opțiuni din listă nu au poziție publicată și nu apar pe hartă.`;
 }
 
 /**
