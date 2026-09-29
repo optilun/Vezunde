@@ -63,6 +63,9 @@ const AdminFragmentedOrganizations = lazy(
 const OutreachWorkspace = lazy(
   () => import("@/components/admin/outreach/OutreachWorkspace"),
 );
+const AutomaticEmailWorkspace = lazy(
+  () => import("@/components/admin/outreach/AutomaticEmailWorkspace"),
+);
 
 const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBillingCenter"));
 // 2026-09-28: datele de contact lasate de pacienti la cautare (PatientSearchContact).
@@ -90,7 +93,9 @@ const SIMPLE_HEADERS = {
     "Gestioneaza serviciile existente, nivelul de confirmare si eligibilitatea pentru rezultate.",
   revendicari: "Analizeaza cererile de revendicare a profilurilor.",
   outreach:
-    "Gestioneaza campaniile si previzualizeaza sau editeaza emailurile automate trimise de VIASEE. Mesajele Base44 si Stripe sunt indicate separat.",
+    "Gestioneaza campaniile, contactele si sabloanele de marketing.",
+  automatic_emails:
+    "Vezi mesajele trimise automat, previzualizeaza-le si editeaza sabloanele controlate de VIASEE.",
   geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
   audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
   data_integrity:
@@ -221,6 +226,7 @@ export default function AdminDirectoryOps() {
     "audit",
     "data_integrity",
     "outreach",
+    "automatic_emails",
     "billing",
     "contacte_pacienti",
   ];
@@ -274,6 +280,7 @@ export default function AdminDirectoryOps() {
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "outreach" && <OutreachWorkspace />}
+              {tab === "automatic_emails" && <AutomaticEmailWorkspace />}
               {tab === "billing" && <AdminBillingCenter />}
               {tab === "contacte_pacienti" && <AdminSearchContacts />}
               {tab === "geografie" && <GeoImport />}
