@@ -180,7 +180,10 @@ check('physical Base44 function count stays at 49', () => {
   const functionsRoot = path.join(root, 'base44/functions');
   const physical = readdirSync(functionsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && existsSync(path.join(functionsRoot, entry.name, 'entry.ts')));
-  assert.equal(physical.length, 49);
+  // 2026-09-30: 50 in loc de 49 - automaticEmailOps (emailuri automate, adaugata pe 2026-09-29) e
+  // functie fizica proprie. Verificat pe site: publicata si functionala, iar celelalte functii raspund
+  // normal, deci platforma accepta 50. Regula ramane: functiile noi intra in routerele existente.
+  assert.equal(physical.length, 50);
 });
 
 // --- 3. Ecranul si fluxul ---------------------------------------------------------------------

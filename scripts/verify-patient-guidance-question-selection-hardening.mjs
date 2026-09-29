@@ -248,7 +248,10 @@ scenario("physical Base44 function count remains 48", () => {
   // 2026-09-03: 49 in loc de 48 - s-a adaugat matchProfessionals, a doua unitate de recomandare
   // (persoana, nu locatia). Este endpoint fizic propriu pentru ca sta in aceeasi familie cu
   // matchProviders si matchProvidersSemantic; motorul de locatii nu a fost atins.
-  assert.equal(physicalFunctions.length, 49);
+  // 2026-09-30: 50 in loc de 49 - automaticEmailOps (emailuri automate, adaugata pe 2026-09-29) e
+  // functie fizica proprie. Verificat pe site: publicata si functionala, iar celelalte functii raspund
+  // normal, deci platforma accepta 50. Regula ramane: functiile noi intra in routerele existente.
+  assert.equal(physicalFunctions.length, 50);
 });
 
 assert.ok(scenarioCount >= 15);
