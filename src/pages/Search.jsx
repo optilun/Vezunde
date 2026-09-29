@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { MapPin, Search as SearchIcon, X } from "lucide-react";
-import { invokeDirectoryBrowse } from "@/lib/directoryBrowse";
-import { SERVICES, DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
+import { DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { CANONICAL_SERVICE_REGISTRY } from "@/lib/canonicalServiceCatalog";
-import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
-import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
@@ -16,37 +13,18 @@ import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { preloadVectorCanvas } from "@/components/results/vectorCanvasLoader";
 import SearchFilters from "@/components/results/SearchFilters";
 import DirectoryMap from "@/pages/DirectoryMap";
-import { browsePublicProfessionals, matchProfessionalsForRequest } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 import ServiceSearchField from "@/components/results/ServiceSearchField";
 import { MAJOR_CITIES, readRecentLocalities, rememberLocality, prettyLocality } from "@/lib/localityQuickPicks";
 
 import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
-import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor } from "@/lib/searchUrl";
-
-const serviceLabel = (key) => SERVICES[key] || CANONICAL_SERVICE_REGISTRY[key]?.label || "";
-// Dintr-un link se pastreaza doar valorile cunoscute; restul (scrise gresit sau vechi) se ignora,
-// ca pe ecran sa nu apara chei tehnice drept filtre.
-function knownLinkedState(state) {
-  return {
-    ...state,
-    service: serviceLabel(state.service) ? state.service : "",
-    providerType: state.providerType.split(",").filter((key) => DIRECTORY_PROVIDER_FILTER_LABELS[key]).join(","),
-    filterServiceKeys: state.filterServiceKeys.filter((key) => CANONICAL_SERVICE_REGISTRY[key]),
-    professionalType: PROFESSIONAL_TYPES[state.professionalType] ? state.professionalType : "",
-  };
-}
-
-function useDebouncedValue(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedValue(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+import { criteriaQuery, searchCriteriaFor, searchStateFromUrl } from "@/lib/searchUrl";
+import { knownLinkedState, serviceLabel } from "@/lib/searchLinkedState";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
+import useRememberScroll from "@/hooks/useRememberScroll";
+import useStickySearchControls from "@/hooks/useStickySearchControls";
+import useSearchUrlSync from "@/hooks/useSearchUrlSync";
+import useSearchResults from "@/hooks/useSearchResults";
 
 // Lista de locatii alaturi de harta lor. Aceeasi idee ca pe ecranul de recomandari: cardurile
 // spun CARE sunt optiunile, harta spune UNDE sunt, iar selectia merge in ambele sensuri.
@@ -54,12 +32,14 @@ function useDebouncedValue(value, delay) {
 //
 // Cand niciun rezultat nu are inca pozitie publicata, harta nu se afiseaza deloc si lista ramane
 // pe doua coloane, ca inainte - o coloana goala langa carduri nu ajuta pe nimeni.
+//
+// 2026-09-29 (audit /cauta, D3): pagina pastreaza criteriile si afisarea. Restul sta in hook-uri:
+// rezultatele (useSearchResults), adresa (useSearchUrlSync), derularea (useRememberScroll),
+// controalele fixate (useStickySearchControls) si pauza de tastare (useDebouncedValue).
 
 export default function Search() {
   // Harta vectoriala se descarca in paralel cu datele, fara sa blocheze pagina si lista.
   useEffect(() => { preloadVectorCanvas(); }, []);
-  const routerLocation = useLocation();
-  const navigate = useNavigate();
   // 2026-09-28 (audit /cauta, B4): criteriile vin din adresa cand exista. Un link primit castiga in
   // fata ultimei cautari din sesiune; aceeasi adresa ca la plecare (inapoi de pe un profil) reia
   // sesiunea intreaga (pagini incarcate, selectie, derulare). Fara criterii in adresa, /cauta reia
@@ -71,52 +51,12 @@ export default function Search() {
     const linked = knownLinkedState(searchStateFromUrl(window.location.search, serviceLabel));
     return { saved: {}, fromUrl: { ...linked, locality: linked.locality || previous.locality || null } };
   });
-  const [results, setResults] = useState(null);
-  const [mapResults, setMapResults] = useState(null);
   const [providerType, setProviderType] = useState(saved.providerType ?? fromUrl.providerType);
   const [professionalType, setProfessionalType] = useState(saved.professionalType ?? fromUrl.professionalType);
   const [filterServiceKeys, setFilterServiceKeys] = useState(saved.filterServiceKeys ?? fromUrl.filterServiceKeys);
   const [casOnly, setCasOnly] = useState(saved.casOnly ?? fromUrl.casOnly);
-  const [pagination, setPagination] = useState(null);
-  const [directoryFilterContext, setDirectoryFilterContext] = useState(null);
-  const [moreLoading, setMoreLoading] = useState(false);
-  const [moreError, setMoreError] = useState(false);
-  const pageRequest = useRef(0);
-  const [matchContext, setMatchContext] = useState(null);
-  const [loadError, setLoadError] = useState(false);
-  const [professionalError, setProfessionalError] = useState(false);
-  const [retry, setRetry] = useState(0);
   const restoredScroll = useRef(false);
-  const controlsRef = useRef(null);
-  const [stickySize, setStickySize] = useState({ nav: 80, controls: 160 });
-  useEffect(() => {
-    const headers = [...document.querySelectorAll("header")];
-    const measure = () => {
-      const header = headers.find((element) => element.getBoundingClientRect().height > 0);
-      const nav = Math.ceil(header?.getBoundingClientRect().height || 0);
-      const controls = Math.ceil(controlsRef.current?.getBoundingClientRect().height || 0);
-      setStickySize((previous) => previous.nav === nav && previous.controls === controls ? previous : { nav, controls });
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    headers.forEach((header) => observer.observe(header));
-    if (controlsRef.current) observer.observe(controlsRef.current);
-    window.addEventListener("resize", measure);
-    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
-  }, []);
-  // A2: pe telefon si tableta controalele nu mai sunt fixate; cand ies de sub antet, apare bara
-  // compacta. Pe desktop controalele sunt `lg:sticky`, deci raman vizibile si bara nu apare (lg:hidden).
-  const [controlsOut, setControlsOut] = useState(false);
-  useEffect(() => {
-    const element = controlsRef.current;
-    if (!element || typeof IntersectionObserver === "undefined") return undefined;
-    const observer = new IntersectionObserver(
-      ([entry]) => setControlsOut(!entry.isIntersecting && entry.boundingClientRect.top < stickySize.nav),
-      { rootMargin: `-${stickySize.nav}px 0px 0px 0px` },
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [stickySize.nav]);
+  const { controlsRef, stickySize, controlsOut } = useStickySearchControls();
   // 2026-09-03: /cauta rasfoia doar locatii. Pacientul care stie ca vrea "un oftalmolog din Sibiu"
   // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
   // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
@@ -132,7 +72,6 @@ export default function Search() {
     rememberMobileViewChoice(next);
     return next;
   }), []);
-  const [professionals, setProfessionals] = useState(null);
   const [service, setService] = useState(saved.service ?? fromUrl.service);
   const [query, setQuery] = useState(saved.query ?? fromUrl.query);
   const localityFieldRef = useRef(null);
@@ -141,76 +80,19 @@ export default function Search() {
   );
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
-  // B4: adresa urmeaza criteriile asezate (fara intrari noi in istoric, fara derulare). Textul scris
-  // liber nu intra in adresa (poate descrie simptome); ramane in pagina si in sesiune.
+  // B4: adresa urmeaza criteriile asezate (vezi useSearchUrlSync).
   const criteriaSearch = searchCriteriaFor({ service, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType });
   const settling = debouncedQuery !== query.trim();
-  const writtenCriteria = useRef(criteriaQuery(window.location.search));
-  const replaceCriteria = (criteria) => {
-    writtenCriteria.current = criteria;
-    navigate({ pathname: routerLocation.pathname, search: searchUrlFor(routerLocation.search, criteria), hash: routerLocation.hash }, { replace: true, state: routerLocation.state });
-  };
-  // Un link deschis cat timp /cauta e deja pe ecran (ex. „Caută un oftalmolog” din avertisment)
-  // inlocuieste criteriile; un link simplu catre /cauta (meniul) pastreaza cautarea curenta.
-  useEffect(() => {
-    const incoming = criteriaQuery(routerLocation.search);
-    if (incoming === writtenCriteria.current) return;
-    if (!incoming) { if (criteriaSearch) replaceCriteria(criteriaSearch); else writtenCriteria.current = ""; return; }
-    const next = knownLinkedState(searchStateFromUrl(routerLocation.search, serviceLabel));
-    writtenCriteria.current = incoming;
-    setService(next.service); setQuery(next.query); setLocality(next.locality || locality);
-    setProviderType(next.providerType); setFilterServiceKeys(next.filterServiceKeys); setCasOnly(next.casOnly);
-    setSearchMode(next.searchMode); setProfessionalType(next.professionalType);
-    setSelectedId(null); setHoveredId(null);
-  }, [routerLocation.search]);
-  useEffect(() => {
-    if (settling) return;
-    if (criteriaQuery(routerLocation.search) === criteriaSearch) { writtenCriteria.current = criteriaSearch; return; }
-    replaceCriteria(criteriaSearch);
-  }, [criteriaSearch, settling]);
-
-  useEffect(() => {
-    writeSearchSession({ sourceSearch: criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
-  }, [criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, results]);
-
-  // 2026-09-28 (audit /cauta, B5): pozitia paginii se salveaza dupa ce derularea se opreste (si la
-  // plecare), nu la fiecare eveniment. Fiecare salvare citeste si rescrie toata sesiunea de cautare
-  // (pana la ~35 KB), iar pe telefon asta facea derularea sacadata. Ca in DirectoryMap.
-  useEffect(() => {
-    let timer = 0;
-    let lastY = window.scrollY;
-    let pending = false;
-    const save = () => {
-      clearTimeout(timer);
-      timer = 0;
-      if (!pending) return;
-      pending = false;
-      if (restoredScroll.current) writeSearchSession({ scrollY: lastY });
-    };
-    const rememberScroll = () => {
-      lastY = window.scrollY;
-      pending = true;
-      clearTimeout(timer);
-      timer = setTimeout(save, 200);
-    };
-    window.addEventListener("scroll", rememberScroll, { passive: true });
-    window.addEventListener("pagehide", save);
-    return () => {
-      window.removeEventListener("scroll", rememberScroll);
-      window.removeEventListener("pagehide", save);
-      save();
-    };
-  }, []);
-  useEffect(() => {
-    // B1: in fila Specialisti lista de locatii poate sa nu fie ceruta deloc, deci se asteapta doar specialistii.
-    const waiting = searchMode === RESULT_MODES.professionals.key ? professionals === null : results === null;
-    if (!locality || restoredScroll.current || waiting) return;
-    const frame = requestAnimationFrame(() => {
-      window.scrollTo({ top: window.matchMedia("(min-width: 1024px)").matches && searchMode === RESULT_MODES.locations.key ? 0 : saved.scrollY || 0, behavior: "instant" });
-      restoredScroll.current = true;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [results, professionals, searchMode, saved.scrollY, locality]);
+  useSearchUrlSync({
+    criteriaSearch,
+    settling,
+    onLinkedState: (next) => {
+      setService(next.service); setQuery(next.query); setLocality((current) => next.locality || current);
+      setProviderType(next.providerType); setFilterServiceKeys(next.filterServiceKeys); setCasOnly(next.casOnly);
+      setSearchMode(next.searchMode); setProfessionalType(next.professionalType);
+      setSelectedId(null); setHoveredId(null);
+    },
+  });
 
   // Verificare deterministica de siguranta, identica cu cea din fluxul ghidat /cerere.
   // Cautarea libera de aici nu trece prin QuestionText.jsx, deci fara acest control
@@ -234,164 +116,32 @@ export default function Search() {
   // serviciu se sterge la prima litera (onQueryChange), deci si ea asteapta pauza.
   const typing = hasCanonicalLocality && debouncedQuery !== query.trim();
 
-  const previousCriteria = useRef(null);
-  // B1: cheia cererii ale carei rezultate sunt deja pe ecran. Aceeasi cheie = nimic de cerut din nou.
-  const loadedKey = useRef(null);
-  useEffect(() => {
-    if (typing) return;
-    const criteria = JSON.stringify([service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
-    // Aceleasi criterii (ex. „Arată rezultatele” fara nicio schimbare): nimic de resetat.
-    if (previousCriteria.current === criteria) return;
-    if (previousCriteria.current !== null) { setSelectedId(null); setHoveredId(null); }
-    previousCriteria.current = criteria;
-    loadedKey.current = null;
-    pageRequest.current += 1;
-    setPagination(null); setDirectoryFilterContext(null); setMoreLoading(false); setMoreError(false);
-    setMapResults(null);
-    setResults(null);
-    setProfessionals(null);
-    setMatchContext(null);
-    setLoadError(false);
-    setProfessionalError(false);
-  }, [typing, service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
+  const {
+    results, mapResults, pagination, directoryFilterContext, moreLoading, moreError, matchContext,
+    loadError, professionals, professionalError, loadMore, retry,
+  } = useSearchResults({
+    service, query, debouncedQuery, locality, providerType, filterServiceKeys, casOnly, searchMode, professionalType,
+    hasCanonicalLocality, isDirectoryBrowse, typing, saved,
+    onCriteriaChange: () => { setSelectedId(null); setHoveredId(null); },
+  });
 
   useEffect(() => {
-    let active = true;
-    const run = async () => {
-      // A4: cat timp vizitatorul tasteaza, ramane pe ecran ce era; cererea porneste dupa pauza.
-      if (hasCanonicalLocality && debouncedQuery !== query.trim()) return;
-      const locationMode = searchMode === RESULT_MODES.locations.key;
-      // 2026-09-28 (audit /cauta, B1): schimbarea filei nu mai reincarca locatiile. La rasfoire,
-      // fila Specialisti are propria cerere, deci lista de locatii (cu paginile deja incarcate)
-      // ramane neatinsa. La cautarea dupa serviciu, cererea se repeta doar daca difera efectiv
-      // (filtrele de locatii nu se aplica specialistilor); aceleasi date intra in potrivire.
-      if (hasCanonicalLocality && isDirectoryBrowse && !locationMode) { setLoadError(false); return; }
-      const requestKey = hasCanonicalLocality ? JSON.stringify(isDirectoryBrowse
-        ? ["browse", locality.siruta_code, providerType, filterServiceKeys, casOnly]
-        : ["match", service, debouncedQuery, locality.siruta_code, locationMode ? providerType : "", locationMode ? filterServiceKeys : [], locationMode && casOnly]) : null;
-      if (requestKey && requestKey === loadedKey.current) return;
-      loadedKey.current = null;
-      setLoadError(false);
-      setResults(null);
-      setMatchContext(null);
-      if (!hasCanonicalLocality) {
-        if (active) setResults([]);
-        return;
-      }
+    writeSearchSession({ sourceSearch: criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
+  }, [criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, results]);
 
-      try {
-        if (isDirectoryBrowse) {
-          const response = await invokeDirectoryBrowse(
-            {
-              locality_siruta_code: locality.siruta_code,
-              provider_types: locationMode ? providerType.split(",").filter(Boolean) : [], filter_service_keys: locationMode ? filterServiceKeys : [], cas_only: locationMode && casOnly,
-              limit: 50,
-              include_map_results: true,
-            },
-          );
-          if (response.data?.error) throw new Error(response.data.error);
-          const rows = new Map((response.data?.results || []).map((row) => [row.id, row]));
-          let page = response.data?.pagination || null;
-          const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && JSON.stringify(saved.filterServiceKeys || []) === JSON.stringify(filterServiceKeys) && Boolean(saved.casOnly) === casOnly && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
-          while (active && locationMode && page?.has_more && rows.size < restoreCount) {
-            const next = await invokeDirectoryBrowse({ locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly, limit: 50, offset: page.next_offset });
-            if (next.data?.error) throw new Error(next.data.error);
-            const previousSize = rows.size;
-            (next.data?.results || []).forEach((row) => rows.set(row.id, row));
-            page = next.data?.pagination || null;
-            if (rows.size === previousSize) break;
-          }
-          if (active) { loadedKey.current = requestKey; setResults([...rows.values()]); setMapResults(response.data?.map_results || [...rows.values()]); setPagination(page); setDirectoryFilterContext(response.data?.filter_context || null); }
-          return;
-        }
-
-        // Reuse the public directory's eligibility rules; narrow candidates BEFORE matching,
-        // never post-filter a truncated Top 50 or turn a CAS label into an inferred promise.
-        let directoryFilterIds;
-        if (searchMode === RESULT_MODES.locations.key && (filterServiceKeys.length || casOnly)) {
-          const filtered = await invokeDirectoryBrowse({
-            locality_siruta_code: locality.siruta_code,
-            provider_types: providerType.split(",").filter(Boolean),
-            filter_service_keys: filterServiceKeys.length ? filterServiceKeys : casOnly ? (service ? [service] : resolveServiceSearchQuery(debouncedQuery).service_keys) : [], cas_only: casOnly,
-            include_map_results: true, limit: 1,
-          });
-          if (filtered.data?.error || !Array.isArray(filtered.data?.map_results)) throw new Error("Filtrele nu au putut fi verificate.");
-          directoryFilterIds = filtered.data.map_results.map(row => row.id);
-        }
-        if (!active) return;
-        const response = await matchProvidersWithSemanticFallback({
-          search_text: service ? "" : debouncedQuery,
-          directory_filter_location_ids: directoryFilterIds,
-          service_keys: service ? [service] : [],
-          provider_types: locationMode ? providerType.split(",").filter(Boolean) : [],
-          locality_siruta_code: locality.siruta_code,
-          limit: 50,
-        });
-        if (response.data?.error) throw new Error(response.data.error);
-        if (active) { loadedKey.current = requestKey; setResults(response.data?.results || []); setMapResults(response.data?.results || []); setMatchContext({ ...response.data, selected_locality_siruta_code: locality.siruta_code, query_scope: "locality" }); }
-      } catch {
-        if (active) { setLoadError(true); setResults([]); }
-      }
-    };
-    run();
-    return () => {
-      active = false;
-    };
-  }, [
-    service,
-    debouncedQuery,
-    query,
-    locality,
-    isDirectoryBrowse,
-    hasCanonicalLocality,
-    retry, searchMode,
-    providerType, filterServiceKeys, casOnly,
-  ]);
-
+  // 2026-09-28 (audit /cauta, B5): pozitia paginii se salveaza dupa ce derularea se opreste (si la
+  // plecare), nu la fiecare eveniment (vezi useRememberScroll, comun cu harta Romaniei).
+  useRememberScroll((y) => { if (restoredScroll.current) writeSearchSession({ scrollY: y }); });
   useEffect(() => {
-    if (searchMode !== RESULT_MODES.professionals.key) return undefined;
-    if (!hasCanonicalLocality) {
-      setProfessionals([]);
-      return undefined;
-    }
-    // A4: specialistii raman pe ecran cat timp textul inca se tasteaza.
-    if (debouncedQuery !== query.trim()) return undefined;
-    let active = true;
-    setProfessionals(null);
-    setProfessionalError(false);
-    if (!isDirectoryBrowse && !matchContext) return () => { active = false; };
-    const keys = matchContext?.resolved_service_keys || matchContext?.service_keys || [];
-    if (!isDirectoryBrowse && keys.length === 0) { setProfessionals([]); return () => { active = false; }; }
-    const request = isDirectoryBrowse
-      ? browsePublicProfessionals({ localitySirutaCode: locality.siruta_code, professionalType })
-      : matchProfessionalsForRequest({ ...matchContext, professional_type: professionalType });
-    request
-      .then((data) => { if (active) setProfessionals(data.results); })
-      .catch(() => { if (active) { setProfessionalError(true); setProfessionals([]); } });
-    return () => { active = false; };
-  }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry, debouncedQuery, query, professionalType]);
-
-  const loadMore = async () => {
-    if (!pagination?.has_more || moreLoading) return;
-    const token = ++pageRequest.current;
-    setMoreLoading(true); setMoreError(false);
-    try {
-      const response = await invokeDirectoryBrowse({
-        locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
-        limit: 50, offset: pagination.next_offset,
-      });
-      if (response.data?.error) throw new Error(response.data.error);
-      if (token !== pageRequest.current) return;
-      setResults((previous) => {
-        const rows = new Map((previous || []).map((row) => [row.id, row]));
-        (response.data?.results || []).forEach((row) => rows.set(row.id, row));
-        return [...rows.values()];
-      });
-      setPagination(response.data?.pagination || null);
-    } catch { if (token === pageRequest.current) setMoreError(true); }
-    finally { if (token === pageRequest.current) setMoreLoading(false); }
-  };
-  useEffect(() => () => { pageRequest.current += 1; }, []);
+    // B1: in fila Specialisti lista de locatii poate sa nu fie ceruta deloc, deci se asteapta doar specialistii.
+    const waiting = searchMode === RESULT_MODES.professionals.key ? professionals === null : results === null;
+    if (!locality || restoredScroll.current || waiting) return;
+    const frame = requestAnimationFrame(() => {
+      window.scrollTo({ top: window.matchMedia("(min-width: 1024px)").matches && searchMode === RESULT_MODES.locations.key ? 0 : saved.scrollY || 0, behavior: "instant" });
+      restoredScroll.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [results, professionals, searchMode, saved.scrollY, locality]);
 
   const resetSearch = () => {
     setProviderType(""); setProfessionalType(""); setFilterServiceKeys([]); setCasOnly(false);
@@ -541,7 +291,7 @@ export default function Search() {
         <div role="alert" className="mt-6 rounded-2xl border border-border bg-card p-6">
           <p className="font-semibold">Nu am putut încărca rezultatele.</p>
           <p className="mt-1 text-sm text-muted-foreground">Criteriile tale sunt păstrate. Încearcă din nou.</p>
-          <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm font-semibold">Reîncearcă</button>
+          <button type="button" onClick={retry} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm font-semibold">Reîncearcă</button>
         </div>
       ) : searchMode === RESULT_MODES.professionals.key ? (
         <div className="mt-4">
