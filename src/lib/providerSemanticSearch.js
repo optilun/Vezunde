@@ -40,6 +40,28 @@ function functionUnavailable(error) {
   return status === 404 || /not found|not deployed|backend function|404/.test(message);
 }
 
+// 2026-09-30: la un varf de trafic serverul raspunde uneori cu 500, 429 sau 503 ("Cererea nu a
+// putut fi procesata"), iar aceeasi cerere trece dupa cateva secunde (verificat live pe
+// 2026-09-29). O singura reincercare, dupa o pauza scurta, inainte ca pacientul sa vada eroarea.
+// Nu se reincearca un timeout (a durat deja mult) si nu se schimba nimic din cerere.
+const TRANSIENT_MATCHING_RETRY_DELAY_MS = 1500;
+
+function transientServerError(error) {
+  if (isPatientOperationTimeout(error)) return false;
+  const status = Number(error?.response?.status || error?.status || 0);
+  return [429, 500, 502, 503, 504].includes(status);
+}
+
+async function retryOnceOnTransientError(execute) {
+  try {
+    return await execute();
+  } catch (error) {
+    if (!transientServerError(error)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, TRANSIENT_MATCHING_RETRY_DELAY_MS));
+    return execute();
+  }
+}
+
 function trackInterpretation(eventName, properties) {
   try {
     base44.analytics.track({
@@ -358,16 +380,20 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
   const timeoutMs = options.timeoutMs || PATIENT_MATCHING_TIMEOUT_MS;
 
   try {
-    const response = await invokePatientFunction("matchProvidersSemantic", semanticPayload, {
-      timeoutMs,
-      operation: "patient_provider_matching_semantic",
-      requestId: options.requestId || null,
+    const response = await retryOnceOnTransientError(async () => {
+      const semanticResponse = await invokePatientFunction("matchProvidersSemantic", semanticPayload, {
+        timeoutMs,
+        operation: "patient_provider_matching_semantic",
+        requestId: options.requestId || null,
+      });
+      if (semanticResponse?.data?.error) {
+        throw Object.assign(new Error(semanticResponse.data.error), {
+          data: semanticResponse.data,
+          status: semanticResponse.status,
+        });
+      }
+      return semanticResponse;
     });
-    if (response?.data?.error) {
-      const error = Object.assign(new Error(response.data.error), { data: response.data });
-      if (!functionUnavailable(error)) throw error;
-      throw error;
-    }
     return {
       data: normalizeRecommendationResponse(response?.data || {}),
       usedSemanticFallback: false,
