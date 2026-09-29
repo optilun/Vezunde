@@ -901,3 +901,20 @@ de lentile sa fie recomandate inainte opticile. Fa un research puternic si apoi 
   in testul de izolare. `verify-provider-type-preference`: 11 verificari. `verify-all`: 171 trec,
   0 esecuri.
 
+### Verificat live dupa a doua publicare (2026-09-29)
+
+| Caz | Sibiu | Cluj-Napoca | Oradea | Craiova |
+|---|---|---|---|---|
+| Control de rutina | 8 optici + 4 cabinete | 8 + 4 | 8 + 4 (prima rulare) | 8 + 4 |
+| Ochelari noi | 12 optici | 12 optici | - | - |
+| Lentile de contact Acuvue | 12 optici | 12 optici | 12 optici | 12 optici |
+| Prima pereche de lentile | 8 optici + 4 cabinete | 8 + 4 | 8 + 4 | - |
+| Copil | 8 cabinete + 4 optici | 8 + 4 | 8 + 4 | 8 + 4 |
+| Nu sunt sigur | 8 cabinete + 4 optici | 8 + 4 | - | - |
+| Durere de ochi | doar cabinete (8) | doar cabinete (12) | - | doar cabinete (12) |
+
+- Cererile trimise in rafala (7 deodata sau la sub o secunda) primesc uneori 500 ("Cererea nu a putut
+  fi procesata."); dupa 6-12 secunde aceleasi cereri trec. Aceeasi comportare exista si inainte de
+  aceasta schimbare (Craiova, prima rulare). Un pacient face o singura cautare odata, dar un varf de
+  trafic ar putea lovi limita; de urmarit (mai putine interogari pe cautare sau reincercare).
+
