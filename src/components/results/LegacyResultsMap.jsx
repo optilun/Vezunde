@@ -130,6 +130,8 @@ function PanToSelected({ point }) {
   useEffect(() => {
     if (!point) return;
     map.panTo([point.lat, point.lng], { animate: true, duration: 0.4 });
+    // Doar cand se schimba locatia aleasa sau pozitia ei, nu la fiecare obiect nou cu aceleasi date.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [point?.id, point?.lat, point?.lng, map]);
   return null;
 }
@@ -182,8 +184,10 @@ function ViewportWatcher({ onChange }) {
     });
   }
 
+  // Prima raportare, la deschiderea hartii; urmatoarele vin din evenimentele hartii.
   useEffect(() => {
     report();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;

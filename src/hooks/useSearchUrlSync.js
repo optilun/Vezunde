@@ -27,10 +27,14 @@ export default function useSearchUrlSync({ criteriaSearch, settling, onLinkedSta
     const next = knownLinkedState(searchStateFromUrl(routerLocation.search, serviceLabel));
     writtenCriteria.current = incoming;
     applyLinked.current(next);
+    // Ruleaza doar cand se schimba adresa; criteriile curente sunt citite, nu urmarite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routerLocation.search]);
   useEffect(() => {
     if (settling) return;
     if (criteriaQuery(routerLocation.search) === criteriaSearch) { writtenCriteria.current = criteriaSearch; return; }
     replaceCriteria(criteriaSearch);
+    // Ruleaza doar cand se schimba criteriile; adresa curenta este citita, nu urmarita.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [criteriaSearch, settling]);
 }

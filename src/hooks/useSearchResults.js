@@ -142,6 +142,7 @@ export default function useSearchResults({
     hasCanonicalLocality,
     retry, searchMode,
     providerType, filterServiceKeys, casOnly,
+    saved, // ultima cautare din sesiune; nu se schimba cat timp pagina e deschisa
   ]);
 
   useEffect(() => {
