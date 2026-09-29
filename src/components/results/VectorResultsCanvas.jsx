@@ -9,9 +9,17 @@ import { readSearchSession } from "@/lib/searchSession";
 import { requestMapCardFocus } from "@/lib/mapCardFocus";
 import { MAP_STYLE_FALLBACK_URL, MAP_STYLE_URL, transformMapStyle } from "@/lib/viaseeMapStyle";
 
-// 2026-09-29 (audit /cauta, E3): fara atribuire proprie. Stilurile OpenFreeMap (positron si liberty)
-// isi aduc singure atribuirea completa („OpenFreeMap © OpenMapTiles Data from OpenStreetMap”);
-// cea adaugata aici o repeta pe jumatate.
+// 2026-09-29 (audit /cauta, E3): o singura atribuire. Stilurile OpenFreeMap (positron si liberty) isi
+// aduc singure atribuirea completa; cea adaugata inainte aici o repeta pe jumatate („OpenFreeMap ·
+// © OpenStreetMap | OpenFreeMap © OpenMapTiles…”). Daca un stil ar veni fara ea, sursa primeste
+// atribuirea de mai jos, obligatorie pentru datele OpenStreetMap.
+const OSM_ATTRIBUTION = '<a href="https://openfreemap.org/">OpenFreeMap</a> <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+function withAttribution(style) {
+  if (!style?.sources) return style;
+  const sources = Object.fromEntries(Object.entries(style.sources).map(([id, source]) => [id,
+    source?.type === "vector" && !/openstreetmap/i.test(String(source.attribution || "")) ? { ...source, attribution: OSM_ATTRIBUTION } : source]));
+  return { ...style, sources };
+}
 
 // 2026-09-27. O singura harta pe pagina, pastrata intre cautari.
 // Pana acum fiecare cautare noua (alt oras, alt serviciu, trecerea de la harta Romaniei la o
@@ -42,7 +50,7 @@ function createMapEntry(host) {
   }
   const entry = { map, element, inUse: true, styleLoaded: false, broken: false, fallbackStyle: false, owner: null };
   // Fundalul VIASEE: Positron recolorat, nume romanesti (src/lib/viaseeMapStyle.js).
-  map.setStyle(MAP_STYLE_URL, { transformStyle: (_previous, next) => transformMapStyle(next) });
+  map.setStyle(MAP_STYLE_URL, { transformStyle: (_previous, next) => withAttribution(transformMapStyle(next)) });
   map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-left");
   // Locul butonului 3D: un control al hartii, asezat sub zoom si busola de MapLibre (nu la o
   // pozitie fixa, care se suprapunea cu butoanele mai mari de pe ecranele tactile).
@@ -66,7 +74,7 @@ function createMapEntry(host) {
     // Daca stilul VIASEE nu se poate citi, harta porneste cu stilul standard OpenFreeMap.
     if (!entry.styleLoaded && !entry.fallbackStyle && isStyleRequestError(event)) {
       entry.fallbackStyle = true;
-      map.setStyle(MAP_STYLE_FALLBACK_URL);
+      map.setStyle(MAP_STYLE_FALLBACK_URL, { transformStyle: (_previous, next) => withAttribution(next) });
     }
   });
   return entry;
