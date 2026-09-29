@@ -1,8 +1,9 @@
-import { clusterSharesPosition } from "../../../shared/resultsMapLabels.js";
+import { clusterSharesPosition, shortTypeLabel } from "../../../shared/resultsMapLabels.js";
 import { pillHtml, layoutMapMarkers } from "../../../shared/mapMarkerPresentation.js";
 import "./mapMarkers.css";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapLocationCard from "./MapLocationCard";
+import MapClusterList from "./MapClusterList";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -12,6 +13,7 @@ import {
   boundsForPoints,
   buildResultsMapModel,
   clusterExpansionZoom,
+  clusterIndividualZoom,
   clusterPoints,
   framingForPoints,
   pointIdsWithinBounds,
@@ -24,6 +26,9 @@ import { withCartoApiKey } from "@/lib/cartoBasemap";
 
 // 2026-09-27: dalele Leaflet au 256 px (MapLibre are 512), deci gruparea pe ecran trebuie sa stie.
 const LEAFLET_TILE = { tileSize: 256 };
+// 2026-09-29 (audit /cauta, D1): pragul la care un grup nu se mai apropie, ci se deschide ca lista
+// (16 pe Leaflet = 15 pe harta vectoriala). Inainte era 15 scris direct aici.
+const LEAFLET_INDIVIDUAL_ZOOM = clusterIndividualZoom(LEAFLET_TILE);
 
 // Harta rezultatelor, in stilul hartilor de cautare (Airbnb, Booking).
 //
@@ -52,33 +57,36 @@ const LEAFLET_TILE = { tileSize: 256 };
 const TILE_URL = withCartoApiKey("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png");
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-const SHORT_TYPE_LABELS = {
-  optica_medicala: "Optică",
-  cabinet_optometric: "Optometrie",
-  clinica_oftalmologica: "Clinică",
-  cabinet_oftalmologic: "Cabinet",
-  laborator_optic: "Laborator",
-};
-
-function shortTypeLabel(providerType) {
-  return SHORT_TYPE_LABELS[providerType] || "Locație";
-}
-
+// 2026-09-29 (audit /cauta, D1): iconita fiecarui marker se refolosea doar daca arata la fel. Inainte
+// se crea una noua la fiecare randare, iar Leaflet rescria toate markerele la fiecare hover.
+const ICON_CACHE = new Map();
+const ICON_CACHE_LIMIT = 3000;
 function clusterIcon(cluster, state) {
+  const html = pillHtml(cluster, state);
+  const cached = ICON_CACHE.get(html);
+  if (cached) return cached;
+  if (ICON_CACHE.size >= ICON_CACHE_LIMIT) ICON_CACHE.clear();
   const width = 44;
-  return L.divIcon({
+  const icon = L.divIcon({
     className: "viasee-map-pill",
-    html: pillHtml(cluster, state),
+    html,
     iconSize: [width, 44],
     iconAnchor: [width / 2, 22],
   });
+  ICON_CACHE.set(html, icon);
+  return icon;
+}
+
+function pointsSignature(points) {
+  return points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
 }
 
 // Incadreaza harta pe rezultate. Ruleaza doar cand se schimba SETUL de puncte, nu si cand
 // pacientul selecteaza sau trece cu mouse-ul peste un card - altfel harta ar sari mereu inapoi.
-function FitToPoints({ points, storageKey }) {
+// 2026-09-29 (audit /cauta, D1): semnatura vine calculata o data per set de puncte (ca pe harta
+// vectoriala), nu la fiecare randare.
+function FitToPoints({ points, signature, storageKey }) {
   const map = useMap();
-  const signature = points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
   const fittedSignature = useRef(null);
 
   useEffect(() => {
@@ -220,15 +228,14 @@ export default function ResultsMap({
 
   // Dreptunghiul vizibil se raporteaza in sus ca lista sa poata fi filtrata la ce se vede.
   // Se trimit ID-URI, nu un criteriu de cautare: serverul nu este intrebat nimic din nou.
+  const fitSignature = useMemo(() => pointsSignature(fitModel.points), [fitModel.points]);
   const reportViewport = useCallback((next) => {
     setViewport(next);
     if (storageKey) {
       const maps = readSearchSession().maps || {};
-      const signature = fitModel.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
-      writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds } } });
+      writeSearchSession({ maps: { ...maps, [storageKey]: { signature: fitSignature, bounds: next.bounds } } });
     }
-
-  }, [fitModel.points, storageKey]);
+  }, [fitSignature, storageKey]);
 
   // Marker data can arrive without camera movement (national directory, coordinate overlay).
   useEffect(() => {
@@ -256,7 +263,7 @@ export default function ResultsMap({
         ref={mapRef}
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-        <FitToPoints points={fitModel.points} storageKey={storageKey} />
+        <FitToPoints points={fitModel.points} signature={fitSignature} storageKey={storageKey} />
         <FocusArea area={focusArea} />
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />
@@ -287,7 +294,7 @@ export default function ResultsMap({
                     // Un grup nu se "alege": se desface. Altfel pacientul ar crede ca a vazut
                     // o locatie cand de fapt sunt mai multe sub aceeasi pastila.
                     const map = mapRef.current;
-                    if (map && (map.getZoom() >= 15 || clusterSharesPosition(cluster))) {
+                    if (map && (map.getZoom() >= LEAFLET_INDIVIDUAL_ZOOM || clusterSharesPosition(cluster))) {
                       if (onSelect) onSelect(null);
                       setOpenClusterKey(cluster.key);
                     } else if (map) {
@@ -312,26 +319,7 @@ export default function ResultsMap({
       </MapContainer>
 
       {openCluster && !selectedPoint && (
-        <section aria-label="Locații din grup"
-          className="absolute inset-x-3 bottom-3 z-[500] max-h-[60%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold">{openCluster.count} locații în acest grup</h2>
-            <button type="button" aria-label="Închide lista locațiilor" onClick={() => setOpenClusterKey(null)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-secondary">×</button>
-          </div>
-          <p className="mb-2 text-xs text-muted-foreground">Mai multe profiluri sunt grupate pe hartă. Coordonatele pot fi aproximative; verifică adresa fiecăruia.</p>
-          <ul className="divide-y divide-border">
-            {openCluster.points.map((point) => (
-              <li key={point.id}>
-                <button type="button" onClick={() => { setOpenClusterKey(null); requestMapCardFocus(); if (onSelect) onSelect(point.id); }}
-                  className="min-h-11 w-full rounded-lg px-2 py-3 text-left hover:bg-secondary focus-visible:outline focus-visible:outline-2">
-                  <span className="block text-sm font-semibold">{point.name}</span>
-                  <span className="block text-xs text-muted-foreground">{shortTypeLabel(point.provider_type)}{point.address ? ` · ${point.address}` : ""}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <MapClusterList cluster={openCluster} onClose={() => setOpenClusterKey(null)} onSelect={onSelect} />
       )}
 
       {selectedPoint && (
