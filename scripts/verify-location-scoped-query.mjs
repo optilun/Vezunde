@@ -30,11 +30,14 @@ assert.deepEqual(locationCalls[0].query, {
 assert.equal(locationCalls[0].sort, 'name');
 assert.equal(locationCalls[0].limit, 1000);
 
+// 2026-09-29 (audit /cauta, D2): testul verifica acum copia folosita in productie
+// (base44/shared), nu copia veche din shared/ (stearsa). Productia cere locatiile in loturi cu
+// `$in` (o singura interogare pentru pana la 200 de locatii), nu cate un apel pe locatie.
 const childCalls = [];
 const entity = {
   filter: async (query, sort, limit) => {
     childCalls.push({ query, sort, limit });
-    return [{ id: `${query.location_id}-service`, location_id: query.location_id }];
+    return query.location_id.$in.map((id) => ({ id: `${id}-service`, location_id: id }));
   },
 };
 
@@ -43,12 +46,9 @@ const childRows = await loadRowsForLocationIds(entity, ['loc-1', 'loc-2', 'loc-1
   perLocationLimit: 25,
 });
 assert.equal(childRows.length, 2);
-assert.equal(childCalls.length, 2);
-assert.deepEqual(childCalls.map((call) => call.query), [
-  { active_status: 'activ', location_id: 'loc-1' },
-  { active_status: 'activ', location_id: 'loc-2' },
-]);
-assert.ok(childCalls.every((call) => call.limit === 25));
+assert.equal(childCalls.length, 1, 'un singur lot pentru doua locatii');
+assert.deepEqual(childCalls[0].query, { active_status: 'activ', location_id: { $in: ['loc-1', 'loc-2'] } }, 'id-urile fara dubluri');
+assert.equal(childCalls[0].limit, 5000);
 
 const pagination = paginateRows(['a', 'b', 'c', 'd'], { pageSize: 2, offset: 1 });
 assert.deepEqual(pagination.page, ['b', 'c']);
