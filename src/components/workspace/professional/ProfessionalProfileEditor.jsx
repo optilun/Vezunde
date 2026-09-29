@@ -102,6 +102,7 @@ export default function ProfessionalProfileEditor({ workspace, onRefresh }) {
     setValues(initialValues(professional));
     setMessage("");
     setError("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- formularul se reface doar cand se schimba profilul salvat
   }, [professional.id, professional.pending_profile, reviewStatus]);
 
   const setField = (key, value) => setValues((current) => ({ ...current, [key]: value }));

@@ -432,6 +432,7 @@ export default function ProviderLocations({
     setShowAdvancedMap(false);
     setShowPublicMap(false);
     setEditOpen(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea locatiei alese sau a dreptului de editare
   }, [selectedLocation?.id, canManageLocationProfile]);
 
   useEffect(() => {

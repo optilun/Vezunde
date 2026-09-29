@@ -20,6 +20,7 @@ export default function ProviderArticles({ locationId }) {
     setPublished(publicRes.data?.articles || []);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea locatiei
   useEffect(() => { load(); }, [locationId]);
 
   const createArticle = async () => {

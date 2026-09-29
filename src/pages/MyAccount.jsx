@@ -210,6 +210,7 @@ export default function MyAccount() {
       loadRequestRef.current += 1;
       refreshRequestRef.current.provider += 1;
       refreshRequestRef.current.professional += 1;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- la curatare se invalideaza cererile in curs, deci conteaza contoarele de acum
       refreshRequestRef.current.onboarding += 1;
     };
   }, [load, user?.id]);

@@ -75,6 +75,7 @@ export default function ProviderLogoReviewStatus({ organizationId, locationId })
       mounted = false;
       window.removeEventListener("focus", onFocus);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea organizatiei sau a locatiei
   }, [organizationId, locationId]);
 
   if (error) {

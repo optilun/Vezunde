@@ -100,6 +100,7 @@ function BillingCenter({ locationId, onSynced }) {
     } catch (err) { if (request === sequence.current) setError(err.message); }
     finally { if (request === sequence.current) setLoading(false); }
   }, [billing, sessionId, locationId, cursor, setParams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- la curatare se invalideaza cererea in curs, deci conteaza valoarea de acum a contorului
   useEffect(() => { if (locationId) void load(); return () => { sequence.current++; }; }, [load, locationId, tick]);
   async function run(action, flow) {
     if (lock.current || !mounted.current) return;

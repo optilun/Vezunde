@@ -98,6 +98,7 @@ export default function ClaimForm({ location, step, preferredScope = "", onStepC
 
   useEffect(() => {
     persistClaimResumeState(location, contact, scope, step || "relation");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- contactul si aria se salveaza deja la fiecare modificare; aici doar la schimbarea locatiei sau a pasului
   }, [location, step]);
 
   useEffect(() => {
@@ -124,6 +125,7 @@ export default function ClaimForm({ location, step, preferredScope = "", onStepC
       });
     });
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- aria este citita, nu urmarita: completarea din cont ruleaza o data pe locatie si pas
   }, [location, step]);
 
   const loadScopeOptions = useCallback(async (force = false) => {

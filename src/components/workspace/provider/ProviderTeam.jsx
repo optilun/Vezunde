@@ -76,6 +76,7 @@ export default function ProviderTeam({ locationId }) {
     setCopied(false);
     setMsg("");
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea locatiei
   }, [locationId]);
 
   const createInvitation = async () => {

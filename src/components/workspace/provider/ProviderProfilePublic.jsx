@@ -945,6 +945,7 @@ export default function ProviderProfilePublic({
 
   useEffect(() => {
     void loadDraft();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea organizatiei sau a locatiei
   }, [organizationId, locationId]);
 
   const setField = (key, value) =>

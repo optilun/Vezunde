@@ -185,6 +185,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
 
   const currentSignature = useMemo(
     () => configurationSignature(buildPayload()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildPayload se reface la fiecare randare; lista contine exact datele pe care le citeste
     [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, casServiceKeys, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
   );
   const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
@@ -498,6 +499,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   useEffect(() => {
     setQuery("");
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea locatiei
   }, [locationId]);
 
   // Faza 3: invelisul cere deschiderea unei zone printr-o proprietate. Inainte apasa

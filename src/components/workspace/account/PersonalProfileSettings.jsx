@@ -67,6 +67,7 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
 
   useEffect(() => {
     setValues(initialValues(user));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- formularul se reface doar cand se schimba datele salvate ale contului
   }, [user?.id, user?.full_name, user?.personal_bio, user?.profile_photo_url]);
 
   const setField = (key, value) => setValues((current) => ({ ...current, [key]: value }));

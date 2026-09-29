@@ -88,6 +88,7 @@ export default function DirOpsCorrections() {
     setMessage("");
     setError("");
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar cand se schimba filtrul de stare
   }, [status]);
 
   const beginAction = (requestId, mode) => {

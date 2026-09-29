@@ -88,6 +88,7 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
     });
     setComparison(null);
     setError("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- urmareste id-urile locatiilor (semnatura), nu obiectul, ca selectia sa nu se reseteze la fiecare reincarcare
   }, [locationSignature, selectedLocationId]);
 
   const workspaceLocationById = useMemo(

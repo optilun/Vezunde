@@ -445,6 +445,7 @@ export default function ProviderWorkspaceRoot({
   useEffect(() => {
     loadOverview(selectedLocationId);
     if (selectedLocationId) rememberProviderLocation(user?.id, selectedLocationId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea locatiei alese
   }, [selectedLocationId]);
 
   useEffect(() => {
