@@ -21,7 +21,7 @@ import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 import ServiceSearchField from "@/components/results/ServiceSearchField";
 import { MAJOR_CITIES, readRecentLocalities, rememberLocality, prettyLocality } from "@/lib/localityQuickPicks";
 
-import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor } from "@/lib/searchUrl";
 
 const serviceLabel = (key) => SERVICES[key] || CANONICAL_SERVICE_REGISTRY[key]?.label || "";
@@ -125,7 +125,13 @@ export default function Search() {
   // si UNDE sunt locatiile, nu doar care sunt. Selectia si evidentierea merg in ambele sensuri.
   const [selectedId, setSelectedId] = useState(saved.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
-  const [mobileView, setMobileView] = useState(saved.mobileView || "list");
+  // E2: alegerea explicita lista/harta (comuna cu harta Romaniei); altfel lista, pentru o localitate.
+  const [mobileView, setMobileView] = useState(() => readMobileViewChoice(saved.mobileView || "list"));
+  const toggleMobileView = useCallback(() => setMobileView((view) => {
+    const next = view === "map" ? "list" : "map";
+    rememberMobileViewChoice(next);
+    return next;
+  }), []);
   const [professionals, setProfessionals] = useState(null);
   const [service, setService] = useState(saved.service ?? fromUrl.service);
   const [query, setQuery] = useState(saved.query ?? fromUrl.query);
@@ -579,7 +585,7 @@ export default function Search() {
               onSelect={setSelectedId}
               onHover={setHoveredId}
               mobileView={mobileView}
-              onToggleMobileView={() => setMobileView(view => view === "map" ? "list" : "map")}
+              onToggleMobileView={toggleMobileView}
             >
               {results.length === 0 && (isDirectoryBrowseView ? <EmptyDirectory filterContext={directoryFilterContext} serviceFiltered={filterServiceKeys.length > 0 || casOnly} onClearServiceFilters={() => { setFilterServiceKeys([]); setCasOnly(false); }} /> : <EmptyMatch locality={locality} filtered={activeFilters.length > 0} />)}
               {isDirectoryBrowseView && pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}

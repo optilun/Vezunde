@@ -3,7 +3,7 @@ import { Loader2, MapPin, LocateFixed, ChevronDown } from "lucide-react";
 import { loadNationalDirectoryMap, NATIONAL_MAP_ERROR_MESSAGE } from "@/lib/nationalDirectoryMap";
 import { loadNationalMapSnapshot } from "@/lib/nationalMapEarly";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
-import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 
 import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom } from "../../shared/nearbyDirectory.js";
@@ -66,7 +66,13 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [retry, setRetry] = useState(0);
   const [visibleIds, setVisibleIds] = useState(null);
   const [pageSize, setPageSize] = useState(saved.pageSize || 24);
-  const [mobileView, setMobileView] = useState(saved.mobileView || "map");
+  // E2: alegerea explicita lista/harta (comuna cu /cauta pe o localitate); altfel harta.
+  const [mobileView, setMobileView] = useState(() => readMobileViewChoice(saved.mobileView || "map"));
+  const toggleMobileView = useCallback(() => setMobileView((view) => {
+    const next = view === "map" ? "list" : "map";
+    rememberMobileViewChoice(next);
+    return next;
+  }), []);
   // 2026-09-27. Cand harta e apropiata (de la zoom 9), lista urmeaza centrul hartii. Mutarile facute
   // de alegerea unei locatii (din lista sau de pe harta) nu reordoneaza lista, ca locatia aleasa sa
   // nu sara din locul in care vizitatorul tocmai a apasat-o.
@@ -309,7 +315,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               onSelect={setSelectedId}
               onHover={setHoveredId}
               mobileView={mobileView}
-              onToggleMobileView={() => setMobileView((view) => view === "map" ? "list" : "map")}
+              onToggleMobileView={toggleMobileView}
               onViewportChange={handleViewport}
               storageKey="national"
               fitKey={`national:${type}`}
