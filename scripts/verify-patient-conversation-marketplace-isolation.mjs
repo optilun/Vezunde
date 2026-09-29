@@ -249,6 +249,10 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // confirmate de pacient, trimise separat de client) si pe textul cererii (keratocon), nu pe
     // cheile completate din text; amprenta ramurii de potrivire devine '0ad10233'.
     '464204fdbc974bcadfe6d9f8ac3e9286e845447f',
+    // 2026-09-30, aprobat de owner ("Incepe tot"): locatiile doar pentru copii
+    // (isPediatricOnlyLocation) nu mai intra la cautarile pentru adulti si vin primele in
+    // fallbackul structural la cele pentru copii; amprenta ramurii de potrivire devine 'f2f1d8ff'.
+    'c625d4ff1ceee0629529977b00c1c48a9b1eb447',
   ]),
 });
 
