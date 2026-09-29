@@ -277,4 +277,5 @@ Raport complet: docs/audit-ai-cautare-recomandare-2026-09-24.md.
 - Cauza: la nivel `specialized_medical` fallbackul structural (aproape toate rezultatele; o singura locatie are servicii) pastra doar cabinetele, iar o singura cheie medicala (ex. adaptare propusa de AI la "Acuvue") scotea toate opticile; la control, 12 optici si niciun cabinet.
 - Decizie (cerere explicita a owner-ului, dupa documentare AAO/AOA/ECOO/WCO/ADA/Ordin MS 1992/2023): `shared/providerTypePreference.js` (+ copia din `base44/shared/`) - medical_only / medical_first / optical_first / optical_products, folosita in matchProvidersSemantic si matchProviders (puncte `provider_type_fit` si alocare 8+4 in fallback). Pagina de rezultate grupeaza pe tip. Prompt AI v2.2.
 - Checkpoint inainte: 6aba6b8b18c327182c9c2601. `verify-all` 169 OK / 1 (verify-map-and-profile-loading, zona celuilalt agent).
+- 2026-09-29, dupa testul live: tipul de locatie se decide pe `need_service_keys` (cheile confirmate, trimise separat de client), nu pe cheile completate din text; copiii inaintea regulii medicale; keratocon din text -> intai medicul. `verify-all` 171 OK / 0.
 

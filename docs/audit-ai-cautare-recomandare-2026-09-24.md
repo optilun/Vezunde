@@ -885,3 +885,19 @@ de lentile sa fie recomandate inainte opticile. Fa un research puternic si apoi 
 - De facut (clinic): regula de varsta pentru copii (`pediatric_age_to_care_path`) asteapta validare
   medicala; pana atunci, la copii intai medicul.
 
+### Test live dupa prima publicare si corectie (2026-09-28/29)
+
+- Confirmat live: prompt v2.2 ("lentile de contact Acuvue" -> `contact_lenses`; "reteta pentru
+  ochelari" -> `refraction` + `optometry_consultation`; "rame Ray-Ban" -> produse); control de
+  rutina in Sibiu, Cluj-Napoca, Oradea -> 8 optici + 4 cabinete, cu nota pentru alternativa; ochelari
+  -> 12 optici; durere -> doar cabinete.
+- Gasit: la lentile de contact si la copii politica primea si cheile adaugate de cautarea in text
+  ("lentile de contact" aduce ortokeratologie si lentile sclerale; "copil" aduce supraspecialitati),
+  deci Acuvue si prima pereche ieseau "intai cabinetele", iar copiii "doar cabinete".
+- Corectat: tipul se decide pe cheile confirmate de pacient (`need_service_keys`, trimise separat de
+  client la ambele functii; fara ele, cheile explicite din cerere) si pe textul cererii pentru
+  keratocon; copiii sunt evaluati inaintea regulii pentru serviciile medicale, ca sa pastreze opticile
+  ca alternativa. Amprente noi: ramura de potrivire 0ad10233, clientul f98a2496; blob-uri noi aprobate
+  in testul de izolare. `verify-provider-type-preference`: 11 verificari. `verify-all`: 171 trec,
+  0 esecuri.
+
