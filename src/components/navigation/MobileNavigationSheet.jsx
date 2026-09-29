@@ -56,7 +56,7 @@ export default function MobileNavigationSheet({ open, onOpenChange }) {
             onClick={close}
             className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#171717] px-5 text-sm font-semibold text-white"
           >
-            Găsește opțiuni
+            Găsește specialist
           </Link>
         </div>
       </SheetContent>
