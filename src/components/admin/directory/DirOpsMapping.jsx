@@ -166,7 +166,7 @@ export default function DirOpsMapping() {
   useEffect(() => {
     const timer = window.setTimeout(load, query ? 250 : 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [load, query]);
 
   const loadContext = useCallback(async (locationId) => {
     if (!locationId) return;
