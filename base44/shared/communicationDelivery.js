@@ -2,6 +2,7 @@ import {
   COMMUNICATION_EVENT_CATALOG_VERSION,
   communicationEventDefinition,
 } from './communicationEventCatalog.js';
+import { renderAutomaticEmail } from './automaticEmailRuntime.js';
 
 const MAX_DELIVERY_ATTEMPTS = 3;
 
@@ -148,6 +149,7 @@ export async function deliverCommunicationEmail({
   variant = '',
   subject,
   body,
+  templateVariables = {},
 }) {
   const event = communicationEventDefinition(eventKey);
   if (!event || event.channel !== 'email') return { status: 'invalid_event', idempotent_replay: false };
@@ -180,6 +182,9 @@ export async function deliverCommunicationEmail({
     });
   }
 
+  const rendered = await renderAutomaticEmail({
+    svc, key: eventKey, fallback: { subject, body }, variables: templateVariables,
+  });
   const now = new Date().toISOString();
   const attemptCount = Number(existing?.attempt_count || 0) + 1;
   const recipientEmailHash = await sha256(email);
@@ -196,7 +201,7 @@ export async function deliverCommunicationEmail({
       organizationId,
       locationId,
       idempotencyKey,
-      subject,
+      subject: rendered.subject,
       now,
     }),
     status: 'pending',
@@ -213,8 +218,8 @@ export async function deliverCommunicationEmail({
   try {
     await base44.integrations.Core.SendEmail({
       to: email,
-      subject: singleLine(subject, 180),
-      body: clean(body, 6000),
+      subject: singleLine(rendered.subject, 180),
+      body: clean(rendered.body, 6000),
       from_name: 'VIASEE',
     });
     await svc.entities.CommunicationDelivery.update(delivery.id, {
