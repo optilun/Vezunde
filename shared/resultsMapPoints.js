@@ -1,3 +1,4 @@
+import { distanceKm } from "./geoDistance.js";
 // Punctele de pe harta rezultatelor, ca transformare pura.
 //
 // 2026-09-04. Ecranul de recomandari avea o coloana dreapta aproape goala ("Apasă pe o locație
@@ -175,12 +176,6 @@ function median(values) {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-function kilometersBetween(a, b) {
-  const rad = Math.PI / 180;
-  const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2
-    + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
-}
 
 export function framingForPoints(points) {
   const list = (Array.isArray(points) ? points : [])
@@ -188,7 +183,7 @@ export function framingForPoints(points) {
   const zoomFor = (count) => (count <= 2 ? FIT_MAX_ZOOM_FEW_POINTS : FIT_MAX_ZOOM);
   if (list.length < 3) return { points: list, excluded: [], maxZoom: zoomFor(list.length) };
   const center = { lat: median(list.map((point) => point.lat)), lng: median(list.map((point) => point.lng)) };
-  const distances = list.map((point) => kilometersBetween(center, point));
+  const distances = list.map((point) => distanceKm(center, point));
   const limit = Math.max(FIT_OUTLIER_MIN_KM, FIT_OUTLIER_FACTOR * median(distances));
   const kept = list.filter((_, index) => distances[index] <= limit);
   const excluded = list.filter((_, index) => distances[index] > limit);

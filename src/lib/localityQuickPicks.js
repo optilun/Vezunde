@@ -6,6 +6,7 @@
 // primeste exact aceeasi localitate.
 
 import { prettyCountyName } from "../../shared/romanianCountyNames.js";
+import { distanceKm } from "../../shared/geoDistance.js";
 export { prettyCountyName } from "../../shared/romanianCountyNames.js";
 
 const COUNTY_SEAT_NAMES = {
