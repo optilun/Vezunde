@@ -19,10 +19,37 @@ const COUNTY_SEAT_NAMES = {
 
 const SEAT_TYPES = new Set(["municipality_county_seat", "bucharest_municipality"]);
 
+// 2026-09-29 (audit /cauta, E3): pentru celelalte localitati, numele cu diacritice vine din denumirea
+// oficiala SIRUTA (`official_name`, ex. „MUNICIPIUL PAŞCANI”, „ORAŞ BAIA DE ARAMĂ”), trimisa de
+// searchGeographicLocalities. Se foloseste doar daca are exact aceleasi litere ca numele din registru.
+const OFFICIAL_PREFIX = /^(MUNICIPIUL|ORA[ŞȘ]UL|ORA[ŞȘ]|COMUNA|SATUL|SAT)\s+/u;
+const LOWERCASE_WORDS = new Set(["de", "din", "pe", "la", "sub", "lui", "cu"]);
+
+function plainLetters(value) {
+  return String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function nameFromOfficial(officialName, plainName) {
+  const official = String(officialName || "").trim();
+  if (!official || !plainName) return "";
+  const words = official
+    .replace(OFFICIAL_PREFIX, "")
+    .replace(/Ş/g, "Ș").replace(/ş/g, "ș").replace(/Ţ/g, "Ț").replace(/ţ/g, "ț")
+    .toLocaleLowerCase("ro")
+    .split(/(\s+|-)/);
+  const pretty = words.map((part, index) => {
+    if (!part || /^(\s+|-)$/.test(part)) return part;
+    if (index > 0 && LOWERCASE_WORDS.has(part)) return part;
+    return part.charAt(0).toLocaleUpperCase("ro") + part.slice(1);
+  }).join("");
+  return plainLetters(pretty) === plainLetters(plainName) ? pretty : "";
+}
+
 // Aceeasi localitate, cu numele afisat corect. Restul campurilor raman neschimbate.
 export function prettyLocality(locality) {
   if (!locality) return locality;
-  const name = SEAT_TYPES.has(locality.locality_type) ? COUNTY_SEAT_NAMES[locality.name] || locality.name : locality.name;
+  const seatName = SEAT_TYPES.has(locality.locality_type) ? COUNTY_SEAT_NAMES[locality.name] : "";
+  const name = seatName || nameFromOfficial(locality.official_name, locality.name) || locality.name;
   const county = prettyCountyName(locality.county_name);
   let displayLabel = locality.display_label || locality.name;
   if (name !== locality.name && displayLabel.startsWith(locality.name)) displayLabel = name + displayLabel.slice(locality.name.length);
