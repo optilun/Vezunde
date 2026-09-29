@@ -100,6 +100,11 @@ export async function notifyProviderLeadAvailable({ base44, svc, lead, location 
       locationId: location.id,
       subject: email.subject,
       body: email.body,
+      templateVariables: {
+        location_name: location.public_display_name || location.name || 'Locatia ta',
+        city: lead.city || location.locality_name || location.city || 'localitatea selectata',
+        intent_label: lead.intent_label || 'o cerere noua',
+      },
     });
     results.push(result);
   }
@@ -199,6 +204,11 @@ export async function notifyPatientProviderResponse({ base44, svc, lead, respons
     variant,
     subject: email.subject,
     body: email.body,
+    templateVariables: {
+      public_reference: request.public_reference || '',
+      location_name: locationName,
+      response_label: ({ can_help: 'poate ajuta', needs_details: 'are nevoie de cateva detalii suplimentare', cannot_help: 'nu poate prelua aceasta cerere' })[response.response_type] || 'a trimis un raspuns',
+    },
   });
   return {
     sent: result.status === 'sent' ? 1 : 0,
