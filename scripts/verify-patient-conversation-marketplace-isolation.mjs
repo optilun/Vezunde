@@ -236,6 +236,10 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // assignRecommendationBuckets raman identice; amprenta ramurii de potrivire devine '60f56d96'.
     // Raspunsul include `provider_type_preference`, iar intrarile structurale `structural_group_note`.
     '5d60a542733ff96bf475e175d684a88c48cd063c',
+    // 2026-09-28, a doua trecere dupa testul live: tipul se decide pe `need_service_keys` (cheile
+    // confirmate de pacient, trimise separat de client) si pe textul cererii (keratocon), nu pe
+    // cheile completate din text; amprenta ramurii de potrivire devine '0ad10233'.
+    '464204fdbc974bcadfe6d9f8ac3e9286e845447f',
   ]),
 });
 
