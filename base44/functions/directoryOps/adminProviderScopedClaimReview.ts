@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 import { loadRowsForLocationIds } from '../../shared/locationScopedEntityQuery.js';
 import { activeLinksByLocation, claimOrganizationLinkStatus } from '../../shared/providerOrganizationLinkIntegrity.js';
 import {
@@ -37,11 +38,9 @@ async function writeAudit(svc, user, claim, actionType, previous, next, note) {
   });
 }
 
-async function sendClaimEmail(base44, claim, subject, lines) {
+async function sendClaimEmail(base44, svc, claim, key, subject, lines, variables = {}) {
   try {
-    await base44.integrations.Core.SendEmail({
-      to: claim.email,
-      from_name: 'VIASEE',
+    const fallback = {
       subject,
       body: [
         'Buna ziua,',
@@ -52,6 +51,13 @@ async function sendClaimEmail(base44, claim, subject, lines) {
         '',
         'Echipa VIASEE',
       ].join('\n'),
+    };
+    const rendered = await renderAutomaticEmail({
+      svc, key, fallback,
+      variables: { business_name: claim.business_name || claim.id, ...variables },
+    });
+    await base44.integrations.Core.SendEmail({
+      to: claim.email, from_name: 'VIASEE', subject: rendered.subject, body: rendered.body,
     });
     return true;
   } catch (_error) {
@@ -156,13 +162,13 @@ export async function handle(req: Request) {
         reviewed_by_user_id: user.id,
         reviewed_at: now,
       });
-      const notificationSent = await sendClaimEmail(base44, claim, 'VIASEE - informatii suplimentare necesare', [
+      const notificationSent = await sendClaimEmail(base44, svc, claim, 'provider_claim_more_info', 'VIASEE - informatii suplimentare necesare', [
         'Pentru a continua verificarea solicitarii avem nevoie de informatii suplimentare.',
         '',
         note,
         '',
         'Poti urmari starea solicitarii din contul tau VIASEE.',
-      ]);
+      ], { note });
       await writeAudit(svc, user, claim, 'request_more_info_provider_scoped_claim', { status: claim.status }, {
         status: 'needs_more_info',
         notification_sent: notificationSent,
@@ -195,13 +201,13 @@ export async function handle(req: Request) {
         });
         await resetPendingLocationIfUnused(svc, child, claim.id);
       }
-      const notificationSent = await sendClaimEmail(base44, claim, 'VIASEE - solicitare respinsa', [
+      const notificationSent = await sendClaimEmail(base44, svc, claim, 'provider_claim_rejected', 'VIASEE - solicitare respinsa', [
         'Solicitarea ta nu a putut fi aprobata.',
         '',
         note,
         '',
         'Poti trimite o solicitare noua dupa corectarea informatiilor.',
-      ]);
+      ], { note });
       await writeAudit(svc, user, claim, 'reject_provider_scoped_claim', { status: claim.status }, {
         status: 'respinsa',
         claim_scope: scope.claim_scope,
@@ -325,12 +331,12 @@ export async function handle(req: Request) {
     });
 
     const promotedDraftCount = await promotePreparedDrafts(svc, claim);
-    const notificationSent = await sendClaimEmail(base44, claim, 'VIASEE - solicitare aprobata', [
+    const notificationSent = await sendClaimEmail(base44, svc, claim, 'provider_claim_approved', 'VIASEE - solicitare aprobata', [
       `Solicitarea ta a fost aprobata pentru ${approvedLocationIds.length} ${approvedLocationIds.length === 1 ? 'locatie' : 'locatii'}.`,
       `Rol acordat: ${approvedRole}.`,
       '',
       'Poti administra locatiile aprobate din contul tau VIASEE.',
-    ]);
+    ], { approved_location_count: approvedLocationIds.length, approved_role: approvedRole });
     await writeAudit(svc, user, claim, 'approve_provider_scoped_claim', {
       status: claim.status,
       claim_scope: scope.claim_scope,
