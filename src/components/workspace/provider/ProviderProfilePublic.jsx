@@ -808,6 +808,8 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
   );
 }
 
+const NO_ORGANIZATION = {};
+
 function canonicalValues(organization) {
   return {
     public_display_name: organization.public_display_name || "",
@@ -832,8 +834,10 @@ export default function ProviderProfilePublic({
   onSelectLocation,
   onRefresh,
 }) {
+  // 2026-09-29 (lint exhaustive-deps): fara organizatie, rezerva este acelasi obiect gol la fiecare
+  // randare. Un `{}` nou schimba `baseValues` la fiecare randare si reseta formularul in bucla.
   const organization =
-    overview.organization || workspace?.organizations?.[0] || {};
+    overview.organization || workspace?.organizations?.[0] || NO_ORGANIZATION;
   const overviewLocation = overview.location || {};
   const rawLocations = workspace?.locations || overview.locations || [];
   const location =
