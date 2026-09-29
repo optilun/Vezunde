@@ -245,6 +245,32 @@ async function getSitemapLocations(svc) {
   return sitemapMemory;
 }
 
+// 2026-09-29 (audit /cauta, B9). Functia e publica si fara autentificare:
+// - tablourile de intrare au o limita (un apel cu mii de chei nu mai ajunge la baza de date);
+// - raspunsul pentru o localitate (cu sau fara filtre) se tine BROWSE_CACHE_MS in instanta
+//   functiei: previzualizarea filtrelor si vizitatorii care deschid acelasi oras nu mai recitesc
+//   serviciile, specialistii si organizatiile tuturor locatiilor. Datele sunt aceleasi publice,
+//   cel mult BROWSE_CACHE_MS mai vechi;
+// - o eroare neprevazuta nu mai trimite textul ei tehnic in raspuns.
+// Ce se afiseaza si in ce ordine raman neschimbate.
+const MAX_PROVIDER_TYPES = 10;
+const MAX_FILTER_SERVICES = 50;
+const BROWSE_CACHE_MS = 2 * 60 * 1000;
+const BROWSE_CACHE_LIMIT = 200;
+const browseCache = new Map(); // cheie -> { at, body }
+
+function cachedBrowse(key) {
+  const entry = browseCache.get(key);
+  if (entry && Date.now() - entry.at < BROWSE_CACHE_MS) return entry.body;
+  if (entry) browseCache.delete(key);
+  return null;
+}
+
+function rememberBrowse(key, body) {
+  if (browseCache.size >= BROWSE_CACHE_LIMIT) browseCache.delete(browseCache.keys().next().value);
+  browseCache.set(key, { at: Date.now(), body });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -252,8 +278,11 @@ Deno.serve(async (req) => {
     const payload = await req.json().catch(() => ({}));
 
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
-    const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
+    const providerTypes = Array.isArray(payload.provider_types) ? [...new Set(payload.provider_types.map(String))] : [];
     const rawServices = Array.isArray(payload.filter_service_keys) ? payload.filter_service_keys.map(String) : [];
+    if (sirutaCode && !/^\d{1,7}$/.test(sirutaCode)) return Response.json({ error: 'Localitatea aleasa nu este valida.' }, { status: 400 });
+    if (providerTypes.length > MAX_PROVIDER_TYPES) return Response.json({ error: 'Prea multe tipuri de locatie selectate.' }, { status: 400 });
+    if (rawServices.length > MAX_FILTER_SERVICES) return Response.json({ error: 'Prea multe servicii selectate. Alege mai putine.' }, { status: 400 });
     if (rawServices.some(key => !normalizeServiceKey(key).definition)) return Response.json({ error: 'Un serviciu selectat nu este disponibil pentru filtrare.' }, { status: 400 });
     const selectedServices = [...new Set(rawServices.map(key => normalizeServiceKey(key).canonicalKey))];
     const casOnly = payload.cas_only === true;
@@ -310,6 +339,10 @@ Deno.serve(async (req) => {
         },
       });
     }
+
+    const cacheKey = JSON.stringify([sirutaCode, [...providerTypes].sort(), [...selectedServices].sort(), casOnly, pageSize, offset, includeMapResults]);
+    const cached = cachedBrowse(cacheKey);
+    if (cached) return Response.json(cached);
 
     const localityLocations = await loadPublicLocationsForLocality(svc, sirutaCode);
     const eligibleLocations = localityLocations
@@ -452,7 +485,7 @@ Deno.serve(async (req) => {
     })).map(({ id, name, provider_type, city, county, address, lat, lng, map_precision, profile_control_status }) => (
       { id, name, provider_type, city, county, address, lat, lng, map_precision, profile_control_status, result_type: 'directory', is_match_eligible: false }
     )) : undefined;
-    return Response.json({
+    const body = {
       results: finalPage.page,
       ...(includeMapResults ? { map_results: mapResults } : {}),
       coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
@@ -464,8 +497,11 @@ Deno.serve(async (req) => {
       query_scope: 'locality',
       selected_locality_siruta_code: sirutaCode,
       pagination,
-    });
+    };
+    rememberBrowse(cacheKey, body);
+    return Response.json(body);
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('browseDirectoryProviders failed', error);
+    return Response.json({ error: 'Lista nu a putut fi incarcata acum. Incearca din nou peste cateva secunde.' }, { status: 500 });
   }
 });
