@@ -40,7 +40,7 @@ export const ADMIN_NAV_PRIMARY = [
 
   // 2026-09-12: outreach email - flux recurent (nu un ecran rar), asa ca primeste o
   // intrare permanenta, spre deosebire de ecranele mutate la buton in aceeasi simplificare.
-  { key: "outreach", label: "Comunicare furnizori", icon: Mail, groupLabel: "Comunicare" },
+  { key: "outreach", label: "Comunicare", icon: Mail, groupLabel: "Comunicare" },
 
   { key: "research", label: "Research director", icon: Search, groupLabel: "Calitate date" },
 
