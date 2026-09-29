@@ -101,14 +101,6 @@ export function placeKey(name, county) {
   return `${canonicalPlace(name)}|${normalizePlace(county)}`;
 }
 
-function distanceKm(a, b) {
-  const radians = (value) => (value * Math.PI) / 180;
-  const dLat = radians(b.lat - a.lat);
-  const dLng = radians(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(radians(a.lat)) * Math.cos(radians(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
-}
-
 // Cate locatii are fiecare localitate (cheie: nume + judet). Serverul trimite numarul complet
 // (`locality_counts`, inclusiv locatiile fara pozitie); din puncte ies doar cele de pe harta.
 export function localityCountsFromMap(data) {
