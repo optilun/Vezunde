@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 
 const REQUEST_TYPES = [
   'incorrect_information',
@@ -116,11 +117,9 @@ async function writeAudit(svc: any, user: any, request: any, maskedEmail: string
   });
 }
 
-async function sendConfirmation(base44: any, email: string, reference: string, locationName: string) {
+async function sendConfirmation(base44: any, svc: any, email: string, reference: string, locationName: string) {
   try {
-    await base44.integrations.Core.SendEmail({
-      to: email,
-      from_name: 'VIASEE',
+    const fallback = {
       subject: `Am inregistrat sesizarea ${reference}`,
       body: [
         'Buna ziua,',
@@ -133,7 +132,12 @@ async function sendConfirmation(base44: any, email: string, reference: string, l
         '',
         'Echipa VIASEE',
       ].join('\n'),
+    };
+    const rendered = await renderAutomaticEmail({
+      svc, key: 'directory_correction_received', fallback,
+      variables: { reference, location_name: locationName },
     });
+    await base44.integrations.Core.SendEmail({ to: email, from_name: 'VIASEE', subject: rendered.subject, body: rendered.body });
     return true;
   } catch (_error) {
     return false;
@@ -234,6 +238,7 @@ Deno.serve(async (req) => {
     await writeAudit(svc, user, correction, maskEmail(contactEmail));
     const confirmationEmailSent = await sendConfirmation(
       base44,
+      svc,
       contactEmail,
       publicReference,
       sourceSnapshot.name || 'locatia semnalata',
