@@ -239,6 +239,13 @@ export function clusterMarkerSize(count) {
 }
 const CLUSTER_MAX_SEPARATION_PX = clusterMarkerSize(Infinity) + 4;
 export const CLUSTER_INDIVIDUAL_ZOOM = 15;
+// 2026-09-29 (audit /cauta, D1): pragul de mai sus este in zoom MapLibre (dale de 512 px). Leaflet
+// (dale de 256 px) arata acelasi nivel de detaliu cu o treapta mai sus, deci pragul lui este 16.
+// Pana acum harta 2D desfacea grupurile cu o treapta mai devreme decat harta vectoriala.
+export function clusterIndividualZoom({ tileSize = 512 } = {}) {
+  const size = Number(tileSize) > 0 ? Number(tileSize) : 512;
+  return CLUSTER_INDIVIDUAL_ZOOM + Math.log2(512 / size);
+}
 
 function projectToPixels(lat, lng, zoom, tileSize) {
   const scale = tileSize * (2 ** zoom);
@@ -256,10 +263,11 @@ function projectToPixels(lat, lng, zoom, tileSize) {
  */
 export function clusterExpansionZoom(points, zoom, options = {}) {
   const start = Math.floor(Number(zoom) || FALLBACK_ZOOM) + 1;
-  for (let level = start; level < CLUSTER_INDIVIDUAL_ZOOM; level += 1) {
+  const individual = clusterIndividualZoom(options);
+  for (let level = start; level < individual; level += 1) {
     if (clusterPoints(points, level, options).length > 1) return level;
   }
-  return CLUSTER_INDIVIDUAL_ZOOM;
+  return individual;
 }
 
 export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
@@ -268,7 +276,8 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
 
   // La zoom mare, pozitiile identice raman grupate si pot fi alese din lista.
   // Nu deplasam coordonatele pentru a separa vizual locatiile.
-  if (Number(zoom) >= 15) {
+  const individual = clusterIndividualZoom({ tileSize });
+  if (Number(zoom) >= individual) {
     const positions = new Map();
     for (const point of list) {
       const key = `position:${point.lat}:${point.lng}`;
@@ -287,7 +296,7 @@ export function clusterPoints(points, zoom, { tileSize = 512 } = {}) {
 
   // Zoom-ul se rotunjeste la jumatati de treapta, ca grupurile sa nu se refaca la fiecare
   // miscare minuscula a hartii.
-  const level = Math.round(Math.max(3, Math.min(Number(zoom) || FALLBACK_ZOOM, CLUSTER_INDIVIDUAL_ZOOM)) * 2) / 2;
+  const level = Math.round(Math.max(3, Math.min(Number(zoom) || FALLBACK_ZOOM, individual)) * 2) / 2;
   const radius = CLUSTER_RADIUS_PX;
   const projected = list.map((point) => projectToPixels(point.lat, point.lng, level, tileSize));
   const cells = new Map();
