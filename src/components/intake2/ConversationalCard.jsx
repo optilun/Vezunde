@@ -762,15 +762,21 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   useEffect(() => {
-    interpretationRequestRef.current.activate();
-    questionSelectionRequestRef.current.activate();
-    matchingRequestRef.current.activate();
+    // 2026-09-29 (lint exhaustive-deps): garzile si sesiunea de analitica sunt aceleasi obiecte pe
+    // toata durata componentei (nu se reatribuie, doar se modifica), deci se citesc o data aici.
+    const interpretationRequest = interpretationRequestRef.current;
+    const questionSelectionRequest = questionSelectionRequestRef.current;
+    const matchingRequest = matchingRequestRef.current;
+    const analyticsSession = analyticsSessionRef.current;
+    interpretationRequest.activate();
+    questionSelectionRequest.activate();
+    matchingRequest.activate();
     return () => {
       handledInterpretationRef.current = null;
-      interpretationRequestRef.current.dispose();
-      questionSelectionRequestRef.current.dispose();
-      matchingRequestRef.current.dispose();
-      const session = analyticsSessionRef.current;
+      interpretationRequest.dispose();
+      questionSelectionRequest.dispose();
+      matchingRequest.dispose();
+      const session = analyticsSession;
       if (!session.started || session.completed) return;
       trackPatientSearchEvent("patient_search_abandoned", {
         intent: session.intent || "unknown",
@@ -795,6 +801,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   useEffect(() => {
     if (phase !== "questions" || !state.intent) return undefined;
+    const questionSelectionGuard = questionSelectionRequestRef.current;
     // 2026-09-24: in ramura "Nu sunt sigur", planificatorul intreba doar "Ce te aduce la noi?"
     // si localitatea; cine raspundea "Nu sunt sigur" trimitea cererea dupa doua intrebari, fara
     // sa-si fi descris nevoia. Intai cerem descrierea (intrebarea din lista aprobata a intentiei
@@ -844,7 +851,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       setQuestionSelection(fallbackQuestionSelection());
     });
 
-    return () => questionSelectionRequestRef.current.invalidate();
+    return () => questionSelectionGuard.invalidate();
   }, [
     phase,
     initialMessage,
@@ -1065,6 +1072,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         setPhase("error");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- propunerea confirmata se citeste la pornirea potrivirii; o schimbare a ei nu trebuie sa trimita o a doua cerere de potrivire
   }, [phase, requestDraft, initialMessage, state.answers, state.intent]);
 
 
