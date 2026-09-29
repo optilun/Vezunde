@@ -52,7 +52,8 @@ const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf
   // Termeni unificati.
   const search = read('src/pages/Search.jsx');
   assert.match(search, /Caută clinici, optici și specialiști/);
-  assert.doesNotMatch(search, /furnizori/i, 'fara „furnizori” in pagina de cautare');
+  // Textele afisate (intre ghilimele sau intre taguri), nu comentariile.
+  assert.doesNotMatch(search, /"[^"\n]*furnizori[^"\n]*"|>[^<{\n]*furnizori/i, 'fara „furnizori” in pagina de cautare');
   assert.match(read('src/components/seo/RouteSeo.jsx'), /Caută clinici, optici și specialiști \| VIASEE/);
   // Panoul de incredere compact: segmentele si „Vezi de ce” pe acelasi rand.
   const panel = read('src/components/results/DecisionConfidencePanel.jsx');
