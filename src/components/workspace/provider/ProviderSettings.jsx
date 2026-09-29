@@ -18,6 +18,9 @@ import { SETTINGS_GRAIN, SETTINGS_TONES } from "./settingsVisuals";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 
+const NO_LOCATIONS = [];
+const NO_ROLES = {};
+
 function locationLabel(location) {
   return location?.public_display_name || location?.name || "Locație";
 }
