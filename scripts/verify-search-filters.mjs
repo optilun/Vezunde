@@ -77,8 +77,6 @@ failAdvancedServiceRead = false;
 assert.match((await run({filter_service_keys: Array.from({ length: 51 }, () => 'oct')})).error, /Prea multe servicii/);
 assert.match((await run({provider_types: Array.from({ length: 11 }, (_, i) => `tip${i}`)})).error, /Prea multe tipuri/);
 assert.match((await run({locality_siruta_code: '12a'})).error, /nu este valida/);
-let reads = 0;
-const countingSource = entities.LocationService;
 const originalRows = rows.slice();
 rows.push({ location_id:'54', service_key:'oct', cas_reimbursed:true });
 const first = await run({filter_service_keys:['oct'], locality_siruta_code:'127'});
@@ -86,7 +84,7 @@ rows.splice(0);
 const second = await run({filter_service_keys:['oct'], locality_siruta_code:'127'});
 assert.deepEqual(second.results.map(row=>row.id), first.results.map(row=>row.id), 'the same request within 2 minutes reuses the response');
 rows.push(...originalRows);
-void reads; void countingSource;
+
 const typeOverlay = await loadDirectoryDetailOverlay({ entities: { ProviderLocationDirectoryState: { filter: async () => [{ location_id: 'loc-1', location_type_code: 'hospital_outpatient_unit', state_status: 'active' }] } } }, ['loc-1']);
 assert.equal(withDirectoryDetail({ id: 'loc-1' }, typeOverlay).location_type_code,'hospital_outpatient_unit');
 console.log('Search filters: CAS tied to selected service; hidden/ineligible/migration rows excluded; OR selections; pagination after filtering; invalid keys rejected — OK');
