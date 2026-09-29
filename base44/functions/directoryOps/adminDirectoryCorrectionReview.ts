@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 
 const LIST_STATUSES = ['submitted', 'in_review', 'needs_more_info', 'approved', 'rejected', 'resolved', 'withdrawn'];
 const RESOLUTION_ACTIONS = [
@@ -80,11 +81,9 @@ async function writeAudit(svc: any, user: any, record: any) {
   });
 }
 
-async function sendStatusEmail(base44: any, item: any, subject: string, bodyLines: string[]) {
+async function sendStatusEmail(base44: any, svc: any, item: any, key: string, subject: string, bodyLines: string[]) {
   try {
-    await base44.integrations.Core.SendEmail({
-      to: item.contact_email_normalized,
-      from_name: 'VIASEE',
+    const fallback = {
       subject,
       body: [
         'Buna ziua,',
@@ -95,6 +94,13 @@ async function sendStatusEmail(base44: any, item: any, subject: string, bodyLine
         '',
         'Echipa VIASEE',
       ].join('\n'),
+    };
+    const rendered = await renderAutomaticEmail({
+      svc, key, fallback,
+      variables: { reference: item.public_reference || '', note: bodyLines.join('\n') },
+    });
+    await base44.integrations.Core.SendEmail({
+      to: item.contact_email_normalized, from_name: 'VIASEE', subject: rendered.subject, body: rendered.body,
     });
     return true;
   } catch (_error) {
@@ -187,7 +193,7 @@ async function requestMoreInfo(base44: any, svc: any, user: any, payload: any) {
     admin_note: note,
   };
   await svc.entities.DirectoryCorrectionRequest.update(item.id, updates);
-  const emailSent = await sendStatusEmail(base44, item, `Sunt necesare completari pentru ${item.public_reference}`, [note]);
+  const emailSent = await sendStatusEmail(base44, svc, item, 'directory_correction_more_info', `Sunt necesare completari pentru ${item.public_reference}`, [note]);
   await writeAudit(svc, user, {
     entity_type: 'DirectoryCorrectionRequest',
     entity_id: item.id,
@@ -219,7 +225,7 @@ async function rejectRequest(base44: any, svc: any, user: any, payload: any) {
     admin_note: note,
   };
   await svc.entities.DirectoryCorrectionRequest.update(item.id, updates);
-  const emailSent = await sendStatusEmail(base44, item, `Sesizarea ${item.public_reference} a fost analizata`, [note]);
+  const emailSent = await sendStatusEmail(base44, svc, item, 'directory_correction_rejected', `Sesizarea ${item.public_reference} a fost analizata`, [note]);
   await writeAudit(svc, user, {
     entity_type: 'DirectoryCorrectionRequest',
     entity_id: item.id,
@@ -300,7 +306,7 @@ async function resolveRequest(base44: any, svc: any, user: any, payload: any) {
     applied_entity_id: location.id,
   };
   await svc.entities.DirectoryCorrectionRequest.update(item.id, requestUpdates);
-  const emailSent = await sendStatusEmail(base44, item, `Sesizarea ${item.public_reference} a fost rezolvata`, [note]);
+  const emailSent = await sendStatusEmail(base44, svc, item, 'directory_correction_resolved', `Sesizarea ${item.public_reference} a fost rezolvata`, [note]);
   await writeAudit(svc, user, {
     entity_type: 'DirectoryCorrectionRequest',
     entity_id: item.id,
