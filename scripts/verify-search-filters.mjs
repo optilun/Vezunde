@@ -57,16 +57,36 @@ assert.deepEqual(filteredMap.map_results.map(row=>row.id),['52','54']);
 assert.equal(filteredMap.filter_context.unfiltered_total,56, 'The empty state can distinguish unknown services from an empty locality');
 assert.equal(filteredMap.filter_context.locations_with_published_services,3, 'Only publicly eligible services count as evidence');
 assert.equal((await run({limit:1})).map_results,undefined, 'Existing callers keep their original response shape');
+// 2026-09-29 (audit /cauta, B9): raspunsurile se tin 2 minute pe aceeasi cheie (localitate, filtre,
+// pagina). Dupa ce datele de test se schimba, scenariile de mai jos folosesc alt cod de localitate
+// (mock-urile il ignora), ca sa nu primeasca raspunsul tinut minte.
 locations[0].location_type_code = 'hospital_department';
-assert.equal((await run({limit:1})).results[0].location_type_code,'hospital_department', 'The card receives the precise location type');
+assert.equal((await run({limit:1, locality_siruta_code:'124'})).results[0].location_type_code,'hospital_department', 'The card receives the precise location type');
 rows.splice(0);
-const unknownServices = await run({filter_service_keys:['oct']});
+const unknownServices = await run({filter_service_keys:['oct'], locality_siruta_code:'125'});
 assert.equal(unknownServices.pagination.total,0);
 assert.equal(unknownServices.filter_context.unfiltered_total,56);
 assert.equal(unknownServices.filter_context.locations_with_published_services,0, 'Zero results do not imply that local businesses do not offer the service');
 failAdvancedServiceRead = true;
-assert.match((await run({filter_service_keys:['oct']})).error,/Service table unavailable/, 'A failed data read must not appear as zero confirmed services');
+// B9: eroarea ramane eroare (nu zero servicii), dar fara textul tehnic in raspunsul public.
+const failedRead = await run({filter_service_keys:['oct'], locality_siruta_code:'126'});
+assert.ok(failedRead.error, 'A failed data read must not appear as zero confirmed services');
+assert.doesNotMatch(failedRead.error, /Service table unavailable/, 'The public response does not expose the internal error');
 failAdvancedServiceRead = false;
+// B9: limitele intrarii si raspunsul tinut minte.
+assert.match((await run({filter_service_keys: Array.from({ length: 51 }, () => 'oct')})).error, /Prea multe servicii/);
+assert.match((await run({provider_types: Array.from({ length: 11 }, (_, i) => `tip${i}`)})).error, /Prea multe tipuri/);
+assert.match((await run({locality_siruta_code: '12a'})).error, /nu este valida/);
+let reads = 0;
+const countingSource = entities.LocationService;
+const originalRows = rows.slice();
+rows.push({ location_id:'54', service_key:'oct', cas_reimbursed:true });
+const first = await run({filter_service_keys:['oct'], locality_siruta_code:'127'});
+rows.splice(0);
+const second = await run({filter_service_keys:['oct'], locality_siruta_code:'127'});
+assert.deepEqual(second.results.map(row=>row.id), first.results.map(row=>row.id), 'the same request within 2 minutes reuses the response');
+rows.push(...originalRows);
+void reads; void countingSource;
 const typeOverlay = await loadDirectoryDetailOverlay({ entities: { ProviderLocationDirectoryState: { filter: async () => [{ location_id: 'loc-1', location_type_code: 'hospital_outpatient_unit', state_status: 'active' }] } } }, ['loc-1']);
 assert.equal(withDirectoryDetail({ id: 'loc-1' }, typeOverlay).location_type_code,'hospital_outpatient_unit');
 console.log('Search filters: CAS tied to selected service; hidden/ineligible/migration rows excluded; OR selections; pagination after filtering; invalid keys rejected — OK');
