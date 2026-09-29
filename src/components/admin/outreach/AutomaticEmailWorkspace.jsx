@@ -99,21 +99,21 @@ export default function AutomaticEmailWorkspace() {
   const errors = validateDraft(selected, draft);
   const customCount = templates.filter((item) => item.override).length;
   const groups = [...new Set(all.map((item) => item.group))];
-  const listed = all.filter((item) => {
+  const listed = useMemo(() => all.filter((item) => {
     if (group !== "all" && item.group !== group) return false;
     if (source === "viasee" && item.owner !== "viasee") return false;
     if (source === "custom" && !item.override) return false;
     if (source === "external" && item.owner === "viasee") return false;
     const needle = search.trim().toLocaleLowerCase("ro-RO");
     return !needle || [item.title, item.trigger, item.recipient, item.group].join(" ").toLocaleLowerCase("ro-RO").includes(needle);
-  });
+  }), [all, group, search, source]);
 
   useEffect(() => {
     if (!loading && !listed.some((item) => item.key === selectedKey)) {
       setSelectedKey(listed[0]?.key || "");
       setMode("preview");
     }
-  }, [all, group, loading, search, selectedKey, source]);
+  }, [listed, loading, selectedKey]);
 
   const choose = (item) => {
     setSelectedKey(item.key);
