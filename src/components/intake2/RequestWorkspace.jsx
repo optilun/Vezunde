@@ -488,7 +488,8 @@ export default function RequestWorkspace({
     }
   };
 
-  const responses = status?.responses || [];
+  // 2026-09-29 (lint exhaustive-deps): aceeasi lista intre randari, ca memo-urile de mai jos sa tina.
+  const responses = useMemo(() => status?.responses || [], [status?.responses]);
   const locations = useMemo(() => mergeLocations(results, responses), [responses, results]);
   const responseByLocation = useMemo(() => new Map(responses.map((response) => [response.location_id, response])), [responses]);
   const selectedLocation = locations.find((location) => locationId(location) === selectedLocationId) || null;
