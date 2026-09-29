@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { getCanonicalServiceDefinition } from '../shared/canonicalServiceRegistryExtended.js';
 import {
   PROVIDER_TYPE_PREFERENCE_VERSION,
+  isChildSearch,
+  isPediatricOnlyLocation,
   providerCapability,
   providerTypePreferencePoints,
   providerTypeSecondaryNote,
@@ -202,6 +204,50 @@ check('the AI prompt separates products, routine optometry and medical care', ()
   for (const example of PATIENT_NEED_INTERPRETATION_EXAMPLES) {
     for (const key of example.output.service_keys) assert.ok(getCanonicalServiceDefinition(key), `${example.text}: ${key}`);
   }
+});
+
+// 2026-09-30, aprobat de owner ("Incepe tot"): la Sibiu, ambulatoriul de pediatrie aparea primul
+// la un control pentru adult. Numele sunt cele 8 locatii pediatrice din director.
+check('pediatric-only locations: hidden for adults, first for children', () => {
+  const pediatric = [
+    'OphtaMax Ploiesti — Clinica de Oftalmopediatrie',
+    'Spitalul Clinic de Pediatrie Sibiu — Ambulatoriu Oftalmologie Pediatrică',
+    'Spitalul Clinic de Copii Gomoiu — Oftalmologie Rodul Pamantului',
+    'Spitalul de Copii Sf. Maria Iași — Oftalmologie',
+    'Spitalul Filantropia — Ambulatoriu Copii, Oftalmologie',
+    'Spitalul Clinic de Urgență pentru Copii Brașov — Oftalmologie pediatrică',
+  ];
+  for (const name of pediatric) assert.equal(isPediatricOnlyLocation({ name }), true, name);
+  for (const name of ['Clinica Ofta Total Sibiu', 'Lensa Sibiu', 'Clinica X — Oftalmologie adulți și copii', 'Spitalul Clinic Județean de Urgență Sibiu — Secția Clinică Oftalmologie']) {
+    assert.equal(isPediatricOnlyLocation({ name }), false, name);
+  }
+  assert.equal(isPediatricOnlyLocation({ name: 'Spitalul de Copii', pediatric_only: false }), false, 'campul explicit are prioritate');
+  assert.equal(isPediatricOnlyLocation({ name: 'Clinica Ochi', pediatric_only: true }), true);
+  assert.equal(isChildSearch({ intent: 'control_copil' }), true);
+  assert.equal(isChildSearch({ intent: 'simptome_oftalmologice', forWhom: 'copil' }), true);
+  assert.equal(isChildSearch({ intent: 'control_vedere', ageGroup: '7_12_ani' }), true);
+  assert.equal(isChildSearch({ intent: 'control_vedere', forWhom: 'adult' }), false);
+  assert.equal(isChildSearch({ intent: 'control_vedere', forWhom: 'other_adult' }), false);
+  for (const [file, location] of [['base44/functions/matchProvidersSemantic/entry.ts', 'location'], ['base44/functions/matchProviders/entry.ts', 'loc']]) {
+    const entry = source(file);
+    assert.match(entry, new RegExp(`if \\(!childSearch && isPediatricOnlyLocation\\(${location}\\)\\) continue;`), file);
+    assert.match(entry, /if \(childSearch\) \{\n\s+const pediatricDelta = /, file);
+    assert.match(entry, /const childSearch = isChildSearch\(\{/, file);
+  }
+  assert.match(source('src/components/intake2/ConversationalCard.jsx'), /for_whom: requestDraft\.for_whom,\n\s+age_group: requestDraft\.age_group,/, 'clientul trimite pentru cine si varsta');
+});
+
+// 2026-09-30: la un varf de trafic serverul raspundea uneori 500; o singura reincercare in browser.
+check('matching retries once on a transient server error', () => {
+  const client = source('src/lib/providerSemanticSearch.js');
+  assert.match(client, /const TRANSIENT_MATCHING_RETRY_DELAY_MS = 1500;/);
+  assert.match(client, /return \[429, 500, 502, 503, 504\]\.includes\(status\);/);
+  assert.match(client, /if \(isPatientOperationTimeout\(error\)\) return false;/, 'un timeout nu se reincearca');
+  const retry = client.slice(client.indexOf('async function retryOnceOnTransientError'), client.indexOf('function trackInterpretation'));
+  assert.equal(retry.match(/execute\(\)/g)?.length, 2, 'cel mult doua incercari');
+  const matching = client.slice(client.indexOf('export async function matchProvidersWithSemanticFallback'));
+  assert.match(matching, /await retryOnceOnTransientError\(async \(\) => \{/);
+  assert.match(matching, /if \(!functionUnavailable\(error\)\) throw error;/, 'rezerva matchProviders ramane pentru functia indisponibila');
 });
 
 console.log(`Provider type preference checks passed: ${checks}.`);
