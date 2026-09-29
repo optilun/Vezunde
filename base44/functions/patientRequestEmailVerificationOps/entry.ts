@@ -12,6 +12,7 @@ import {
   acquirePatientEmailVerificationLock,
   releasePatientEmailVerificationLock,
 } from '../../shared/patientEmailVerificationLock.js';
+import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -142,11 +143,19 @@ async function sendCode(base44, svc, request, contact, accessToken, resumeUrl) {
       publicReference: request.public_reference || '',
       resumeUrl,
     });
+    const securityNotice = 'Nu transmite codul unei alte persoane. VIASEE nu iti va cere codul prin telefon sau chat.';
+    const resumeBlock = resumeUrl
+      ? ['Poti reveni la cerere de pe orice dispozitiv folosind linkul securizat:', resumeUrl, '', 'Linkul contine cheia privata de acces. Nu il publica si nu il transmite unei persoane necunoscute.'].join('\n')
+      : '';
+    const rendered = await renderAutomaticEmail({
+      svc, key: 'patient_email_verification', fallback: email,
+      variables: { code, public_reference: request.public_reference || '', resume_block: resumeBlock, security_notice: securityNotice },
+    });
     try {
       await base44.integrations.Core.SendEmail({
         to: checked.contact_email,
-        subject: email.subject,
-        body: email.body,
+        subject: rendered.subject,
+        body: rendered.body,
         from_name: 'VIASEE',
       });
       const updated = await svc.entities.PatientRequestContact.update(checked.id, {
