@@ -204,8 +204,16 @@ export default function ProviderWorkspaceRoot({
     || context.memberships?.some((membership) => membership.location_id === selectedLocationId)
   )) || organizationContexts[0] || null, [organizationContexts, selectedLocationId]);
   const selectedOrganizationId = selectedContext?.organization?.id || "";
-  const baseContextLocations = selectedContext ? (selectedContext.locations || []) : allLocations;
-  const baseContextMemberships = selectedContext ? (selectedContext.memberships || []) : (workspace.memberships || []);
+  // 2026-09-29 (lint exhaustive-deps): aceeasi lista intre randari (inainte, un `[]` nou la fiecare
+  // randare facea ca locatiile si membrii de mai jos sa se recalculeze de fiecare data).
+  const baseContextLocations = useMemo(
+    () => (selectedContext ? (selectedContext.locations || []) : allLocations),
+    [selectedContext, allLocations],
+  );
+  const baseContextMemberships = useMemo(
+    () => (selectedContext ? (selectedContext.memberships || []) : (workspace.memberships || [])),
+    [selectedContext, workspace.memberships],
+  );
 
   const loadAccessMeta = useCallback(async () => {
     const organizationChanged = accessMetaOrganizationRef.current !== selectedOrganizationId;
