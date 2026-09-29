@@ -9,6 +9,7 @@ import {
   LifeBuoy,
   Flag,
   Mail,
+  MailCheck,
   CreditCard,
   Users,
 } from "lucide-react";
@@ -40,7 +41,8 @@ export const ADMIN_NAV_PRIMARY = [
 
   // 2026-09-12: outreach email - flux recurent (nu un ecran rar), asa ca primeste o
   // intrare permanenta, spre deosebire de ecranele mutate la buton in aceeasi simplificare.
-  { key: "outreach", label: "Comunicare", icon: Mail, groupLabel: "Comunicare" },
+  { key: "outreach", label: "Campanii si marketing", icon: Mail, groupLabel: "Comunicare" },
+  { key: "automatic_emails", label: "Emailuri automate", icon: MailCheck },
 
   { key: "research", label: "Research director", icon: Search, groupLabel: "Calitate date" },
 
