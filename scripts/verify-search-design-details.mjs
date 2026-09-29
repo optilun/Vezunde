@@ -14,8 +14,8 @@ const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf
 // E2
 {
   const session = read('src/lib/searchSession.js');
-  assert.match(session, /export function readMobileViewChoice\(fallback\) \{ const choice = readSearchSession\(\)\.mobileViewChoice; return choice === "map" \|\| choice === "list" \? choice : fallback; \}/);
-  assert.match(session, /export function rememberMobileViewChoice\(view\) \{ if \(view === "map" \|\| view === "list"\) writeSearchSession\(\{ mobileViewChoice: view \}\); \}/);
+  assert.match(session, /export function readMobileViewChoice\(fallback\) \{\s*const choice = readSearchSession\(\)\.mobileViewChoice;\s*return choice === "map" \|\| choice === "list" \? choice : fallback;\s*\}/);
+  assert.match(session, /export function rememberMobileViewChoice\(view\) \{\s*if \(view === "map" \|\| view === "list"\) writeSearchSession\(\{ mobileViewChoice: view \}\);\s*\}/);
   const search = read('src/pages/Search.jsx');
   const national = read('src/pages/DirectoryMap.jsx');
   assert.match(search, /useState\(\(\) => readMobileViewChoice\(saved\.mobileView \|\| "list"\)\)/, 'localitatea porneste pe lista');
