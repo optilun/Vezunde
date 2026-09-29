@@ -58,7 +58,7 @@ function DesktopHeader({ scrolled, opaque, transparent }) {
             to="/cauta"
             className="ml-3 inline-flex min-h-12 items-center rounded-full bg-[#171717] px-6 py-2.5 text-[0.95rem] font-semibold text-white transition-colors hover:bg-[#2B2B2B]"
           >
-            Găsește opțiuni
+            Găsește specialist
           </Link>
         </nav>
       </div>
