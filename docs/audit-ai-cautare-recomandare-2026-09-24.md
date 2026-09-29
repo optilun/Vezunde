@@ -918,3 +918,26 @@ de lentile sa fie recomandate inainte opticile. Fa un research puternic si apoi 
   aceasta schimbare (Craiova, prima rulare). Un pacient face o singura cautare odata, dar un varf de
   trafic ar putea lovi limita; de urmarit (mai putine interogari pe cautare sau reincercare).
 
+### Ce tinea de noi, finalizat (2026-09-30, owner: "Incepe tot")
+
+- Pagina de rezultate verificata live (control, Sibiu, fara date personale): "Nu avem inca optiuni
+  confirmate...", apoi "Alte optici din zona", apoi "Alte cabinete si clinici oftalmologice din zona"
+  cu nota "Pentru un consult medical complet...". Tot acolo: ambulatoriul de oftalmologie pediatrica
+  aparea primul intre cabinete la un control pentru adult.
+- Locatii doar pentru copii (`isPediatricOnlyLocation` / `isChildSearch` in
+  `shared/providerTypePreference.js`): cele 8 din director (Pediatrie, Oftalmopediatrie, Spitalul de
+  Copii, Ambulatoriu Copii) nu mai apar la cautarile pentru adulti si vin primele la cele pentru copii
+  (control_copil, for_whom copil sau o grupa de varsta de copil). Un camp `pediatric_only` pe locatie,
+  daca va exista, are prioritate. In ambele functii de potrivire.
+- Reincercare in browser (`src/lib/providerSemanticSearch.js`): o singura data, dupa 1,5 secunde, la
+  429/500/502/503/504; timeout-ul nu se reincearca.
+- Numarul de functii fizice in teste: 50 (automaticEmailOps, adaugata de celalalt agent pe
+  2026-09-29, e publicata si functionala). Caderea din 2026-09-29 18:39 ("user worker not found" la
+  toate functiile) s-a rezolvat singura pana la 22:27, deci nu venea de la numarul de functii; cel mai
+  probabil o publicare in curs.
+- Campania de revendicare: doua sabloane existau deja (adrese de locatie / de organizatie, 13 si
+  21.09), fara nicio campanie trimisa. Peste 500 de adrese de locatie eligibile (director, email
+  activ), plus adresele de organizatie. Campaniile se creeaza din admin (Comunicare furnizori), care
+  calculeaza destinatarii si cere confirmarea tastata inainte de trimitere.
+- `verify-provider-type-preference`: 13 verificari. `verify-all`: 174 trec, 0 esecuri.
+
