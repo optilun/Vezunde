@@ -121,8 +121,8 @@ export function renderAutomaticEmailText(value, variables = {}) {
 export function sampleAutomaticEmailVariables() {
   return {
     public_reference: 'VS-2026-00124', code: '123456',
-    resume_block: '\nPoti reveni la cerere folosind linkul securizat:\nhttps://viasee.ro/cerere?ref=EXEMPLU#access=exemplu\n\nLinkul contine cheia privata de acces. Nu il distribui.',
-    security_notice: 'Nu transmite codul altei persoane. VIASEE nu iti va cere codul prin telefon sau chat.',
+    resume_block: '\nPoti reveni la cerere de pe orice dispozitiv folosind linkul securizat:\nhttps://viasee.ro/cerere?ref=EXEMPLU#access=exemplu\n\nLinkul contine cheia privata de acces. Nu il publica si nu il transmite unei persoane necunoscute.',
+    security_notice: 'Nu transmite codul unei alte persoane. VIASEE nu iti va cere codul prin telefon sau chat.',
     location_name: 'Optica Exemplu', intent_label: 'Consult optometric', city: 'Bucuresti',
     lead_count: '2', response_label: 'poate ajuta',
     organization_name: 'Organizatia Exemplu', role_label: 'Manager locatie',
