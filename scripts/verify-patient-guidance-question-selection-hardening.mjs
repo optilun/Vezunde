@@ -223,7 +223,9 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // 2026-09-28, a doua trecere dupa testul live: tipul de locatie se decide pe cheile confirmate
   // de pacient (`need_service_keys`, trimise separat de client) si pe textul lui (keratocon), nu pe
   // cheile adaugate de cautarea in text. Restul ramurii ramane ca mai sus.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "0ad10233");
+  // 2026-09-30, aprobat de owner ("Incepe tot"): locatiile doar pentru copii (isPediatricOnlyLocation)
+  // nu mai intra la cautarile pentru adulti si vin primele in fallbackul structural la cele pentru copii.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "f2f1d8ff");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
@@ -238,7 +240,9 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // `need_service_keys` (cheile confirmate de pacient, fara cele gasite in text), la ambele
   // functii de potrivire, ca serverul sa aleaga tipul de locatie doar dupa ele. Cheile trimise
   // pentru potrivire (`service_keys`) raman aceleasi.
-  assert.equal(fnv1a(client.slice(client.indexOf(clientMarker))), "f98a2496");
+  // 2026-09-30: o singura reincercare, dupa 1,5 secunde, la 429/500/502/503/504 (varf de trafic);
+  // timeout-ul nu se reincearca, iar cererea trimisa ramane aceeasi.
+  assert.equal(fnv1a(client.slice(client.indexOf(clientMarker))), "03824f08");
 });
 
 scenario("physical Base44 function count remains 48", () => {

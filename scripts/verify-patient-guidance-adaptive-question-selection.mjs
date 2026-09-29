@@ -310,7 +310,9 @@ await scenario("matching implementation remains byte-stable", () => {
   // 2026-09-28, a doua trecere dupa testul live: tipul de locatie se decide pe cheile confirmate
   // de pacient (`need_service_keys`, trimise separat de client) si pe textul lui (keratocon), nu pe
   // cheile adaugate de cautarea in text. Restul ramurii ramane ca mai sus.
-  assert.equal(fnv1a(matchingTail), "0ad10233");
+  // 2026-09-30, aprobat de owner ("Incepe tot"): locatiile doar pentru copii (isPediatricOnlyLocation)
+  // nu mai intra la cautarile pentru adulti si vin primele in fallbackul structural la cele pentru copii.
+  assert.equal(fnv1a(matchingTail), "f2f1d8ff");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {
@@ -327,7 +329,9 @@ await scenario("ranking and recommendation client remain byte-stable", () => {
   // `need_service_keys` (cheile confirmate de pacient, fara cele gasite in text), la ambele
   // functii de potrivire, ca serverul sa aleaga tipul de locatie doar dupa ele. Cheile trimise
   // pentru potrivire (`service_keys`) raman aceleasi.
-  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "f98a2496");
+  // 2026-09-30: o singura reincercare, dupa 1,5 secunde, la 429/500/502/503/504 (varf de trafic);
+  // timeout-ul nu se reincearca, iar cererea trimisa ramane aceeasi.
+  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "03824f08");
 });
 
 await scenario("live result is identical when question selection does not intervene", () => {
