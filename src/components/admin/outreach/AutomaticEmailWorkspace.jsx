@@ -108,6 +108,13 @@ export default function AutomaticEmailWorkspace() {
     return !needle || [item.title, item.trigger, item.recipient, item.group].join(" ").toLocaleLowerCase("ro-RO").includes(needle);
   });
 
+  useEffect(() => {
+    if (!loading && !listed.some((item) => item.key === selectedKey)) {
+      setSelectedKey(listed[0]?.key || "");
+      setMode("preview");
+    }
+  }, [all, group, loading, search, selectedKey, source]);
+
   const choose = (item) => {
     setSelectedKey(item.key);
     setMode("preview");
@@ -297,6 +304,7 @@ export default function AutomaticEmailWorkspace() {
             </aside>
 
             <section ref={detailRef} className="min-w-0 space-y-4 scroll-mt-20">
+              {!selected && <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Alege un alt filtru pentru a vedea mesaje.</div>}
               {selected && (
                 <>
                   <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
