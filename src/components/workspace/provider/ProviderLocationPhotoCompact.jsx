@@ -90,6 +90,11 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   const [preview, setPreview] = useState("");
   const [stagedFile, setStagedFile] = useState(null);
   const [stagedPreview, setStagedPreview] = useState("");
+  // 2026-09-29 (lint exhaustive-deps): la schimbarea locatiei sau la iesire se elibereaza
+  // previzualizarea de ACUM. Inainte, curatarea citea valoarea de la montare (de obicei goala),
+  // deci o imagine aleasa si netrimisa ramanea in memoria browserului.
+  const stagedPreviewRef = useRef("");
+  stagedPreviewRef.current = stagedPreview;
   const [uploadedAsset, setUploadedAsset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -141,8 +146,10 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
     clearStaged();
     load();
     return () => {
-      if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
+      if (stagedPreviewRef.current.startsWith("blob:")) URL.revokeObjectURL(stagedPreviewRef.current);
     };
+    // Se reia doar la schimbarea locatiei; incarcarea si curatarea citesc starea curenta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId]);
 
   const pending = submission?.status === "pending_review";
