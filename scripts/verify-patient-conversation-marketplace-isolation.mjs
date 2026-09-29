@@ -93,6 +93,10 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // neclara; optici apoi cabinete la control si lentile; optici la produse si reparatii), nu dupa
     // nivelul nevoii. Rezultatul include `provider_type_preference` si `structural_group_note`.
     '012e86423988fc726ae91a10ebfeca9a968c8b95',
+    // 2026-09-28, a doua trecere dupa testul live: tipul se decide pe `need_service_keys` (cheile
+    // confirmate de pacient, trimise separat de client) si pe textul cererii (keratocon), nu pe
+    // cheile completate din text.
+    '01f63ad0e4337563d0b7a7aac74559e187b94897',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
