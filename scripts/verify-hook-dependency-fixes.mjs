@@ -33,10 +33,28 @@ assert.match(settings, /current_user_role_by_location \|\| NO_ROLES;/);
 assert.match(read(`${P}ProviderServicesEditor.jsx`), /useEffect\(\(\) => \{ onDirtyChange\?\.\(m\.dirty\); \}, \[m\.dirty, onDirtyChange\]\);/);
 assert.match(read('src/components/admin/directory/DirOpsMapping.jsx'), /\}, \[load, query\]\);/);
 
+// Fluxul de cerere (2026-09-29, cerut explicit de Alex: „Ocupa te de restul”). Nicio schimbare in
+// potrivire, Top 3 sau ordine: doar liste stabile intre randari si functii citite la zi.
+const I = 'src/components/intake2/';
+const matchResults = read(`${I}MatchResults.jsx`);
+assert.match(matchResults, /const NO_RESULTS = Object\.freeze\(\[\]\);/);
+assert.match(matchResults, /const list = useMemo\(\(\) => \(Array\.isArray\(expandedSnapshot\?\.results\)/, 'lista stabila: harta nu mai e anuntata la fiecare randare');
+assert.match(matchResults, /visibleResultsChanged\.current\?\.\(list\);\s*\}, \[list\]\);/);
+assert.match(matchResults, /resultModeChanged\.current\?\.\(resultMode\);\s*\}, \[resultMode\]\);/);
+assert.match(matchResults, /const serverTop3Count = list\.filter\(\(result\) => result\.result_bucket === "top3"\)\.length;/, 'Top 3 numarat ca inainte');
+const card = read(`${I}ConversationalCard.jsx`);
+assert.match(card, /const matchingRequest = matchingRequestRef\.current;/);
+assert.match(card, /return \(\) => questionSelectionGuard\.invalidate\(\);/);
+assert.match(card, /-- propunerea confirmata se citeste la pornirea potrivirii/, 'fara a doua cerere de potrivire');
+assert.match(read(`${I}PatientRequestSubmission.jsx`), /const submissionGuard = submissionGuardRef\.current;/);
+assert.match(read(`${I}ProfessionalResults.jsx`), /const results = useMemo\(\(\) => \(Array\.isArray\(state\.data\?\.results\)/);
+assert.match(read(`${I}RequestWorkspace.jsx`), /const responses = useMemo\(\(\) => status\?\.responses \|\| \[\], \[status\?\.responses\]\);/);
+
 // Fiecare exceptie are motivul scris langa ea.
 for (const file of [
   'src/components/admin/directory/DirOpsCorrections.jsx', 'src/components/provider/ClaimForm.jsx',
   `${P}ProviderArticles.jsx`, `${P}ProviderTeam.jsx`, `${P}leads/ProviderBillingPanel.jsx`, 'src/pages/MyAccount.jsx',
+  'src/components/intake2/ConversationalCard.jsx', 'src/components/intake2/PatientRequestSubmission.jsx',
 ]) {
   const source = read(file);
   const bare = source.split('\n').filter((line) => line.includes('eslint-disable-next-line react-hooks/exhaustive-deps') && !line.includes(' -- '));
