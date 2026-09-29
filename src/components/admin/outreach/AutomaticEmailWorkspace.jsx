@@ -116,6 +116,9 @@ export default function AutomaticEmailWorkspace() {
           Salvarea schimba doar emailurile trimise de acum inainte; nu trimite niciun mesaj de test.
           Campaniile de marketing raman in taburile lor.
         </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          VIASEE nu trimite in prezent remindere de programare. Notificarile de plata depind de configuratia Stripe.
+        </p>
       </div>
 
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
