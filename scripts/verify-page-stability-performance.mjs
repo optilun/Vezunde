@@ -36,11 +36,13 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   assert.match(presentation, /data-active="\$\{active\}" data-hovered="\$\{hovered\}"/);
 
   const directoryMap = await read('src/pages/DirectoryMap.jsx');
-  const scrollEffect = directoryMap.slice(directoryMap.indexOf('2026-09-24. Pozitia se salveaza'), directoryMap.indexOf('const orderedPoints'));
-  assert.match(scrollEffect, /timer = setTimeout\(save, 200\)/, 'Pozitia se salveaza dupa ce derularea se opreste');
-  assert.match(scrollEffect, /window\.addEventListener\("pagehide", save\)/);
-  assert.match(scrollEffect, /writeSearchSession\(\{ nationalScroll: lastY \}\)/, 'Se salveaza ultima pozitie a acestei pagini');
-  assert.doesNotMatch(scrollEffect, /addEventListener\("scroll", save/, 'Fara salvare la fiecare eveniment');
+  // 2026-09-29 (audit /cauta, D3): salvarea derularii este hook-ul comun useRememberScroll.
+  const scrollHook = await read('src/hooks/useRememberScroll.js');
+  assert.match(scrollHook, /timer = setTimeout\(flush, delay\)/, 'Pozitia se salveaza dupa ce derularea se opreste');
+  assert.match(scrollHook, /window\.addEventListener\("pagehide", flush\)/);
+  assert.match(scrollHook, /lastY = window\.scrollY;/, 'Ultima pozitie se tine la fiecare eveniment');
+  assert.doesNotMatch(scrollHook, /addEventListener\("scroll", flush/, 'Fara salvare la fiecare eveniment');
+  assert.match(directoryMap, /useRememberScroll\(\(y\) => \{\s*if \(scrollRestored\.current && !window\.matchMedia\("\(min-width: 1024px\)"\)\.matches\) writeSearchSession\(\{ nationalScroll: y \}\);/, 'Se salveaza ultima pozitie a acestei pagini');
 
   const locations = await read('src/components/results/LocationsWithMap.jsx');
   assert.match(locations, /rememberTimer\.current = setTimeout\(\(\) => \{ rememberTimer\.current = 0; rememberLatest\.current\(\); \}, 200\);/);

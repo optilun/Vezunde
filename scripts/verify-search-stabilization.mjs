@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+// 2026-09-29 (audit /cauta, D3): pagina /cauta citita impreuna cu hook-urile ei (scripts/searchPageSource.mjs).
+import { readSearchPage } from "./searchPageSource.mjs";
 import { directoryLocationScope } from "../base44/shared/searchLocationScope.js";
 
 assert.equal(directoryLocationScope({}), null);
@@ -13,7 +15,7 @@ for (const endpoint of ["matchProviders", "matchProvidersSemantic"]) {
   const filter = source.indexOf("directoryScope === null || directoryScope.has(");
   assert.ok(filter > 0 && filter < source.indexOf("const locationIds ="), endpoint + " filters candidates before loading/scoring/truncating");
 }
-const search = fs.readFileSync("src/pages/Search.jsx", "utf8");
+const search = readSearchPage();
 const apply = search.slice(search.indexOf("onApply={(filters)"), search.indexOf("}} />", search.indexOf("onApply={(filters)")));
 assert.ok(!apply.includes('setQuery("")') && !apply.includes('setService("")'), "Applying refinements preserves the request");
 const suggestion = search.slice(search.indexOf("const chooseSuggestion"), search.indexOf("const searchMapKey"));

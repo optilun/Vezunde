@@ -7,6 +7,8 @@
 // A5 cererile catre director au limita de timp si ajung pe calea de eroare cu „Reîncearcă”.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// 2026-09-29 (audit /cauta, D3): pagina /cauta citita impreuna cu hook-urile ei (scripts/searchPageSource.mjs).
+import { readSearchPage } from './searchPageSource.mjs';
 import { layoutMapMarkers } from '../shared/mapMarkerPresentation.js';
 import { withPatientOperationTimeout, isPatientOperationTimeout } from '../src/lib/patientOperationControl.js';
 
@@ -24,7 +26,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 // A2
 {
-  const search = read('src/pages/Search.jsx');
+  const search = readSearchPage();
   const controls = search.match(/<div ref=\{controlsRef\} data-search-controls className="([^"]+)"/)?.[1] || '';
   assert.ok(controls.split(' ').includes('lg:sticky'), 'controalele sunt fixate doar pe desktop');
   assert.ok(!controls.split(' ').includes('sticky'), 'nu sunt fixate pe telefon');
@@ -49,7 +51,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 // A4
 {
-  const search = read('src/pages/Search.jsx');
+  const search = readSearchPage();
   assert.match(search, /const typing = hasCanonicalLocality && debouncedQuery !== query\.trim\(\);/);
   const reset = search.slice(search.indexOf('const previousCriteria = useRef(null);'), search.indexOf('}, [typing, service, debouncedQuery, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);'));
   assert.ok(reset.length > 50, 'resetarea urmeaza textul asezat');
@@ -66,11 +68,11 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 // A5
 {
-  for (const file of ['src/pages/Search.jsx', 'src/components/results/SearchFilters.jsx']) {
+  for (const file of ['src/hooks/useSearchResults.js', 'src/components/results/SearchFilters.jsx']) {
     assert.doesNotMatch(read(file), /functions\.invoke\(\s*"browseDirectoryProviders"/, `${file}: toate cererile de director au limita de timp`);
     assert.match(read(file), /invokeDirectoryBrowse\(/);
   }
-  assert.equal((read('src/pages/Search.jsx').match(/invokeDirectoryBrowse\(/g) || []).length, 4, 'lista, restaurare, filtre, paginare');
+  assert.equal((readSearchPage().match(/invokeDirectoryBrowse\(/g) || []).length, 4, 'lista, restaurare, filtre, paginare');
   const helper = read('src/lib/directoryBrowse.js');
   assert.match(helper, /DIRECTORY_BROWSE_TIMEOUT_MS = 20_000/);
   assert.match(helper, /withPatientOperationTimeout\(/);

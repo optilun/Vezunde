@@ -9,6 +9,8 @@
 //    pictograme decorative ascunse; grupuri etichetate cu rol.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// 2026-09-29 (audit /cauta, D3): pagina /cauta citita impreuna cu hook-urile ei (scripts/searchPageSource.mjs).
+import { readSearchPage } from './searchPageSource.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -18,7 +20,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.match(filters, /\+ \(hasLocality \? serviceKeys\.length \+ Number\(casOnly\) : 0\)/, 'fara localitate, serviciile si CAS nu se numara ca active');
   assert.match(filters, /serviceKeys:draft\.services\|\|\[\],casOnly:Boolean\(draft\.cas\)/, 'aplicarea pe harta Romaniei nu sterge in tacere filtrele alese');
   assert.doesNotMatch(filters, /serviceKeys:hasLocality\?draft\.services:\[\]/);
-  const search = read('src/pages/Search.jsx');
+  const search = readSearchPage();
   assert.match(search, /pending: !hasCanonicalLocality, label: CANONICAL_SERVICE_REGISTRY/);
   assert.match(search, /pending: !hasCanonicalLocality, label: "Decontare CAS"/);
   assert.match(search, /Se aplică după ce alegi localitatea:/);
@@ -33,11 +35,15 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 // B5
 {
+  // 2026-09-29 (audit /cauta, D3): salvarea derularii este un hook comun cu harta Romaniei.
+  const hook = read('src/hooks/useRememberScroll.js');
+  assert.match(hook, /timer = setTimeout\(flush, delay\);/, 'salvare dupa oprire');
+  assert.match(hook, /window\.addEventListener\("pagehide", flush\);/, 'si la plecare');
+  assert.match(hook, /export default function useRememberScroll\(save, delay = 200\)/);
   const search = read('src/pages/Search.jsx');
-  const block = search.slice(search.indexOf('audit /cauta, B5'), search.indexOf('B1: in fila Specialisti'));
-  assert.match(block, /timer = setTimeout\(save, 200\);/, 'salvare dupa oprire');
-  assert.match(block, /window\.addEventListener\("pagehide", save\);/, 'si la plecare');
-  assert.doesNotMatch(block, /writeSearchSession\(\{ scrollY: window\.scrollY \}\)/, 'nu la fiecare eveniment');
+  assert.match(search, /useRememberScroll\(\(y\) => \{ if \(restoredScroll\.current\) writeSearchSession\(\{ scrollY: y \}\); \}\);/);
+  assert.doesNotMatch(readSearchPage(), /writeSearchSession\(\{ scrollY: window\.scrollY \}\)/, 'nu la fiecare eveniment');
+  assert.doesNotMatch(search, /addEventListener\("scroll"/, 'un singur loc pentru ascultarea derularii');
 }
 
 // C2

@@ -7,6 +7,8 @@
 // E1 un singur stil de card pe /cauta; recomandarile (/rezultate) raman cu ResultCard.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// 2026-09-29 (audit /cauta, D3): pagina /cauta citita impreuna cu hook-urile ei (scripts/searchPageSource.mjs).
+import { readSearchPage } from './searchPageSource.mjs';
 import { criteriaQuery, searchCriteriaFor, searchStateFromUrl, searchUrlFor, SEARCH_URL_KEYS } from '../src/lib/searchUrl.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -51,7 +53,7 @@ const labelFor = (key) => LABELS[key] || '';
   assert.deepEqual(SEARCH_URL_KEYS, ['serviciu', 'q', 'oras', 'siruta', 'tip', 'filtre', 'cas', 'mod', 'specialist']);
 }
 
-const search = read('src/pages/Search.jsx');
+const search = readSearchPage();
 
 // B4: pagina
 {
