@@ -364,9 +364,9 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
       requestId: options.requestId || null,
     });
     if (response?.data?.error) {
-      // 2026-09-29 (audit /cauta, cod mort): ambele ramuri aruncau aceeasi eroare; comportamentul
-      // ramane exact acelasi, fara conditia care nu schimba nimic.
-      throw Object.assign(new Error(response.data.error), { data: response.data });
+      const error = Object.assign(new Error(response.data.error), { data: response.data });
+      if (!functionUnavailable(error)) throw error;
+      throw error;
     }
     return {
       data: normalizeRecommendationResponse(response?.data || {}),
