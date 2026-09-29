@@ -4,7 +4,7 @@ import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
   paginateRows,
-} from '../shared/locationScopedEntityQuery.js';
+} from '../base44/shared/locationScopedEntityQuery.js';
 
 const locationCalls = [];
 const svc = {
