@@ -21,6 +21,7 @@ const commonRules = {
       varsIgnorePattern: "^_",
       args: "after-used",
       argsIgnorePattern: "^_",
+      caughtErrorsIgnorePattern: "^_",
     },
   ],
   "react-hooks/rules-of-hooks": "error",
