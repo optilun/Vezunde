@@ -205,8 +205,10 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   const [lifecycleError, setLifecycleError] = useState("");
   const lifecycleRequestRef = useRef(0);
   const lifecycleLocationRef = useRef("");
-  const locations = workspace?.locations || [];
-  const roleByLocation = workspace?.member_summary?.current_user_role_by_location || {};
+  // 2026-09-29 (lint exhaustive-deps): rezervele sunt aceleasi intre randari, ca lista de mai jos
+  // sa nu se recalculeze la fiecare randare cand spatiul de lucru nu are inca locatii.
+  const locations = workspace?.locations || NO_LOCATIONS;
+  const roleByLocation = workspace?.member_summary?.current_user_role_by_location || NO_ROLES;
   const ownerLocations = useMemo(() => {
     const filtered = locations.filter((location) => roleByLocation[location.id] === "organization_owner");
     if (filtered.length > 0) return filtered;
