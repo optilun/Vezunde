@@ -72,9 +72,12 @@ export default function AutomaticEmailWorkspace() {
       setTemplates(nextTemplates);
       setExternal(data.external || []);
       setVariables(data.sample_variables || {});
-      setDrafts(Object.fromEntries(nextTemplates.map((item) => [
-        item.key, { subject: item.effective_subject || "", body: item.effective_body || "" },
-      ])));
+      setDrafts((current) => ({
+        ...Object.fromEntries(nextTemplates.map((item) => [
+          item.key, { subject: item.effective_subject || "", body: item.effective_body || "" },
+        ])),
+        ...Object.fromEntries(Object.entries(current).filter(([key]) => key !== preferredKey)),
+      }));
       setSelectedKey(preferredKey || selectedKey || nextTemplates[0]?.key || "");
       return true;
     } catch (cause) {
@@ -195,7 +198,6 @@ export default function AutomaticEmailWorkspace() {
 
   const discard = () => {
     if (!selected) return;
-    updateDraft("subject", selected.effective_subject);
     setDrafts((current) => ({
       ...current,
       [selected.key]: {
@@ -203,6 +205,8 @@ export default function AutomaticEmailWorkspace() {
         body: selected.effective_body || "",
       },
     }));
+    setError("");
+    setNotice("");
   };
 
   const badge = selected ? status(selected, dirty) : null;
