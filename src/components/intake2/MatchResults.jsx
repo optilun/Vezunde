@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Globe } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
@@ -21,6 +21,9 @@ import PatientRecoverySubmission from "./PatientRecoverySubmission";
 import PatientRequestSubmission from "./PatientRequestSubmission";
 
 const EMPTY_META = Object.freeze({});
+// 2026-09-29 (lint exhaustive-deps): aceeasi lista goala intre randari. Un `[]` nou la fiecare
+// randare schimba `list`, iar efectul care anunta pagina (harta) rula din nou la fiecare randare.
+const NO_RESULTS = Object.freeze([]);
 
 function RoutingNotice({ meta }) {
   if (!meta?.routing_mode) return null;
@@ -205,9 +208,9 @@ export default function MatchResults({
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const activeMeta = expandedSnapshot?.meta || meta || EMPTY_META;
-  const list = Array.isArray(expandedSnapshot?.results)
+  const list = useMemo(() => (Array.isArray(expandedSnapshot?.results)
     ? expandedSnapshot.results
-    : (Array.isArray(results) ? results : []);
+    : (Array.isArray(results) ? results : NO_RESULTS)), [expandedSnapshot, results]);
   // 2026-09-05. Filtrarea la ce se vede pe harta este PUR VIZUALA. Ascunde carduri; nu
   // recalculeaza nimic. Bucketul, rangul si ordinea fiecarui rezultat raman exact cele primite
   // de la server, iar cererea se trimite in continuare pe baza listei complete (`list`), nu a
@@ -254,12 +257,18 @@ export default function MatchResults({
   // Harta traieste in pagina parinte, dar setul de rezultate se poate schimba aici: o extindere
   // in judet sau in tara inlocuieste lista fara sa treaca prin props. Fara linia asta, harta ar
   // ramane pe rezultatele initiale si ar arata alta realitate decat lista de langa ea.
+  // 2026-09-29 (lint exhaustive-deps): efectele ruleaza tot la schimbarea listei / a modului si
+  // cheama ultima functie primita de la pagina (nu cea de la prima randare).
+  const visibleResultsChanged = useRef(onVisibleResultsChange);
+  visibleResultsChanged.current = onVisibleResultsChange;
+  const resultModeChanged = useRef(onResultModeChange);
+  resultModeChanged.current = onResultModeChange;
   useEffect(() => {
-    if (onVisibleResultsChange) onVisibleResultsChange(list);
+    visibleResultsChanged.current?.(list);
   }, [list]);
 
   useEffect(() => {
-    if (onResultModeChange) onResultModeChange(resultMode);
+    resultModeChanged.current?.(resultMode);
   }, [resultMode]);
 
   useEffect(() => { onContextChange?.(activeMeta); }, [activeMeta, onContextChange]);
@@ -301,7 +310,7 @@ export default function MatchResults({
     } catch (_error) {
       // Recommendation display must not depend on analytics.
     }
-  }, [activeMeta, confirmed.length, directory.length, list, queryScope, recommendationState, top3.length]);
+  }, [activeMeta, confirmed.length, directory.length, list, queryScope, recommendationState, serverTop3Count, top3.length]);
 
   const submitFeedback = (useful) => {
     if (feedback !== null) return;
