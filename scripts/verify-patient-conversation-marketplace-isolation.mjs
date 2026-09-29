@@ -355,6 +355,8 @@ const PR265_PROVIDER_SEMANTIC_BLOBS = Object.freeze([
   'd88d149043964e3d2c5c05b3b19b2f8cf143d7a9',
   'd182b86f36348dcd8871938ab8d2fdc86a0bf214',
   '4ad1e595b2cac79a2262d08aa847e4c2a8ea0dba',
+  // 2026-09-28: `need_service_keys` pentru politica de tip de locatie (vezi blob-ul aprobat mai sus).
+  '68e528fd27ca1e19f0378b2ff27048c2128f16b3',
 ]);
 const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
 const providerSemanticComposition = PR265_PROVIDER_SEMANTIC_BLOBS.includes(providerSemanticBlob)
