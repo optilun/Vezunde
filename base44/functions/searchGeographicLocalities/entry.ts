@@ -95,11 +95,16 @@ Deno.serve(async (req) => {
         uat_code: r.uat_code || undefined,
         uat_name: r.uat_name && r.uat_name !== r.name ? r.uat_name : undefined,
         display_label: displayLabel,
+        // 2026-09-29 (audit /cauta, E3): denumirea oficiala SIRUTA, cu diacritice („MUNICIPIUL PAŞCANI”).
+        // Pagina o foloseste doar pentru afisare; cautarea si codul raman aceleasi.
+        official_name: r.official_name || undefined,
         aliases,
       };
     });
     return Response.json({ results });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // 2026-09-29 (audit /cauta, B9): functie publica - fara textul tehnic al erorii in raspuns.
+    console.error('searchGeographicLocalities failed', error);
+    return Response.json({ error: 'Localitatile nu au putut fi incarcate acum. Incearca din nou.' }, { status: 500 });
   }
 });
