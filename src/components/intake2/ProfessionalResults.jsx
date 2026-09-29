@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { matchProfessionalsForRequest } from "@/lib/professionalSearch";
@@ -82,7 +82,9 @@ export default function ProfessionalResults({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey]);
 
-  const results = Array.isArray(state.data?.results) ? state.data.results : [];
+  // 2026-09-29 (lint exhaustive-deps): aceeasi lista intre randari, ca efectul de analitica de mai
+  // jos sa nu ruleze la fiecare randare cand nu exista rezultate.
+  const results = useMemo(() => (Array.isArray(state.data?.results) ? state.data.results : []), [state.data]);
   const top3 = results.filter((entry) => entry.result_bucket === "top3");
   const confirmed = results.filter((entry) => entry.result_bucket === "extended_confirmed");
   const directory = results.filter((entry) => entry.result_bucket === "extended_directory");
