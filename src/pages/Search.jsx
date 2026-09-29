@@ -437,11 +437,13 @@ export default function Search() {
     </div>}
   </div>;
   const localListHeader = <div className="mb-4">
-    <h2 className="font-heading text-lg font-bold sm:text-xl">{isDirectoryBrowseView ? "Locații" : "Opțiuni"} în {locality?.name}</h2>
+    {/* 2026-09-29 (audit /cauta, E3): aceiasi termeni peste tot - „locații” (clinici si optici), nu
+        „furnizori” sau „opțiuni”. La cautarea dupa serviciu, titlul spune ce s-a cautat. */}
+    <h2 className="font-heading text-lg font-bold sm:text-xl">{isDirectoryBrowseView || !debouncedQuery ? "Locații" : <>Locații pentru „{debouncedQuery}”</>} în {locality?.name}</h2>
     <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-      {isDirectoryBrowseView ? `${results?.length || 0} din ${pagination?.total ?? results?.length ?? 0} locații · Ordine alfabetică` : `${results?.length || 0} opțiuni · ${matchContext?.coverage_status === "query_not_mapped" ? "Explorare, fără potrivire confirmată" : "Ordinea potrivirii"}`}
+      {isDirectoryBrowseView ? `${results?.length || 0} din ${pagination?.total ?? results?.length ?? 0} locații · Ordine alfabetică` : `${results?.length || 0} ${results?.length === 1 ? "locație" : "locații"} · ${matchContext?.coverage_status === "query_not_mapped" ? "Explorare, fără potrivire confirmată" : "Ordinea potrivirii"}`}
     </p>
-    <p className="mt-1 text-xs text-muted-foreground">{isDirectoryBrowseView ? "Harta include toate locațiile filtrate cu poziție publicată, inclusiv cele neîncărcate încă în listă." : "Sunt afișate până la 50 de opțiuni. Harta păstrează aceleași rezultate; poziția pe hartă nu schimbă potrivirea."}</p>
+    <p className="mt-1 text-xs text-muted-foreground">{isDirectoryBrowseView ? "Harta include toate locațiile filtrate cu poziție publicată, inclusiv cele neîncărcate încă în listă." : "Sunt afișate până la 50 de locații. Harta păstrează aceleași rezultate; poziția pe hartă nu schimbă potrivirea."}</p>
     {extraSelection && <p className="mt-2 text-xs text-[#4f6080]">Locația selectată pe hartă este afișată prima.</p>}
     {filterSummary}
   </div>;
@@ -450,7 +452,7 @@ export default function Search() {
     <div className="mx-auto w-full max-w-[1800px] px-4 pb-10 sm:px-6 lg:px-8" style={{ "--search-nav-height": `${stickySize.nav}px`, "--search-controls-height": `${stickySize.controls}px` }}>
       <div className="sr-only">
         <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          Caută furnizori
+          Caută clinici, optici și specialiști
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
           Explorează locațiile pe hartă sau alege localitatea și serviciul de care ai nevoie.

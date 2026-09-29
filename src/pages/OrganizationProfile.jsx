@@ -129,7 +129,7 @@ export default function OrganizationProfile() {
             "@id": `${canonical}#breadcrumb`,
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "VIASEE", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: "Caută furnizori", item: `${SITE_URL}/cauta` },
+              { "@type": "ListItem", position: 2, name: "Caută clinici, optici și specialiști", item: `${SITE_URL}/cauta` },
               { "@type": "ListItem", position: 3, name: organization.name, item: canonical },
             ],
           },

@@ -61,7 +61,8 @@ const STATIC_META = {
     noindex: true,
   },
   "/cauta": {
-    title: "Caută furnizori | VIASEE",
+    // 2026-09-29 (audit /cauta, E3): pacientul cauta clinici, optici si specialisti, nu „furnizori”.
+    title: "Caută clinici, optici și specialiști | VIASEE",
     description: DEFAULT_DESCRIPTION,
   },
   "/cerere": {
