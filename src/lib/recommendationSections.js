@@ -19,19 +19,21 @@ export function splitByBucket(list) {
 // scurta primita de la server. Ordinea ramane exact cea primita.
 export function groupStructural(structural) {
   return (Array.isArray(structural) ? structural : []).reduce((groups, result) => {
-  const capability = result.structural_capability === "medical" ? "medical" : "optical";
-  let group = groups.find((item) => item.capability === capability);
-  if (!group) {
-    group = {
-      capability,
-      label: result.structural_group_label
-        || (capability === "medical" ? "Alte cabinete și clinici oftalmologice din zonă" : "Alte optici din zonă"),
-      note: result.structural_group_note || "",
-      items: [],
-    };
-    groups.push(group);
-  }
-  group.items.push(result);
-  return groups;
+    const capability = result.structural_capability === "medical" ? "medical" : "optical";
+    let group = groups.find((item) => item.capability === capability);
+    if (!group) {
+      group = {
+        capability,
+        label: result.structural_group_label
+          || (capability === "medical" ? "Alte cabinete și clinici oftalmologice din zonă" : "Alte optici din zonă"),
+        note: result.structural_group_note || "",
+        items: [],
+      };
+      groups.push(group);
+    }
+    group.items.push(result);
+    return groups;
   }, []);
 }
+
+export default { splitByBucket, groupStructural };
