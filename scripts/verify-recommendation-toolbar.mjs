@@ -4,7 +4,9 @@
 // starea „prea putine rezultate”), iar filtrele lipseau. Acum exista o bara lipicioasa cu filele,
 // pastila „Zona” (extindere in judet / tara) si meniul „Filtre” (tip locatie, doar verificate).
 // Filtrele sunt PUR VIZUALE: nu cheama serverul, nu schimba bucketul, rangul sau Top 3 si nu
-// schimba cine primeste cererea. Nu exista filtru pentru CAS / „deschis acum”, pentru ca
+// schimba cine primeste cererea. Ascund carduri din lista si pini recomandati de pe harta (un
+// rezultat ascuns ramane doar punct din directorul national); camera hartii ramane pe rezultatele
+// intregi ale cererii. Nu exista filtru pentru CAS / „deschis acum”, pentru ca
 // rezultatele recomandarii nu poarta aceste date.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -111,7 +113,7 @@ assert.match(pageForMap, /onFilteredResultsChange=\{setMapFilteredResults\}/);
 assert.match(pageForMap, /focusResults: full\.focusResults,/, 'camera hartii nu sare la fiecare filtru');
 assert.match(pageForMap, /mapResults: recommendationMapContext\(mapFilteredResults, nationalDirectory, activeMeta\)\.mapResults,/);
 assert.match(pageForMap, /<PatientRequestSubmission defaultOpen results=\{visibleResults\}/, 'cererea se trimite pe lista completa, nu pe cea a hartii');
-assert.doesNotMatch(pageForMap, /results=\{mapFilteredResults\}|results=\{mapResults\}/);
+assert.doesNotMatch(pageForMap, /PatientRequestSubmission[^>]*results=\{(mapFilteredResults|mapResults)\}/);
 assert.match(results, /aria-busy=\{isExpandingCounty \|\| isExpandingNational\}/, 'lista este marcata ocupata cat dureaza o extindere');
 assert.match(results, /<PatientRequestSubmission results=\{list\}/, 'cererea se trimite pe lista completa');
 assert.doesNotMatch(results, /PatientRequestSubmission results=\{filteredList\}/);
