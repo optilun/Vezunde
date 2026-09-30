@@ -18,7 +18,7 @@ import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 import ServiceSearchField from "@/components/results/ServiceSearchField";
 import { MAJOR_CITIES, readRecentLocalities, rememberLocality, prettyLocality } from "@/lib/localityQuickPicks";
 
-import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
+import { forgetLocalityCamera, handOverCameraToNationalMap, localityCameraKey, readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import { criteriaQuery, searchCriteriaFor, searchStateFromUrl } from "@/lib/searchUrl";
 import { knownLinkedState, serviceLabel } from "@/lib/searchLinkedState";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
@@ -129,6 +129,35 @@ export default function Search() {
     hasCanonicalLocality, isDirectoryBrowse, typing, saved,
     onCriteriaChange: () => { setSelectedId(null); setHoveredId(null); },
   });
+
+  // 2026-09-30. Harta ca pe Airbnb. Dupa ce lista localitatii e pe ecran, harta primeste si restul
+  // locatiilor din director ca puncte de context (fara numar, fara loc in lista): mutata in alta
+  // zona, nu mai ramane goala. Camera tine de localitate (nu de filtre) si se incadreaza pe ea o
+  // singura data. Cand vizitatorul a plecat din localitate, „Caută în această zonă” trece lista pe
+  // zona de pe harta (harta Romaniei, de unde a ramas camera). Potrivirea si rezultatele nu se ating.
+  const browsingMap = hasCanonicalLocality && searchMode === RESULT_MODES.locations.key && results !== null && !loadError;
+  const contextPoints = useDirectoryContextPoints(browsingMap);
+  const searchArea = useMemo(() => searchAreaBounds(mapResults || results), [mapResults, results]);
+  const searchAreaRef = useRef(searchArea);
+  searchAreaRef.current = searchArea;
+  const mapView = useRef(null);
+  const [leftArea, setLeftArea] = useState(false);
+  const handleMapViewport = useCallback((view) => {
+    mapView.current = view;
+    setLeftArea(viewportLeftSearchArea(view?.bounds, searchAreaRef.current));
+  }, []);
+  const cameraKey = hasCanonicalLocality ? localityCameraKey(locality.siruta_code) : null;
+  // Zona de cautare este alta (alta localitate sau alte rezultate incadrate): pana la primul raport al
+  // hartii noi nu ramane o stare veche.
+  useEffect(() => { setLeftArea(false); mapView.current = null; }, [cameraKey]);
+  // „Caută în această zonă” are sens doar la rasfoire (locatiile unei localitati, fara serviciu): zona
+  // hartii nu poate rula potrivirea dupa serviciu, care cere o localitate. Filtrele de servicii si CAS
+  // exista doar cu o localitate, deci ar ramane in asteptare si nu se aplica zonei.
+  const canSearchArea = browsingMap && isDirectoryBrowse && filterServiceKeys.length === 0 && !casOnly;
+  const searchThisArea = useCallback(() => {
+    if (!handOverCameraToNationalMap(mapView.current)) return;
+    setLocality(null); setSelectedId(null); setHoveredId(null);
+  }, []);
 
   useEffect(() => {
     writeSearchSession({ sourceSearch: criteriaSearch, query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
