@@ -122,7 +122,8 @@ assert.match(results, /Cum sunt alese recomandările\?/, 'explicatia despre ordi
 assert.match(results, /Plata nu influențează ordinea/, 'ordinea nu depinde de plata');
 
 const toolbar = read('src/components/intake2/RecommendationToolbar.jsx');
-assert.match(toolbar, /sticky top-0 z-20/, 'bara ramane la vedere cand lista se deruleaza');
+assert.match(toolbar, /sm:sticky sm:top-0 sm:z-20/, 'bara ramane la vedere cand lista se deruleaza, de la latimea sm');
+assert.doesNotMatch(toolbar, /(?<![:\w-])sticky top-0/, 'pe telefon nu se lipeste (243 px din 844 cu doua filtre active)');
 assert.match(toolbar, /RecommendationZoneMenu/);
 assert.match(toolbar, /RecommendationFilterMenu/);
 assert.match(toolbar, /Șterge filtrele/);
