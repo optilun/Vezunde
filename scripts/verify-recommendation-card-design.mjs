@@ -43,7 +43,9 @@ assert.match(directory, /<span className="sr-only">Poziția <\/span>\{rank\}/, '
 
 // 5. Aceeasi grila si aceleasi celule ca pe /cauta, definite o singura data.
 const grid = read('src/components/results/resultGridClasses.js');
-assert.match(grid, /"grid border-t border-border sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"/);
+assert.match(grid, /"group\/grid is-beside-map grid border-t border-border sm:grid-cols-2 lg:grid-cols-1"/, 'langa harta lista are o singura coloana de la lg, iar grila poarta marca variantei compacte');
+assert.match(grid, /: "grid border-t border-border sm:grid-cols-2"/, 'fara harta, doua coloane de la sm');
+assert.doesNotMatch(grid, /xl:grid-cols-2|xl:odd:border-r/, 'randurile compacte nu se mai impart pe doua coloane la xl');
 assert.match(grid, /group\/cell h-full border-b border-border transition-colors/);
 const layout = read('src/components/results/LocationsWithMap.jsx');
 assert.match(layout, /resultGridClassName\(hasPositions\)/);
