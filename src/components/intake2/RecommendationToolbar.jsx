@@ -5,13 +5,15 @@ import RecommendationFilterMenu from "./RecommendationFilterMenu";
 
 // Bara de deasupra listei de recomandari (2026-09-30): filele (locatii / specialisti), zona
 // cautarii si filtrele, pe un singur rand care se rupe doar cand nu incape. Pe ecranul cu harta
-// ramane lipita sus in lista, ca zona si filtrele sa fie la indemana si la derulare. Sub ea,
+// ramane lipita sus in lista (de la latimea `sm`, unde ocupa cel mult ~110 px), ca zona si
+// filtrele sa fie la indemana si la derulare. Pe telefon nu se lipeste: cu doua filtre active ar
+// fi luat aproape o treime din ecran (243 px din 844). Sub ea,
 // filtrele active apar ca etichete care se scot dintr-un click, cu numarul de optiuni ramase.
 //
 // Bara nu decide nimic: primeste elementele gata facute si le asaza.
 export default function RecommendationToolbar({ sticky = false, modeTabs, zone, filters = null, activeChips = [], summary = "", onClearAll = null }) {
   return (
-    <div className={sticky ? "sticky top-0 z-20 -mx-1 mb-3 border-b border-border/70 bg-background/95 px-1 pb-2 pt-1 backdrop-blur-sm" : "mb-4"}>
+    <div className={sticky ? "-mx-1 mb-3 px-1 pb-2 pt-1 sm:sticky sm:top-0 sm:z-20 sm:border-b sm:border-border/70 sm:bg-background/95 sm:backdrop-blur-sm" : "mb-4"}>
       <div className="flex flex-wrap items-center gap-2">
         {modeTabs}
         <RecommendationZoneMenu {...zone} />
