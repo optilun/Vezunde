@@ -46,7 +46,8 @@ export default function ResultModeTabs({ mode, onChange, counts = {}, compact = 
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
+            {/* Sub 360 px iconita se ascunde: eticheta nu se mai rupe pe doua randuri si nu iese din segment. */}
+            <Icon aria-hidden="true" className="hidden h-4 w-4 min-[360px]:block" strokeWidth={1.75} />
             <span className="whitespace-nowrap">{entry.label}</span>
             {Number.isFinite(Number(count)) && Number(count) > 0 && (
               <span className={`rounded-full px-1.5 text-[11px] font-bold ${active ? "bg-secondary text-foreground" : "text-muted-foreground"}`}>
