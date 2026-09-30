@@ -93,7 +93,7 @@ assert.equal(monogram('Prof. Dr. Ion Popescu'), 'IP');
 assert.equal(monogram('Mihai Ionescu'), 'MI');
 assert.equal(monogram('Ana-Maria Constantinescu-Vasilescu Popa'), 'AP', 'prima si ultima parte');
 assert.equal(monogram('Șerban'), 'ȘE', 'un singur cuvant: primele doua litere, cu diacritice');
-assert.equal(monogram('Dr.'), 'D.', 'doar titulatura: ramane ce exista');
+assert.equal(monogram('Dr.'), 'DR', 'doar titulatura: ramane ce exista');
 assert.equal(monogram(''), '?');
 assert.equal(monogram(null), '?');
 assert.match(read('src/components/results/ProfessionalCardFrame.jsx'), /monogram\(name\)/, 'cadrul citeste display_name, nu public_display_name');
