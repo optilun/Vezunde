@@ -96,6 +96,7 @@ export default function MatchResults({
 
   const { top3, confirmed, directory, structural } = splitByBucket(filteredList);
   const structuralGroups = groupStructural(structural);
+  const moreCount = confirmed.length + directory.length + structural.length;
   // Starea recomandarii descrie ce a gasit serverul, nu cat se vede acum pe ecran: o deplasare
   // a hartii nu are voie sa declanseze fluxul de recuperare "nu am gasit nimic".
   const serverTop3Count = list.filter((result) => result.result_bucket === "top3").length;
