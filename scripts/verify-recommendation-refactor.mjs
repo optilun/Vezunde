@@ -83,4 +83,29 @@ const { splitByBucket, groupStructural } = await import(pathToFileURL(path.join(
   assert.ok(screen.split('\n').length < 520, `MatchResults.jsx are ${screen.split('\n').length} linii (tinta < 520)`);
 }
 
+// --- 5. Vederea ecranului: o singura salvare in sesiune, in hook, nu in pagina ----------------------
+{
+  const hook = read('src/hooks/useRecommendationView.js');
+  const page = read('src/pages/RequestMatches.jsx');
+  // Hook-ul tine starea comuna si o salveaza O SINGURA DATA, sub `recommendations`.
+  assert.equal((hook.match(/writeSearchSession\(/g) || []).length, 1, 'vederea se salveaza intr-un singur loc');
+  assert.match(hook, /writeSearchSession\(\{ recommendations: \{/);
+  assert.match(hook, /key: viewKey, selectedId, mode: resultMode, mobileView, filterToViewport, filters: listFilters,/);
+  assert.match(hook, /scrollTop: restoreScroll\.current \|\| listRef\.current\?\.scrollTop \|\| 0,/);
+  // Regaseste la intoarcere: modul, telefonul (lista/harta), zona de pe harta, filtrele si derularea.
+  assert.match(hook, /savedView\.mode === "professionals" \? "professionals" : "locations"/);
+  assert.match(hook, /savedView\.mobileView === "map" \? "map" : "list"/);
+  assert.match(hook, /useState\(savedView\.filterToViewport === true\)/);
+  assert.match(hook, /useState\(savedView\.filters \|\| null\)/);
+  assert.match(hook, /useState\(savedView\.selectedId \|\| null\)/);
+  assert.match(hook, /const viewKey = useRef\(location\.state\?\.resultsViewKey \|\| location\.key\)\.current;/);
+  assert.match(hook, /navigate\(location\.pathname, \{ replace: true, state: \{ \.\.\.location\.state, resultsViewKey: viewKey \} \}\)/, 'cheia vederii intra in starea rutei fara intrare noua in istoric');
+  // Nu cheama serverul si nu atinge rezultatele.
+  assert.doesNotMatch(hook, /matchProviders|invokeFunction|fetch\(|result_bucket|bucket_rank|\.sort\(|recommendation_score/);
+  // Pagina foloseste hook-ul si nu mai are in ea starea comuna, salvarea si derularea.
+  assert.match(page, /= useRecommendationView\(\{ hasResults: Array\.isArray\(results\) \}\);/);
+  assert.doesNotMatch(page, /writeSearchSession|readSearchSession|ResizeObserver\(apply\)|restoreScroll|const \[selectedId, setSelectedId\]|const \[resultMode, setResultMode\]|const \[mobileView, setMobileView\]|const \[filterToViewport, setFilterToViewport\]|const \[listFilters, setListFilters\]/);
+  assert.ok(page.split('\n').length < 320, `RequestMatches.jsx are ${page.split('\n').length} linii (tinta < 320)`);
+}
+
 console.log('verify-recommendation-refactor: ok');
