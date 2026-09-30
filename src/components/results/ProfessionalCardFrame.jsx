@@ -4,11 +4,7 @@ import { ArrowRight, BadgeCheck, Eye, Glasses, Stethoscope, User } from "lucide-
 import ServiceChip from "@/components/results/ServiceChip";
 import { COVER_TONES } from "@/lib/locationCover";
 import { resultCellClassName } from "./resultGridClasses";
-import {
-  professionalInitials,
-  professionalTypeIconKey,
-  professionalTypeLabel,
-} from "../../../shared/professionalIdentity.js";
+import { professionalTypeIconKey, professionalTypeLabel } from "../../../shared/professionalIdentity.js";
 
 // Cadrul cardului de specialist: acelasi limbaj vizual ca DirectoryResultCard (celula de grila cu
 // linii fine, coperta sus, numele mare, o sageata spre profil), ca in tabul „Specialisti” sa se
@@ -34,6 +30,20 @@ const PROFESSION_TONES = {
 
 const ICONS = { stethoscope: Stethoscope, eye: Eye, glasses: Glasses, user: User };
 
+// Initialele de pe coperta: prima si ultima parte a numelui, fara titulaturi („Dr. Andreea Popescu”
+// -> AP, nu DP). Raspunsul motorului de specialisti poarta `display_name`, iar
+// professionalInitials() din shared citeste `public_display_name` (formatul profilului), deci nu o
+// folosim aici: coperta ar arata „?”.
+const TITLES = /^(dr|prof|conf|șef|sef|asist|doc|lect|med|drd)\.?$/i;
+export function monogram(name) {
+  const parts = String(name || "").split(/\s+/).filter(Boolean);
+  const words = parts.filter((part) => !TITLES.test(part));
+  const use = words.length > 0 ? words : parts;
+  if (use.length === 0) return "?";
+  if (use.length === 1) return use[0].slice(0, 2).toLocaleUpperCase("ro-RO");
+  return `${use[0][0]}${use[use.length - 1][0]}`.toLocaleUpperCase("ro-RO");
+}
+
 export default function ProfessionalCardFrame({
   professional,
   specializations = [],
@@ -50,10 +60,7 @@ export default function ProfessionalCardFrame({
   const typeLabel = professional.professional_type_label || professionalTypeLabel(type);
   const photo = !photoFailed && professional.profile_photo_url ? professional.profile_photo_url : "";
   const name = professional.display_name;
-  // Raspunsul motorului de specialisti are `display_name`; professionalInitials citeste
-  // `public_display_name` (formatul profilului), deci numele se da explicit - altfel coperta ar
-  // arata „?” in loc de initiale.
-  const initials = professionalInitials({ public_display_name: name });
+  const initials = monogram(name);
   const profileHref = `/specialist/${professional.id}`;
   const locations = Array.isArray(professional.locations) ? professional.locations : [];
   const shownLocations = locations.slice(0, 2);
