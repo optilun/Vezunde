@@ -137,8 +137,8 @@ assert.match(pill, /Caută în această zonă/);
 assert.match(pill, /const SHOW_DELAY_MS = 350;/);
 assert.match(pill, /aria-hidden="true"/);
 // Nimic din aceasta schimbare nu ataca potrivirea, rezultatele sau cererile.
-for (const [name, source] of [['Search', search], ['LocationsWithMap', withMap], ['hook', hook], ['pill', pill]]) {
-  assert.doesNotMatch(source, /matchProviders|invokeDirectoryBrowse\(/.test(source) && name !== 'Search' ? /$^/ : /$^/);
+for (const [name, source] of [['LocationsWithMap', withMap], ['pill', pill]]) {
+  assert.doesNotMatch(source, /matchProviders|invokeDirectoryBrowse\(/, `${name} nu cheama potrivirea sau rasfoirea`);
 }
 assert.doesNotMatch(hook, /matchProviders|browseDirectoryProviders|invoke\(/, 'hook-ul citeste doar harta nationala, prin incarcatorii existenti');
 
