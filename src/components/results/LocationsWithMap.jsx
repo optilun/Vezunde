@@ -8,6 +8,8 @@ import { withDirectoryContext } from "../../../shared/searchMapArea.js";
 import { requestMapCardFocus } from "@/lib/mapCardFocus";
 import { resultCellClassName, resultGridClassName } from "./resultGridClasses";
 
+const NO_ROWS = [];
+
 export default function LocationsWithMap({
   results,
   listResults = results,
@@ -48,7 +50,11 @@ export default function LocationsWithMap({
   mapOverlay = null,
 }) {
   const gridLayout = listLayout === "grid";
-  const mapRows = useMemo(() => withDirectoryContext(results || [], contextResults), [results, contextResults]);
+  const searchRows = results || NO_ROWS;
+  // Fara puncte de context, `mapRows` este chiar `searchRows` (aceeasi referinta) si camera se incadreaza
+  // pe el, ca inainte. Cu context, camera se incadreaza doar pe rezultatele cautarii.
+  const mapRows = useMemo(() => withDirectoryContext(searchRows, contextResults), [searchRows, contextResults]);
+  const fitRows = mapRows === searchRows ? null : searchRows;
   // Cheia este ordinea id-urilor, nu tabloul: o lista reconstruita cu aceeasi ordine nu redeseneaza pinii.
   const rankSignature = numbered ? (listResults || []).map((location) => location.id).join("|") : "";
   const rankById = useMemo(
@@ -211,7 +217,7 @@ export default function LocationsWithMap({
           <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={mapRows}
-              fitResults={mapRows === (results || []) || mapRows.length === (results || []).length ? null : results || []}
+              fitResults={fitRows}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={onSelect}
