@@ -14,6 +14,7 @@ import {
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import MatchResultCard from "./MatchResultCard";
+import { resultGridClassName } from "@/components/results/resultGridClasses";
 import NoResultsFlow from "./NoResultsFlow";
 import ProfessionalResults from "./ProfessionalResults";
 import ResultModeTabs, { RESULT_MODES } from "./ResultModeTabs";
@@ -79,25 +80,29 @@ function metaFromExpandedResponse(data, previousMeta) {
   };
 }
 
-function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, onHoverLocation = null, hoveredId = null, compact = false, mappedLocationIds = null }) {
-  if (queryScope !== "county") {
-    return (
-      <div className="space-y-3">
-        {items.map((location) => (
-          <MatchResultCard
-            key={location.id}
-            location={location}
-            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
-            onSelect={onSelectLocation}
-            selected={selectedId === location.id}
-            onHover={onHoverLocation}
-            hovered={hoveredId === location.id}
-            compact={compact}
-          />
-        ))}
-      </div>
-    );
-  }
+// 2026-09-30. Recomandarile stau in aceeasi grila ca rezultatele de pe /cauta (resultGridClasses):
+// o coloana langa harta pe ecrane late, doua altfel. Grupurile pe localitate / judet raman, fiecare
+// cu grila lui. Aici nu se schimba ordinea, sectiunile sau ce se afiseaza - doar asezarea.
+function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, onHoverLocation = null, hoveredId = null, mappedLocationIds = null }) {
+  const hasPositions = Boolean(mappedLocationIds && mappedLocationIds.size > 0);
+  const cards = (rows) => (
+    <div className={resultGridClassName(hasPositions)}>
+      {rows.map((location) => (
+        <MatchResultCard
+          key={location.id}
+          location={location}
+          hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
+          gridHasMap={hasPositions}
+          onSelect={onSelectLocation}
+          selected={selectedId === location.id}
+          onHover={onHoverLocation}
+          hovered={hoveredId === location.id}
+        />
+      ))}
+    </div>
+  );
+
+  if (queryScope !== "county") return cards(items);
 
   const local = items.filter((item) => item.expansion_tier === "oras");
   const county = items.filter((item) => item.expansion_tier === "judet");
@@ -110,20 +115,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
           <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
             În {selectedCity || "localitatea selectată"}
           </div>
-          <div className="space-y-3">
-            {local.map((location) => (
-              <MatchResultCard
-                key={location.id}
-                location={location}
-            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
-                onSelect={onSelectLocation}
-                selected={selectedId === location.id}
-                onHover={onHoverLocation}
-            hovered={hoveredId === location.id}
-            compact={compact}
-              />
-            ))}
-          </div>
+          {cards(local)}
         </section>
       )}
       {county.length > 0 && (
@@ -131,38 +123,10 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
           <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
             În restul județului {countyName || "selectat"}
           </div>
-          <div className="space-y-3">
-            {county.map((location) => (
-              <MatchResultCard
-                key={location.id}
-                location={location}
-            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
-                onSelect={onSelectLocation}
-                selected={selectedId === location.id}
-                onHover={onHoverLocation}
-            hovered={hoveredId === location.id}
-            compact={compact}
-              />
-            ))}
-          </div>
+          {cards(county)}
         </section>
       )}
-      {other.length > 0 && (
-        <div className="space-y-3">
-          {other.map((location) => (
-            <MatchResultCard
-              key={location.id}
-              location={location}
-            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
-              onSelect={onSelectLocation}
-              selected={selectedId === location.id}
-              onHover={onHoverLocation}
-            hovered={hoveredId === location.id}
-            compact={compact}
-            />
-          ))}
-        </div>
-      )}
+      {other.length > 0 && cards(other)}
     </div>
   );
 }
@@ -609,7 +573,7 @@ export default function MatchResults({
           </details>
           <RoutingNotice meta={activeMeta} />
           <div className="mt-5">
-            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
+            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             <a href="/cauta" className="font-medium text-foreground underline underline-offset-2">
@@ -674,7 +638,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
           <div className="mt-3">
-            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
+            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
       )}
@@ -683,7 +647,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Opțiuni din director</div>
           <div className="mt-3">
-            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
+            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
       )}
@@ -709,7 +673,7 @@ export default function MatchResults({
               : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={group.items} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
+            <ResultScopeGroups items={group.items} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
       ))}
