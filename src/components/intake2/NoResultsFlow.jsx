@@ -65,6 +65,7 @@ export default function NoResultsFlow({
   countyName = "",
   onExpandCounty,
   onExpandNational,
+  onOpenZone,
   onChangeLocation,
   onReviewCriteria,
   isExpandingCounty = false,
@@ -189,7 +190,18 @@ export default function NoResultsFlow({
           )}
 
           {compactRecovery && (actionError || nationalActionError) && <p role="alert" className="mt-2 text-xs text-destructive">{actionError || nationalActionError}</p>}
-          {compactRecovery ? <details className="mt-2">
+          {compactRecovery && onOpenZone ? (
+            // Bara de sus are deja pastila „Zona”; aici doar o deschidem, ca sa nu
+            // mai avem doua locuri diferite pentru aceleasi patru actiuni.
+            <button
+              type="button"
+              onClick={onOpenZone}
+              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
+            >
+              <Expand aria-hidden="true" className="h-4 w-4" />
+              Extinde zona căutării
+            </button>
+          ) : compactRecovery ? <details className="mt-2">
             <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-[#4f6080]"><SlidersHorizontal aria-hidden="true" className="h-4 w-4" />Extinde sau modifica zona cautarii</summary>
             {recoveryActions}
           </details> : recoveryActions}
