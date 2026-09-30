@@ -6,10 +6,11 @@
 //    de grila; rasfoirea nu primeste nimic de recomandare, recomandarea vine prin `details`.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const { monogram } = await import(pathToFileURL(path.join(root, 'src/lib/professionalMonogram.js')).href);
 const read = (file) => readFileSync(path.join(root, file), 'utf8');
 
 // --- 1. Cardul compact ----------------------------------------------------------------------
@@ -85,5 +86,16 @@ const read = (file) => readFileSync(path.join(root, file), 'utf8');
   assert.match(search, /professionals\?\.length > 0 \? \(\s*<div className=\{`mt-4 \$\{resultGridClassName\(false\)\}`\}>/);
   assert.match(search, /<ProfessionalDirectoryCard key=\{professional\.id\} professional=\{professional\} \/>/);
 }
+
+// --- 3. Initialele de pe coperta --------------------------------------------------------------
+assert.equal(monogram('Dr. Andreea Popescu'), 'AP', 'titulatura nu intra in initiale');
+assert.equal(monogram('Prof. Dr. Ion Popescu'), 'IP');
+assert.equal(monogram('Mihai Ionescu'), 'MI');
+assert.equal(monogram('Ana-Maria Constantinescu-Vasilescu Popa'), 'AP', 'prima si ultima parte');
+assert.equal(monogram('Șerban'), 'ȘE', 'un singur cuvant: primele doua litere, cu diacritice');
+assert.equal(monogram('Dr.'), 'D.', 'doar titulatura: ramane ce exista');
+assert.equal(monogram(''), '?');
+assert.equal(monogram(null), '?');
+assert.match(read('src/components/results/ProfessionalCardFrame.jsx'), /monogram\(name\)/, 'cadrul citeste display_name, nu public_display_name');
 
 console.log('verify-compact-result-cards: ok');

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, BadgeCheck, Eye, Glasses, Stethoscope, User } from "lucide-react";
 import ServiceChip from "@/components/results/ServiceChip";
 import { COVER_TONES } from "@/lib/locationCover";
+import { monogram } from "@/lib/professionalMonogram";
 import { resultCellClassName } from "./resultGridClasses";
 import { professionalTypeIconKey, professionalTypeLabel } from "../../../shared/professionalIdentity.js";
 
@@ -29,20 +30,6 @@ const PROFESSION_TONES = {
 };
 
 const ICONS = { stethoscope: Stethoscope, eye: Eye, glasses: Glasses, user: User };
-
-// Initialele de pe coperta: prima si ultima parte a numelui, fara titulaturi („Dr. Andreea Popescu”
-// -> AP, nu DP). Raspunsul motorului de specialisti poarta `display_name`, iar
-// professionalInitials() din shared citeste `public_display_name` (formatul profilului), deci nu o
-// folosim aici: coperta ar arata „?”.
-const TITLES = /^(dr|prof|conf|șef|sef|asist|doc|lect|med|drd)\.?$/i;
-export function monogram(name) {
-  const parts = String(name || "").split(/\s+/).filter(Boolean);
-  const words = parts.filter((part) => !TITLES.test(part));
-  const use = words.length > 0 ? words : parts;
-  if (use.length === 0) return "?";
-  if (use.length === 1) return use[0].slice(0, 2).toLocaleUpperCase("ro-RO");
-  return `${use[0][0]}${use[use.length - 1][0]}`.toLocaleUpperCase("ro-RO");
-}
 
 export default function ProfessionalCardFrame({
   professional,
