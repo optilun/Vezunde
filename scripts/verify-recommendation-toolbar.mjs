@@ -102,7 +102,12 @@ assert.match(results, /visibleResultsChanged\.current\?\.\(list\);/, 'harta prim
 assert.match(results, /<PatientRequestSubmission results=\{list\}/, 'cererea se trimite pe lista completa');
 assert.doesNotMatch(results, /PatientRequestSubmission results=\{filteredList\}/);
 assert.match(results, /result\.result_bucket === "top3"/, 'Top 3 ramane strict dupa result_bucket');
-assert.doesNotMatch(results, /matchProviders|invokeFunction|fetch\(/, 'filtrele nu cheama serverul');
+// Extinderea in judet / tara cheama serverul in MatchResults (asa a fost si inainte); schimbarea
+// unui filtru nu: functia lui doar actualizeaza starea locala si anunta pagina.
+const changeFiltersBlock = results.slice(results.indexOf('const changeFilters = '), results.indexOf('const clearFilters = '));
+assert.ok(changeFiltersBlock.length > 0, 'changeFilters exista');
+assert.doesNotMatch(changeFiltersBlock, /matchProviders|invokeFunction|fetch\(|await /, 'schimbarea unui filtru nu cheama serverul');
+assert.match(changeFiltersBlock, /onFiltersChange\?\.\(normalized\)/);
 const lib = read('src/lib/recommendationFilters.js');
 assert.doesNotMatch(lib, /\.sort\(\)|bucket_rank|result_bucket|Math\.random|fetch\(|import /, 'biblioteca de filtre nu reordoneaza, nu atinge bucketul si nu importa nimic');
 assert.doesNotMatch(lib, /cas_|open_now|is_open/, 'fara filtre pe date pe care rezultatele nu le au');
@@ -131,6 +136,7 @@ assert.match(zone, /role="alert"/, 'eroarea de extindere este anuntata');
 assert.match(zone, /aria-current/);
 
 const filterMenu = read('src/components/intake2/RecommendationFilterMenu.jsx');
+assert.doesNotMatch(filterMenu + toolbar, /matchProviders|invokeFunction|fetch\(/, 'meniul de filtre si bara nu cheama serverul');
 assert.match(filterMenu, /Tipul locației/);
 assert.match(filterMenu, /Doar verificate sau revendicate/);
 assert.match(filterMenu, /Filtrele restrâng doar lista\. Ordinea rămâne cea calculată de VIASEE, iar harta arată toate rezultatele cererii\./, 'textul spune limpede ce fac filtrele');
