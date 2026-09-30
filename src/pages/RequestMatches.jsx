@@ -10,7 +10,7 @@ import { loadNationalDirectoryMap } from "@/lib/nationalDirectoryMap";
 import { boundsForPoints, mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { recommendationMapContext } from "../../shared/recommendationMapContext.js";
 import { INTENTS } from "@/lib/intentRegistry";
-import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
+import useRecommendationView from "@/hooks/useRecommendationView";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 
 // Ecranul de recomandari, in forma folosita de hartile de cautare (Airbnb, Booking).
@@ -37,15 +37,15 @@ export default function RequestMatches() {
   const location = useLocation();
   const navigate = useNavigate();
   const { results, meta } = location.state || {};
-  const viewKey = useRef(location.state?.resultsViewKey || location.key).current;
-  const restored = useRef(readSearchSession().recommendations).current;
-  const savedView = restored?.key === viewKey ? restored : {};
-  const restoreScroll = useRef(savedView.scrollTop || 0);
-  const initialSelection = useRef(true);
-
+  // 2026-09-30. Starea vederii (selectie, mod, harta/lista pe telefon, filtre, derulare) si salvarea ei
+  // in sesiune stau intr-un singur loc: useRecommendationView.
+  const {
+    viewKey, savedView, listRef, saveView,
+    selectedId, setSelectedId, resultMode, setResultMode, mobileView, setMobileView,
+    filterToViewport, setFilterToViewport, listFilters, setListFilters,
+  } = useRecommendationView({ hasResults: Array.isArray(results) });
 
   const [activeMeta, setActiveMeta] = useState(meta || {});
-  const listRef = useRef(null);
   const requestRef = useRef(null);
   const [workspaceView, setWorkspaceView] = useState("results");
   const [hasRequest, setHasRequest] = useState(false);
@@ -63,14 +63,8 @@ export default function RequestMatches() {
     window.scrollTo({ top: 0, behavior: "instant" });
     return () => { observer.disconnect(); root.style.overflow = previousOverflow; };
   }, [results]);
-  const [selectedId, setSelectedId] = useState(savedView.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
   const [visibleResults, setVisibleResults] = useState(Array.isArray(results) ? results : []);
-  const [resultMode, setResultMode] = useState(savedView.mode === "professionals" ? "professionals" : "locations");
-  const [mobileView, setMobileView] = useState(savedView.mobileView === "map" ? "map" : "list");
-  const [filterToViewport, setFilterToViewport] = useState(savedView.filterToViewport === true);
-  // Filtrele din bara (tip locatie, doar verificate) se pastreaza la intoarcerea dintr-un profil.
-  const [listFilters, setListFilters] = useState(savedView.filters || null);
   const [viewport, setViewport] = useState({ visibleIds: null, mappedCount: 0 });
 
   const [focusArea, setFocusArea] = useState(null);
@@ -118,36 +112,6 @@ export default function RequestMatches() {
     setFocusArea({ bounds });
   };
 
-  const saveView = useCallback(() => {
-    writeSearchSession({ recommendations: {
-      key: viewKey, selectedId, mode: resultMode, mobileView, filterToViewport, filters: listFilters,
-      scrollTop: restoreScroll.current || listRef.current?.scrollTop || 0,
-    } });
-  }, [viewKey, selectedId, resultMode, mobileView, filterToViewport, listFilters]);
-  useEffect(() => { saveView(); }, [saveView]);
-  useEffect(() => {
-    if (!Array.isArray(results)) return;
-    if (location.state?.resultsViewKey !== viewKey) {
-      navigate(location.pathname, { replace: true, state: { ...location.state, resultsViewKey: viewKey } });
-    }
-  }, [results, viewKey, location.pathname, location.state, navigate]);
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list || !restoreScroll.current) return;
-    const apply = () => {
-      const target = restoreScroll.current;
-      if (!target) return;
-      list.scrollTop = target;
-      if (Math.abs(list.scrollTop - target) < 2) restoreScroll.current = 0;
-    };
-    const observer = new ResizeObserver(apply);
-    if (list.firstElementChild) observer.observe(list.firstElementChild);
-    const stop = () => { restoreScroll.current = 0; observer.disconnect(); };
-    list.addEventListener("wheel", stop, { passive: true });
-    list.addEventListener("touchstart", stop, { passive: true });
-    const frame = requestAnimationFrame(apply);
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); list.removeEventListener("wheel", stop); list.removeEventListener("touchstart", stop); };
-  }, []);
   useEffect(() => {
     if (directoryStatus === "ready" && selectedId && !mapResults.some(row => row.id === selectedId)) setSelectedId(null);
   }, [selectedId, mapResults, directoryStatus]);
@@ -160,20 +124,6 @@ export default function RequestMatches() {
     setSelectedId(entry?.id || null);
     if (!window.matchMedia("(min-width: 1024px)").matches) setMobileView("map");
   }, []);
-
-  useEffect(() => {
-    if (initialSelection.current) { initialSelection.current = false; return; }
-    if (!selectedId) return;
-    const frame = requestAnimationFrame(() => {
-      const list = listRef.current;
-      const card = [...(list?.querySelectorAll("[data-result-location-id]") || [])].find(node => node.dataset.resultLocationId === selectedId);
-      if (!card || !list) return;
-      const parent = list.getBoundingClientRect();
-      const item = card.getBoundingClientRect();
-      if (item.top < parent.top || item.bottom > parent.bottom) list.scrollTop += item.top - parent.top - 8;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [selectedId, mobileView]);
 
   if (!Array.isArray(results)) {
     return (
