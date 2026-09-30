@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { matchProfessionalsForRequest } from "@/lib/professionalSearch";
 import ProfessionalMatchResultCard from "./ProfessionalMatchResultCard";
+import { resultGridClassName } from "@/components/results/resultGridClasses";
 
 // Rezultatele pentru specialisti, in aceeasi structura ca cele pentru locatii.
 //
@@ -157,9 +158,9 @@ export default function ProfessionalResults({
             Selectați pe baza specializărilor declarate, a serviciilor confirmate la locațiile unde
             lucrează și a verificării profilului.
           </p>
-          <div className="mt-5 space-y-3">
+          <div className={`mt-5 ${resultGridClassName(false)}`}>
             {top3.map((entry) => (
-              <ProfessionalMatchResultCard compact={compact} key={entry.id} professional={entry} needLevel={needLevel} />
+              <ProfessionalMatchResultCard key={entry.id} professional={entry} needLevel={needLevel} />
             ))}
           </div>
         </>
@@ -178,9 +179,9 @@ export default function ProfessionalResults({
       {expanded && confirmed.length > 0 && (
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Alți specialiști relevanți</div>
-          <div className="mt-3 space-y-3">
+          <div className={`mt-3 ${resultGridClassName(false)}`}>
             {confirmed.map((entry) => (
-              <ProfessionalMatchResultCard compact={compact} key={entry.id} professional={entry} needLevel={needLevel} />
+              <ProfessionalMatchResultCard key={entry.id} professional={entry} needLevel={needLevel} />
             ))}
           </div>
         </div>
@@ -194,9 +195,9 @@ export default function ProfessionalResults({
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             Profilurile sunt verificate, dar specializările declarate nu acoperă explicit ce ai cerut.
           </p>
-          <div className="mt-3 space-y-3">
+          <div className={`mt-3 ${resultGridClassName(false)}`}>
             {directory.map((entry) => (
-              <ProfessionalMatchResultCard compact={compact} key={entry.id} professional={entry} needLevel={needLevel} />
+              <ProfessionalMatchResultCard key={entry.id} professional={entry} needLevel={needLevel} />
             ))}
           </div>
         </div>

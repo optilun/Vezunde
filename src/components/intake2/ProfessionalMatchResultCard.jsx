@@ -15,9 +15,6 @@ const BUCKET_VARIANT = {
 export default function ProfessionalMatchResultCard({
   professional,
   needLevel = "general",
-  onSelect,
-  selected = false,
-  compact = false,
 }) {
   const trackAction = (action, extra = {}) => {
     try {
@@ -46,9 +43,6 @@ export default function ProfessionalMatchResultCard({
       needLevel={needLevel}
       onProfileClick={() => trackAction("profile_opened")}
       onLocationClick={(location) => trackAction("location_opened", { provider_location_id: location?.id || null })}
-      onSelect={onSelect}
-      selected={selected}
-      compact={compact}
     />
   );
 }
