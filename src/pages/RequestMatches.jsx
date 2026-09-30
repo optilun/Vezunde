@@ -97,10 +97,19 @@ export default function RequestMatches() {
       .finally(() => clearTimeout(timer));
     return () => { active = false; clearTimeout(timer); };
   }, [directoryRetry, hasResults]);
-  const { mapResults, focusResults } = useMemo(
-    () => recommendationMapContext(visibleResults, nationalDirectory, activeMeta),
-    [visibleResults, nationalDirectory, activeMeta],
-  );
+  // Lista pe care o vede harta dupa filtrele din bara (null = fara filtre). Doar pentru pini: cererea,
+  // numarul din antet si starea recomandarii citesc `visibleResults`, lista completa.
+  const [mapFilteredResults, setMapFilteredResults] = useState(null);
+  const { mapResults, focusResults } = useMemo(() => {
+    const full = recommendationMapContext(visibleResults, nationalDirectory, activeMeta);
+    if (!mapFilteredResults) return full;
+    // Camera ramane pe rezultatele intregi ale cererii, ca harta sa nu sara la fiecare filtru; un
+    // rezultat ascuns de filtre ramane doar punct din directorul national, fara rang.
+    return {
+      mapResults: recommendationMapContext(mapFilteredResults, nationalDirectory, activeMeta).mapResults,
+      focusResults: full.focusResults,
+    };
+  }, [visibleResults, mapFilteredResults, nationalDirectory, activeMeta]);
 
   const mappedLocationIds = useMemo(() => new Set(mapResults.filter(mapPointFromResult).map(row => row.id)), [mapResults]);
   const focusBounds = useMemo(() => boundsForPoints(focusResults.map(mapPointFromResult).filter(Boolean)), [focusResults]);
@@ -248,6 +257,7 @@ export default function RequestMatches() {
             initialResultMode={savedView.mode}
             initialFilters={savedView.filters}
             onFiltersChange={setListFilters}
+            onFilteredResultsChange={setMapFilteredResults}
             initialShowMore={Boolean(savedView.scrollTop)}
             results={results}
             meta={meta}
