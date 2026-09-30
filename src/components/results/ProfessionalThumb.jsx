@@ -59,7 +59,8 @@ export default function ProfessionalThumb({
     >
       <Icon className={iconSize} strokeWidth={1.75} />
       <span className="font-heading text-[10px] font-bold leading-none tracking-wide">
-        {professionalInitials(professional)}
+        {/* Raspunsul motorului de specialisti poarta `display_name`, nu `public_display_name`. */}
+        {professionalInitials({ public_display_name: professional?.public_display_name || professional?.display_name, full_name: professional?.full_name, name: professional?.name })}
       </span>
     </span>
   );

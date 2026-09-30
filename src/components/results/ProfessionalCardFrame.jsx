@@ -50,6 +50,10 @@ export default function ProfessionalCardFrame({
   const typeLabel = professional.professional_type_label || professionalTypeLabel(type);
   const photo = !photoFailed && professional.profile_photo_url ? professional.profile_photo_url : "";
   const name = professional.display_name;
+  // Raspunsul motorului de specialisti are `display_name`; professionalInitials citeste
+  // `public_display_name` (formatul profilului), deci numele se da explicit - altfel coperta ar
+  // arata „?” in loc de initiale.
+  const initials = professionalInitials({ public_display_name: name });
   const profileHref = `/specialist/${professional.id}`;
   const locations = Array.isArray(professional.locations) ? professional.locations : [];
   const shownLocations = locations.slice(0, 2);
@@ -79,7 +83,7 @@ export default function ProfessionalCardFrame({
             <>
               <Icon aria-hidden="true" strokeWidth={1.1} className="absolute -bottom-4 -right-3 h-32 w-32 text-[#4f6080]/[0.09]" />
               <span aria-hidden="true" className="absolute bottom-4 left-4 right-16 truncate font-display text-[26px] font-semibold leading-tight tracking-tight text-[#2b3445]/80">
-                {professionalInitials(professional)}
+                {initials}
               </span>
             </>
           )}
