@@ -267,6 +267,12 @@ function ServicesCard({ services, confirmationLevel }) {
 }
 
 function TeamCard({ team }) {
+  // 2026-09-30. Starea de intoarcere spre recomandari se citeste aici, nu din pagina: cardul este o
+  // functie separata si `resultsReturn` / `hasResultsReturn` nu exista in domeniul lui (ReferenceError
+  // pe orice profil cu echipa publica).
+  const teamRoute = useLocation();
+  const resultsReturn = teamRoute.state?.resultsReturn;
+  const hasResultsReturn = Array.isArray(resultsReturn?.results);
   return (
     <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
