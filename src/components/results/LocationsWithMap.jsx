@@ -4,6 +4,7 @@ import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
+import { withDirectoryContext } from "../../../shared/searchMapArea.js";
 import { requestMapCardFocus } from "@/lib/mapCardFocus";
 import { resultCellClassName, resultGridClassName } from "./resultGridClasses";
 
@@ -36,8 +37,18 @@ export default function LocationsWithMap({
   // 2026-09-28 (audit /cauta, B6): cu `fitKey`, harta se reincadreaza doar cand se schimba cheia, nu
   // si cand aceleasi criterii primesc date noi (harta Romaniei: fisierul static, apoi lista actuala).
   fitKey = null,
+  // 2026-09-30: restul locatiilor din director, ca puncte de context pe harta (fara numar, fara loc in
+  // lista). Harta nu ramane goala cand vizitatorul o muta in alta zona. `results` ramane setul
+  // cautarii: el hotaraste daca exista harta si ce incadreaza camera.
+  contextResults = null,
+  // Cheia sub care se pastreaza camera hartii; implicit cheia listei. Pe /cauta camera tine de
+  // localitate, nu de filtre: o schimbare de filtru nu mai muta harta.
+  mapStorageKey = storageKey,
+  // Un element asezat peste harta (ex. „Caută în această zonă”).
+  mapOverlay = null,
 }) {
   const gridLayout = listLayout === "grid";
+  const mapRows = useMemo(() => withDirectoryContext(results || [], contextResults), [results, contextResults]);
   // Cheia este ordinea id-urilor, nu tabloul: o lista reconstruita cu aceeasi ordine nu redeseneaza pinii.
   const rankSignature = numbered ? (listResults || []).map((location) => location.id).join("|") : "";
   const rankById = useMemo(
@@ -199,13 +210,14 @@ export default function LocationsWithMap({
         {hasPositions && (
           <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
-              results={results || []}
+              results={mapRows}
+              fitResults={mapRows === (results || []) || mapRows.length === (results || []).length ? null : results || []}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={onSelect}
               onHover={onHover}
               onViewportChange={onViewportChange}
-              storageKey={storageKey}
+              storageKey={mapStorageKey}
               focusArea={focusArea}
               rankById={rankById}
               fitKey={fitKey}
@@ -213,6 +225,7 @@ export default function LocationsWithMap({
             />
             {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
             {mapActions && <div className="absolute right-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]">{mapActions}</div>}
+            {mapOverlay}
           </div>
         )}
       </div>
