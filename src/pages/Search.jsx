@@ -238,7 +238,7 @@ export default function Search() {
     <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
       {isDirectoryBrowseView ? `${results?.length || 0} din ${pagination?.total ?? results?.length ?? 0} locații · Ordine alfabetică` : `${results?.length || 0} ${results?.length === 1 ? "locație" : "locații"} · ${matchContext?.coverage_status === "query_not_mapped" ? "Explorare, fără potrivire confirmată" : "Ordinea potrivirii"}`}
     </p>
-    <p className="mt-1 text-xs text-muted-foreground">{isDirectoryBrowseView ? "Harta include toate locațiile filtrate cu poziție publicată, inclusiv cele neîncărcate încă în listă." : "Sunt afișate până la 50 de locații. Harta păstrează aceleași rezultate; poziția pe hartă nu schimbă potrivirea."}</p>
+    <p className="mt-1 text-xs text-muted-foreground">{isDirectoryBrowseView ? "Harta include toate locațiile filtrate cu poziție publicată, inclusiv cele neîncărcate încă în listă. Mută harta ca să vezi și alte zone." : "Sunt afișate până la 50 de locații. Pinurile numerotate sunt rezultatele potrivite; celelalte locații din director apar pe hartă fără număr. Poziția pe hartă nu schimbă potrivirea."}</p>
     {extraSelection && <p className="mt-2 text-xs text-[#4f6080]">Locația selectată pe hartă este afișată prima.</p>}
     {filterSummary}
   </div>;
@@ -363,6 +363,13 @@ export default function Search() {
               results={mapResults || results}
               listResults={locationList}
               storageKey={searchMapKey}
+              // 2026-09-30: camera tine de localitate (filtrele nu o muta), restul directorului apare ca
+              // puncte de context, iar „Caută în această zonă” apare cand harta a plecat din localitate.
+              mapStorageKey={cameraKey}
+              fitKey={cameraKey}
+              contextResults={contextPoints}
+              onViewportChange={handleMapViewport}
+              mapOverlay={canSearchArea ? <MapAreaSearchPill visible={leftArea} onSearch={searchThisArea} /> : null}
               integratedMapAction
               // 2026-09-28 (audit /cauta, E1): un singur card pe /cauta. La cautarea dupa serviciu,
               // cardul poarta numarul pinului si detaliile potrivirii; ordinea ramane cea primita.
