@@ -44,7 +44,6 @@ export default function ProfessionalResults({
   draft = null,
   onBackToLocations,
   onCountChange = null,
-  compact = false,
   initialShowMore = false,
 }) {
   const [state, setState] = useState({ status: "loading", data: null, error: "" });

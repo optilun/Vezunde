@@ -561,7 +561,6 @@ export default function MatchResults({
         <div>
           <RecommendationToolbar sticky={compact} modeTabs={modeTabs} zone={zone} />
           <ProfessionalResults initialShowMore={initialShowMore}
-            compact={compact}
             meta={activeMeta}
             draft={storedDraft}
             onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)}
@@ -628,7 +627,7 @@ export default function MatchResults({
       {!zoneOpen && (expansionError || nationalExpansionError) && (
         <p role="alert" className="mb-3 text-xs text-destructive">{expansionError || nationalExpansionError}</p>
       )}
-      {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults initialShowMore={initialShowMore} compact={compact} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
+      {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults initialShowMore={initialShowMore} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
       {/* Cat dureaza o extindere de arie, lista ramane la locul ei, estompata si marcata ca ocupata. */}
       <div
         hidden={resultMode !== RESULT_MODES.locations.key}
