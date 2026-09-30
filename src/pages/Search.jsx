@@ -10,6 +10,7 @@ import ServiceMatchDetails from "@/components/results/ServiceMatchDetails";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
+import MapAreaSearchPill from "@/components/results/MapAreaSearchPill";
 import { preloadVectorCanvas } from "@/components/results/vectorCanvasLoader";
 import SearchFilters from "@/components/results/SearchFilters";
 import DirectoryMap from "@/pages/DirectoryMap";
@@ -25,6 +26,8 @@ import useRememberScroll from "@/hooks/useRememberScroll";
 import useStickySearchControls from "@/hooks/useStickySearchControls";
 import useSearchUrlSync from "@/hooks/useSearchUrlSync";
 import useSearchResults from "@/hooks/useSearchResults";
+import useDirectoryContextPoints from "@/hooks/useDirectoryContextPoints";
+import { searchAreaBounds, viewportLeftSearchArea } from "../../shared/searchMapArea.js";
 
 // Lista de locatii alaturi de harta lor. Aceeasi idee ca pe ecranul de recomandari: cardurile
 // spun CARE sunt optiunile, harta spune UNDE sunt, iar selectia merge in ambele sensuri.
@@ -91,6 +94,8 @@ export default function Search() {
       setProviderType(next.providerType); setFilterServiceKeys(next.filterServiceKeys); setCasOnly(next.casOnly);
       setSearchMode(next.searchMode); setProfessionalType(next.professionalType);
       setSelectedId(null); setHoveredId(null);
+      // Un link cu alta localitate incadreaza harta pe ea, nu reia pozitia veche din fila.
+      if (next.locality?.siruta_code) forgetLocalityCamera(next.locality.siruta_code);
     },
   });
 
@@ -158,7 +163,12 @@ export default function Search() {
     setQuery(suggestion.label);
     if (!hasCanonicalLocality) window.requestAnimationFrame(() => localityFieldRef.current?.focus());
   };
-  const chooseLocality = (value) => { setLocality(value); setSelectedId(null); };
+  // Alegerea unei localitati incadreaza harta pe ea: pozitia veche a hartii pentru aceeasi localitate
+  // (de unde a mutat-o vizitatorul intre timp) nu se mai reia.
+  const chooseLocality = (value) => {
+    if (value?.siruta_code) forgetLocalityCamera(value.siruta_code);
+    setLocality(value); setSelectedId(null);
+  };
 
   // Cheia listei si a hartii se schimba doar dupa pauza de tastare, altfel lista si harta s-ar
   // remonta la prima litera (cand se sterge serviciul ales).
