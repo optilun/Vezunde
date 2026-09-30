@@ -69,6 +69,8 @@ export default function RequestMatches() {
   const [resultMode, setResultMode] = useState(savedView.mode === "professionals" ? "professionals" : "locations");
   const [mobileView, setMobileView] = useState(savedView.mobileView === "map" ? "map" : "list");
   const [filterToViewport, setFilterToViewport] = useState(savedView.filterToViewport === true);
+  // Filtrele din bara (tip locatie, doar verificate) se pastreaza la intoarcerea dintr-un profil.
+  const [listFilters, setListFilters] = useState(savedView.filters || null);
   const [viewport, setViewport] = useState({ visibleIds: null, mappedCount: 0 });
 
   const [focusArea, setFocusArea] = useState(null);
@@ -109,10 +111,10 @@ export default function RequestMatches() {
 
   const saveView = useCallback(() => {
     writeSearchSession({ recommendations: {
-      key: viewKey, selectedId, mode: resultMode, mobileView, filterToViewport,
+      key: viewKey, selectedId, mode: resultMode, mobileView, filterToViewport, filters: listFilters,
       scrollTop: restoreScroll.current || listRef.current?.scrollTop || 0,
     } });
-  }, [viewKey, selectedId, resultMode, mobileView, filterToViewport]);
+  }, [viewKey, selectedId, resultMode, mobileView, filterToViewport, listFilters]);
   useEffect(() => { saveView(); }, [saveView]);
   useEffect(() => {
     if (!Array.isArray(results)) return;
@@ -244,6 +246,8 @@ export default function RequestMatches() {
         >
           <MatchResults
             initialResultMode={savedView.mode}
+            initialFilters={savedView.filters}
+            onFiltersChange={setListFilters}
             initialShowMore={Boolean(savedView.scrollTop)}
             results={results}
             meta={meta}
