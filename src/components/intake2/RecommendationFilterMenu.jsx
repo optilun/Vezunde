@@ -95,7 +95,7 @@ export default function RecommendationFilterMenu({ filters, onChange, typeOption
               Se afișează <strong className="font-semibold text-foreground">{shownCount}</strong> din {totalCount}
             </p>
           </div>
-          <p className="pb-1 text-[11px] leading-relaxed text-muted-foreground">Filtrele restrâng doar lista. Ordinea rămâne cea calculată de VIASEE, iar harta arată toate rezultatele cererii.</p>
+          <p className="pb-1 text-[11px] leading-relaxed text-muted-foreground">Filtrele ascund opțiuni din listă și de pe hartă. Ordinea calculată de VIASEE și cererea trimisă rămân neschimbate.</p>
         </div>
       </PopoverContent>
     </Popover>
