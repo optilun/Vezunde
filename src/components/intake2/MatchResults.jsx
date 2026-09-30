@@ -147,6 +147,7 @@ export default function MatchResults({
   onClearViewport = null,
   initialFilters = null,
   onFiltersChange = null,
+  onFilteredResultsChange = null,
 }) {
   const [showMore, setShowMore] = useState(initialShowMore);
   const [feedback, setFeedback] = useState(null);
@@ -235,6 +236,22 @@ export default function MatchResults({
   useEffect(() => {
     resultModeChanged.current?.(resultMode);
   }, [resultMode]);
+
+  // 2026-09-30. Pinii recomandarilor de pe harta urmeaza filtrele din bara: un card ascuns nu
+  // ramane pin evidentiat. Se trimite doar lista pentru HARTA (null = fara filtre active sau alt
+  // mod, adica lista completa); pagina o foloseste numai la pini. Cererea, numarul din antet si
+  // starea recomandarii raman pe lista completa (`list`), iar ordinea nu se schimba.
+  const filteredForMap = useMemo(
+    () => (resultMode === RESULT_MODES.locations.key && countActiveFilters(filters) > 0
+      ? applyRecommendationFilters(list, filters)
+      : null),
+    [list, filters, resultMode],
+  );
+  const filteredForMapChanged = useRef(onFilteredResultsChange);
+  filteredForMapChanged.current = onFilteredResultsChange;
+  useEffect(() => {
+    filteredForMapChanged.current?.(filteredForMap);
+  }, [filteredForMap]);
 
   useEffect(() => { onContextChange?.(activeMeta); }, [activeMeta, onContextChange]);
   useEffect(() => {
@@ -612,7 +629,12 @@ export default function MatchResults({
         <p role="alert" className="mb-3 text-xs text-destructive">{expansionError || nationalExpansionError}</p>
       )}
       {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults initialShowMore={initialShowMore} compact={compact} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
-      <div hidden={resultMode !== RESULT_MODES.locations.key}>
+      {/* Cat dureaza o extindere de arie, lista ramane la locul ei, estompata si marcata ca ocupata. */}
+      <div
+        hidden={resultMode !== RESULT_MODES.locations.key}
+        aria-busy={isExpandingCounty || isExpandingNational}
+        className={`transition-opacity duration-200 ${isExpandingCounty || isExpandingNational ? "opacity-60" : ""}`}
+      >
 
       {list.length > 0 && filteredList.length === 0 && (
         <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-sm">
