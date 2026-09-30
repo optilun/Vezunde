@@ -98,7 +98,21 @@ const results = read('src/components/intake2/MatchResults.jsx');
 assert.match(results, /const shownList = visibleSet \?/, 'filtrul de harta ramane separat');
 assert.match(results, /const filteredList = applyRecommendationFilters\(shownList, filters\);/, 'filtrele lucreaza peste lista deja primita');
 assert.match(results, /const serverTop3Count = list\.filter\(\(result\) => result\.result_bucket === "top3"\)\.length;/, 'starea recomandarii vine de la server, nu din lista filtrata');
-assert.match(results, /visibleResultsChanged\.current\?\.\(list\);/, 'harta primeste lista completa, nu cea filtrata');
+assert.match(results, /visibleResultsChanged\.current\?\.\(list\);/, 'pagina primeste mereu lista completa a cererii');
+
+// Pinii de pe harta urmeaza filtrele, dar doar pinii: lista filtrata pentru harta este un canal
+// separat, iar cererea, antetul si camera hartii raman pe lista completa.
+assert.match(results, /const filteredForMap = useMemo\(/);
+assert.match(results, /resultMode === RESULT_MODES\.locations\.key && countActiveFilters\(filters\) > 0\s*\?\s*applyRecommendationFilters\(list, filters\)\s*:\s*null/, 'null cand nu sunt filtre active sau in modul Specialisti');
+assert.match(results, /filteredForMapChanged\.current\?\.\(filteredForMap\);/);
+assert.doesNotMatch(results, /onFilteredResultsChange\?\.\(filteredList\)/, 'nu se trimite lista filtrata de harta (viewport)');
+const pageForMap = read('src/pages/RequestMatches.jsx');
+assert.match(pageForMap, /onFilteredResultsChange=\{setMapFilteredResults\}/);
+assert.match(pageForMap, /focusResults: full\.focusResults,/, 'camera hartii nu sare la fiecare filtru');
+assert.match(pageForMap, /mapResults: recommendationMapContext\(mapFilteredResults, nationalDirectory, activeMeta\)\.mapResults,/);
+assert.match(pageForMap, /<PatientRequestSubmission defaultOpen results=\{visibleResults\}/, 'cererea se trimite pe lista completa, nu pe cea a hartii');
+assert.doesNotMatch(pageForMap, /results=\{mapFilteredResults\}|results=\{mapResults\}/);
+assert.match(results, /aria-busy=\{isExpandingCounty \|\| isExpandingNational\}/, 'lista este marcata ocupata cat dureaza o extindere');
 assert.match(results, /<PatientRequestSubmission results=\{list\}/, 'cererea se trimite pe lista completa');
 assert.doesNotMatch(results, /PatientRequestSubmission results=\{filteredList\}/);
 assert.match(results, /result\.result_bucket === "top3"/, 'Top 3 ramane strict dupa result_bucket');
@@ -140,7 +154,7 @@ const filterMenu = read('src/components/intake2/RecommendationFilterMenu.jsx');
 assert.doesNotMatch(filterMenu + toolbar, /matchProviders|invokeFunction|fetch\(/, 'meniul de filtre si bara nu cheama serverul');
 assert.match(filterMenu, /Tipul locației/);
 assert.match(filterMenu, /Doar verificate sau revendicate/);
-assert.match(filterMenu, /Filtrele restrâng doar lista\. Ordinea rămâne cea calculată de VIASEE, iar harta arată toate rezultatele cererii\./, 'textul spune limpede ce fac filtrele');
+assert.match(filterMenu, /Filtrele ascund opțiuni din listă și de pe hartă\. Ordinea calculată de VIASEE și cererea trimisă rămân neschimbate\./, 'textul spune limpede ce fac filtrele');
 assert.doesNotMatch(filterMenu, /CAS|Deschis acum/);
 
 // 6. Pagina pastreaza filtrele la intoarcerea dintr-un profil; nu apeleaza serverul.
