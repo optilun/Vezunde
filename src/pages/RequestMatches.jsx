@@ -42,7 +42,7 @@ export default function RequestMatches() {
   const {
     viewKey, savedView, listRef, saveView,
     selectedId, setSelectedId, resultMode, setResultMode, mobileView, setMobileView,
-    filterToViewport, setFilterToViewport, listFilters, setListFilters,
+    filterToViewport, setFilterToViewport, setListFilters,
   } = useRecommendationView({ hasResults: Array.isArray(results) });
 
   const [activeMeta, setActiveMeta] = useState(meta || {});
@@ -114,7 +114,7 @@ export default function RequestMatches() {
 
   useEffect(() => {
     if (directoryStatus === "ready" && selectedId && !mapResults.some(row => row.id === selectedId)) setSelectedId(null);
-  }, [selectedId, mapResults, directoryStatus]);
+  }, [selectedId, mapResults, directoryStatus, setSelectedId]);
 
   const handleViewport = useCallback((next) => {
     setViewport({ visibleIds: next.visibleIds, mappedCount: next.mappedCount });
@@ -123,7 +123,7 @@ export default function RequestMatches() {
   const selectFromList = useCallback((entry) => {
     setSelectedId(entry?.id || null);
     if (!window.matchMedia("(min-width: 1024px)").matches) setMobileView("map");
-  }, []);
+  }, [setSelectedId, setMobileView]);
 
   if (!Array.isArray(results)) {
     return (
