@@ -8,6 +8,7 @@ import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import ServiceMatchDetails from "@/components/results/ServiceMatchDetails";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
+import { resultGridClassName } from "@/components/results/resultGridClasses";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
 import MapAreaSearchPill from "@/components/results/MapAreaSearchPill";
@@ -342,15 +343,22 @@ export default function Search() {
             locație din această localitate.
           </p>
           {filterSummary}
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {/* 2026-09-30: specialistii stau in aceeasi grila cu linii fine ca locatiile; starile de
+              incarcare si gol raman in afara grilei, ca sa nu primeasca linii de celula. */}
+          {professionals?.length > 0 ? (
+            <div className={`mt-4 ${resultGridClassName(false)}`}>
+              {professionals.map((professional) => (
+                <ProfessionalDirectoryCard key={professional.id} professional={professional} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {professionals === null && <LoadingState />}
             {professionals?.length === 0 && (!isDirectoryBrowse && !(matchContext?.resolved_service_keys || matchContext?.service_keys || []).length
               ? <p className="rounded-2xl border border-border bg-card p-6 text-sm sm:col-span-2">Alege un serviciu din sugestii pentru a vedea specialiști potriviți sau folosește „Ajută-mă să aleg”.</p>
               : <EmptyProfessionals locality={locality} />)}
-            {professionals?.map((professional) => (
-              <ProfessionalDirectoryCard key={professional.id} professional={professional} />
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="mt-4">
