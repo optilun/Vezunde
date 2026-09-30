@@ -140,6 +140,15 @@ assert.match(results, /Plata nu influențează ordinea/, 'ordinea nu depinde de 
 const toolbar = read('src/components/intake2/RecommendationToolbar.jsx');
 assert.match(toolbar, /sm:sticky sm:top-0 sm:z-20/, 'bara ramane la vedere cand lista se deruleaza, de la latimea sm');
 assert.doesNotMatch(toolbar, /(?<![:\w-])sticky top-0/, 'pe telefon nu se lipeste (243 px din 844 cu doua filtre active)');
+// Filele stau pe randul lor (se deruleaza cu lista); doar randul cu zona si filtrele se lipeste, iar
+// filtrele active stau pe un singur rand derulabil pe orizontala (verificat pe viasee.ro: prima
+// varianta avea 203 px cu doua filtre active; acum ~100 px).
+assert.match(toolbar, /<div className="mb-2 flex max-w-full">\{modeTabs\}<\/div>/, 'filele pe randul lor, nelipite');
+assert.match(toolbar, /overflow-x-auto/, 'filtrele active pe un singur rand derulabil');
+assert.doesNotMatch(toolbar, /flex-wrap/, 'bara nu se mai rupe pe mai multe randuri');
+assert.match(toolbar, /<>\s*<div className="mb-2 flex max-w-full">/, 'fragment: randul lipit nu are ca parinte un container care se termina odata cu el');
+const tabs = read('src/components/intake2/ResultModeTabs.jsx');
+assert.match(tabs, /whitespace-nowrap/, 'eticheta filei nu se rupe pe doua randuri');
 assert.match(toolbar, /RecommendationZoneMenu/);
 assert.match(toolbar, /RecommendationFilterMenu/);
 assert.match(toolbar, /Șterge filtrele/);
