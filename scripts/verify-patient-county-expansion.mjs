@@ -5,6 +5,7 @@ import {
   countyExpansionDraft,
   patientSearchTextFromDraft,
 } from "../shared/patientSearchExpansion.js";
+import { readMatchResultsSource } from './recommendation-source.mjs';
 
 assert.equal(PATIENT_COUNTY_EXPANSION_VERSION, "patient-county-expansion-v1");
 assert.equal(
@@ -27,7 +28,7 @@ assert.deepEqual(
 
 const matcher = await readFile(new URL("../base44/functions/matchProvidersSemantic/entry.ts", import.meta.url), "utf8");
 const client = await readFile(new URL("../src/lib/patientSearchExpansion.js", import.meta.url), "utf8");
-const results = await readFile(new URL("../src/components/intake2/MatchResults.jsx", import.meta.url), "utf8");
+const results = readMatchResultsSource();
 const emptyFlow = await readFile(new URL("../src/components/intake2/NoResultsFlow.jsx", import.meta.url), "utf8");
 const locationQuestion = await readFile(new URL("../src/components/intake2/QuestionLocation.jsx", import.meta.url), "utf8");
 const draftBuilder = await readFile(new URL("../src/lib/patientRequestDraft.js", import.meta.url), "utf8");

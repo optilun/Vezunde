@@ -6,6 +6,7 @@
 // si distribuirea cererilor nu se ating - bucketul si numarul din Top 3 vin de la server.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { readMatchResultsSource } from './recommendation-source.mjs';
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 
@@ -50,7 +51,7 @@ assert.match(grid, /group\/cell h-full border-b border-border transition-colors/
 const layout = read('src/components/results/LocationsWithMap.jsx');
 assert.match(layout, /resultGridClassName\(hasPositions\)/);
 assert.match(layout, /resultCellClassName\(\{ hasPositions, selected, hovered \}\)/);
-const results = read('src/components/intake2/MatchResults.jsx');
+const results = readMatchResultsSource();
 assert.match(results, /<div className=\{resultGridClassName\(hasPositions\)\}>/, 'recomandarile stau in grila');
 assert.doesNotMatch(results, /space-y-3/, 'fara lista veche de carduri rotunjite');
 assert.match(results, /queryScope !== "county"/, 'grupurile pe localitate si judet raman');

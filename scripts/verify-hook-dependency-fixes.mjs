@@ -8,6 +8,7 @@
 // Cazurile intentionate (reincarcare doar la schimbarea locatiei etc.) au comentariu cu motivul.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readMatchResultsSource } from './recommendation-source.mjs';
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const P = 'src/components/workspace/provider/';
@@ -36,7 +37,7 @@ assert.match(read('src/components/admin/directory/DirOpsMapping.jsx'), /\}, \[lo
 // Fluxul de cerere (2026-09-29, cerut explicit de Alex: „Ocupa te de restul”). Nicio schimbare in
 // potrivire, Top 3 sau ordine: doar liste stabile intre randari si functii citite la zi.
 const I = 'src/components/intake2/';
-const matchResults = read(`${I}MatchResults.jsx`);
+const matchResults = readMatchResultsSource();
 assert.match(matchResults, /const NO_RESULTS = Object\.freeze\(\[\]\);/);
 assert.match(matchResults, /const list = useMemo\(\(\) => \(Array\.isArray\(expandedSnapshot\?\.results\)/, 'lista stabila: harta nu mai e anuntata la fiecare randare');
 assert.match(matchResults, /visibleResultsChanged\.current\?\.\(list\);\s*\}, \[list\]\);/);
