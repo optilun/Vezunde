@@ -294,7 +294,11 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               onToggleMobileView={toggleMobileView}
               onViewportChange={handleViewport}
               storageKey="national"
-              fitKey={`national:${type}`}
+              // 2026-09-30: cheia nu mai depinde de tipul ales. Filtrul de tip ascunde sau arata puncte,
+              // dar nu muta harta (ca pe Airbnb): vizitatorul ramane in zona pe care o priveste. Camera se
+              // incadreaza o singura data, la deschidere, sau se reia din sesiune / din „Caută în această
+              // zonă” (vezi Search.jsx).
+              fitKey="national"
             >
               {inView.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-sm">Nu sunt locații în această zonă. Deplasează harta sau micșorează zoom-ul.</p>}
               {inView.length > pageSize && <button type="button" onClick={() => setPageSize((size) => size + 24)} className="mt-5 min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold hover:bg-secondary">Arată mai multe</button>}
