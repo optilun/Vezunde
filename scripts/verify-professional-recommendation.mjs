@@ -31,6 +31,7 @@ import {
 } from '../shared/professionalRecommendation.js';
 import { CANONICAL_SERVICE_KEY_SET } from '../shared/canonicalServiceRegistryExtended.js';
 import { PROFESSIONAL_TYPE_CODES, professionalSpecializationsFor } from '../shared/professionalIdentity.js';
+import { readMatchResultsSource } from './recommendation-source.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => readFileSync(path.join(root, relativePath), 'utf8');
@@ -342,7 +343,7 @@ check('lista de specialisti filtreaza pe bucket, nu pe pozitie', () => {
 });
 
 check('selectorul de mod pastreaza contextul cererii, nu deschide o ruta noua', () => {
-  const matchResults = read('src/components/intake2/MatchResults.jsx');
+  const matchResults = readMatchResultsSource();
   assert.match(matchResults, /ResultModeTabs/);
   assert.match(matchResults, /<ProfessionalResults/);
   assert.match(matchResults, /meta=\{activeMeta\}/, 'panoul de specialisti nu primeste contextul cererii');
@@ -378,7 +379,7 @@ check('contextul rezolvat al cererii ajunge la tabul de specialisti', () => {
   assert.match(card, /selected_locality_siruta_code: res\.data\.selected_locality_siruta_code/);
   assert.match(card, /query_scope: res\.data\.query_scope \|\| "locality"/);
 
-  const matchResults = read('src/components/intake2/MatchResults.jsx');
+  const matchResults = readMatchResultsSource();
   assert.match(matchResults, /resolved_service_keys: Array\.isArray\(data\.resolved_service_keys\)/,
     'dupa extinderea ariei, cheile rezolvate raman cele vechi');
 });

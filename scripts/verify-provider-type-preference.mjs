@@ -30,6 +30,7 @@ import {
   PATIENT_NEED_INTERPRETATION_VERSION,
   buildPatientNeedPrompt,
 } from '../shared/patientNeedInterpretation.js';
+import { readMatchResultsSource } from './recommendation-source.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = (relativePath) => readFileSync(path.join(root, relativePath), 'utf8').replace(/\r\n/g, '\n');
@@ -181,8 +182,10 @@ check('both matching functions use the policy instead of the need level', () => 
 });
 
 check('results page shows each type as its own group, in the order received', () => {
-  const results = source('src/components/intake2/MatchResults.jsx');
-  assert.match(results, /const structuralGroups = structural\.reduce/);
+  const results = readMatchResultsSource();
+  // 2026-09-30: gruparea a fost mutata in src/lib/recommendationSections.js (aceeasi logica).
+  assert.match(results, /const structuralGroups = groupStructural\(structural\);/);
+  assert.match(results, /\(Array\.isArray\(structural\) \? structural : \[\]\)\.reduce\(\(groups, result\) =>/);
   assert.match(results, /structuralGroups\.map\(\(group, groupIndex\)/);
   assert.match(results, /group\.note &&/);
   assert.match(results, /provider_type_mode: activeMeta\?\.provider_type_preference\?\.mode/);
