@@ -72,13 +72,15 @@ const builtAt = new Date('2026-09-28T12:00:00.000Z');
   assert.match(page, /loadNationalMapSnapshot\(\)\.then\(\(snapshot\) => \{\s*if \(!active \|\| !snapshot \|\| live === "ok"\) return;/, 'lista actuala sosita inainte castiga');
   assert.match(page, /if \(snapshotBuiltAt\) \{\s*setState\(\(current\) => \(\{ \.\.\.current, snapshotAt: snapshotBuiltAt \}\)\);/, 'fara lista actuala, ramane fisierul');
   assert.match(page, /Harta arată locațiile din \{formatSnapshotDate\(state\.snapshotAt\)\}/);
-  assert.match(page, /fitKey=\{`national:\$\{type\}`\}/);
+  // 2026-09-30: cheia nu mai depinde de tipul ales (filtrul de tip nu muta harta; vezi verify-map-area-search.mjs).
+  assert.match(page, /fitKey="national"/);
   const canvas = read('src/components/results/VectorResultsCanvas.jsx');
   assert.match(canvas, /const fitToken=fitKey===null \? signature : `key:\$\{fitKey\}`;/);
   assert.match(canvas, /if \(saved\?\.bounds && \(saved\.signature===signature \|\| fitKey!==null\)\)/);
   assert.match(read('src/components/results/ResultsMap.jsx'), /fitKey=\{fitKey\} \/>/);
   assert.match(read('src/components/results/LocationsWithMap.jsx'), /fitKey=\{fitKey\}/);
-  // Celelalte harti (localitate, rezultate) se reincadreaza ca inainte.
+  // Harta rezultatelor cererii se reincadreaza ca inainte (cheia implicita e null); harta unei
+  // localitati are cheia ei (vezi verify-map-area-search.mjs).
   assert.match(read('src/components/results/LocationsWithMap.jsx'), /fitKey = null,/);
 }
 
