@@ -170,8 +170,11 @@ assert.doesNotMatch(filterMenu, /CAS|Deschis acum/);
 
 // 6. Pagina pastreaza filtrele la intoarcerea dintr-un profil; nu apeleaza serverul.
 const page = read('src/pages/RequestMatches.jsx');
-assert.match(page, /const \[listFilters, setListFilters\] = useState\(savedView\.filters \|\| null\);/);
-assert.match(page, /filters: listFilters,/);
+// Starea filtrelor si salvarea ei in sesiune stau in useRecommendationView (2026-09-30).
+const viewHook = read('src/hooks/useRecommendationView.js');
+assert.match(viewHook, /const \[listFilters, setListFilters\] = useState\(savedView\.filters \|\| null\);/);
+assert.match(viewHook, /filters: listFilters,/);
+assert.match(page, /useRecommendationView\(/);
 assert.match(page, /initialFilters=\{savedView\.filters\}/);
 assert.match(page, /onFiltersChange=\{setListFilters\}/);
 assert.doesNotMatch(page, /matchProviders|fetch\(/);
