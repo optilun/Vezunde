@@ -6,8 +6,8 @@ import { formatLocationCount } from "@/lib/localityQuickPicks";
 import { DIRECTORY_PROVIDER_FILTER_LABELS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { SERVICE_GROUP_UI, getServiceLabel, patientServicesByGroup, serviceMatchesNeedle } from "@/lib/serviceAutocomplete";
 
-const TYPE_ICONS = { optica_medicala: Glasses, clinica_oftalmologica: Building2, cabinet_oftalmologic: Stethoscope, cabinet_optometric: Eye, laborator_optic: Microscope, optometrist_independent: UserRound, medic_oftalmolog_independent: Stethoscope };
-function TypeIcon({ type }) { const Icon = TYPE_ICONS[type] || UserRound; return <Icon aria-hidden="true" strokeWidth={1.7} className="h-5 w-5 shrink-0" />; }
+export const TYPE_ICONS = { optica_medicala: Glasses, clinica_oftalmologica: Building2, cabinet_oftalmologic: Stethoscope, cabinet_optometric: Eye, laborator_optic: Microscope, optometrist_independent: UserRound, medic_oftalmolog_independent: Stethoscope };
+export function TypeIcon({ type }) { const Icon = TYPE_ICONS[type] || UserRound; return <Icon aria-hidden="true" strokeWidth={1.7} className="h-5 w-5 shrink-0" />; }
 
 // Panoul de filtre de pe /cauta. Ce se aplica e neschimbat (tipuri, servicii, CAS, la confirmare);
 // s-a schimbat doar felul in care se aleg:
