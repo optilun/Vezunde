@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Globe } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   countyExpansionDraft,
@@ -18,6 +17,17 @@ import { resultGridClassName } from "@/components/results/resultGridClasses";
 import NoResultsFlow from "./NoResultsFlow";
 import ProfessionalResults from "./ProfessionalResults";
 import ResultModeTabs, { RESULT_MODES } from "./ResultModeTabs";
+import InfoHint from "./InfoHint";
+import RecommendationToolbar from "./RecommendationToolbar";
+import { DIRECTORY_PROVIDER_FILTER_LABELS } from "@/lib/vezunde";
+import {
+  NO_FILTERS,
+  applyRecommendationFilters,
+  countActiveFilters,
+  normalizeFilters,
+  trustedCountFor,
+  typeCountsFor,
+} from "@/lib/recommendationFilters";
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
 import PatientRequestSubmission from "./PatientRequestSubmission";
 
@@ -25,25 +35,6 @@ const EMPTY_META = Object.freeze({});
 // 2026-09-29 (lint exhaustive-deps): aceeasi lista goala intre randari. Un `[]` nou la fiecare
 // randare schimba `list`, iar efectul care anunta pagina (harta) rula din nou la fiecare randare.
 const NO_RESULTS = Object.freeze([]);
-
-function RoutingNotice({ meta }) {
-  if (!meta?.routing_mode) return null;
-  if (meta.routing_mode === "county" || meta.query_scope === "county") {
-    return (
-      <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-        Căutarea a fost extinsă la județul {meta.selected_county_name || "selectat"}, la cererea ta. Rezultatele din localitatea inițială și cele din restul județului sunt marcate separat.
-      </div>
-    );
-  }
-  if (meta.routing_mode === "locality") {
-    return (
-      <div className="mt-4 rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-        Am căutat după localitatea selectată: {meta.client_address_text || "localitate selectată"}.
-      </div>
-    );
-  }
-  return null;
-}
 
 function restartGuidedSearch() {
   clearPatientIntakeSession();
@@ -154,9 +145,15 @@ export default function MatchResults({
   visibleIds = null,
   mappedLocationIds = null,
   onClearViewport = null,
+  initialFilters = null,
+  onFiltersChange = null,
 }) {
   const [showMore, setShowMore] = useState(initialShowMore);
   const [feedback, setFeedback] = useState(null);
+  // 2026-09-30. Filtrele listei (tip, profil) si meniul zonei. Filtrele se pastreaza in pagina
+  // parinte (initialFilters / onFiltersChange), ca dupa o vizita pe un profil sa fie tot acolo.
+  const [filters, setFilters] = useState(() => normalizeFilters(initialFilters));
+  const [zoneOpen, setZoneOpen] = useState(false);
   // 2026-09-03: acelasi ecran raspunde acum la doua intrebari - "unde ma duc" si "la cine ma duc".
   // Modul este stare locala, nu ruta noua: contextul cererii (draft, meta, extinderi) ramane
   // acelasi si nu se pierde la comutare.
@@ -181,12 +178,16 @@ export default function MatchResults({
   // celei filtrate - altfel o simpla deplasare a hartii ar schimba cine primeste cererea.
   const visibleSet = Array.isArray(visibleIds) ? new Set(visibleIds) : null;
   const shownList = visibleSet ? list.filter((result) => visibleSet.has(result.id)) : list;
+  // 2026-09-30. Filtrele de tip si de profil sunt, ca filtrul de harta, PUR VIZUALE: ascund carduri
+  // dintr-o lista primita, in ordinea primita. Nu cheama serverul, nu schimba bucketul sau rangul,
+  // iar cererea se trimite in continuare pe lista completa (`list`).
+  const filteredList = applyRecommendationFilters(shownList, filters);
 
-  const top3 = shownList.filter((result) => result.result_bucket === "top3");
-  const confirmed = shownList.filter((result) => result.result_bucket === "extended_confirmed");
-  const directory = shownList.filter((result) => result.result_bucket === "extended_directory");
+  const top3 = filteredList.filter((result) => result.result_bucket === "top3");
+  const confirmed = filteredList.filter((result) => result.result_bucket === "extended_confirmed");
+  const directory = filteredList.filter((result) => result.result_bucket === "extended_directory");
   // Profiluri din director fara servicii declarate, afisate doar cand nu exista optiuni mai bune.
-  const structural = shownList.filter((result) => result.result_bucket === "structural_directory");
+  const structural = filteredList.filter((result) => result.result_bucket === "structural_directory");
   // 2026-09-28 (audit sectiunea 18): lista de rezerva poate avea acum ambele tipuri - intai cel
   // potrivit nevoii, apoi alternativa. Fiecare tip are titlul lui si, pentru alternativa, o nota
   // scurta primita de la server. Ordinea ramane exact cea primita.
@@ -373,6 +374,7 @@ export default function MatchResults({
       setExpandedSnapshot(snapshot);
       onExpandedSnapshot?.(snapshot);
       setShowMore(false);
+      setZoneOpen(false);
       try {
         base44.analytics.track({
           eventName: "patient_search_county_expansion_completed",
@@ -442,6 +444,7 @@ export default function MatchResults({
       setExpandedSnapshot(snapshot);
       onExpandedSnapshot?.(snapshot);
       setShowMore(false);
+      setZoneOpen(false);
       try {
         base44.analytics.track({
           eventName: "patient_search_national_expansion_completed",
@@ -484,20 +487,62 @@ export default function MatchResults({
     nationalActionError: nationalExpansionError,
   };
 
+  const changeFilters = (next) => {
+    const normalized = normalizeFilters(next);
+    setFilters(normalized);
+    onFiltersChange?.(normalized);
+    try {
+      base44.analytics.track({
+        eventName: "recommendation_filters_changed",
+        properties: {
+          analytics_version: "patient-search-v1",
+          active_filter_count: countActiveFilters(normalized),
+          type_filter_count: normalized.types.length,
+          trusted_only: normalized.trustedOnly,
+          result_count: list.length,
+          shown_count: applyRecommendationFilters(shownList, normalized).length,
+        },
+      });
+    } catch (_error) {
+      // Filtrele nu depind de analitica.
+    }
+  };
+  const clearFilters = () => {
+    if (countActiveFilters(filters) > 0) changeFilters(NO_FILTERS);
+    if (visibleSet) onClearViewport?.();
+  };
+
+  // 2026-09-30. Filele, zona si filtrele stau intr-o singura bara compacta deasupra listei.
+  // Extinderea zonei cheama aceleasi functii ca inainte (expandCounty / expandNational).
+  const modeTabs = (
+    <ResultModeTabs
+      compact
+      mode={resultMode}
+      onChange={changeResultMode}
+      counts={{ locations: list.length, professionals: professionalCount }}
+    />
+  );
+  const zone = {
+    scope: queryScope,
+    cityName: selectedCity,
+    countyName,
+    open: zoneOpen,
+    onOpenChange: setZoneOpen,
+    busyScope: isExpandingCounty ? "county" : isExpandingNational ? "national" : null,
+    error: expansionError || nationalExpansionError,
+    onExpandCounty: expansionProps.onExpandCounty,
+    onExpandNational: expansionProps.onExpandNational,
+    onChangeLocation: () => runRecoveryAction("change_location", onChangeLocation),
+    onReviewCriteria: () => runRecoveryAction("review_criteria", onReviewCriteria),
+  };
+
   if (list.length === 0) {
     // Zero locatii nu inseamna zero specialisti: pot exista profiluri verificate asociate unor
     // locatii care nu au declarat inca serviciul cautat. Selectorul ramane disponibil si aici.
     if (resultMode === RESULT_MODES.professionals.key) {
       return (
         <div>
-          <div className="mb-4">
-            <ResultModeTabs
-              compact={compact}
-              mode={resultMode}
-              onChange={changeResultMode}
-              counts={{ locations: 0, professionals: professionalCount }}
-            />
-          </div>
+          <RecommendationToolbar sticky={compact} modeTabs={modeTabs} zone={zone} />
           <ProfessionalResults initialShowMore={initialShowMore}
             compact={compact}
             meta={activeMeta}
@@ -510,14 +555,7 @@ export default function MatchResults({
     }
     return (
       <div>
-        <div className="mb-4">
-          <ResultModeTabs
-              compact={compact}
-            mode={resultMode}
-            onChange={changeResultMode}
-            counts={{ locations: 0, professionals: professionalCount }}
-          />
-        </div>
+        <RecommendationToolbar sticky={compact} modeTabs={modeTabs} zone={zone} />
         <NoResultsFlow
           mode="empty"
           meta={activeMeta}
@@ -534,78 +572,70 @@ export default function MatchResults({
 
   const expanded = showMore || top3.length === 0 || shownList.some(row => row.id === selectedLocationId && row.result_bucket !== "top3");
 
-  const modeTabs = (
-    <div className="mb-4">
-      <ResultModeTabs
-              compact={compact}
-        mode={resultMode}
-        onChange={changeResultMode}
-        counts={{ locations: list.length, professionals: professionalCount }}
-      />
-    </div>
+  const locationsMode = resultMode === RESULT_MODES.locations.key;
+  const activeChips = locationsMode ? [
+    ...filters.types.map((key) => ({
+      key: `type:${key}`,
+      label: DIRECTORY_PROVIDER_FILTER_LABELS[key] || key,
+      remove: () => changeFilters({ ...filters, types: filters.types.filter((value) => value !== key) }),
+    })),
+    ...(filters.trustedOnly ? [{ key: "trusted", label: "Verificate sau revendicate", remove: () => changeFilters({ ...filters, trustedOnly: false }) }] : []),
+    ...(visibleSet && onClearViewport ? [{ key: "viewport", label: "Doar zona de pe hartă", remove: onClearViewport }] : []),
+  ] : [];
+  const hiddenCount = list.length - filteredList.length;
+  // Cand filtrele ascund optiuni, se spune cate si de ce. O lista scurtata in tacere ar parea un
+  // rezultat al cererii, nu al filtrelor sau al deplasarii hartii.
+  const summary = hiddenCount > 0 ? `${filteredList.length} din ${list.length} opțiuni` : "";
+  const toolbar = (
+    <RecommendationToolbar
+      sticky={compact}
+      modeTabs={modeTabs}
+      zone={zone}
+      filters={locationsMode ? {
+        filters,
+        onChange: changeFilters,
+        typeOptions: typeCountsFor(list, filters),
+        trustedCount: trustedCountFor(list),
+        totalCount: list.length,
+        shownCount: applyRecommendationFilters(list, filters).length,
+      } : null}
+      activeChips={activeChips}
+      summary={summary}
+      onClearAll={activeChips.length > 0 ? clearFilters : null}
+    />
   );
-
-  const hiddenByViewport = visibleSet ? list.length - shownList.length : 0;
 
   return (
     <div>
-      {modeTabs}
+      {toolbar}
+      {!zoneOpen && (expansionError || nationalExpansionError) && (
+        <p role="alert" className="mb-3 text-xs text-destructive">{expansionError || nationalExpansionError}</p>
+      )}
       {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults initialShowMore={initialShowMore} compact={compact} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
       <div hidden={resultMode !== RESULT_MODES.locations.key}>
 
-      {/* Cand filtrarea dupa harta ascunde optiuni, se spune cate si de ce. O lista scurtata in
-          tacere ar parea un rezultat al cautarii, nu al deplasarii hartii. */}
-      {hiddenByViewport > 0 && (
-        <div className="mb-4 rounded-2xl border border-border bg-secondary/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
-          {shownList.length === 0
-            ? `Niciun rezultat al cererii în zona vizibilă. ${list.length} ${list.length === 1 ? "opțiune rămâne" : "opțiuni rămân"} în lista completă.`
-            : `${hiddenByViewport} ${hiddenByViewport === 1 ? "opțiune nu apare" : "opțiuni nu apar"} în zona vizibilă.`}
-          {onClearViewport && <button type="button" onClick={onClearViewport} className="mt-1 flex min-h-11 items-center font-semibold text-[#4f6080] underline underline-offset-4">Afișează toate rezultatele cererii</button>}
+      {list.length > 0 && filteredList.length === 0 && (
+        <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-sm">
+          <p className="font-semibold">Nicio opțiune cu filtrele alese.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {list.length} {list.length === 1 ? "opțiune rămâne" : "opțiuni rămân"} în lista completă a cererii.
+          </p>
+          <button type="button" onClick={clearFilters} className="mt-1 inline-flex min-h-11 items-center text-xs font-semibold text-[#4f6080] underline underline-offset-4">Afișează toate rezultatele cererii</button>
         </div>
       )}
 
       {top3.length > 0 && (
         <>
-          <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
-          <details className="mt-1 text-xs text-muted-foreground">
-            <summary className="inline-flex min-h-9 cursor-pointer items-center font-medium text-[#4f6080]">Cum sunt alese recomandările?</summary>
-            <p className="rounded-xl border border-border bg-secondary/40 p-3 leading-relaxed">Selectate pe baza serviciilor confirmate, relevanței cererii și verificării profilului în aria aleasă. Plata nu influențează ordinea. Afișăm până la trei recomandări, doar când există opțiuni eligibile.</p>
-          </details>
-          <RoutingNotice meta={activeMeta} />
-          <div className="mt-5">
+          <div className="flex items-center">
+            <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
+            <InfoHint
+              label="Cum sunt alese recomandările?"
+              items={["Selectate pe baza serviciilor confirmate, relevanței cererii și verificării profilului în aria aleasă. Plata nu influențează ordinea. Afișăm până la trei recomandări, doar când există opțiuni eligibile."]}
+            />
+          </div>
+          <div className="mt-3">
             <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-            <a href="/cauta" className="font-medium text-foreground underline underline-offset-2">
-              Vezi toate opțiunile din zonă
-            </a>
-            {expansionProps.onExpandCounty && (
-              <button
-                type="button"
-                onClick={expandCounty}
-                disabled={isExpandingCounty || isExpandingNational}
-                className="font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
-              >
-                {isExpandingCounty ? "Extindem..." : `Extinde în județul ${countyName || "selectat"}`}
-              </button>
-            )}
-            {expansionProps.onExpandNational && (
-              <button
-                type="button"
-                onClick={expandNational}
-                disabled={isExpandingCounty || isExpandingNational}
-                className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
-              >
-                <Globe className="h-3 w-3" />
-                {isExpandingNational ? "Căutăm în toată țara..." : "Caută în toată țara"}
-              </button>
-            )}
-          </div>
-          {(expansionError || nationalExpansionError) && (
-            <p role="alert" className="mt-2 text-xs text-destructive">
-              {expansionError || nationalExpansionError}
-            </p>
-          )}
         </>
       )}
 
@@ -619,6 +649,7 @@ export default function MatchResults({
             directoryCount={list.filter(row => row.result_bucket === "extended_directory").length}
             onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
             onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
+            onOpenZone={() => setZoneOpen(true)}
             {...expansionProps}
           />
         </div>
