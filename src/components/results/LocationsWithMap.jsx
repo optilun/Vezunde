@@ -5,6 +5,7 @@ import ResultsMap from "./ResultsMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
 import { requestMapCardFocus } from "@/lib/mapCardFocus";
+import { resultCellClassName, resultGridClassName } from "./resultGridClasses";
 
 export default function LocationsWithMap({
   results,
@@ -169,7 +170,7 @@ export default function LocationsWithMap({
         <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
           {listHeader}
           <div className={gridLayout
-            ? (hasPositions ? "grid border-t border-border sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid border-t border-border sm:grid-cols-2")
+            ? resultGridClassName(hasPositions)
             : (hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2")}>
             {(listResults || []).map((location) => (
               <ResultRow
@@ -252,9 +253,7 @@ const ResultRow = memo(function ResultRow({
       onBlur={leave}
       data-selected={selected ? "" : undefined}
       className={gridLayout
-        ? `group/cell h-full border-b border-border transition-colors ${hasPositions ? "sm:odd:border-r lg:odd:border-r-0 xl:odd:border-r" : "sm:odd:border-r"} ${
-          selected ? "bg-[#eaeff7]" : hovered ? "bg-white/70" : ""
-        }`
+        ? resultCellClassName({ hasPositions, selected, hovered })
         : `relative h-full rounded-[22px] transition-shadow ${
         selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
       } ${hovered && !selected ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
