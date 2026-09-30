@@ -1,19 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import {
-  countyExpansionDraft,
-  matchProvidersInSelectedCounty,
-  matchProvidersNationally,
-  nationalExpansionDraft,
-} from "@/lib/patientSearchExpansion";
-import {
-  readPatientRequestDraft,
-  storePatientRequestDraft,
-} from "@/lib/patientRequestPersistenceClient";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
-import MatchResultCard from "./MatchResultCard";
-import { resultGridClassName } from "@/components/results/resultGridClasses";
+import ResultScopeGroups from "./ResultScopeGroups";
+import RecommendationExtendedSections from "./RecommendationExtendedSections";
+import useRecommendationExpansion from "@/hooks/useRecommendationExpansion";
+import { groupStructural, splitByBucket } from "@/lib/recommendationSections";
 import NoResultsFlow from "./NoResultsFlow";
 import ProfessionalResults from "./ProfessionalResults";
 import ResultModeTabs, { RESULT_MODES } from "./ResultModeTabs";
@@ -31,10 +23,6 @@ import {
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
 import PatientRequestSubmission from "./PatientRequestSubmission";
 
-const EMPTY_META = Object.freeze({});
-// 2026-09-29 (lint exhaustive-deps): aceeasi lista goala intre randari. Un `[]` nou la fiecare
-// randare schimba `list`, iar efectul care anunta pagina (harta) rula din nou la fiecare randare.
-const NO_RESULTS = Object.freeze([]);
 
 function restartGuidedSearch() {
   clearPatientIntakeSession();
@@ -43,83 +31,6 @@ function restartGuidedSearch() {
   params.delete("ref");
   const query = params.toString();
   window.location.assign(`/cerere${query ? `?${query}` : ""}`);
-}
-
-function metaFromExpandedResponse(data, previousMeta) {
-  return {
-    ...previousMeta,
-    recommendation_contract_version: data.recommendation_contract_version || previousMeta?.recommendation_contract_version || "legacy",
-    routing_mode: data.routing_mode || "county",
-    query_scope: data.query_scope || "county",
-    routing_reason: data.routing_reason || "",
-    coverage_status: data.coverage_status || null,
-    coverage_counts: data.coverage_counts || null,
-    need_level: data.need_level || previousMeta?.need_level || null,
-    provider_type_preference: data.provider_type_preference || previousMeta?.provider_type_preference || null,
-    resolved_intent: data.resolved_intent || previousMeta?.resolved_intent || null,
-    // 2026-09-03: dupa o extindere de arie, cheile rezolvate sunt cele ale raspunsului nou. Fara
-    // linia asta, tabul de specialisti ar fi cerut in aria noua serviciile rezolvate in cea veche.
-    resolved_service_keys: Array.isArray(data.resolved_service_keys)
-      ? data.resolved_service_keys
-      : (previousMeta?.resolved_service_keys || []),
-    selected_locality_siruta_code: data.selected_locality_siruta_code || null,
-    selected_locality_name: data.selected_locality_name || null,
-    selected_county_code: data.selected_county_code || null,
-    selected_county_name: data.selected_county_name || null,
-    client_address_text: data.client_address_text || previousMeta?.client_address_text || "",
-    used_semantic_fallback: false,
-  };
-}
-
-// 2026-09-30. Recomandarile stau in aceeasi grila ca rezultatele de pe /cauta (resultGridClasses):
-// o coloana langa harta pe ecrane late, doua altfel. Grupurile pe localitate / judet raman, fiecare
-// cu grila lui. Aici nu se schimba ordinea, sectiunile sau ce se afiseaza - doar asezarea.
-function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, onHoverLocation = null, hoveredId = null, mappedLocationIds = null }) {
-  const hasPositions = Boolean(mappedLocationIds && mappedLocationIds.size > 0);
-  const cards = (rows) => (
-    <div className={resultGridClassName(hasPositions)}>
-      {rows.map((location) => (
-        <MatchResultCard
-          key={location.id}
-          location={location}
-          hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
-          gridHasMap={hasPositions}
-          onSelect={onSelectLocation}
-          selected={selectedId === location.id}
-          onHover={onHoverLocation}
-          hovered={hoveredId === location.id}
-        />
-      ))}
-    </div>
-  );
-
-  if (queryScope !== "county") return cards(items);
-
-  const local = items.filter((item) => item.expansion_tier === "oras");
-  const county = items.filter((item) => item.expansion_tier === "judet");
-  const other = items.filter((item) => !["oras", "judet"].includes(item.expansion_tier));
-
-  return (
-    <div className="space-y-6">
-      {local.length > 0 && (
-        <section>
-          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
-            În {selectedCity || "localitatea selectată"}
-          </div>
-          {cards(local)}
-        </section>
-      )}
-      {county.length > 0 && (
-        <section>
-          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
-            În restul județului {countyName || "selectat"}
-          </div>
-          {cards(county)}
-        </section>
-      )}
-      {other.length > 0 && cards(other)}
-    </div>
-  );
 }
 
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
@@ -160,19 +71,18 @@ export default function MatchResults({
   // acelasi si nu se pierde la comutare.
   const [resultMode, setResultMode] = useState(initialResultMode === "professionals" ? "professionals" : "locations");
   const [professionalCount, setProfessionalCount] = useState(null);
-  const [expandedSnapshot, setExpandedSnapshot] = useState(null);
-  const [isExpandingCounty, setIsExpandingCounty] = useState(false);
-  const [expansionError, setExpansionError] = useState("");
-  const [isExpandingNational, setIsExpandingNational] = useState(false);
-  const [nationalExpansionError, setNationalExpansionError] = useState("");
+  // 2026-09-30. Extinderea zonei (judet / tara), lista si meta-ul dupa extindere stau in hook.
+  const {
+    activeMeta, list, queryScope, storedDraft, countyName, selectedCity,
+    expansionProps, isExpandingCounty, isExpandingNational, expansionError, nationalExpansionError,
+  } = useRecommendationExpansion({
+    meta,
+    results,
+    onExpandedSnapshot,
+    // Dupa o extindere reusita lista e alta: „mai multe optiuni” se inchide, la fel meniul zonei.
+    onExpanded: () => { setShowMore(false); setZoneOpen(false); },
+  });
   const lastImpressionKey = useRef("");
-  const expansionBusy = useRef(false);
-  const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const activeMeta = expandedSnapshot?.meta || meta || EMPTY_META;
-  const list = useMemo(() => (Array.isArray(expandedSnapshot?.results)
-    ? expandedSnapshot.results
-    : (Array.isArray(results) ? results : NO_RESULTS)), [expandedSnapshot, results]);
   // 2026-09-05. Filtrarea la ce se vede pe harta este PUR VIZUALA. Ascunde carduri; nu
   // recalculeaza nimic. Bucketul, rangul si ordinea fiecarui rezultat raman exact cele primite
   // de la server, iar cererea se trimite in continuare pe baza listei complete (`list`), nu a
@@ -184,41 +94,14 @@ export default function MatchResults({
   // iar cererea se trimite in continuare pe lista completa (`list`).
   const filteredList = applyRecommendationFilters(shownList, filters);
 
-  const top3 = filteredList.filter((result) => result.result_bucket === "top3");
-  const confirmed = filteredList.filter((result) => result.result_bucket === "extended_confirmed");
-  const directory = filteredList.filter((result) => result.result_bucket === "extended_directory");
-  // Profiluri din director fara servicii declarate, afisate doar cand nu exista optiuni mai bune.
-  const structural = filteredList.filter((result) => result.result_bucket === "structural_directory");
-  // 2026-09-28 (audit sectiunea 18): lista de rezerva poate avea acum ambele tipuri - intai cel
-  // potrivit nevoii, apoi alternativa. Fiecare tip are titlul lui si, pentru alternativa, o nota
-  // scurta primita de la server. Ordinea ramane exact cea primita.
-  const structuralGroups = structural.reduce((groups, result) => {
-    const capability = result.structural_capability === "medical" ? "medical" : "optical";
-    let group = groups.find((item) => item.capability === capability);
-    if (!group) {
-      group = {
-        capability,
-        label: result.structural_group_label
-          || (capability === "medical" ? "Alte cabinete și clinici oftalmologice din zonă" : "Alte optici din zonă"),
-        note: result.structural_group_note || "",
-        items: [],
-      };
-      groups.push(group);
-    }
-    group.items.push(result);
-    return groups;
-  }, []);
-  const moreCount = confirmed.length + directory.length + structural.length;
+  const { top3, confirmed, directory, structural } = splitByBucket(filteredList);
+  const structuralGroups = groupStructural(structural);
   // Starea recomandarii descrie ce a gasit serverul, nu cat se vede acum pe ecran: o deplasare
   // a hartii nu are voie sa declanseze fluxul de recuperare "nu am gasit nimic".
   const serverTop3Count = list.filter((result) => result.result_bucket === "top3").length;
   const recommendationState = list.length === 0
     ? "empty"
     : (serverTop3Count < 3 ? "insufficient" : "sufficient");
-  const queryScope = activeMeta.query_scope || activeMeta.routing_mode || "locality";
-  const storedDraft = readPatientRequestDraft();
-  const countyName = activeMeta.selected_county_name || storedDraft?.county || "";
-  const selectedCity = activeMeta.selected_locality_name || storedDraft?.city || "";
 
   // Harta traieste in pagina parinte, dar setul de rezultate se poate schimba aici: o extindere
   // in judet sau in tara inlocuieste lista fara sa treaca prin props. Fara linia asta, harta ar
@@ -353,155 +236,6 @@ export default function MatchResults({
     }
     if (callback) callback();
     else restartGuidedSearch();
-  };
-
-  const expandCounty = async () => {
-    if (expansionBusy.current || queryScope === "county") return;
-    const draft = readPatientRequestDraft();
-    if (!draft) {
-      setExpansionError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
-      return;
-    }
-
-    expansionBusy.current = true;
-    setIsExpandingCounty(true);
-    setExpansionError("");
-    try {
-      base44.analytics.track({
-        eventName: "patient_search_county_expansion_started",
-        properties: {
-          analytics_version: "patient-search-v1",
-          expansion_version: "patient-county-expansion-v1",
-          original_coverage_status: activeMeta?.coverage_status || "unknown",
-          original_result_count: list.length,
-          county_code: draft.county_code || "unknown",
-        },
-      });
-    } catch (_error) {
-      // Expansion must not depend on analytics.
-    }
-
-    try {
-      const data = await matchProvidersInSelectedCounty(draft);
-      if (!mounted.current) return;
-      const nextDraft = countyExpansionDraft(draft, data);
-      storePatientRequestDraft(nextDraft);
-      const nextMeta = metaFromExpandedResponse(data, activeMeta);
-      const snapshot = { results: Array.isArray(data.results) ? data.results : [], meta: nextMeta };
-      setExpandedSnapshot(snapshot);
-      onExpandedSnapshot?.(snapshot);
-      setShowMore(false);
-      setZoneOpen(false);
-      try {
-        base44.analytics.track({
-          eventName: "patient_search_county_expansion_completed",
-          properties: {
-            analytics_version: "patient-search-v1",
-            expansion_version: "patient-county-expansion-v1",
-            coverage_status: data.coverage_status || "unknown",
-            result_count: data.results?.length || 0,
-            local_result_count: Number(data.coverage_counts?.local_eligible_provider_count) || 0,
-            county_result_count: Number(data.coverage_counts?.county_eligible_provider_count) || 0,
-          },
-        });
-      } catch (_error) {
-        // Expansion must not depend on analytics.
-      }
-    } catch (error) {
-      setExpansionError(error?.message || "Căutarea nu a putut fi extinsă în județ.");
-      try {
-        base44.analytics.track({
-          eventName: "patient_search_county_expansion_failed",
-          properties: {
-            analytics_version: "patient-search-v1",
-            expansion_version: "patient-county-expansion-v1",
-          },
-        });
-      } catch (_error) {
-        // Expansion must not depend on analytics.
-      }
-    } finally {
-      expansionBusy.current = false;
-      setIsExpandingCounty(false);
-    }
-  };
-
-  const expandNational = async () => {
-    if (expansionBusy.current || queryScope === "national") return;
-    const draft = readPatientRequestDraft();
-    if (!draft) {
-      setNationalExpansionError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
-      return;
-    }
-
-    expansionBusy.current = true;
-    setIsExpandingNational(true);
-    setNationalExpansionError("");
-    try {
-      base44.analytics.track({
-        eventName: "patient_search_national_expansion_started",
-        properties: {
-          analytics_version: "patient-search-v1",
-          expansion_version: "patient-national-expansion-v1",
-          original_coverage_status: activeMeta?.coverage_status || "unknown",
-          original_result_count: list.length,
-        },
-      });
-    } catch (_error) {
-      // Expansion must not depend on analytics.
-    }
-
-    try {
-      const data = await matchProvidersNationally(draft);
-      if (!mounted.current) return;
-      const nextDraft = nationalExpansionDraft(draft);
-      storePatientRequestDraft(nextDraft);
-      const nextMeta = metaFromExpandedResponse(data, activeMeta);
-      const snapshot = { results: Array.isArray(data.results) ? data.results : [], meta: nextMeta };
-      setExpandedSnapshot(snapshot);
-      onExpandedSnapshot?.(snapshot);
-      setShowMore(false);
-      setZoneOpen(false);
-      try {
-        base44.analytics.track({
-          eventName: "patient_search_national_expansion_completed",
-          properties: {
-            analytics_version: "patient-search-v1",
-            expansion_version: "patient-national-expansion-v1",
-            coverage_status: data.coverage_status || "unknown",
-            result_count: data.results?.length || 0,
-          },
-        });
-      } catch (_error) {
-        // Expansion must not depend on analytics.
-      }
-    } catch (error) {
-      setNationalExpansionError(error?.message || "Căutarea nu a putut fi extinsă la nivel național.");
-      try {
-        base44.analytics.track({
-          eventName: "patient_search_national_expansion_failed",
-          properties: {
-            analytics_version: "patient-search-v1",
-            expansion_version: "patient-national-expansion-v1",
-          },
-        });
-      } catch (_error) {
-        // Expansion must not depend on analytics.
-      }
-    } finally {
-      expansionBusy.current = false;
-      setIsExpandingNational(false);
-    }
-  };
-
-  const expansionProps = {
-    countyName,
-    onExpandCounty: queryScope === "county" || !countyName ? undefined : expandCounty,
-    isExpandingCounty: isExpandingCounty || isExpandingNational,
-    actionError: expansionError,
-    onExpandNational: queryScope === "national" ? undefined : expandNational,
-    isExpandingNational: isExpandingCounty || isExpandingNational,
-    nationalActionError: nationalExpansionError,
   };
 
   const changeFilters = (next) => {
@@ -686,49 +420,14 @@ export default function MatchResults({
         </button>
       )}
 
-      {expanded && confirmed.length > 0 && (
-        <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
-          <div className="mt-3">
-            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
-          </div>
-        </div>
+      {expanded && (
+        <RecommendationExtendedSections
+          confirmed={confirmed}
+          directory={directory}
+          structuralGroups={structuralGroups}
+          groupProps={{ queryScope, selectedCity, countyName, onSelectLocation, selectedId: selectedLocationId, onHoverLocation, hoveredId: hoveredLocationId, mappedLocationIds }}
+        />
       )}
-
-      {expanded && directory.length > 0 && (
-        <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Opțiuni din director</div>
-          <div className="mt-3">
-            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
-          </div>
-        </div>
-      )}
-
-      {expanded && structuralGroups.map((group, groupIndex) => (
-        <div key={group.capability} className="mt-8">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
-              {group.label}
-            </div>
-            {groupIndex === 0 && (
-              <a href="/adauga-sau-revendica" className="text-[11px] font-medium text-foreground underline underline-offset-2">
-                Sunteți reprezentantul uneia dintre acestea?
-              </a>
-            )}
-          </div>
-          {group.note && (
-            <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">{group.note}</p>
-          )}
-          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            {group.capability === "medical"
-              ? "Servicii neconfirmate de furnizor — sunați înainte să mergeti."
-              : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
-          </p>
-          <div className="mt-3">
-            <ResultScopeGroups items={group.items} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} mappedLocationIds={mappedLocationIds} />
-          </div>
-        </div>
-      ))}
 
       {!hideRequestSubmission && <section data-request-followup tabIndex={-1} aria-label="Cererea și conversațiile tale" className="mt-6 rounded-[22px] border border-border bg-card p-4 sm:p-5">
         <h2 className="font-heading text-lg font-bold">Cererea și conversațiile tale</h2>
