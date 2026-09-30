@@ -81,8 +81,9 @@ assert.ok(semanticFunctionSource.includes("if (value === 'national') return 'nat
 // siguranta care compenseaza largirea ariei de cautare.
 assert.ok(semanticFunctionSource.includes("profile_control_status: { $in: ['claimed', 'verified'] }"));
 
+// 2026-09-30: cardul vechi (ResultCard) nu mai exista; explicatia potrivirii vine prin ServiceMatchDetails.
 const resultCardSource = readFileSync(
-  new URL('../src/components/results/ResultCard.jsx', import.meta.url),
+  new URL('../src/components/results/ServiceMatchDetails.jsx', import.meta.url),
   'utf8',
 );
 assert.ok(resultCardSource.includes('De ce se potriveste'));

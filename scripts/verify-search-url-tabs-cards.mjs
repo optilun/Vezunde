@@ -4,7 +4,8 @@
 // B4 criteriile cautarii stau in adresa; un link primit castiga in fata sesiunii;
 // C1 fara aria-label pe elemente fara rol; fara zeci de regiuni identice; diacritice;
 // C2 dupa alegerea localitatii, focusul trece pe butonul de stergere (nu pe <body>);
-// E1 un singur stil de card pe /cauta; recomandarile (/rezultate) raman cu ResultCard.
+// E1 un singur stil de card pe /cauta. (2026-09-30: si recomandarile /rezultate folosesc acelasi card;
+//    vezi scripts/verify-recommendation-card-design.mjs.)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 // 2026-09-29 (audit /cauta, D3): pagina /cauta citita impreuna cu hook-urile ei (scripts/searchPageSource.mjs).
@@ -120,7 +121,7 @@ const search = readSearchPage();
   assert.match(layout, /\{!gridLayout && shownRank !== null && \(/, 'in grila numarul sta pe coperta, nu deasupra');
   assert.match(layout, /const shownRank = hasPoint \? rank : null;/, 'numar doar pentru locatiile cu pin');
   assert.match(layout, /renderCard\(location, showThis, shownRank\)/);
-  assert.match(read('src/components/intake2/MatchResultCard.jsx'), /ResultCard/, 'recomandarile raman cu cardul lor');
+  assert.match(read('src/components/intake2/MatchResultCard.jsx'), /<DirectoryResultCard/, 'recomandarile folosesc acelasi card ca /cauta');
 }
 
 console.log('Search audit fixes B1, B4, C1, C2, E1 checks passed.');

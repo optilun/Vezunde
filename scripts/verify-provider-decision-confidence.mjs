@@ -43,14 +43,15 @@ assert.ok(county.evidence.some((item) => item.code === "county_scope"));
 assert.ok(county.evidence.some((item) => item.label.includes("același județ")));
 
 const policy = await readFile(new URL("../shared/providerDecisionConfidence.js", import.meta.url), "utf8");
-const card = await readFile(new URL("../src/components/results/ResultCard.jsx", import.meta.url), "utf8");
+// 2026-09-30: cardul recomandarii este cel de pe /cauta; panoul de incredere vine prin ServiceMatchDetails.
+const card = await readFile(new URL("../src/components/results/ServiceMatchDetails.jsx", import.meta.url), "utf8");
 const panel = await readFile(new URL("../src/components/results/DecisionConfidencePanel.jsx", import.meta.url), "utf8");
 const recommendation = await readFile(new URL("../shared/providerRecommendation.js", import.meta.url), "utf8");
 
 assert.match(policy, /commercial_influence: false/);
 assert.doesNotMatch(policy, /subscription|plan|paid|payment|price/);
 assert.match(card, /buildProviderDecisionConfidence/);
-assert.match(card, /<DecisionConfidencePanel confidence=\{confidence\}/);
+assert.match(card, /<DecisionConfidencePanel confidence=\{confidenceForLocation\(location\)\}/);
 assert.doesNotMatch(card, /recommendation_score/);
 assert.match(panel, /Plata nu influenteaza acest indicator sau ordinea rezultatelor/);
 assert.match(panel, /Ce nu este confirmat/);

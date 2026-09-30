@@ -11,7 +11,8 @@ import DecisionConfidencePanel from "@/components/results/DecisionConfidencePane
 //
 // Continutul este acelasi ca in cardul vechi (ResultCard, varianta compacta): serviciile potrivite,
 // disponibilitatea, panoul de incredere construit din aceleasi date si explicatia ariei. Nu se
-// calculeaza si nu se reordoneaza nimic aici. Ecranul de recomandari (/rezultate) ramane cu ResultCard.
+// calculeaza si nu se reordoneaza nimic aici. Din 2026-09-30 si recomandarile clientului (/rezultate)
+// folosesc acelasi card si aceleasi detalii (MatchResultCard); cardul vechi ResultCard a fost eliminat.
 
 const TIER_LABELS = {
   apropiere: "În zona ta",

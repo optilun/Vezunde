@@ -120,14 +120,22 @@ for (const forbidden of ["geocode", "geocoding", "nominatim", "maps.googleapis.c
   );
 }
 
-const cardSource = await readFile(new URL("../src/components/results/ResultCard.jsx", import.meta.url), "utf8");
-assert.ok(/compact = false/.test(cardSource), "cardul de rezultat trebuie sa aiba varianta compacta");
+// 2026-09-30: recomandarile folosesc cardul de pe /cauta (DirectoryResultCard); cardul vechi
+// (ResultCard, cu varianta compacta) a fost eliminat. Aceleasi garantii, la locul lor nou:
+// panoul de incredere vine prin ServiceMatchDetails (mereu in forma compacta), iar notita de
+// profil nerevendicat ramane in card, pliata.
+const cardSource = await readFile(new URL("../src/components/intake2/MatchResultCard.jsx", import.meta.url), "utf8");
+const detailsSource = await readFile(new URL("../src/components/results/ServiceMatchDetails.jsx", import.meta.url), "utf8");
 assert.ok(
-  cardSource.includes("DecisionConfidencePanel") && cardSource.includes("compact={compact}"),
-  "panoul de incredere ramane in card si in varianta compacta",
+  detailsSource.includes("DecisionConfidencePanel") && detailsSource.includes("compact />"),
+  "panoul de incredere ramane in card, in forma compacta",
 );
 assert.ok(
-  cardSource.includes("DirectoryProfileNotice"),
+  cardSource.includes("<ServiceMatchDetails location={location} />"),
+  "cardul recomandarii afiseaza detaliile potrivirii",
+);
+assert.ok(
+  cardSource.includes("DirectoryProfileNotice") && cardSource.includes("aria-expanded={open}"),
   "notita de profil nerevendicat ramane in card, pliata, nu stearsa",
 );
 
