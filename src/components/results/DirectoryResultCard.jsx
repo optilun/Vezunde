@@ -31,7 +31,7 @@ const BESIDE = {
   article: "lg:group-[.is-beside-map]/grid:flex-row lg:group-[.is-beside-map]/grid:gap-4 lg:group-[.is-beside-map]/grid:p-4",
   coverWrap: "lg:group-[.is-beside-map]/grid:w-28 lg:group-[.is-beside-map]/grid:shrink-0 lg:group-[.is-beside-map]/grid:self-start",
   coverBox: "lg:group-[.is-beside-map]/grid:aspect-square",
-  city: "lg:group-[.is-beside-map]/grid:bottom-2.5 lg:group-[.is-beside-map]/grid:left-2.5 lg:group-[.is-beside-map]/grid:right-2 lg:group-[.is-beside-map]/grid:text-base",
+  city: "lg:group-[.is-beside-map]/grid:bottom-2.5 lg:group-[.is-beside-map]/grid:left-2.5 lg:group-[.is-beside-map]/grid:right-2 lg:group-[.is-beside-map]/grid:text-sm",
   icon: "lg:group-[.is-beside-map]/grid:h-20 lg:group-[.is-beside-map]/grid:w-20",
   badges: "lg:group-[.is-beside-map]/grid:left-2 lg:group-[.is-beside-map]/grid:top-2",
   typePill: "lg:group-[.is-beside-map]/grid:hidden",
