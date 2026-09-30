@@ -45,7 +45,7 @@ export const AREA_MIN_LNG_SPAN = 0.07;
 export const AREA_EDGE_SHARE = 0.25;
 // Harta micsorata peste acest raport fata de zona (dimensiunea mai mare a dreptunghiului vizibil,
 // in kilometri, impartita la a zonei) inseamna ca vizitatorul priveste regiunea, nu localitatea.
-export const AREA_ZOOM_OUT_RATIO = 3;
+export const AREA_ZOOM_OUT_RATIO = 2.5;
 
 function isBounds(bounds) {
   return Array.isArray(bounds) && bounds.length === 2
