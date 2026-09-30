@@ -30,7 +30,8 @@ export default function RecommendationToolbar({ sticky = false, modeTabs, zone, 
         {hasChips && (
           <div className="mt-2 flex items-center gap-2" role="group" aria-label="Filtre active">
             {summary && <span aria-live="polite" className="shrink-0 text-xs tabular-nums text-muted-foreground">{summary}</span>}
-            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* Etichetele se deruleaza pe orizontala; marginea din dreapta se estompeaza ca sa se vada ca mai urmeaza. */}
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pr-4 [-webkit-mask-image:linear-gradient(to_right,#000_calc(100%-20px),transparent)] [mask-image:linear-gradient(to_right,#000_calc(100%-20px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {activeChips.map((chip) => (
                 <button
                   key={chip.key}
