@@ -30,7 +30,11 @@ function distanceLabel(km) {
 // 2026-09-28 (audit /cauta, E1): acelasi card si pentru cautarea dupa serviciu. `rank` este doar
 // numarul pinului de pe harta (ordinea primita de la server, redata ca atare), iar `details` sunt
 // detaliile potrivirii (ServiceMatchDetails). Ambele lipsesc la rasfoirea localitatii.
-export default function DirectoryResultCard({ location, onShowMap, distanceKm = null, rank = null, details = null }) {
+// 2026-09-30: acelasi card il folosesc si recomandarile clientului (MatchResultCard). Pentru ele:
+// `rankKind="recommendation"` (numarul este pozitia in cele mai potrivite optiuni, primita de la
+// server, nu numarul unui pin), `linkState` (starea de intoarcere spre lista de recomandari) si
+// `onProfileClick` / `onPhoneClick` (analitica). Fara ele, cardul se comporta exact ca inainte.
+export default function DirectoryResultCard({ location, onShowMap, distanceKm = null, rank = null, details = null, rankKind = "pin", linkState = undefined, onProfileClick = undefined, onPhoneClick = undefined }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const phoneHref = publicPhoneLink(location.phone);
@@ -71,7 +75,9 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
           <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5">
             {rank && (
               <span className="inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-[#171717] px-1.5 text-xs font-extrabold tabular-nums text-white shadow-sm group-data-[selected]/cell:bg-[#4f6080]">
-                <span className="sr-only">Pinul </span>{rank}<span className="sr-only"> pe hartă. </span>
+                {rankKind === "recommendation"
+                  ? <><span className="sr-only">Poziția </span>{rank}<span className="sr-only"> în cele mai potrivite opțiuni. </span></>
+                  : <><span className="sr-only">Pinul </span>{rank}<span className="sr-only"> pe hartă. </span></>}
               </span>
             )}
             <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#4f6080] shadow-sm backdrop-blur-sm">
@@ -94,7 +100,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
 
       <div className={`flex items-start gap-2 ${logo ? "mt-9" : "mt-5"}`}>
         <h3 className="min-w-0 flex-1 break-words font-heading text-xl font-bold leading-snug tracking-tight sm:text-[22px]">
-          <Link to={profileHref} className="rounded-sm transition-colors hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{location.name}</Link>
+          <Link to={profileHref} state={linkState} onClick={onProfileClick} className="rounded-sm transition-colors hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{location.name}</Link>
           {status === "verified" && <><span className="sr-only"> (profil verificat)</span><BadgeCheck aria-hidden="true" className="ml-1.5 inline-block h-5 w-5 align-[-3px] text-[#4f6080]" /></>}
         </h3>
         <div className="-mr-2 -mt-1.5 flex shrink-0 items-center">
@@ -110,7 +116,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
             </button>
           )}
           {phoneHref && (
-            <a href={phoneHref} aria-label={`Sună la ${location.name}`} title="Sună" className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#4f6080] transition-colors hover:bg-[#dce4f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <a href={phoneHref} onClick={onPhoneClick} aria-label={`Sună la ${location.name}`} title="Sună" className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#4f6080] transition-colors hover:bg-[#dce4f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
               <Phone aria-hidden="true" className="h-[18px] w-[18px]" />
             </a>
           )}
@@ -128,6 +134,8 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
         </p>
         <Link
           to={profileHref}
+          state={linkState}
+          onClick={onProfileClick}
           aria-label={`Vezi profilul: ${location.name}`}
           title="Vezi profilul"
           className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
