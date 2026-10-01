@@ -132,6 +132,15 @@
     "is_public": {
       "type": "boolean",
       "default": false
+    },
+    "hidden_by_professional": {
+      "type": "boolean",
+      "default": false,
+      "description": "Specialistul si-a ascuns singur profilul public. Reversibil din contul lui, fara admin; nu schimba statusurile de verificare."
+    },
+    "hidden_by_professional_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [
