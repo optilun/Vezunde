@@ -13,7 +13,7 @@ export default function CategoryShowcase() {
   return (
     <section aria-labelledby={headingId} className="relative pb-8 pt-10 sm:pb-10 sm:pt-12 lg:pb-14 lg:pt-12">
       <div className="relative z-10 mx-auto max-w-[84rem] px-5">
-        <Reveal className="text-center">
+        <Reveal className="hidden text-center sm:block">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
             Servicii și specialiști
           </p>
@@ -24,7 +24,7 @@ export default function CategoryShowcase() {
           </h2>
         </Reveal>
 
-        <Reveal delay={80} className="mt-6 sm:mt-11">
+        <Reveal delay={80} className="sm:mt-11">
           <CategoryStrip />
         </Reveal>
 
