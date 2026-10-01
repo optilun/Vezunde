@@ -356,22 +356,28 @@ async function approveExistingResolution(svc: any, user: any, submission: any, p
   const deactivatedMembershipIds = relation === 'other_organization'
     ? await deactivatePreviousMemberships(svc, target.id, destinationOrganizationId, user.id)
     : [];
+  // 2026-10-01. Asocierea unui profil existent cu organizatia este o revendicare aprobata, nu o
+  // verificare. Un profil deja verificat isi pastreaza verificarea; restul devin "claimed" si se
+  // verifica separat (Directory Ops -> Profiluri), ca orice alta locatie. `last_verified_at` nu
+  // se mai muta, pentru ca nu s-a verificat nimic acum.
+  const alreadyVerified = target.profile_control_status === 'verified'
+    && target.verification_state === 'verified'
+    && target.is_verified === true;
   const updates = {
     organization_id: destinationOrganizationId,
     status: 'publicata',
     active_status: 'activa',
     public_visibility_status: 'approved',
-    profile_control_status: 'verified',
+    profile_control_status: alreadyVerified ? 'verified' : 'claimed',
     claim_verification_status: 'approved',
-    verification_state: 'verified',
-    is_verified: true,
+    verification_state: alreadyVerified ? 'verified' : 'in_verification',
+    is_verified: alreadyVerified,
     data_source: target.data_source === 'public_source' ? 'claim' : target.data_source || 'claim',
     profile_control_status_updated_at: now,
     profile_control_status_reason: relation === 'other_organization'
       ? 'Transfer intre organizatii aprobat administrativ'
       : 'Profil existent asociat organizatiei',
     last_confirmed_at: now,
-    last_verified_at: now,
   };
   await svc.entities.ProviderLocation.update(target.id, updates);
   const ownerMembershipIds = await propagateOwners(svc, destinationOrganizationId, target.id, user.id);
