@@ -336,13 +336,18 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
     place_id: checked.value.place_id,
     provider_type: anchor.provider_type || '',
     provider_profile_type: anchor.provider_profile_type || '',
-    profile_control_status: 'verified',
+    // 2026-10-01. Aprobarea extinderii confirma ca locatia apartine organizatiei (revendicare), nu
+    // ca a fost verificata. Inainte primea direct toate cele patru marcaje de "verificat", deci
+    // insigna publica "Verificat" aparea fara nicio verificare. Verificarea ramane actiunea
+    // separata din Directory Ops -> Profiluri (verify_profile), ca pentru orice alta locatie.
+    profile_control_status: 'claimed',
     claim_verification_status: 'approved',
     public_visibility_status: 'approved',
     active_status: 'activa',
     status: 'publicata',
-    is_verified: true,
-    verification_state: 'verified',
+    is_verified: false,
+    verification_state: 'in_verification',
+    data_source: 'claim',
   });
 
   const wideMembershipChanges = await propagateOrganizationWideAccess(svc, submission.organization_id, location.id, user.id, submission.submitted_by_user_id || '');
