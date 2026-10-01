@@ -6,7 +6,7 @@ import { prefetchOnIntent } from "@/lib/routePrefetch";
 
 function ProfileBlueprint() {
   return (
-    <div className="relative min-h-[23rem] overflow-hidden bg-[#dce5e9] sm:min-h-[27rem] lg:h-full lg:min-h-[34rem]">
+    <div className="relative min-h-[14rem] overflow-hidden bg-[#dce5e9] sm:min-h-[27rem] lg:h-full lg:min-h-[34rem]">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-35"
@@ -143,7 +143,7 @@ export default function ProCta() {
   return (
     <section
       aria-labelledby="professional-profile-title"
-      className="mx-auto mt-28 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
+      className="mx-auto mt-16 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
     >
       {/* Umbra e box-shadow (nu filtru drop-shadow) si fara will-change permanent: filtrul pe un
           bloc atat de mare se redesena la fiecare pas al animatiei si al derularii. */}
@@ -151,7 +151,7 @@ export default function ProCta() {
         threshold={0.08}
         className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent shadow-[0_22px_30px_rgba(23,23,23,0.10)] lg:grid-cols-[1.3fr_0.9fr]"
       >
-        <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
+        <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-6 py-8 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
           <span
             aria-hidden="true"
             className="absolute left-0 top-14 h-px w-8 bg-[#F8F4EC]/35 sm:w-12"
@@ -163,25 +163,25 @@ export default function ProCta() {
 
           <h2
             id="professional-profile-title"
-            className="mt-5 max-w-[45rem] font-heading text-[clamp(2.75rem,5vw,5.35rem)] font-extrabold leading-[0.95] tracking-[-0.06em]"
+            className="mt-5 max-w-[45rem] font-heading text-[2.35rem] sm:text-[clamp(2.75rem,5vw,5.35rem)] font-extrabold leading-[0.95] tracking-[-0.06em]"
           >
-            Arată clar
-            <span className="mt-1 block font-display font-medium italic tracking-[-0.045em]">
-              cu ce îi poți ajuta.
-            </span>
+            <span className="sm:hidden">Ești specialist?<span className="mt-1 block font-display font-medium italic">Fă-te găsit.</span></span>
+            <span className="hidden sm:inline">Arată clar</span>
+            <span className="mt-1 hidden font-display font-medium italic tracking-[-0.045em] sm:block">cu ce îi poți ajuta.</span>
           </h2>
 
-          <p className="mt-7 max-w-[43rem] text-base leading-relaxed text-[#F8F4EC]/68 sm:text-lg">
-            Adaugă sau revendică profilul tău profesional ori profilul unei optici, al unui cabinet sau al unei clinici. Prezintă clar serviciile, specializările, echipa și locațiile.
+          <p className="mt-5 max-w-[43rem] text-sm leading-relaxed text-[#F8F4EC]/68 sm:mt-7 sm:text-lg">
+            <span className="sm:hidden">Prezintă serviciile, echipa și locațiile tale.</span>
+            <span className="hidden sm:inline">Adaugă sau revendică profilul tău profesional ori profilul unei optici, al unui cabinet sau al unei clinici. Prezintă clar serviciile, specializările, echipa și locațiile.</span>
           </p>
 
-          <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="mt-6 flex flex-col items-stretch gap-3 sm:mt-9 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               to="/adauga-sau-revendica"
               {...prefetchOnIntent("/adauga-sau-revendica")}
               className="group inline-flex min-h-14 items-center justify-between gap-5 rounded-full bg-[#F8F4EC] py-2 pl-6 pr-2 text-sm font-semibold text-[#171717] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-[0_16px_34px_rgba(0,0,0,0.24)] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:w-auto sm:pl-7 sm:text-base"
             >
-              Adaugă sau revendică un profil
+              <span className="sm:hidden">Adaugă sau revendică</span><span className="hidden sm:inline">Adaugă sau revendică un profil</span>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#171717] text-[#F8F4EC]">
                 <ArrowRight
                   className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transition-none"
@@ -195,7 +195,7 @@ export default function ProCta() {
               {...prefetchOnIntent("/pentru-specialisti")}
               className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#F8F4EC]/25 px-6 text-sm font-semibold text-[#F8F4EC]/80 outline-none transition-[border-color,color,transform] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:border-[#F8F4EC]/55 hover:text-[#F8F4EC] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:px-7 sm:text-base"
             >
-              Vezi cum funcționează
+              <span className="sm:hidden">Află mai mult</span><span className="hidden sm:inline">Vezi cum funcționează</span>
             </Link>
           </div>
         </div>
