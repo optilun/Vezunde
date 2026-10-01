@@ -65,7 +65,16 @@ async function sendClaimEmail(base44, svc, claim, key, subject, lines, variables
   }
 }
 
+// 2026-10-01. Accesul primit dintr-o revendicare poarta originea lui (`access_origin: 'claim'`,
+// `claim_request_id`, `claim_scope`). Un membership existent (de exemplu dintr-o invitatie) isi
+// pastreaza originea; doar unul fara origine o primeste. `organization_wide_access` NU se scrie
+// aici: ramane decis de loadOrganizationOwnerScopeResolution din randul de scope aprobat.
 async function ensureMembership(svc, values) {
+  const origin = {
+    access_origin: 'claim',
+    ...(values.claim_request_id ? { claim_request_id: values.claim_request_id } : {}),
+    ...(values.claim_scope ? { claim_scope: values.claim_scope } : {}),
+  };
   const existing = await svc.entities.ProviderMembership.filter({
     user_id: values.user_id,
     location_id: values.location_id,
@@ -75,6 +84,7 @@ async function ensureMembership(svc, values) {
     const updates = {};
     if (existing[0].role !== values.role) updates.role = values.role;
     if ((existing[0].organization_id || null) !== (values.organization_id || null)) updates.organization_id = values.organization_id || null;
+    if (!existing[0].access_origin) Object.assign(updates, origin);
     if (Object.keys(updates).length > 0) await svc.entities.ProviderMembership.update(existing[0].id, updates);
     return existing[0].id;
   }
@@ -84,6 +94,7 @@ async function ensureMembership(svc, values) {
     location_id: values.location_id,
     role: values.role,
     status: 'active',
+    ...origin,
   });
   return created.id;
 }
@@ -288,6 +299,8 @@ export async function handle(req: Request) {
         organization_id: scope.organization_id || location.organization_id || null,
         location_id: location.id,
         role: approvedRole,
+        claim_request_id: claim.id,
+        claim_scope: ['location', 'selected_locations', 'organization'].includes(clean(scope.claim_scope, 40)) ? clean(scope.claim_scope, 40) : '',
       }));
       approvedLocations.push(location);
       await svc.entities.ProviderClaimLocationSelection.update(child.id, {
