@@ -27,10 +27,12 @@ const PROMPTS = [
   "Mi s-au rupt ochelarii",
 ];
 
+const MOBILE_PROMPTS = ["Caut un oftalmolog", "Caut o clinică", "Văd neclar la distanță", "Control pentru copil", "Investigație OCT", "Lentile progresive", "Reparație ochelari"];
+
 const EXAMPLES = [
-  { label: "Caut un medic oftalmolog", to: "/cerere?categorie=consult_oftalmologic" },
-  { label: "Control de vedere pentru copil", to: "/cerere?categorie=copii_miopie" },
-  { label: "Reparație ochelari", to: "/cerere?categorie=reparatii" },
+  { label: "Caut un medic oftalmolog", shortLabel: "Oftalmolog", to: "/cerere?categorie=consult_oftalmologic" },
+  { label: "Control de vedere pentru copil", shortLabel: "Control copii", to: "/cerere?categorie=copii_miopie" },
+  { label: "Reparație ochelari", shortLabel: "Reparații", to: "/cerere?categorie=reparatii" },
 ];
 
 // Exemplele care "se scriu" in caseta. Textul se schimba direct in pagina (fara re-randarea
@@ -43,6 +45,7 @@ function TypingPrompt({ active }) {
     const node = textRef.current;
     if (!active || !node) return undefined;
 
+    const prompts = window.matchMedia("(max-width: 639px)").matches ? MOBILE_PROMPTS : PROMPTS;
     const state = { prompt: 0, char: 0, phase: "typing" };
     let timeout = 0;
     let running = false;
@@ -59,7 +62,7 @@ function TypingPrompt({ active }) {
         running = false;
         return;
       }
-      const full = PROMPTS[state.prompt];
+      const full = prompts[state.prompt];
       if (state.phase === "typing") {
         state.char += 1;
         show(full.slice(0, state.char));
@@ -77,7 +80,7 @@ function TypingPrompt({ active }) {
         if (state.char <= 0) {
           state.char = 0;
           show("");
-          state.prompt = (state.prompt + 1) % PROMPTS.length;
+          state.prompt = (state.prompt + 1) % prompts.length;
           state.phase = "typing";
           schedule(500);
         } else {
@@ -137,7 +140,7 @@ export default function Hero({ onStartedChange } = {}) {
       className={`relative flex items-center justify-center ${
         started
           ? "min-h-[calc(100svh-4rem)] items-start overflow-visible py-6 sm:min-h-[92vh]"
-          : "min-h-[calc(100svh-4rem)] overflow-hidden sm:min-h-[92vh]"
+          : "min-h-[36rem] overflow-hidden sm:min-h-[92vh]"
       }`}
     >
       <div
@@ -194,7 +197,7 @@ export default function Hero({ onStartedChange } = {}) {
 
       <div
         className={`relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-4 text-center sm:px-5 ${
-          started ? "py-6 sm:py-10" : "py-16 sm:py-28"
+          started ? "py-6 sm:py-10" : "pb-24 pt-28 sm:py-28"
         }`}
       >
         {started ? (
@@ -214,17 +217,19 @@ export default function Hero({ onStartedChange } = {}) {
         ) : (
           <>
             <h1
-              className="home-rise font-heading text-balance text-[2.25rem] font-extrabold leading-[1.08] tracking-[-0.04em] min-[390px]:text-[2.65rem] sm:text-[4.25rem]"
+              className="home-rise font-heading text-balance text-[2.2rem] font-extrabold leading-[1.08] tracking-[-0.04em] min-[390px]:text-[2.35rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
-              Găsește îngrijirea potrivită pentru ochi.
+              <span className="sm:hidden">Găsește ajutor<br />pentru ochii tăi.</span>
+              <span className="hidden sm:inline">Găsește îngrijirea potrivită pentru ochi.</span>
             </h1>
 
             <p
               className="home-fade-up mt-4 max-w-2xl text-[0.95rem] leading-relaxed sm:mt-5 sm:text-lg"
               style={{ color: "#5F5A53", "--home-delay": "60ms" }}
             >
-              Cauți un medic oftalmolog, o clinică sau o optică? VIASEE te ajută să găsești specialistul potrivit, aproape de tine.
+              <span className="sm:hidden">Medici, clinici și optici, aproape de tine.</span>
+              <span className="hidden sm:inline">Cauți un medic oftalmolog, o clinică sau o optică? VIASEE te ajută să găsești specialistul potrivit, aproape de tine.</span>
             </p>
 
             <form
@@ -232,13 +237,13 @@ export default function Hero({ onStartedChange } = {}) {
               onPointerEnter={preloadConversationalCard}
               onFocus={preloadConversationalCard}
               onTouchStart={preloadConversationalCard}
-              className="home-fade-up mt-7 w-full max-w-xl sm:mt-10"
+              className="home-fade-up mt-6 w-full max-w-xl sm:mt-10"
               style={{ "--home-delay": "120ms" }}
             >
               <div className="relative rounded-[1.35rem] border border-black/[0.05] bg-white p-3.5 text-left shadow-[0_18px_55px_rgba(20,20,20,0.10)] transition-shadow duration-500 focus-within:shadow-[0_22px_65px_rgba(20,20,20,0.16)] sm:rounded-[1.5rem] sm:p-4">
                 {animating && !text && (
                   <div className="pointer-events-none absolute left-5 right-14 top-4.5 truncate text-[15px] sm:left-6 sm:right-16 sm:top-5 sm:text-base" style={{ color: "#6F6A63" }}>
-                    {prefersReducedMotion ? PROMPTS[0] : <TypingPrompt active={animating && !started} />}
+                    {prefersReducedMotion ? <><span className="sm:hidden">{MOBILE_PROMPTS[0]}</span><span className="hidden sm:inline">{PROMPTS[0]}</span></> : <TypingPrompt active={animating && !started} />}
                     {!prefersReducedMotion && (
                       <span className="ml-[1px] inline-block h-[1.1em] w-[1.5px] animate-pulse align-[-0.15em]" style={{ backgroundColor: "#6F6A63" }} />
                     )}
@@ -261,10 +266,11 @@ export default function Hero({ onStartedChange } = {}) {
                   </span>
                   <button
                     type="submit"
-                    aria-label="Trimite"
-                    className="ml-auto flex h-11 w-11 touch-manipulation items-center justify-center rounded-full shadow-[0_6px_18px_rgba(20,20,20,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95"
+                    aria-label="Găsește opțiuni"
+                    className="ml-auto flex h-11 touch-manipulation items-center justify-center gap-2 rounded-full px-4 shadow-[0_6px_18px_rgba(20,20,20,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95 sm:w-11 sm:px-0"
                     style={{ backgroundColor: "#171717", color: "#FFFFFF" }}
                   >
+                    <span className="text-sm font-semibold sm:hidden">Găsește</span>
                     <ArrowUp className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
                   </button>
                 </div>
@@ -272,7 +278,7 @@ export default function Hero({ onStartedChange } = {}) {
             </form>
 
             <div
-              className="home-fade-up mt-6 grid w-full max-w-xl gap-2 sm:mt-7 sm:flex sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-2"
+              className="home-fade-up mt-4 flex w-full max-w-xl flex-wrap justify-center gap-2 sm:mt-7 sm:gap-x-6 sm:gap-y-2"
               style={{ "--home-delay": "200ms" }}
             >
               {EXAMPLES.map((example) => (
@@ -280,10 +286,11 @@ export default function Hero({ onStartedChange } = {}) {
                   key={example.label}
                   to={example.to}
                   {...prefetchOnIntent(example.to)}
-                  className="flex min-h-11 items-center justify-center rounded-full border border-black/[0.07] bg-white/50 px-4 text-sm transition-[color,transform] active:scale-[0.98] sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:underline sm:underline-offset-4 sm:active:scale-100"
+                  className="flex min-h-11 items-center justify-center rounded-full border border-black/[0.07] bg-white/50 px-3 text-xs transition-[color,transform] sm:text-sm active:scale-[0.98] sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:underline sm:underline-offset-4 sm:active:scale-100"
                   style={{ color: "#5F5A53", textDecorationColor: "#B8B2A9" }}
                 >
-                  {example.label}
+                  <span className="sm:hidden">{example.shortLabel}</span>
+                  <span className="hidden sm:inline">{example.label}</span>
                 </Link>
               ))}
             </div>
@@ -292,7 +299,8 @@ export default function Hero({ onStartedChange } = {}) {
               className="home-fade-up mt-5 text-xs sm:mt-6"
               style={{ color: "#6A655E", "--home-delay": "260ms" }}
             >
-              Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu oferă diagnostic medical.
+              <span className="sm:hidden">Orientare automată, nu diagnostic.<br />Fără date personale.</span>
+              <span className="hidden sm:inline">Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu oferă diagnostic medical.</span>
             </p>
           </>
         )}
