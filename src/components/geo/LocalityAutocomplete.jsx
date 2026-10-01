@@ -16,6 +16,7 @@ import {
   readRecentLocalities,
   rememberLocality,
 } from "@/lib/localityQuickPicks";
+import { locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
 
 // Raspunsurile deja primite raman in memorie cat timp e deschisa pagina: stergerea unei litere sau
 // revenirea la acelasi oras nu mai asteapta serverul.
@@ -84,7 +85,8 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     focusChosen.current = false;
     clearRef.current?.focus();
   }, [value]);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const geoCancel = useRef(null);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; geoCancel.current?.(); }; }, []);
 
   useEffect(() => {
     const q = query.trim();
@@ -116,13 +118,17 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
 
   const requestLocation = () => {
     if (!navigator.geolocation) { setGeo({ status: "unavailable", nearby: [] }); return; }
+    geoCancel.current?.();
     setGeo({ status: "loading", nearby: [] });
-    navigator.geolocation.getCurrentPosition(async (position) => {
+    // 2026-10-01. Pozitie de inalta precizie, rafinata cateva secunde, fara cache (lib/preciseLocation.js).
+    const search = locatePrecisely();
+    geoCancel.current = search.cancel;
+    search.promise.then(async (fix) => {
       if (!alive.current) return;
-      if (position.coords.accuracy > 5000) { setGeo({ status: "imprecise", nearby: [] }); return; }
+      if (fix.accuracy > MAX_USABLE_ACCURACY_M) { setGeo({ status: "imprecise", nearby: [] }); return; }
       try {
         const points = await ensureMapPoints();
-        const nearby = nearbyLocalitiesFromPoints(points, { lat: position.coords.latitude, lng: position.coords.longitude }, 3);
+        const nearby = nearbyLocalitiesFromPoints(points, { lat: fix.lat, lng: fix.lng }, 3);
         if (!alive.current) return;
         setGeo({ status: nearby.length ? "ready" : "empty", nearby });
         setOpen(true);
@@ -130,9 +136,10 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
       } catch {
         if (alive.current) setGeo({ status: "unavailable", nearby: [] });
       }
-    }, (error) => {
-      if (alive.current) setGeo({ status: error.code === 1 ? "denied" : "unavailable", nearby: [] });
-    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    }).catch((error) => {
+      if (error?.cancelled) return;
+      if (alive.current) setGeo({ status: error?.code === 1 ? "denied" : "unavailable", nearby: [] });
+    });
   };
 
   const typing = query.trim().length >= 2;
