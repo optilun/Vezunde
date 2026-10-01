@@ -361,7 +361,7 @@
 
   body {
     @apply bg-background text-foreground font-body;
-    min-width: 320px;
+    min-width: min(320px, 100%);
     overflow-x: clip;
   }
 
