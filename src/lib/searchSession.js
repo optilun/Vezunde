@@ -39,10 +39,8 @@ export function handOverCameraToNationalMap(view) {
   return true;
 }
 
-// 2026-09-29 (audit /cauta, E2). Pe telefon, harta Romaniei porneste pe harta (1.300 de locatii,
-// lista alfabetica spune putin), iar o localitate porneste pe lista (cateva zeci de locatii, de
-// comparat). Cand vizitatorul alege singur lista sau harta, alegerea lui se pastreaza pentru
-// ambele vederi, in aceasta fila.
+// Mobile directory starts with the list. Version 2 ignores the previous map-first default,
+// while preserving new explicit list/map choices throughout this tab session.
 export function readMobileViewChoice(fallback) {
   const session = readSearchSession();
   const choice = session.mobileViewVersion === 2 ? session.mobileViewChoice : null;
