@@ -119,6 +119,79 @@ function professionalChecklist(professional, assignments) {
   ];
 }
 
+// 2026-10-01. Specialistul isi ascunde sau reafiseaza singur profilul public. Nu se schimba nicio
+// verificare: reafisarea nu cere o noua aprobare, iar adminul nu e implicat.
+function ProfileVisibilityCard({ professional, onRefresh }) {
+  const hidden = professional.hidden_by_professional === true;
+  const [confirming, setConfirming] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const apply = async () => {
+    setSaving(true);
+    setMessage("");
+    const response = await base44.functions.invoke("manageMyProfessionalProfile", {
+      action: hidden ? "show_profile" : "hide_profile",
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setSaving(false);
+    setConfirming(false);
+    if (response.data?.error) {
+      setMessage(response.data.error);
+      return;
+    }
+    setMessage(hidden
+      ? (response.data?.is_publicly_visible ? "Profilul este din nou public." : "Profilul nu mai este ascuns. Devine public după verificare.")
+      : "Profilul este ascuns.");
+    await onRefresh?.();
+  };
+
+  return (
+    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary">
+            {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </div>
+          <div>
+            <h2 className="text-sm font-bold">{hidden ? "Profilul tău este ascuns" : "Vizibilitate publică"}</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+              {hidden
+                ? "Nu apari în căutare, pe pagina ta publică sau în echipa locațiilor. Verificarea profilului rămâne valabilă; îl poți afișa din nou oricând."
+                : "Poți ascunde oricând profilul din paginile publice: căutare, pagina ta și echipa locațiilor. Datele și verificarea rămân păstrate."}
+            </p>
+          </div>
+        </div>
+        {!confirming && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => (hidden ? apply() : setConfirming(true))}
+            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50 sm:w-auto"
+          >
+            {hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {saving ? "Se salvează..." : hidden ? "Afișează din nou profilul" : "Ascunde profilul"}
+          </button>
+        )}
+      </div>
+      {confirming && (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-950">
+          <p className="font-semibold">Ascunzi profilul din toate paginile publice?</p>
+          <p className="mt-1">Pacienții nu te vor mai găsi până când îl afișezi din nou. Asocierile cu locațiile rămân, dar devin private.</p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <button type="button" disabled={saving} onClick={apply} className="inline-flex min-h-10 items-center justify-center rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50">
+              {saving ? "Se ascunde..." : "Da, ascunde profilul"}
+            </button>
+            <button type="button" disabled={saving} onClick={() => setConfirming(false)} className="inline-flex min-h-10 items-center justify-center rounded-full border border-border bg-background px-4 text-xs font-semibold">
+              Renunță
+            </button>
+          </div>
+        </div>
+      )}
+      {message && <p role="status" aria-live="polite" className="mt-3 text-xs font-semibold text-muted-foreground">{message}</p>}
+    </section>
+  );
+}
+
 function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
   // Arhivarea are prioritate fata de statusul draftului: un profil arhivat ramane `approved` ca
   // review, dar nu mai este vizibil nicaieri. Fara linia asta, specialistul ar fi citit "Profil
@@ -140,6 +213,15 @@ function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
       description: "Datele trimise sunt blocate temporar. VIASEE verifică profilul înainte de publicare.",
       tone: "border-blue-200 bg-blue-50 text-blue-950",
       actionLabel: "",
+    };
+  }
+  if (reviewStatus === "approved" && professional.hidden_by_professional === true) {
+    return {
+      icon: EyeOff,
+      title: "Profil verificat, ascuns de tine",
+      description: "Profilul rămâne verificat, dar nu apare public până când îl afișezi din nou.",
+      tone: "border-border bg-secondary/40 text-foreground",
+      actionLabel: "Actualizează profilul",
     };
   }
   if (reviewStatus === "approved") {
@@ -182,7 +264,7 @@ function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
   };
 }
 
-function Overview({ workspace, onNavigate }) {
+function Overview({ workspace, onNavigate, onRefresh }) {
   const professional = workspace.professional;
   const assignments = workspace.assignments || [];
   const reviewStatus = professional.profile_review_status || professional.public_visibility_status || "draft";
@@ -246,6 +328,10 @@ function Overview({ workspace, onNavigate }) {
           )}
         </div>
       </section>
+
+      {professional.public_visibility_status !== "archived" && (
+        <ProfileVisibilityCard professional={professional} onRefresh={onRefresh} />
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
         <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
@@ -521,7 +607,7 @@ export default function ProfessionalWorkspaceRoot({
             </div>
           </div>
         )}
-        {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} />}
+        {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} onRefresh={onRefresh} />}
         {safeSection === "profile" && <ProfessionalProfileEditor workspace={workspace} onRefresh={onRefresh} />}
         {safeSection === "locations" && <Locations workspace={workspace} onRefresh={onRefresh} />}
         {safeSection === "settings" && (
