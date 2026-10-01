@@ -1,4 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  NEW_LOCATION_CLAIM_MODES,
+  NEW_LOCATION_LIMIT_MESSAGE,
+  newLocationClaimLimitReached,
+} from '../../shared/newLocationClaimPolicy.js';
 
 const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
@@ -104,6 +109,17 @@ Deno.serve(async (req) => {
         contact: { contact_name: c.contact_name, email: c.email, phone: c.phone || '' },
       });
     } else if (p.mode === 'new_location') {
+      // 2026-10-01. Fiecare trimitere creeaza o organizatie si o locatie inainte de revizuire, deci
+      // numarul de propuneri in asteptare per cont e limitat (vezi newLocationClaimPolicy.js).
+      const ownNewLocationClaims = await svc.entities.ProviderClaimRequest
+        .filter({ user_id: user.id, mode: { $in: [...NEW_LOCATION_CLAIM_MODES] }, status: { $in: ['in_asteptare', 'needs_more_info'] } }, '-created_date', 20)
+        .catch(() => null);
+      if (!Array.isArray(ownNewLocationClaims)) {
+        return Response.json({ error: 'Nu am putut verifica solicitarile tale existente. Incearca din nou.' }, { status: 503 });
+      }
+      if (newLocationClaimLimitReached(ownNewLocationClaims)) {
+        return Response.json({ error: NEW_LOCATION_LIMIT_MESSAGE, code: 'new_location_pending_limit' }, { status: 429 });
+      }
       const l = p.location || {};
       claimSubjectType = String(p.claim_subject_type || '').trim();
       if (claimSubjectType === 'b2b_supplier') {
