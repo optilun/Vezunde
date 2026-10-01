@@ -605,6 +605,11 @@ export async function handle(req: Request) {
       if (!loc) return bad('Locatia nu exista');
       const note = String(p.note || '').trim();
       if (!note) return bad('Verificarea profilului necesita o nota');
+      // 2026-10-01. Verificarea nu ridica o suspendare: un profil suspendat ar fi devenit
+      // "verificat" (si vizibil) printr-un singur clic, fara ca motivul suspendarii sa fie tratat.
+      if (loc.profile_control_status === 'suspended' || loc.verification_state === 'suspended' || loc.status === 'suspendata') {
+        return bad('Profilul este suspendat. Ridica intai suspendarea, apoi verifica profilul.');
+      }
 
       // 2026-10-01. Modelul canonic (deriveCanonicalControlStatus) considera o locatie verificata
       // doar cand profile_control_status, verification_state si is_verified spun toate acelasi
