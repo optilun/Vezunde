@@ -47,6 +47,10 @@ export function accuracyNote(accuracyM) {
   return `Poziție vagă (${value}). Alege localitatea pentru rezultate mai exacte.`;
 }
 
+// Mesajul cand vizitatorul a refuzat (sau browserul blocheaza) accesul la locatie. Spune ce poate
+// face, nu doar ca nu merge: pictograma din bara de adresa (lacat / locatie) deschide permisiunile.
+export const LOCATION_DENIED_MESSAGE = "Accesul la locație este blocat. Permite-l din setările browserului (pictograma de lângă adresă) și apasă din nou, sau alege localitatea.";
+
 const PERMISSION_DENIED = 1;
 
 /**
