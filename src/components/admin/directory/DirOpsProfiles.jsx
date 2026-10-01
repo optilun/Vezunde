@@ -41,6 +41,19 @@ function defaultWeekly(existingJson) {
   );
 }
 
+// Actiunile de control pe profil si titlul ferestrei cu nota obligatorie (2026-10-01: a aparut
+// "Ridica suspendarea", pentru ca "Verifica" nu mai scoate un profil din suspendare).
+const PROFILE_ACTIONS = {
+  verify: "verify_profile",
+  suspend: "suspend_profile",
+  unsuspend: "unsuspend_profile",
+};
+const PROFILE_ACTION_TITLES = {
+  verify: "Verificare profil - nota obligatorie",
+  suspend: "Suspendare profil - nota obligatorie",
+  unsuspend: "Ridicarea suspendării - nota obligatorie",
+};
+
 const FILTERS = [
   { key: "all", label: "Toate" },
   { key: "problems", label: "Status nealiniat" },
