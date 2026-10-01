@@ -1280,7 +1280,7 @@ export default function CategoryStrip() {
       SPECIALIST_INTERVAL_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [active, reducedMotion, inView, specialistIndex]);
+  }, [active, reducedMotion, inView, specialistIndex, selectionTick]);
 
   // Pe telefon filele și plăcuțele se derulează orizontal: fila activă rămâne la vedere, iar
   // rândul nou de plăcuțe pornește de la început.
