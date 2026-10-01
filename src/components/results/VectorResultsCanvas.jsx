@@ -105,7 +105,7 @@ function releaseMap(entry) {
   entry.element.remove();
 }
 
-export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null, revealArea = null, fitKey = null }) {
+export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure, selectedCard = null, revealArea = null, fitKey = null, userLocation = null }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const markers = useRef(new Map());
@@ -377,6 +377,38 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     map.on("resize",place);
     return () => { resize.disconnect(); map.off("move",place); map.off("resize",place); };
   },[selectedId,hasCard,ready]);
+  // 2026-10-01. „Tu esti aici”: punct + cerc cu raza egala cu precizia pozitiei (in metri). Cercul nu
+  // este un strat al stilului hartii (straturile se pierd cand se schimba stilul, de ex. la stilul de
+  // rezerva), ci un element HTML al unui marker; diametrul se recalculeaza la zoom.
+  const userLat = userLocation?.lat;
+  const userLng = userLocation?.lng;
+  const userAccuracy = userLocation?.accuracy;
+  useEffect(() => {
+    if (!ready || !Number.isFinite(userLat) || !Number.isFinite(userLng)) return undefined;
+    const map = mapRef.current;
+    const element = document.createElement("div");
+    element.setAttribute("aria-hidden", "true");
+    element.style.cssText = "width:16px;height:16px;pointer-events:none;z-index:0;";
+    const ring = document.createElement("div");
+    ring.style.cssText = "position:absolute;left:50%;top:50%;border-radius:50%;transform:translate(-50%,-50%);background:rgba(66,133,244,0.14);border:1px solid rgba(66,133,244,0.45);display:none;";
+    const dot = document.createElement("div");
+    dot.style.cssText = "position:absolute;inset:0;border-radius:50%;background:#4285f4;border:3px solid #fff;box-shadow:0 0 0 1px rgba(23,35,55,0.25),0 2px 6px rgba(23,35,55,0.35);box-sizing:border-box;";
+    element.append(ring, dot);
+    const sizeRing = () => {
+      if (!Number.isFinite(userAccuracy) || userAccuracy <= 0) { ring.style.display = "none"; return; }
+      const metersPerPixel = 78271.51696 * Math.cos(userLat * Math.PI / 180) / Math.pow(2, map.getZoom());
+      const diameter = Math.min(2 * userAccuracy / metersPerPixel, 4000);
+      // Sub marimea punctului cercul nu spune nimic in plus.
+      if (diameter < 28) { ring.style.display = "none"; return; }
+      ring.style.display = "block";
+      ring.style.width = `${Math.round(diameter)}px`;
+      ring.style.height = `${Math.round(diameter)}px`;
+    };
+    const marker = new maplibregl.Marker({ element, anchor: "center", pitchAlignment: "viewport", rotationAlignment: "viewport" }).setLngLat([userLng, userLat]).addTo(map);
+    sizeRing();
+    map.on("zoom", sizeRing);
+    return () => { map.off("zoom", sizeRing); marker.remove(); };
+  }, [ready, userLat, userLng, userAccuracy]);
   return <>
     <div ref={container} className="viasee-map-host h-full w-full bg-[#F2EFE8]" role="region" aria-label="Harta detaliată a locațiilor" />
     {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-[#F2EFE8] text-sm">Se încarcă harta detaliată...</div>}
