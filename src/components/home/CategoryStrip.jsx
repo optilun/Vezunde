@@ -7,9 +7,8 @@ import { prefetchOnIntent } from "@/lib/routePrefetch";
 // Banda de categorii de pe prima pagină: file sus („Medici ▪ Control ▪ …”), dedesubt un rând de
 // plăcuțe cu mici interfețe desenate pentru categoria aleasă. Plăcuțele sunt desenate în cod
 // (HTML + SVG): rămân clare la orice mărime, nu cântăresc nimic ca imagini și se pot anima.
-// Categoriile se schimbă singure la câteva secunde cât timp banda e pe ecran; se opresc la
-// trecerea mouse-ului, la alegerea unei file, la derularea benzii pe telefon și cu „reducere
-// mișcare” activă în sistem.
+// Categoriile continuă să se schimbe cât timp banda e pe ecran, inclusiv după alegerea
+// manuală a unei file. Respectă setarea de „reducere mișcare” a sistemului.
 
 const INTERVAL_MS = 3200;
 
@@ -1245,15 +1244,14 @@ export default function CategoryStrip() {
   const reducedMotion = usePrefersReducedMotion();
   const [active, setActive] = useState(0);
   const [specialistIndex, setSpecialistIndex] = useState(0);
-  const [hovered, setHovered] = useState(false);
   const [inView, setInView] = useState(false);
-  const [stopped, setStopped] = useState(false);
+  const [selectionTick, setSelectionTick] = useState(0);
   const rootRef = useRef(null);
   const tabsRef = useRef(null);
   const stripRef = useRef(null);
   const panelId = useSvgId("category-panel");
 
-  const running = !reducedMotion && !stopped && inView && !hovered;
+  const running = !reducedMotion && inView;
   const current = CATEGORY_SETS[active];
 
   useEffect(() => {
@@ -1272,17 +1270,17 @@ export default function CategoryStrip() {
       setActive((index) => (index + 1) % CATEGORY_SETS.length);
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [running, active]);
+  }, [running, active, selectionTick]);
 
   useEffect(() => {
-    if (active !== 0 || reducedMotion || !inView || (hovered && !stopped)) return undefined;
-    if (!stopped && specialistIndex === SPECIALIST_CARDS.length - 1) return undefined;
+    if (active !== 0 || reducedMotion || !inView) return undefined;
+    if (specialistIndex === SPECIALIST_CARDS.length - 1) return undefined;
     const timer = window.setTimeout(
       () => setSpecialistIndex((index) => (index + 1) % SPECIALIST_CARDS.length),
       SPECIALIST_INTERVAL_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [active, reducedMotion, inView, hovered, stopped, specialistIndex]);
+  }, [active, reducedMotion, inView, specialistIndex]);
 
   // Pe telefon filele și plăcuțele se derulează orizontal: fila activă rămâne la vedere, iar
   // rândul nou de plăcuțe pornește de la început.
@@ -1292,12 +1290,12 @@ export default function CategoryStrip() {
     if (tabs && button && tabs.scrollWidth > tabs.clientWidth) {
       tabs.scrollTo({ left: button.offsetLeft - (tabs.clientWidth - button.offsetWidth) / 2, behavior: reducedMotion ? "auto" : "smooth" });
     }
-    if (stripRef.current && !stopped) stripRef.current.scrollLeft = 0;
-  }, [active, reducedMotion, stopped]);
+    if (stripRef.current) stripRef.current.scrollLeft = 0;
+  }, [active, reducedMotion]);
 
   const select = (index) => {
-    setStopped(true);
     if (index === 0) setSpecialistIndex(0);
+    setSelectionTick((tick) => tick + 1);
     setActive(index);
   };
 
@@ -1311,13 +1309,7 @@ export default function CategoryStrip() {
   };
 
   return (
-    <div
-      ref={rootRef}
-      onPointerEnter={(event) => event.pointerType === "mouse" && setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onFocusCapture={() => setHovered(true)}
-      onBlurCapture={() => setHovered(false)}
-    >
+    <div ref={rootRef}>
       <div
         ref={tabsRef}
         role="tablist"
@@ -1354,7 +1346,6 @@ export default function CategoryStrip() {
       <div id={panelId} role="tabpanel" aria-labelledby={`${panelId}-tab-${current.id}`} className="mt-7 lg:mt-9">
         <div
           ref={stripRef}
-          onTouchStart={() => setStopped(true)}
           className="-mx-5 overflow-x-auto px-5 pb-2 [scrollbar-width:none] lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
         >
           <Link
