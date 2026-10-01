@@ -1,10 +1,12 @@
 function hasCoordinates(location = {}) {
+  if (location.lat == null || location.lng == null || String(location.lat).trim() === "" || String(location.lng).trim() === "") return false;
   const lat = Number(location.lat);
   const lng = Number(location.lng);
   return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
 
 export function buildAddressQuery(location = {}) {
+  if (![location.address, location.city || location.locality_name].some(value => String(value || "").trim())) return "";
   return [
     location.address,
     location.city || location.locality_name,
@@ -41,4 +43,12 @@ export function buildGoogleMapsEmbedUrl(location = {}) {
 
 export function hasMapLocation(location = {}) {
   return Boolean(buildAddressQuery(location) || buildCoordinateQuery(location) || location.place_id);
+}
+
+export function buildGoogleMapsDirectionsUrl(location = {}) {
+  const destination = location.map_precision === "exact" && hasCoordinates(location)
+    ? buildCoordinateQuery(location) : buildAddressQuery(location) || buildCoordinateQuery(location);
+  if (!destination) return "";
+  const placeId = location.place_id ? `&destination_place_id=${encodeURIComponent(location.place_id)}` : "";
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}${placeId}`;
 }
