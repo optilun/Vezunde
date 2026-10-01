@@ -169,7 +169,7 @@ export default function LocationsWithMap({
       : "relative hidden lg:block";
 
   const renderMapPanel = (fullscreen = false) => (
-          <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${fullscreen ? "flex-1 min-h-0 h-full" : mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
+          <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${fullscreen ? "relative flex-1 min-h-0 h-full" : mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={mapRows}
               fitResults={fitRows}
@@ -249,7 +249,7 @@ export default function LocationsWithMap({
           <Dialog open={mobileView === "map"} onOpenChange={(open) => { if (!open && mobileView === "map") onToggleMobileView(); }}>
             <DialogContent
               data-mobile-map-dialog
-              className="inset-0 left-0 top-0 z-[60] flex h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:hidden"
+              className="inset-0 left-0 top-0 z-[60] flex h-[100dvh] w-[100vw] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:hidden"
               onCloseAutoFocus={(event) => { event.preventDefault(); mapToggleRef.current?.focus({ preventScroll: true }); }}
             >
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
