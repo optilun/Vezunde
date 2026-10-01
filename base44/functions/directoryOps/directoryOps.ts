@@ -608,7 +608,7 @@ export async function handle(req: Request) {
       // 2026-10-01. Verificarea nu ridica o suspendare: un profil suspendat ar fi devenit
       // "verificat" (si vizibil) printr-un singur clic, fara ca motivul suspendarii sa fie tratat.
       if (loc.profile_control_status === 'suspended' || loc.verification_state === 'suspended' || loc.status === 'suspendata') {
-        return bad('Profilul este suspendat. Ridica intai suspendarea, apoi verifica profilul.');
+        return bad('Profilul este suspendat. Foloseste "Ridica suspendarea", apoi verifica profilul separat.');
       }
 
       // 2026-10-01. Modelul canonic (deriveCanonicalControlStatus) considera o locatie verificata
@@ -672,6 +672,49 @@ export async function handle(req: Request) {
         note,
       });
       return Response.json({ success: true });
+    }
+
+    // ---------- LIFT SUSPENSION (2026-10-01) ----------
+    // Pana acum singura cale de a scoate un profil din suspendare era "Verifica", care il facea
+    // direct verificat. Ridicarea suspendarii il readuce la starea de control dovedita de date:
+    // revendicat daca revendicarea a fost aprobata sau exista membri activi, altfel director.
+    // Niciodata direct verificat - verificarea ramane un pas separat.
+    if (action === 'unsuspend_profile') {
+      const loc = await svc.entities.ProviderLocation.get(p.location_id).catch(() => null);
+      if (!loc) return bad('Locatia nu exista');
+      const note = String(p.note || '').trim();
+      if (!note) return bad('Ridicarea suspendarii necesita o nota');
+      if (loc.profile_control_status !== 'suspended' && loc.verification_state !== 'suspended') {
+        return bad('Profilul nu este suspendat');
+      }
+      const activeMemberships = await svc.entities.ProviderMembership
+        .filter({ location_id: loc.id, status: 'active' }, '-created_date', 1)
+        .catch(() => null);
+      if (!Array.isArray(activeMemberships)) return bad('Nu am putut verifica accesul locatiei. Incearca din nou.');
+      const claimed = loc.claim_verification_status === 'approved' || activeMemberships.length > 0;
+      const now = new Date().toISOString();
+      const updates = {
+        profile_control_status: claimed ? 'claimed' : 'directory',
+        verification_state: claimed ? 'in_verification' : 'unclaimed',
+        is_verified: false,
+        profile_control_status_updated_at: now,
+        profile_control_status_reason: note,
+      };
+      await svc.entities.ProviderLocation.update(loc.id, updates);
+      await audit(svc, user, {
+        entity_type: 'ProviderLocation',
+        entity_id: loc.id,
+        action_type: 'unsuspend_profile',
+        changed_fields: Object.keys(updates),
+        previous: {
+          profile_control_status: loc.profile_control_status,
+          verification_state: loc.verification_state,
+          is_verified: loc.is_verified === true,
+        },
+        next: { profile_control_status: updates.profile_control_status, verification_state: updates.verification_state, is_verified: false },
+        note,
+      });
+      return Response.json({ success: true, profile_control_status: updates.profile_control_status });
     }
 
     // ---------- CLAIM APPROVAL / REJECTION (retrase 2026-10-01) ----------
