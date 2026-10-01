@@ -68,6 +68,40 @@ function formatDate(value) {
   }
 }
 
+// 2026-10-01: cererile de stergere a contului vin din Setarile contului (getMyAccountDeletionEligibility,
+// action "request") cu aceasta sursa. Termenul de raspuns e de 30 de zile de la cerere, aceeasi
+// valoare ca ACCOUNT_DELETION_RESPONSE_DAYS din backend.
+const ACCOUNT_DELETION_SOURCE = "account_deletion_request";
+const ACCOUNT_DELETION_RESPONSE_DAYS = 30;
+
+function isAccountDeletionRequest(ticket) {
+  return ticket?.source === ACCOUNT_DELETION_SOURCE;
+}
+
+function accountDeletionDeadline(ticket) {
+  if (!isAccountDeletionRequest(ticket) || !ACTIVE_STATUSES.has(ticket.status || "open")) return null;
+  const created = new Date(ticket.created_date);
+  if (Number.isNaN(created.getTime())) return null;
+  const due = new Date(created.getTime() + ACCOUNT_DELETION_RESPONSE_DAYS * 86400000);
+  const daysLeft = Math.ceil((due.getTime() - Date.now()) / 86400000);
+  return { due, daysLeft };
+}
+
+function DeletionDeadlineBadge({ ticket }) {
+  const deadline = accountDeletionDeadline(ticket);
+  if (!deadline) return null;
+  const late = deadline.daysLeft < 0;
+  const soon = !late && deadline.daysLeft <= 7;
+  const label = late
+    ? `Ștergere cont · termen depășit cu ${Math.abs(deadline.daysLeft)} zile`
+    : `Ștergere cont · ${deadline.daysLeft} ${deadline.daysLeft === 1 ? "zi" : "zile"} rămase`;
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${late ? "border-red-300 bg-red-50 text-red-800" : soon ? "border-amber-300 bg-amber-50 text-amber-800" : "border-border bg-secondary text-foreground"}`}>
+      {label}
+    </span>
+  );
+}
+
 function StatusBadge({ status }) {
   const [label, className] = STATUS_STYLE[status] || STATUS_STYLE.open;
   return (
@@ -410,6 +444,9 @@ export default function AdminSupportTickets({ adminUser }) {
                       <div className="mt-1 text-[10px] text-muted-foreground">
                         Actualizat {formatDate(ticket.updated_date || ticket.created_date)}
                       </div>
+                      {isAccountDeletionRequest(ticket) && (
+                        <div className="mt-2"><DeletionDeadlineBadge ticket={ticket} /></div>
+                      )}
                     </button>
                   );
                 })}
@@ -432,6 +469,7 @@ export default function AdminSupportTickets({ adminUser }) {
                     <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
                       {CATEGORY_LABELS[selectedTicket.category] || "Suport"}
                     </span>
+                    <DeletionDeadlineBadge ticket={selectedTicket} />
                   </div>
                   <h2 className="mt-3 break-words font-heading text-xl font-extrabold leading-snug">
                     {selectedTicket.subject}
