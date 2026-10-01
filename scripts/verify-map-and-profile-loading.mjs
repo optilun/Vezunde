@@ -36,9 +36,18 @@ async function listFiles(dir) {
   assert.match(resultsMap, /lazy\(\(\) => loadVectorCanvas\(\)\.catch\(\(\) => \(\{ default: VectorCanvasUnavailable \}\)\)\)/, 'fisier lipsa -> harta 2D, nu pagina cazuta');
   assert.match(resultsMap, /report\.current\?\.\("unavailable"\)/);
   assert.match(resultsMap, /<Suspense fallback=\{VECTOR_LOADING\}>/);
-  for (const page of ['src/pages/Search.jsx', 'src/pages/RequestMatches.jsx']) {
-    assert.match(await read(page), /useEffect\(\(\) => \{ preloadVectorCanvas\(\); \}, \[\]\);/, `${page} porneste descarcarea hartii in paralel`);
-  }
+  // 2026-10-01 (decizia Alex): pe telefon /cauta porneste cu cardurile, nu cu harta, deci harta
+  // se descarca in avans doar pe desktop. Ecranul de recomandari o descarca in continuare mereu.
+  assert.match(
+    await read('src/pages/Search.jsx'),
+    /useEffect\(\(\) => \{ if \(window\.matchMedia\("\(min-width: 1024px\)"\)\.matches\) preloadVectorCanvas\(\); \}, \[\]\);/,
+    'src/pages/Search.jsx porneste descarcarea hartii in paralel pe desktop',
+  );
+  assert.match(
+    await read('src/pages/RequestMatches.jsx'),
+    /useEffect\(\(\) => \{ preloadVectorCanvas\(\); \}, \[\]\);/,
+    'src/pages/RequestMatches.jsx porneste descarcarea hartii in paralel',
+  );
 }
 
 // 2. Markerele nu mai asteapta fundalul hartii.
