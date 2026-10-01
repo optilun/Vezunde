@@ -294,13 +294,6 @@ export default function Hero({ onStartedChange } = {}) {
               ))}
             </div>
 
-            <p
-              className="home-fade-up mt-5 text-xs sm:mt-6"
-              style={{ color: "#6A655E", "--home-delay": "260ms" }}
-            >
-              <span className="sm:hidden">Orientare automată, nu diagnostic.<br />Fără date personale.</span>
-              <span className="hidden sm:inline">Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu oferă diagnostic medical.</span>
-            </p>
           </>
         )}
       </div>
