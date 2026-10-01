@@ -103,10 +103,11 @@ async function archiveRejectedNewLocation(svc, user, claim, note) {
 // vine. Un membership existent (de exemplu dintr-o invitatie) isi pastreaza originea; doar unul
 // fara origine primeste originea revendicarii.
 async function ensureMembership(svc, values) {
+  // Campurile goale nu se trimit deloc (claim_scope este enum, iar null nu e o valoare a lui).
   const origin = {
     access_origin: 'claim',
-    claim_request_id: values.claim_request_id || null,
-    claim_scope: values.claim_scope || null,
+    ...(values.claim_request_id ? { claim_request_id: values.claim_request_id } : {}),
+    ...(values.claim_scope ? { claim_scope: values.claim_scope } : {}),
   };
   const existing = await svc.entities.ProviderMembership.filter({
     user_id: values.user_id,
