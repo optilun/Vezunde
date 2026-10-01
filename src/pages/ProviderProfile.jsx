@@ -16,7 +16,7 @@ import {
 import { PROFESSIONAL_TYPES } from "@/lib/vezunde";
 // 2026-09-03: etichetele specializarilor vin din shared, nu dintr-o a saptea copie locala.
 import { professionalSpecializationLabel } from "../../shared/professionalIdentity.js";
-import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
+import { buildGoogleMapsDirectionsUrl, buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
 import { CLIENT_NEED_BY_KEY, summarizePublicServices } from "@/lib/servicePresentation";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 import ProviderLocationHero from "@/components/provider/ProviderLocationHero";
@@ -417,6 +417,7 @@ export default function ProviderProfile() {
   const status = profile.profile_control_status;
   const mapUrl = buildGoogleMapsUrl(profile);
   const embedUrl = buildGoogleMapsEmbedUrl(profile);
+  const directionsUrl = buildGoogleMapsDirectionsUrl(profile);
   const websiteLabel = profile.website ? compactUrl(profile.website) : "";
   const socialLinks = SOCIAL_LINKS.filter((item) => profile[item.key]);
   const addressLabel = fullAddress(profile);
@@ -536,16 +537,19 @@ export default function ProviderProfile() {
             {profile.availability_label && <p className="mt-4 rounded-2xl bg-secondary px-3 py-2 text-xs leading-relaxed text-muted-foreground">{profile.availability_label} · publicat de furnizor</p>}
           </div>
 
+
+            </>
+          )}
           <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-heading text-sm font-bold">Hartă și adresă</h2>
+                  <h2 className="font-heading text-sm font-bold">Locație și traseu</h2>
                   {addressLabel ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{addressLabel}</p> : <p className="mt-2 text-sm text-muted-foreground">Adresa completă nu este publicată.</p>}
                   {profile.map_precision === "approximate" && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Poziție aproximativă, calculată din adresă.</p>}
                   {profile.map_precision === "exact" && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Poziție confirmată pe hartă.</p>}
                 </div>
-                {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary">Deschide în Maps <ExternalLink className="h-3 w-3" /></a>}
+                {directionsUrl && <a href={directionsUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary">Traseu <ExternalLink className="h-3 w-3" /></a>}
               </div>
             </div>
             {hasMapLocation(profile) && embedUrl ? (
@@ -556,8 +560,6 @@ export default function ProviderProfile() {
               <div className="border-t border-border bg-secondary/40 p-5 text-sm text-muted-foreground">Harta va fi afișată după publicarea adresei sau a pinului verificat.</div>
             )}
           </div>
-            </>
-          )}
         </aside>
       </div>
     </div>
