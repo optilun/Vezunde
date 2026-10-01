@@ -5,7 +5,7 @@
 //      neverificati sau fara consimtamant pentru locatie;
 //   2. locatiile noi propuse de furnizori: fara limita, orfani la respingere, verificarea de
 //      duplicate citea doar 500 de locatii si arata altor utilizatori locatii nepublicate;
-//   3. extinderea unei organizatii cu o locatie noua o publica direct ca \"verificata\".
+//   3. extinderea unei organizatii cu o locatie noua o publica direct ca "verificata".
 // Testul tine regulile pure si legaturile lor din functiile backend.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
