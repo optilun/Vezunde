@@ -60,6 +60,7 @@
     "test:account-loading": "node scripts/verify-account-workspace-loading.mjs",
     "test:provider-location-access": "node scripts/verify-provider-location-access-scope.mjs",
     "test:provider-context-url": "node scripts/verify-provider-context-url.mjs",
+    "test:precise-location": "node scripts/verify-precise-location.mjs",
     "test:provider-account-hardening": "node scripts/verify-provider-account-workspace-hardening.mjs",
     "test:patient-intake-session": "node scripts/verify-patient-intake-session-hardening.mjs",
     "test:directory-auto-import": "node scripts/verify-directory-auto-import.mjs"
