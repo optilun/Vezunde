@@ -98,19 +98,27 @@ async function archiveRejectedNewLocation(svc, user, claim, note) {
   return result;
 }
 
+// 2026-10-01. Accesul primit dintr-o revendicare poarta acum originea lui (`access_origin: 'claim'`,
+// `claim_request_id`, `claim_scope`), ca in workspace si in audit sa se poata spune din ce cerere
+// vine. Un membership existent (de exemplu dintr-o invitatie) isi pastreaza originea; doar unul
+// fara origine primeste originea revendicarii.
 async function ensureMembership(svc, values) {
+  const origin = {
+    access_origin: 'claim',
+    claim_request_id: values.claim_request_id || null,
+    claim_scope: values.claim_scope || null,
+  };
   const existing = await svc.entities.ProviderMembership.filter({
     user_id: values.user_id,
     location_id: values.location_id,
     status: 'active',
   }, '-created_date', 20);
   if (existing[0]) {
-    if (existing[0].role !== values.role || existing[0].organization_id !== values.organization_id) {
-      await svc.entities.ProviderMembership.update(existing[0].id, {
-        role: values.role,
-        organization_id: values.organization_id || null,
-      });
-    }
+    const updates = {};
+    if (existing[0].role !== values.role) updates.role = values.role;
+    if ((existing[0].organization_id || null) !== (values.organization_id || null)) updates.organization_id = values.organization_id || null;
+    if (!existing[0].access_origin) Object.assign(updates, origin);
+    if (Object.keys(updates).length > 0) await svc.entities.ProviderMembership.update(existing[0].id, updates);
     return existing[0].id;
   }
   const created = await svc.entities.ProviderMembership.create({
@@ -119,6 +127,7 @@ async function ensureMembership(svc, values) {
     location_id: values.location_id,
     role: values.role,
     status: 'active',
+    ...origin,
   });
   return created.id;
 }
@@ -244,6 +253,8 @@ export async function handle(req: Request) {
         organization_id: organizationId,
         location_id: locationId,
         role: approvedRole,
+        claim_request_id: claim.id,
+        claim_scope: isLocationScopedClaim ? 'location' : (['location', 'selected_locations', 'organization'].includes(submitted.claim_scope) ? submitted.claim_scope : null),
       }));
     }
 
