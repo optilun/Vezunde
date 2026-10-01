@@ -606,20 +606,39 @@ export async function handle(req: Request) {
       const note = String(p.note || '').trim();
       if (!note) return bad('Verificarea profilului necesita o nota');
 
+      // 2026-10-01. Modelul canonic (deriveCanonicalControlStatus) considera o locatie verificata
+      // doar cand profile_control_status, verification_state si is_verified spun toate acelasi
+      // lucru. Butonul "Verifica" schimba doar primul camp, asa ca profilul ramanea afisat public
+      // ca revendicat. Acum seteaza toate trei si lasa o inregistrare de verificare manuala.
+      const verifiedAt = new Date().toISOString();
       const updates = {
         profile_control_status: 'verified',
-        profile_control_status_updated_at: new Date().toISOString(),
+        verification_state: 'verified',
+        is_verified: true,
+        profile_control_status_updated_at: verifiedAt,
         profile_control_status_reason: note,
-        last_verified_at: new Date().toISOString(),
+        last_verified_at: verifiedAt,
       };
       await svc.entities.ProviderLocation.update(loc.id, updates);
+      await svc.entities.VerificationRecord.create({
+        location_id: loc.id,
+        verification_method: 'manual',
+        result: 'aprobat',
+        notes: note,
+        verified_by: user.email,
+        verified_at: verifiedAt,
+      });
       await audit(svc, user, {
         entity_type: 'ProviderLocation',
         entity_id: loc.id,
         action_type: 'verify_profile',
         changed_fields: Object.keys(updates),
-        previous: { profile_control_status: loc.profile_control_status },
-        next: { profile_control_status: 'verified' },
+        previous: {
+          profile_control_status: loc.profile_control_status,
+          verification_state: loc.verification_state,
+          is_verified: loc.is_verified === true,
+        },
+        next: { profile_control_status: 'verified', verification_state: 'verified', is_verified: true },
         note,
       });
       return Response.json({ success: true });
