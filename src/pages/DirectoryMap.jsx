@@ -81,7 +81,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [retry, setRetry] = useState(0);
   const [visibleIds, setVisibleIds] = useState(null);
   const [pageSize, setPageSize] = useState(saved.pageSize || 24);
-  // E2: alegerea explicita lista/harta (comuna cu /cauta pe o localitate); altfel harta.
+  // Mobile starts with the complete list; an explicit list/map choice survives navigation.
   const [mobileView, setMobileView] = useState(() => readMobileViewChoice("list"));
   const toggleMobileView = useCallback(() => setMobileView((view) => {
     const next = view === "map" ? "list" : "map";
@@ -237,7 +237,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         </div>
       </details>
       {selectedOutsidePage && <p className="mt-2 text-xs text-[#4f6080]">Locația aleasă pe hartă este afișată prima.</p>}
-      <p aria-live="polite" className="sr-only">{announcedCount === null ? "" : `${announcedCount} ${announcedCount === 1 ? "locație" : "locații"} în zona vizibilă`}</p>
+      <p aria-live="polite" className="sr-only">{announcedCount === null ? "" : `${announcedCount} ${announcedCount === 1 ? "locație" : "locații"} ${desktop ? "în zona vizibilă" : "în listă"}`}</p>
       {state.snapshotAt && <p role="status" className="mt-2 text-xs leading-relaxed text-[#8a4b2a]">
         Harta arată locațiile din {formatSnapshotDate(state.snapshotAt)}. Lista actuală nu s-a putut încărca acum.{" "}
         <button type="button" onClick={() => setRetry((value) => value + 1)} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Reîncearcă</button>
@@ -254,8 +254,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-3">
-      {/* 2026-09-24. Pe telefon, cat se incarca directorul, locul are deja inaltimea hartii (70vh +
-          spatiul de deasupra ei), ca nota de sub harta sa nu fie impinsa in jos cand apare harta. */}
+      {/* Reserve space for the list loading state; the map opens in its own mobile dialog. */}
       <div className="min-h-[16rem] pb-20 lg:min-h-[24rem] lg:pb-0">
         {state.status === "loading" && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
