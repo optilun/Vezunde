@@ -48,6 +48,8 @@ export default function LocationsWithMap({
   mapStorageKey = storageKey,
   // Un element asezat peste harta (ex. „Caută în această zonă”).
   mapOverlay = null,
+  // 2026-10-01: pozitia vizitatorului ({ lat, lng, accuracy }), desenata pe harta cu cercul de precizie.
+  userLocation = null,
 }) {
   const gridLayout = listLayout === "grid";
   const searchRows = results || NO_ROWS;
@@ -227,6 +229,7 @@ export default function LocationsWithMap({
               focusArea={focusArea}
               rankById={rankById}
               fitKey={fitKey}
+              userLocation={userLocation}
               className={fixedDesktop ? "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-full" : "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"}
             />
             {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
