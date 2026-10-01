@@ -214,7 +214,7 @@ export default function AdminSupportTickets({ adminUser }) {
 
   const visibleTickets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return (tickets || []).filter((ticket) => {
+    const filtered = (tickets || []).filter((ticket) => {
       const status = ticket.status || "open";
       if (statusFilter === "active" && !ACTIVE_STATUSES.has(status)) return false;
       if (statusFilter === "resolved" && !["resolved", "closed"].includes(status)) return false;
@@ -222,6 +222,12 @@ export default function AdminSupportTickets({ adminUser }) {
       if (priorityFilter !== "all" && ticket.priority !== priorityFilter) return false;
       return matchesSearch(ticket, normalizedQuery);
     });
+    // Cererile de stergere active stau primele, cel mai apropiat termen sus; restul isi pastreaza
+    // ordinea (ultima actualizare).
+    const withDeadline = filtered
+      .filter((ticket) => accountDeletionDeadline(ticket))
+      .sort((a, b) => accountDeletionDeadline(a).daysLeft - accountDeletionDeadline(b).daysLeft);
+    return [...withDeadline, ...filtered.filter((ticket) => !accountDeletionDeadline(ticket))];
   }, [categoryFilter, priorityFilter, query, statusFilter, tickets]);
 
   useEffect(() => {
