@@ -218,6 +218,15 @@ export async function handle(req: Request) {
       }, { status: 400 });
     }
 
+    // 2026-10-01. Fara organizatie, membership-ul ar avea organization_id null si contul nu ar
+    // primi spatiu de organizatie (vezi aceeasi regula in adminProviderScopedClaimReview).
+    if (!clean(location.organization_id || claim.organization_id)) {
+      return Response.json({
+        error: 'Locatia nu are organizatie. Asociaz-o unei organizatii din Directory Ops inainte de aprobare.',
+        code: 'location_without_organization',
+      }, { status: 409 });
+    }
+
     const isNewLocation = claim.mode === 'new_location';
     const locationUpdates = {
       claim_verification_status: 'approved',
