@@ -57,7 +57,7 @@ function distanceLabel(km) {
 // `rankKind="recommendation"` (numarul este pozitia in cele mai potrivite optiuni, primita de la
 // server, nu numarul unui pin), `linkState` (starea de intoarcere spre lista de recomandari) si
 // `onProfileClick` / `onPhoneClick` (analitica). Fara ele, cardul se comporta exact ca inainte.
-export default function DirectoryResultCard({ location, onShowMap, distanceKm = null, rank = null, details = null, rankKind = "pin", linkState = undefined, onProfileClick = undefined, onPhoneClick = undefined }) {
+export default function DirectoryResultCard({ compactMobile = false, location, onShowMap, distanceKm = null, rank = null, details = null, rankKind = "pin", linkState = undefined, onProfileClick = undefined, onPhoneClick = undefined }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const phoneHref = publicPhoneLink(location.phone);
@@ -77,9 +77,9 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
   const profileHref = `/furnizor/${location.id}`;
 
   return (
-    <article className={`flex h-full min-w-0 flex-col p-5 sm:p-6 ${BESIDE.article}`}>
-      <div className={`relative ${BESIDE.coverWrap}`}>
-        <div className={`relative aspect-[2/1] overflow-hidden rounded-md border border-border sm:aspect-[16/9] ${BESIDE.coverBox} ${photo ? "bg-secondary" : `bg-gradient-to-br ${tone}`}`}>
+    <article data-mobile-directory-card={compactMobile ? "" : undefined} className={`flex h-full min-w-0 flex-col p-5 sm:p-6 ${BESIDE.article}`}>
+      <div data-card-cover-wrap className={`relative ${BESIDE.coverWrap}`}>
+        <div data-card-cover className={`relative aspect-[2/1] overflow-hidden rounded-md border border-border sm:aspect-[16/9] ${BESIDE.coverBox} ${photo ? "bg-secondary" : `bg-gradient-to-br ${tone}`}`}>
           {photo ? (
             <img
               src={photo}
@@ -95,7 +95,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
               {city && <span aria-hidden="true" className={`absolute bottom-4 left-4 right-16 truncate font-display text-[26px] font-semibold leading-tight tracking-tight text-[#2b3445]/80 ${BESIDE.city}`}>{city}</span>}
             </>
           )}
-          <div className={`absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 ${BESIDE.badges}`}>
+          <div data-card-badges className={`absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 ${BESIDE.badges}`}>
             {rank && (
               <span className="inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-[#171717] px-1.5 text-xs font-extrabold tabular-nums text-white shadow-sm group-data-[selected]/cell:bg-[#4f6080]">
                 {rankKind === "recommendation"
@@ -116,19 +116,20 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
             loading="lazy"
             decoding="async"
             onError={() => setLogoFailed(true)}
+            data-card-logo data-has-photo={photo ? "" : undefined}
             className={`absolute -bottom-6 left-4 h-12 w-12 rounded-full border-2 border-white bg-white object-contain shadow-[0_2px_8px_rgba(23,23,23,0.12)] ${BESIDE.logo}`}
           />
         )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-      <p className={`text-xs font-semibold text-[#4f6080] ${BESIDE.typeLine}`}>{typeLabel}</p>
-      <div className={`flex items-start gap-2 ${logo ? "mt-9" : "mt-5"} ${BESIDE.titleRow}`}>
+      <p data-card-type className={`text-xs font-semibold text-[#4f6080] ${BESIDE.typeLine}`}>{typeLabel}</p>
+      <div data-card-title-row className={`flex items-start gap-2 ${logo ? "mt-9" : "mt-5"} ${BESIDE.titleRow}`}>
         <h3 className={`min-w-0 flex-1 break-words font-heading text-xl font-bold leading-snug tracking-tight sm:text-[22px] ${BESIDE.title}`}>
           <Link to={profileHref} state={linkState} onClick={onProfileClick} className="rounded-sm transition-colors hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{location.name}</Link>
           {status === "verified" && <><span className="sr-only"> (profil verificat)</span><BadgeCheck aria-hidden="true" className="ml-1.5 inline-block h-5 w-5 align-[-3px] text-[#4f6080]" /></>}
         </h3>
-        <div className="-mr-2 -mt-1.5 flex shrink-0 items-center">
+        <div data-card-quick-actions className="-mr-2 -mt-1.5 flex shrink-0 items-center">
           {onShowMap && (
             <button
               type="button"
@@ -151,7 +152,7 @@ export default function DirectoryResultCard({ location, onShowMap, distanceKm = 
       {location.service_coverage_status === "not_listed" && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Serviciile nu sunt încă listate sau confirmate.</p>}
       {details}
 
-      <div className={`mt-auto flex items-end justify-between gap-4 pt-5 ${BESIDE.footer}`}>
+      <div data-card-footer className={`mt-auto flex items-end justify-between gap-4 pt-5 ${BESIDE.footer}`}>
         <p className="min-w-0 text-sm leading-snug text-muted-foreground">
           {distance && <span className="font-semibold text-foreground">{distance}</span>}
           {distance && statusLabel && <span aria-hidden="true"> · </span>}
