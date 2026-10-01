@@ -16,7 +16,7 @@ import {
   readRecentLocalities,
   rememberLocality,
 } from "@/lib/localityQuickPicks";
-import { locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
+import { formatAccuracy, locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
 
 // Raspunsurile deja primite raman in memorie cat timp e deschisa pagina: stergerea unei litere sau
 // revenirea la acelasi oras nu mai asteapta serverul.
@@ -121,7 +121,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
     geoCancel.current?.();
     setGeo({ status: "loading", nearby: [] });
     // 2026-10-01. Pozitie de inalta precizie, rafinata cateva secunde, fara cache (lib/preciseLocation.js).
-    const search = locatePrecisely();
+    const search = locatePrecisely({ onProgress: (fix) => { if (alive.current) setGeo((current) => (current.status === "loading" ? { ...current, accuracy: fix.accuracy } : current)); } });
     geoCancel.current = search.cancel;
     search.promise.then(async (fix) => {
       if (!alive.current) return;
@@ -248,7 +248,7 @@ const LocalityAutocomplete = forwardRef(function LocalityAutocomplete({
         <div key="geo" {...optionProps(option, index)}>
           {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4f6080]" aria-hidden="true" /> : <LocateFixed className="h-4 w-4 shrink-0 text-[#4f6080]" aria-hidden="true" />}
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold text-[#4f6080]">{loading ? "Se caută poziția..." : "Folosește locația mea"}</span>
+            <span className="block font-semibold text-[#4f6080]">{loading ? (geo.accuracy ? `Se precizează poziția (${formatAccuracy(geo.accuracy)})...` : "Se caută poziția...") : "Folosește locația mea"}</span>
             <span className="block text-xs text-muted-foreground">Găsim localitățile apropiate. Poziția nu pleacă de pe dispozitivul tău.</span>
           </span>
         </div>
