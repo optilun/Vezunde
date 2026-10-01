@@ -267,7 +267,7 @@ export async function handle(req: Request) {
     // stricata pe viitor. Adminul asociaza intai locatia unei organizatii (Directory Ops).
     if (approvedLocationRows.some((location) => !clean(location.organization_id, 160))) {
       return Response.json({
-        error: 'Una dintre locatii nu are organizatie. Asociaz-o unei organizatii din Directory Ops inainte de aprobare.',
+        error: 'Una dintre locatii nu are organizatie. Asociaz-o unei organizatii din Directory Ops -> Mapare organizatii si locatii, apoi aproba.',
         code: 'location_without_organization',
       }, { status: 409 });
     }

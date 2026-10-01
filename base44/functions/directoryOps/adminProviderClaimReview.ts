@@ -222,7 +222,7 @@ export async function handle(req: Request) {
     // primi spatiu de organizatie (vezi aceeasi regula in adminProviderScopedClaimReview).
     if (!clean(location.organization_id || claim.organization_id)) {
       return Response.json({
-        error: 'Locatia nu are organizatie. Asociaz-o unei organizatii din Directory Ops inainte de aprobare.',
+        error: 'Locatia nu are organizatie. Asociaz-o unei organizatii din Directory Ops -> Mapare organizatii si locatii, apoi aproba.',
         code: 'location_without_organization',
       }, { status: 409 });
     }
