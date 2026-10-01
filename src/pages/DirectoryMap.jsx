@@ -6,7 +6,7 @@ import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import useRememberScroll from "@/hooks/useRememberScroll";
-import { locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
+import { accuracyNote, formatAccuracy, locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
 
 import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom } from "../../shared/nearbyDirectory.js";
 
@@ -38,6 +38,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const type = providerType;
   const [origin, setOrigin] = useState(null);
   const [geoStatus, setGeoStatus] = useState("idle");
+  const [geoProgress, setGeoProgress] = useState(null);
   const [radiusKm, setRadiusKm] = useState(15);
   const geoRequest = useRef(0);
   const geoCancel = useRef(null);
@@ -49,7 +50,9 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     geoCancel.current?.();
     const requestId = ++geoRequest.current;
     setGeoStatus("loading");
-    const search = locatePrecisely();
+    setGeoProgress(null);
+    // Cat se precizeaza pozitia, vizitatorul vede precizia curenta; harta nu se muta pana la final.
+    const search = locatePrecisely({ onProgress: (fix) => { if (alive.current && requestId === geoRequest.current) setGeoProgress(fix.accuracy); } });
     geoCancel.current = search.cancel;
     search.promise.then((fix) => {
       if (!alive.current || requestId !== geoRequest.current) return;
@@ -235,6 +238,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       </p>}
       {geoMessage && <p role="status" className="mt-2 text-sm text-muted-foreground">{geoMessage}</p>}
       {origin && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        {origin.accuracy != null && <span role="status">{accuracyNote(origin.accuracy)}</span>}
         <span>Zonă inițială: aprox. {radiusKm} km.</span>
         {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-secondary">Extinde la {radiusKm * 2} km</button>}
       </div>}
@@ -285,7 +289,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               listHeader={listHeader}
               mapActions={<button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-white shadow-md px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
             {geoStatus === "loading" ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <LocateFixed aria-hidden="true" className="h-4 w-4" />}
-            {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
+            {geoStatus === "loading" ? (geoProgress ? `Se precizează poziția (${formatAccuracy(geoProgress)})...` : "Se caută poziția...") : "În apropierea mea"}
           </button>}
               mapStatus={geoMessage}
               results={visiblePoints}
