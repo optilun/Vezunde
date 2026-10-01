@@ -29,6 +29,24 @@ export function locationQuality(accuracyM) {
   return "coarse";
 }
 
+// „~30 m” / „~2,4 km”: precizia pentru afisare. Sub 100 m se rotunjeste la 5 m, pana la 1 km la 10 m.
+export function formatAccuracy(accuracyM) {
+  if (!Number.isFinite(accuracyM)) return "";
+  if (accuracyM >= 1000) return `~${(accuracyM / 1000).toLocaleString("ro-RO", { maximumFractionDigits: 1 })} km`;
+  const step = accuracyM < 100 ? 5 : 10;
+  return `~${Math.max(step, Math.round(accuracyM / step) * step)} m`;
+}
+
+// Mesajul pentru client, dupa ce pozitia e gata.
+export function accuracyNote(accuracyM) {
+  const value = formatAccuracy(accuracyM);
+  if (!value) return "";
+  const quality = locationQuality(accuracyM);
+  if (quality === "gps") return `Poziție precisă (${value}).`;
+  if (quality === "wifi") return `Poziție aproximativă (${value}). Pe laptop sau fără GPS, precizia e mai mică.`;
+  return `Poziție vagă (${value}). Alege localitatea pentru rezultate mai exacte.`;
+}
+
 const PERMISSION_DENIED = 1;
 
 /**
