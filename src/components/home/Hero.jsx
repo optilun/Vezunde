@@ -217,10 +217,11 @@ export default function Hero({ onStartedChange } = {}) {
         ) : (
           <>
             <h1
-              className="home-rise font-heading text-balance text-[2.2rem] font-extrabold leading-[1.08] tracking-[-0.04em] min-[390px]:text-[2.35rem] sm:text-[4.25rem]"
+              className="home-rise font-heading text-balance text-[clamp(1.625rem,8.2vw,2.125rem)] font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
-              Găsește îngrijirea potrivită pentru ochi.
+              <span className="block whitespace-nowrap sm:inline sm:whitespace-normal">Găsește îngrijirea</span>{" "}
+              <span className="block whitespace-nowrap sm:inline sm:whitespace-normal">potrivită pentru ochi.</span>
             </h1>
 
             <p
