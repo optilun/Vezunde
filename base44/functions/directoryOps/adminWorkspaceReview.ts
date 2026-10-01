@@ -50,13 +50,11 @@ const SECTION_FIELDS = {
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const SPECIALIST_INVITE_ROLES = ['ophthalmologist', 'optometrist', 'optician', 'contact_lens_specialist', 'optical_workshop_specialist', 'other_specialist', 'other_relevant_specialist'];
-const ROLE_BY_TYPE = { ophthalmologist: 'medic_oftalmolog', optometrist: 'optometrist', optician: 'optician' };
 const LEGACY_MIRRORS = { public_description: ['description'], website_url: ['website'], public_phone: ['phone_public'] };
 
 function bad(body, status = 400) { return { valid: false, status, body }; }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 function cleanString(value) { return String(value || '').trim(); }
-function normalizePersonName(value) { return cleanString(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' '); }
 
 function checkUnknown(section, payload) {
   const allowed = SECTION_FIELDS[section];
@@ -465,124 +463,11 @@ async function applyServices(svc, user, submission, payload) {
   });
 }
 
-async function assertLocationsInScope(svc, rootLoc, locationIds) {
-  for (const id of locationIds) {
-    const target = await svc.entities.ProviderLocation.get(id).catch(() => null);
-    if (!target) throw new Error('Locatie atribuita inexistenta');
-    if (rootLoc.organization_id) {
-      if (target.organization_id !== rootLoc.organization_id) throw new Error('Membru alocat in afara organizatiei permise');
-    } else if (target.id !== rootLoc.id) throw new Error('Membru alocat in afara locatiei independente');
-  }
-}
-
-async function professionalAlreadyInScope(svc, rootLoc, professionalId) {
-  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
-    professional_id: professionalId,
-    active_status: 'activ',
-  }, null, 100);
-  for (const assignment of assignments) {
-    const loc = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
-    if (!loc) continue;
-    if (rootLoc.organization_id && loc.organization_id === rootLoc.organization_id) return true;
-    if (!rootLoc.organization_id && loc.id === rootLoc.id) return true;
-  }
-  return false;
-}
-
-async function assertTeamPhoto(svc, locationId, mediaId) {
-  if (!mediaId) return;
-  const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
-  if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') {
-    throw new Error('photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie');
-  }
-}
-
-async function assertNoTeamDuplicate(svc, member, profileId) {
-  for (const locationId of member.assigned_location_ids) {
-    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
-      location_id: locationId,
-      active_status: 'activ',
-    }, null, 100);
-    for (const assignment of assignments) {
-      if (profileId && assignment.professional_id === profileId) continue;
-      if (assignment.professional_type !== member.professional_type) continue;
-      const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
-      if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) {
-        throw new Error('Exista deja un profesionist similar in aceasta locatie. Verifica manual inainte de aprobare.');
-      }
-    }
-  }
-}
-
-async function applyTeam(svc, user, submission, payload) {
-  const rootLoc = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
-  if (!rootLoc) throw new Error('Locatia nu a fost gasita');
-  for (const member of payload.members || []) {
-    await assertLocationsInScope(svc, rootLoc, member.assigned_location_ids);
-    await assertTeamPhoto(svc, submission.location_id, member.photo_media_id);
-    let profile = member.professional_id
-      ? await svc.entities.ProfessionalProfile.get(member.professional_id).catch(() => null)
-      : null;
-    if (member.professional_id && (!profile || !(await professionalAlreadyInScope(svc, rootLoc, member.professional_id)))) {
-      throw new Error('ProfessionalProfile nu apartine scopului permis');
-    }
-    await assertNoTeamDuplicate(svc, member, profile?.id || '');
-    const profileData = {
-      full_name: member.full_name,
-      professional_type: member.professional_type,
-      role: ROLE_BY_TYPE[member.professional_type],
-      public_display_name: member.full_name,
-      professional_bio: member.short_bio,
-      profile_photo_url: member.photo_media_id || '',
-      is_public: member.visible_on_public_profile,
-    };
-    if (profile) profile = await svc.entities.ProfessionalProfile.update(profile.id, profileData);
-    else profile = await svc.entities.ProfessionalProfile.create(profileData);
-    for (const locationId of member.assigned_location_ids) {
-      const existing = await svc.entities.ProfessionalLocationAssignment.filter({
-        professional_id: profile.id,
-        location_id: locationId,
-      });
-      const assignmentData = {
-        professional_id: profile.id,
-        location_id: locationId,
-        professional_type: member.professional_type,
-        active_status: 'activ',
-        public_status: member.visible_on_public_profile ? 'public' : 'privat',
-      };
-      if (existing[0]) await svc.entities.ProfessionalLocationAssignment.update(existing[0].id, assignmentData);
-      else await svc.entities.ProfessionalLocationAssignment.create(assignmentData);
-    }
-  }
-  for (const professionalId of payload.removal_professional_ids || []) {
-    if (!(await professionalAlreadyInScope(svc, rootLoc, professionalId))) {
-      throw new Error('ProfessionalProfile de eliminat nu apartine scopului permis');
-    }
-    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
-      professional_id: professionalId,
-      location_id: submission.location_id,
-    });
-    for (const assignment of assignments) {
-      await svc.entities.ProfessionalLocationAssignment.update(assignment.id, {
-        active_status: 'inactiv',
-        public_status: 'privat',
-      });
-    }
-  }
-  const invitationCount = (payload.invitations || []).length;
-  await audit(svc, user, {
-    entity_type: 'ProviderWorkspaceSubmission',
-    entity_id: submission.id,
-    action_type: invitationCount ? 'approve_specialist_invitations_pending_email' : 'apply_team_submission',
-    changed_fields: ['team'],
-    next: invitationCount
-      ? { invitations: payload.invitations }
-      : { members: payload.members, removal_professional_ids: payload.removal_professional_ids },
-    note: invitationCount
-      ? 'Invitatiile au fost aprobate ca intentie. Nu s-au creat profiluri publice si nu s-au trimis emailuri pana nu exista lifecycle dedicat.'
-      : 'Echipa publica aplicata dupa aprobare admin; nu s-au creat conturi de login.',
-  });
-}
+// 2026-10-01. applyTeam si ajutoarele lui (assertLocationsInScope, professionalAlreadyInScope,
+// assertTeamPhoto, assertNoTeamDuplicate) au fost scoase: aprobarea sectiunii legacy "team" este
+// refuzata cu 409 inainte de orice scriere, deci codul nu mai rula. Cand rula, crea
+// ProfessionalProfile fara user_id si asocieri publice fara consimtamantul specialistului.
+// Echipa se administreaza doar prin professionalInvitationOps + manageProfessionalAssignment.
 
 async function applyMedia(svc, user, submission, payload) {
   for (const mediaId of payload.removal_media_ids || []) {
@@ -727,9 +612,6 @@ export async function handle(req: Request) {
         await applyProviderLocationFields(svc, user, submission, validation);
       } else if (submission.section === 'services') {
         await applyServices(svc, user, submission, validation.clean);
-      } else if (submission.section === 'team') {
-        await assertPublicEligible(base44, submission.location_id);
-        await applyTeam(svc, user, submission, validation.clean);
       } else if (submission.section === 'media') {
         await assertPublicEligible(base44, submission.location_id);
         await applyMedia(svc, user, submission, validation.clean);
