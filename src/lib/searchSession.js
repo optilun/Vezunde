@@ -44,9 +44,10 @@ export function handOverCameraToNationalMap(view) {
 // comparat). Cand vizitatorul alege singur lista sau harta, alegerea lui se pastreaza pentru
 // ambele vederi, in aceasta fila.
 export function readMobileViewChoice(fallback) {
-  const choice = readSearchSession().mobileViewChoice;
+  const session = readSearchSession();
+  const choice = session.mobileViewVersion === 2 ? session.mobileViewChoice : null;
   return choice === "map" || choice === "list" ? choice : fallback;
 }
 export function rememberMobileViewChoice(view) {
-  if (view === "map" || view === "list") writeSearchSession({ mobileViewChoice: view });
+  if (view === "map" || view === "list") writeSearchSession({ mobileViewChoice: view, mobileViewVersion: 2 });
 }
