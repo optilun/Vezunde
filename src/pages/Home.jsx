@@ -138,7 +138,7 @@ export default function Home() {
         // Invelisul urca impreuna cu foaia; figurina de optician e ancorata la marginea ei de sus:
         // corpul sta sub foaie (z-0), mainile peste ea (z-20), ca si cum ar tine marginea.
         <div
-          className="relative z-20 -mt-20 sm:-mt-24 lg:-mt-28"
+          className="relative z-20 -mt-8 sm:-mt-24 lg:-mt-28"
           style={pinActive ? { marginTop: `calc(-1 * (${PIN_DISTANCE} + 1.5rem))` } : undefined}
         >
           <OpticianFigureBody />
