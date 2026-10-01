@@ -260,6 +260,17 @@ export async function handle(req: Request) {
     if (approvedLocationRows.some((location) => (scope.organization_id || null) !== (location.organization_id || null))) {
       return Response.json({ error: 'Una dintre locatii nu mai apartine organizatiei verificate.' }, { status: 409 });
     }
+    // 2026-10-01. Accesul la o locatie fara organizatie ar crea un membership cu
+    // organization_id null: contul nu primeste niciun spatiu de organizatie, iar intr-un cont cu
+    // si alte organizatii locatia nu mai apare deloc in workspace. Toate locatiile din date au azi
+    // organizatie (0 fara), deci regula nu blocheaza nimic existent; doar impiedica starea
+    // stricata pe viitor. Adminul asociaza intai locatia unei organizatii (Directory Ops).
+    if (approvedLocationRows.some((location) => !clean(location.organization_id, 160))) {
+      return Response.json({
+        error: 'Una dintre locatii nu are organizatie. Asociaz-o unei organizatii din Directory Ops inainte de aprobare.',
+        code: 'location_without_organization',
+      }, { status: 409 });
+    }
     const [currentLinks, currentStates] = await Promise.all([
       loadRowsForLocationIds(svc.entities.DirectoryOrganizationLocationLink, approvedLocationIds, { query: { link_record_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
       loadRowsForLocationIds(svc.entities.ProviderLocationDirectoryState, approvedLocationIds, { query: { state_status: 'active' }, perLocationLimit: 5, throwOnError: true }),
