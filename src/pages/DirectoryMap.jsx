@@ -233,7 +233,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         <div className="mt-2 space-y-2 rounded-xl border border-border bg-secondary/50 p-3 text-xs leading-relaxed">
           <p>{origin ? "Ordine: apropiere de poziția dispozitivului." : centerOrder ? "Ordine: apropiere de centrul hărții. Mută harta și lista se reordonează." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>
           <p>{desktop ? "Lista urmărește zona vizibilă pe hartă." : "Lista include locațiile de tipul ales, inclusiv cele fără pin publicat. Alege localitatea pentru rezultate din zona ta."} Pozițiile pot fi aproximative; verifică adresa din profil.</p>
-          {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații din director nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
+          {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată." : `${state.meta.withoutPosition} locații din director nu au poziție publicată.`} {desktop ? "Le poți găsi alegând localitatea." : "Rămân disponibile în listă, fără pin pe hartă."}</p>}
         </div>
       </details>
       {selectedOutsidePage && <p className="mt-2 text-xs text-[#4f6080]">Locația aleasă pe hartă este afișată prima.</p>}
