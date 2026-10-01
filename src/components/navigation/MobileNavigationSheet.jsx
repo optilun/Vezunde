@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, NavLink } from "react-router-dom";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
+import HeaderAccountLink from "@/components/HeaderAccountLink";
 import {
   Sheet,
   SheetContent,
@@ -48,6 +49,10 @@ export default function MobileNavigationSheet({ open, onOpenChange }) {
               {item.label}
             </NavLink>
           ))}
+        </div>
+
+        <div className="border-t border-border px-4 py-5 sm:hidden" onClick={close}>
+          <HeaderAccountLink />
         </div>
 
         <div className="border-t border-border px-4 py-5">
