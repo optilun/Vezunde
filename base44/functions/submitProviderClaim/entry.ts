@@ -7,8 +7,11 @@ import {
 
 const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
-const SUBJECT_TYPES = ['organization', 'independent_professional'];
-const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
+// 2026-10-01. O locatie noua se propune doar in numele unei organizatii (asa trimite si
+// NewLocationWizard). Ramura `independent_professional` nu era accesibila din interfata si crea o
+// locatie fara organizatie, deci membership cu organization_id null la aprobare. Specialistii
+// independenti isi fac profilul personal din /profil-profesional/nou.
+const SUBJECT_TYPES = ['organization'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const CONTROLLED_PROFILE_STATUSES = ['claimed', 'verified'];
 const DISABLED_B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
@@ -126,7 +129,9 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Onboardingul furnizorilor B2B nu este disponibil momentan. Foloseste pagina Parteneri pentru a trimite interesul.' }, { status: 400 });
       }
       if (!SUBJECT_TYPES.includes(claimSubjectType)) {
-        return Response.json({ error: 'Alege daca reprezinti o organizatie sau esti profesionist independent' }, { status: 400 });
+        return Response.json({
+          error: 'O locatie noua se propune in numele unei organizatii. Daca esti specialist independent, creeaza-ti profilul profesional din contul tau.',
+        }, { status: 400 });
       }
       if (!l.name || !l.provider_type) {
         return Response.json({ error: 'Nume locatie si tip furnizor sunt obligatorii' }, { status: 400 });
@@ -147,17 +152,8 @@ Deno.serve(async (req) => {
       }
 
       const org = p.organization || {};
-      const prof = p.professional || {};
-      if (claimSubjectType === 'organization' && !String(org.name || '').trim()) {
+      if (!String(org.name || '').trim()) {
         return Response.json({ error: 'Numele organizatiei este obligatoriu' }, { status: 400 });
-      }
-      if (claimSubjectType === 'independent_professional') {
-        if (!String(prof.full_name || '').trim()) {
-          return Response.json({ error: 'Numele complet al profesionistului este obligatoriu' }, { status: 400 });
-        }
-        if (!PROFESSIONAL_TYPES.includes(prof.professional_type)) {
-          return Response.json({ error: 'Tipul de profesionist lipseste sau este invalid' }, { status: 400 });
-        }
       }
 
       const sirutaCode = String(l.locality_siruta_code || '').trim();
@@ -173,7 +169,7 @@ Deno.serve(async (req) => {
       const idResRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
         context: 'provider_new_location',
         candidate: {
-          organization_name: claimSubjectType === 'independent_professional' ? (prof.full_name || '') : org.name,
+          organization_name: org.name,
           location_name: l.name,
           provider_profile_type: l.provider_profile_type,
           locality_siruta_code: geo.siruta_code,
@@ -209,10 +205,7 @@ Deno.serve(async (req) => {
         claim_subject_type: claimSubjectType,
         claimant_relationship: claimantRelationship,
         requested_membership_role: requestedMembershipRole,
-        organization_name: claimSubjectType !== 'independent_professional' ? org.name : '',
-        professional_identity: claimSubjectType === 'independent_professional'
-          ? { full_name: prof.full_name, professional_type: prof.professional_type }
-          : null,
+        organization_name: org.name,
         request_type: 'new_patient_facing_location',
         proposed_location: {
           name: l.name,
