@@ -319,19 +319,110 @@ async function revokeInvitation(svc, user, payload) {
   return response({ success: true });
 }
 
-async function acceptInvitation(svc, user, payload, req) {
+// 2026-10-01. Invitatiile de specialist se comportau altfel decat cele de membru: se puteau
+// accepta doar din linkul din email, fara sa vezi inainte locatia, iar pagina de dupa login nu le
+// gasea. Acum, ca la invitatiile de membru: `list_mine` (invitatiile active pe emailul verificat al
+// contului), `inspect` (detaliile inainte de acceptare) si `accept` cu token SAU cu invitation_id.
+// Fara token, legatura cu emailul este data de contul autentificat cu email verificat - exact
+// aceeasi conditie care se verifica si cu token.
+function emailUnverified(user) {
+  return user.is_verified === false || user.email_verified === false || user.email_verified === 'false';
+}
+
+function requestToken(payload, req) {
   const urlToken = new URL(req.url).searchParams.get('token');
-  const rawToken = cleanString(payload.token || payload.invitation_token || urlToken);
-  if (!rawToken) return response({ error: 'Tokenul invitatiei este obligatoriu' }, 400);
-  if (user.is_verified === false || user.email_verified === false || user.email_verified === 'false') {
+  return cleanString(payload.token || payload.invitation_token || urlToken);
+}
+
+async function findInvitationForRequest(svc, payload, req) {
+  const rawToken = requestToken(payload, req);
+  if (rawToken) {
+    const matches = await svc.entities.ProfessionalInvitation.filter({
+      secure_token_hash: await hashToken(rawToken),
+    }, '-created_date', 2);
+    return { invitation: matches[0] || null, viaToken: true };
+  }
+  const invitationId = cleanString(payload.invitation_id);
+  if (!invitationId) return { invitation: null, viaToken: false, missing: true };
+  const invitation = await svc.entities.ProfessionalInvitation.get(invitationId).catch(() => null);
+  return { invitation, viaToken: false };
+}
+
+function invitationViewForProfessional(invitation, location) {
+  return {
+    id: invitation.id,
+    professional_type: invitation.professional_type,
+    status: invitation.status,
+    expires_at: invitation.expires_at || null,
+    location: {
+      id: location.id,
+      name: location.public_display_name || location.name || '',
+      city: location.locality_name || location.city || '',
+      county: location.county_name || location.county || '',
+    },
+  };
+}
+
+async function listMyInvitations(svc, user) {
+  if (emailUnverified(user)) return response({ invitations: [], count: 0, email_unverified: true });
+  const email = normalizeEmail(user.email);
+  if (!email) return response({ invitations: [], count: 0 });
+  const rows = await svc.entities.ProfessionalInvitation.filter({
+    invited_email_normalized: email,
+    status: 'pending',
+  }, '-created_date', 20);
+  const invitations = [];
+  for (const invitation of rows) {
+    if (new Date(invitation.expires_at).getTime() <= Date.now()) {
+      await svc.entities.ProfessionalInvitation.update(invitation.id, { status: 'expired' });
+      continue;
+    }
+    const context = await loadAcceptableInvitationLocation(svc, invitation);
+    if (context.error) continue;
+    invitations.push(invitationViewForProfessional(invitation, context.location));
+  }
+  return response({ invitations, count: invitations.length });
+}
+
+async function inspectInvitation(svc, user, payload, req) {
+  if (emailUnverified(user)) return response({ error: 'Emailul contului trebuie verificat inainte de acceptare' }, 403);
+  const { invitation, viaToken, missing } = await findInvitationForRequest(svc, payload, req);
+  if (missing) return response({ error: 'Tokenul sau invitation_id este obligatoriu' }, 400);
+  if (!invitation) return response({ error: 'Invitatie invalida' }, 404);
+  if (normalizeEmail(user.email) !== invitation.invited_email_normalized) {
+    // Cu linkul din email, persoana poate afla la ce adresa (mascata) a fost trimisa invitatia,
+    // ca sa stie cu ce cont sa se autentifice. Fara token nu se spune nimic despre invitatie.
+    return response({
+      error: 'Invitatia este destinata altui email',
+      ...(viaToken ? { invited_email_masked: maskEmail(invitation.invited_email_normalized) } : {}),
+    }, 403);
+  }
+  if (invitation.status === 'accepted') {
+    if (invitation.accepted_by_user_id !== user.id) return response({ error: 'Invitatia a fost acceptata de alt cont' }, 403);
+    return response({ already_accepted: true, professional_id: invitation.professional_id || null });
+  }
+  if (invitation.status !== 'pending') return response({ error: 'Invitatia nu mai este activa' }, 400);
+  if (new Date(invitation.expires_at).getTime() <= Date.now()) {
+    await svc.entities.ProfessionalInvitation.update(invitation.id, { status: 'expired' });
+    return response({ error: 'Invitatia a expirat' }, 400);
+  }
+  const context = await loadAcceptableInvitationLocation(svc, invitation);
+  if (context.error) return response({ error: context.error }, context.status);
+  return response({ invitation: invitationViewForProfessional(invitation, context.location) });
+}
+
+async function acceptInvitation(svc, user, payload, req) {
+  if (emailUnverified(user)) {
     return response({ error: 'Emailul contului trebuie verificat inainte de acceptare' }, 403);
   }
 
-  const matches = await svc.entities.ProfessionalInvitation.filter({
-    secure_token_hash: await hashToken(rawToken),
-  }, '-created_date', 2);
-  const invitation = matches[0] || null;
+  const { invitation, viaToken, missing } = await findInvitationForRequest(svc, payload, req);
+  if (missing) return response({ error: 'Tokenul sau invitation_id este obligatoriu' }, 400);
   if (!invitation) return response({ error: 'Invitatie invalida' }, 404);
+  // Fara token, invitatia trebuie sa fie a emailului contului inainte de orice alt raspuns.
+  if (!viaToken && normalizeEmail(user.email) !== invitation.invited_email_normalized) {
+    return response({ error: 'Invitatie invalida' }, 404);
+  }
 
   if (invitation.status === 'accepted') {
     if (invitation.accepted_by_user_id !== user.id) return response({ error: 'Invitatia a fost acceptata de alt cont' }, 403);
@@ -343,7 +434,10 @@ async function acceptInvitation(svc, user, payload, req) {
     return response({ error: 'Invitatia a expirat' }, 400);
   }
   if (normalizeEmail(user.email) !== invitation.invited_email_normalized) {
-    return response({ error: 'Invitatia este destinata altui email' }, 403);
+    return response({
+      error: 'Invitatia este destinata altui email',
+      ...(viaToken ? { invited_email_masked: maskEmail(invitation.invited_email_normalized) } : {}),
+    }, 403);
   }
 
   const lifecycleLock = await acquireProfessionalLifecycleLock(svc, user);
@@ -492,6 +586,8 @@ Deno.serve(async (req) => {
     if (action === 'create') return await createInvitation(base44, svc, user, payload, req);
     if (action === 'revoke') return await revokeInvitation(svc, user, payload);
     if (action === 'accept') return await acceptInvitation(svc, user, payload, req);
+    if (action === 'list_mine') return await listMyInvitations(svc, user);
+    if (action === 'inspect') return await inspectInvitation(svc, user, payload, req);
 
     return response({ error: 'Actiune invalida' }, 400);
   } catch (error) {
