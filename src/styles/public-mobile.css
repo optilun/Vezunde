@@ -76,3 +76,23 @@
     justify-content: center;
   }
 }
+
+/* Mobile directory cards: real thumbnail or small type tile, no oversized empty cover. */
+@media (max-width: 767px) {
+  [data-mobile-directory-card] { flex-direction: row; gap: 12px; padding: 16px; }
+  [data-mobile-directory-card] [data-card-cover-wrap] { width: 72px; flex-shrink: 0; align-self: flex-start; }
+  [data-mobile-directory-card] [data-card-cover] { width: 72px; height: 72px; aspect-ratio: 1; border-radius: 12px; }
+  [data-mobile-directory-card] [data-card-cover] > svg { inset: 0; width: 32px; height: 32px; margin: auto; color: #4f6080; opacity: .55; }
+  [data-mobile-directory-card] [data-card-cover] > span,
+  [data-mobile-directory-card] [data-card-badges],
+  [data-mobile-directory-card] [data-card-quick-actions] { display: none; }
+  [data-mobile-directory-card] [data-card-type] { display: block; font-size: 11px; line-height: 1.4; margin-bottom: 4px; }
+  [data-mobile-directory-card] [data-card-title-row] { margin-top: 0; }
+  [data-mobile-directory-card] h3 { font-size: 17px; line-height: 1.35; }
+  [data-mobile-directory-card] [data-card-title-row] + p { font-size: 13px; line-height: 1.5; }
+  [data-mobile-directory-card] [data-card-footer] { padding-top: 12px; gap: 8px; align-items: center; }
+  [data-mobile-directory-card] [data-card-footer] > p { font-size: 11px; }
+  [data-mobile-directory-card] [data-card-footer] > a { width: 44px; height: 44px; border-radius: 50%; }
+  [data-mobile-directory-card] [data-card-logo] { top: 0; left: 0; bottom: auto; width: 72px; height: 72px; border-radius: 12px; box-shadow: none; }
+  [data-mobile-directory-card] [data-card-logo][data-has-photo] { top: auto; left: auto; right: -4px; bottom: -6px; width: 28px; height: 28px; border-radius: 50%; }
+}
