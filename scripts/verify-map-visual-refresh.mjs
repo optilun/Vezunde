@@ -206,7 +206,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   const page = read('src/pages/DirectoryMap.jsx');
   const handler = page.slice(page.indexOf('const handleViewport'), page.indexOf('const [selectedId'));
   assert.match(handler, /if \(reason === "selection"\) return;/, 'alegerea unei locatii nu reordoneaza lista');
-  assert.match(page, /const centerOrder = !origin && Boolean\(mapCenter\);/, 'pozitia dispozitivului are prioritate');
+  assert.match(page, /const centerOrder = desktop && !origin && Boolean\(mapCenter\);/, 'pozitia dispozitivului are prioritate');
   assert.match(page, /Ordine: apropiere de centrul hărții/);
 }
 
