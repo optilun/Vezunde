@@ -16,7 +16,7 @@ import {
   readRecentLocalities,
   rememberLocality,
 } from "@/lib/localityQuickPicks";
-import { formatAccuracy, locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
+import { formatAccuracy, LOCATION_DENIED_MESSAGE, locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
 
 // Raspunsurile deja primite raman in memorie cat timp e deschisa pagina: stergerea unei litere sau
 // revenirea la acelasi oras nu mai asteapta serverul.
@@ -37,7 +37,7 @@ async function searchLocalities(query) {
 }
 
 const GEO_MESSAGES = {
-  denied: "Accesul la locație nu este permis. Alege localitatea din listă.",
+  denied: LOCATION_DENIED_MESSAGE,
   unavailable: "Poziția nu este disponibilă acum. Alege localitatea din listă.",
   imprecise: "Poziția este prea aproximativă. Alege localitatea din listă.",
   empty: "Nu am găsit locații în apropiere. Alege localitatea din listă.",
