@@ -607,7 +607,7 @@ export async function handle(req: Request) {
       if (!note) return bad('Verificarea profilului necesita o nota');
       // 2026-10-01. Verificarea nu ridica o suspendare: un profil suspendat ar fi devenit
       // "verificat" (si vizibil) printr-un singur clic, fara ca motivul suspendarii sa fie tratat.
-      if (loc.profile_control_status === 'suspended' || loc.verification_state === 'suspended' || loc.status === 'suspendata') {
+      if (loc.profile_control_status === 'suspended' || loc.verification_state === 'suspended') {
         return bad('Profilul este suspendat. Foloseste "Ridica suspendarea", apoi verifica profilul separat.');
       }
 
