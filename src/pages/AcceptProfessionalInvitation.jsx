@@ -133,7 +133,7 @@ export default function AcceptProfessionalInvitation() {
           {authState === "anonymous" && !result && (
             <div className="mt-6">
               <button type="button" onClick={login} className="w-full rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background">Autentifică-te pentru a continua</button>
-              <p className="mt-3 text-center text-xs text-muted-foreground">Folosește contul cu aceeași adresă de email la care ai primit invitația.</p>
+              <p className="mt-3 text-center text-xs text-muted-foreground">Trebuie să folosești contul cu același email pe care a fost trimisă invitația.</p>
             </div>
           )}
 
