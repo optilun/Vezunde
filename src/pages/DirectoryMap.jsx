@@ -6,7 +6,7 @@ import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import useRememberScroll from "@/hooks/useRememberScroll";
-import { accuracyNote, formatAccuracy, locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
+import { accuracyNote, formatAccuracy, LOCATION_DENIED_MESSAGE, locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
 
 import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom } from "../../shared/nearbyDirectory.js";
 
@@ -214,7 +214,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     return selectedIndex >= pageSize ? [inView[selectedIndex], ...page] : page;
   }, [inView, pageSize, selectedIndex]);
 
-  const geoMessage = geoStatus === "denied" ? "Accesul la locație nu este permis. Alege localitatea din bara de căutare." : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
+  const geoMessage = geoStatus === "denied" ? LOCATION_DENIED_MESSAGE : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
   const listHeader = <div className="mb-4">
       <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
         {origin || saved.nearbyOrder || centerOrder ? "Locații în zona explorată" : "Explorează România"}
