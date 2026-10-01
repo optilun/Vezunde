@@ -59,13 +59,16 @@ const bytes = (path) => readFile(new URL(`../${path}`, import.meta.url));
   assert.match(layout, /className=\{hasPositions \? \(fixedDesktop \? "relative mt-3 grid gap-5 lg:fixed/, 'containerul tine harta ascunsa');
 }
 
-// 3. /cauta telefon: locul hartii rezervat cat se incarca directorul.
+// 3. /cauta starts with the list; mobile map uses its own fullscreen dialog.
 {
   const directory = await read('src/pages/DirectoryMap.jsx');
-  assert.match(directory, /className="min-h-\[max\(24rem,calc\(70vh\+0\.75rem\)\)\] lg:min-h-\[24rem\]"/);
-  // Aceeasi inaltime ca harta de pe telefon (clasa data de LocationsWithMap lui ResultsMap).
+  assert.match(directory, /readMobileViewChoice\("list"\)/);
+  assert.match(directory, /followViewport: desktop/);
+  // Existing inline maps remain available; the directory also has a fullscreen mobile mode.
   const layout = await read('src/components/results/LocationsWithMap.jsx');
   assert.match(layout, /h-\[70vh\] overflow-hidden rounded-3xl/);
+  assert.match(layout, /data-mobile-map-dialog/);
+  assert.match(layout, /desktop \|\| mapShownOnce \|\| mobileView === "map"/);
 }
 
 console.log('Self-hosted fonts and mobile map checks passed.');
