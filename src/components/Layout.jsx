@@ -109,14 +109,22 @@ function MobileHeader({ scrolled, onMenuOpen, onMenuPreload, opaque, transparent
   );
 }
 
-function FooterLinkGroup({ title, children }) {
+function FooterLinkGroup({ title, children, compact = false }) {
   return (
-    <nav aria-label={title} className="border-t border-[#171717] pt-4">
+    <>
+      {compact && (
+        <details className="border-t border-[#171717] sm:hidden">
+          <summary className="cursor-pointer py-4 text-sm font-semibold">{title}</summary>
+          <nav aria-label={title} className="space-y-0.5 pb-4 text-sm">{children}</nav>
+        </details>
+      )}
+    <nav aria-label={title} className={`border-t border-[#171717] pt-4 ${compact ? "hidden sm:block" : ""}`}>
       <h2 className="font-mono text-[0.64rem] font-semibold uppercase tracking-[0.2em] text-[#6f6a63]">
         {title}
       </h2>
       <div className="mt-3 space-y-0.5 text-sm">{children}</div>
     </nav>
+    </>
   );
 }
 
@@ -236,16 +244,16 @@ export default function Layout() {
           backgroundSize: "21px 21px",
         }}
       >
-        <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:px-10">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.45fr_repeat(3,minmax(0,1fr))] lg:gap-12">
-            <div className="sm:col-span-2 lg:col-span-1">
+        <div className={`relative mx-auto max-w-7xl px-5 ${isHome ? "py-8" : "py-12"} sm:px-8 sm:py-16 lg:px-10`}>
+          <div className={`grid ${isHome ? "gap-0" : "gap-10"} sm:grid-cols-2 sm:gap-10 lg:grid-cols-[1.45fr_repeat(3,minmax(0,1fr))] lg:gap-12`}>
+            <div className={`${isHome ? "pb-6 sm:pb-0" : ""} sm:col-span-2 lg:col-span-1`}>
               <ViaseeBrand
                 symbolClassName="h-9 w-9"
                 wordmarkClassName="h-[18px] w-auto"
               />
               <p className="mt-5 max-w-sm text-sm leading-6 text-[#5f5a53]">
-                Spune ce ai nevoie. Vezi unde poți merge. VIASEE oferă orientare
-                și informații, nu diagnostic medical.
+                <span className={isHome ? "sm:hidden" : "hidden"}>Orientare pentru vedere, fără diagnostic medical.</span>
+                <span className={isHome ? "hidden sm:inline" : ""}>Spune ce ai nevoie. Vezi unde poți merge. VIASEE oferă orientare și informații, nu diagnostic medical.</span>
               </p>
               <a
                 href={`mailto:${VIASEE_COMPANY.contactEmail}`}
@@ -258,7 +266,7 @@ export default function Layout() {
               </p>
             </div>
 
-            <FooterLinkGroup title="Platforma">
+            <FooterLinkGroup title="Platforma" compact={isHome}>
               <Link to="/cauta" className={footerLinkClassName}>
                 Caută
               </Link>
@@ -273,7 +281,7 @@ export default function Layout() {
               </Link>
             </FooterLinkGroup>
 
-            <FooterLinkGroup title="Pentru specialiști">
+            <FooterLinkGroup title="Pentru specialiști" compact={isHome}>
               <Link to="/pentru-specialisti" className={footerLinkClassName}>
                 Descoperă VIASEE
               </Link>
@@ -288,7 +296,7 @@ export default function Layout() {
               </Link>
             </FooterLinkGroup>
 
-            <FooterLinkGroup title="Legal și date">
+            <FooterLinkGroup title="Legal și date" compact={isHome}>
               <Link to="/confidentialitate" className={footerLinkClassName}>
                 Confidențialitate
               </Link>
