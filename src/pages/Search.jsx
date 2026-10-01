@@ -210,7 +210,7 @@ export default function Search() {
   // LocationsWithMap) sa nu se redeseneze toate la fiecare hover.
   const renderLocationCard = useCallback((location, onShowMap, rank) => isDirectoryBrowseView
     ? <DirectoryResultCard compactMobile location={location} onShowMap={onShowMap} />
-    : <DirectoryResultCard location={location} onShowMap={onShowMap} rank={rank} details={<ServiceMatchDetails location={location} />} />, [isDirectoryBrowseView]);
+    : <DirectoryResultCard compactMobile location={location} onShowMap={onShowMap} rank={rank} details={<ServiceMatchDetails location={location} />} />, [isDirectoryBrowseView]);
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
     ? mapResults?.find(row => row.id === selectedId) : null;
   const locationList = extraSelection ? [extraSelection, ...(results || [])] : results;
