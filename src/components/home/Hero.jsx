@@ -197,7 +197,7 @@ export default function Hero({ onStartedChange } = {}) {
 
       <div
         className={`relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-4 text-center sm:px-5 ${
-          started ? "py-6 sm:py-10" : "pb-24 pt-28 sm:py-28"
+          started ? "py-6 sm:py-10" : "pb-32 pt-28 sm:pt-28 sm:pb-44 lg:pb-28"
         }`}
       >
         {started ? (
@@ -220,8 +220,7 @@ export default function Hero({ onStartedChange } = {}) {
               className="home-rise font-heading text-balance text-[2.2rem] font-extrabold leading-[1.08] tracking-[-0.04em] min-[390px]:text-[2.35rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
-              <span className="sm:hidden">Găsește ajutor<br />pentru ochii tăi.</span>
-              <span className="hidden sm:inline">Găsește îngrijirea potrivită pentru ochi.</span>
+              Găsește îngrijirea potrivită pentru ochi.
             </h1>
 
             <p
