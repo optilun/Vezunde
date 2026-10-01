@@ -43,7 +43,7 @@ import { searchAreaBounds, viewportLeftSearchArea } from "../../shared/searchMap
 
 export default function Search() {
   // Harta vectoriala se descarca in paralel cu datele, fara sa blocheze pagina si lista.
-  useEffect(() => { preloadVectorCanvas(); }, []);
+  useEffect(() => { if (window.matchMedia("(min-width: 1024px)").matches) preloadVectorCanvas(); }, []);
   // 2026-09-28 (audit /cauta, B4): criteriile vin din adresa cand exista. Un link primit castiga in
   // fata ultimei cautari din sesiune; aceeasi adresa ca la plecare (inapoi de pe un profil) reia
   // sesiunea intreaga (pagini incarcate, selectie, derulare). Fara criterii in adresa, /cauta reia
@@ -70,7 +70,7 @@ export default function Search() {
   const [selectedId, setSelectedId] = useState(saved.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
   // E2: alegerea explicita lista/harta (comuna cu harta Romaniei); altfel lista, pentru o localitate.
-  const [mobileView, setMobileView] = useState(() => readMobileViewChoice(saved.mobileView || "list"));
+  const [mobileView, setMobileView] = useState(() => readMobileViewChoice("list"));
   const toggleMobileView = useCallback(() => setMobileView((view) => {
     const next = view === "map" ? "list" : "map";
     rememberMobileViewChoice(next);
@@ -209,7 +209,7 @@ export default function Search() {
   // 2026-09-28 (audit /cauta, B7): aceeasi functie intre randari, ca randurile listei (memoizate in
   // LocationsWithMap) sa nu se redeseneze toate la fiecare hover.
   const renderLocationCard = useCallback((location, onShowMap, rank) => isDirectoryBrowseView
-    ? <DirectoryResultCard location={location} onShowMap={onShowMap} />
+    ? <DirectoryResultCard compactMobile location={location} onShowMap={onShowMap} />
     : <DirectoryResultCard location={location} onShowMap={onShowMap} rank={rank} details={<ServiceMatchDetails location={location} />} />, [isDirectoryBrowseView]);
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
     ? mapResults?.find(row => row.id === selectedId) : null;
@@ -367,6 +367,7 @@ export default function Search() {
             <LocationsWithMap
               key={searchMapKey}
               fixedDesktop
+              mobileFullscreen
               listHeader={localListHeader}
               results={mapResults || results}
               listResults={locationList}
