@@ -331,11 +331,6 @@ export default function Layout() {
             <span>
               © {new Date().getFullYear()} VIASEE · {VIASEE_COMPANY.legalName}
             </span>
-            <span>
-              CUI {VIASEE_COMPANY.taxId} · ONRC{" "}
-              {VIASEE_COMPANY.registrationNumber} ·{" "}
-              {VIASEE_COMPANY.registeredOffice}
-            </span>
           </div>
         </div>
       </footer>
