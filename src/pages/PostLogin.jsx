@@ -22,7 +22,8 @@ export default function PostLogin() {
 
     // 2026-10-01: se verifica si invitatiile de specialist, nu doar cele de membru. Cine a primit o
     // invitatie si s-a autentificat fara sa deschida linkul din email ajunge direct la ea. Daca are
-    // ambele tipuri, accesul in organizatie vine primul; cea de specialist ramane in cont.
+    // ambele tipuri, accesul in organizatie vine primul; cea de specialist apare apoi ca link pe
+    // ecranul de confirmare (AcceptProviderInvitation).
     const countInvitations = (functionName) => base44.functions.invoke(functionName, { action: "list_mine" })
       .then((response) => (response.data?.invitations || []).length)
       .catch(() => 0);
