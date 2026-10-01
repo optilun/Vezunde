@@ -14,12 +14,12 @@ const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf
 // E2
 {
   const session = read('src/lib/searchSession.js');
-  assert.match(session, /export function readMobileViewChoice\(fallback\) \{\s*const choice = readSearchSession\(\)\.mobileViewChoice;\s*return choice === "map" \|\| choice === "list" \? choice : fallback;\s*\}/);
-  assert.match(session, /export function rememberMobileViewChoice\(view\) \{\s*if \(view === "map" \|\| view === "list"\) writeSearchSession\(\{ mobileViewChoice: view \}\);\s*\}/);
+  assert.match(session, /export function readMobileViewChoice\(fallback\) \{\s*const session = readSearchSession\(\);\s*const choice = session\.mobileViewVersion === 2 \? session\.mobileViewChoice : null;\s*return choice === "map" \|\| choice === "list" \? choice : fallback;\s*\}/);
+  assert.match(session, /export function rememberMobileViewChoice\(view\) \{\s*if \(view === "map" \|\| view === "list"\) writeSearchSession\(\{ mobileViewChoice: view, mobileViewVersion: 2 \}\);\s*\}/);
   const search = read('src/pages/Search.jsx');
   const national = read('src/pages/DirectoryMap.jsx');
-  assert.match(search, /useState\(\(\) => readMobileViewChoice\(saved\.mobileView \|\| "list"\)\)/, 'localitatea porneste pe lista');
-  assert.match(national, /useState\(\(\) => readMobileViewChoice\(saved\.mobileView \|\| "map"\)\)/, 'harta Romaniei porneste pe harta');
+  assert.match(search, /useState\(\(\) => readMobileViewChoice\("list"\)\)/, 'localitatea porneste pe lista');
+  assert.match(national, /useState\(\(\) => readMobileViewChoice\("list"\)\)/, 'pe telefon, harta Romaniei porneste tot pe lista (decizia Alex, 2026-10-01)');
   for (const [name, source] of [['Search', search], ['DirectoryMap', national]]) {
     assert.match(source, /rememberMobileViewChoice\(next\);/, `${name}: alegerea explicita se tine minte`);
     assert.match(source, /onToggleMobileView=\{toggleMobileView\}/, `${name}: comutatorul foloseste alegerea comuna`);
