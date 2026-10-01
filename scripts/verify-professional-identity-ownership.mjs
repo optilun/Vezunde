@@ -12,11 +12,13 @@ const assignmentSchema = await readFile(new URL('../base44/entities/Professional
 
 const legacyGuard = adminReview.indexOf("if (submission.section === 'team') {");
 const validation = adminReview.indexOf('const validation = validatePayload(submission.section, parsedPayload);');
-const legacyApply = adminReview.indexOf('await applyTeam(svc, user, submission, validation.clean);');
 
 assert.ok(legacyGuard > -1, 'legacy team approval guard is missing');
 assert.ok(validation > legacyGuard, 'legacy team approval must be blocked before payload validation');
-assert.ok(legacyApply > legacyGuard, 'legacy team approval must be blocked before ProfessionalProfile writes');
+// 2026-10-01: applyTeam (singurul loc din fisier care scria ProfessionalProfile) a fost scos;
+// garda 409 de mai sus ramane, iar fisierul nu mai are nicio cale de scriere a identitatii.
+assert.doesNotMatch(adminReview, /applyTeam\(/, 'applyTeam nu trebuie sa revina');
+assert.doesNotMatch(adminReview, /ProfessionalProfile\.(create|update)\(/, 'revizuirea workspace nu scrie ProfessionalProfile');
 assert.match(adminReview, /Sectiunea legacy pentru echipa nu mai poate modifica identitatea profesionala/);
 assert.match(adminReview, /Foloseste invitatiile profesionale si administrarea assignmenturilor dedicate/);
 
