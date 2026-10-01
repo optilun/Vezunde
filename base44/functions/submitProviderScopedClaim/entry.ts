@@ -203,8 +203,10 @@ Deno.serve(async (req) => {
       candidate_location_count: candidateIds.length,
       // Sugestii de retea acceptate de furnizor (2026-08-19). Tinute SEPARAT de
       // requested_location_ids: adminul trebuie sa distinga ce a cerut explicit
-      // furnizorul de ce a acceptat dintr-o sugestie a sistemului. La aprobare, daca
-      // steagul e activ si nu exista organizatie, se creeaza una comuna.
+      // furnizorul de ce a acceptat dintr-o sugestie a sistemului.
+      // 2026-10-01: `requires_organization_creation` este doar informativ pentru admin. Aprobarea
+      // NU creeaza organizatii: refuza locatiile fara organizatie (code
+      // location_without_organization), iar adminul le asociaza intai unei organizatii.
       network_suggestion_accepted: input.include_network_suggestions === true,
       network_suggested_location_ids: Array.isArray(input.suggested_location_ids)
         ? input.suggested_location_ids.filter((id) => clean(id, 160)).slice(0, 12)
