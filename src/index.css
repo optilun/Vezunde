@@ -543,6 +543,22 @@
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 
+@keyframes specialist-card-swap {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.specialist-card-swap {
+  animation: specialist-card-swap 0.35s ease-out both;
+}
+
 /* Linia de scanare din plăcuța OCT (unități din viewBox-ul SVG). */
 @keyframes cat-scan {
   from {
@@ -580,6 +596,7 @@
   .home-optician-head,
   .home-optician-blink,
   .cat-tile-in,
+  .specialist-card-swap,
   .cat-scan,
   .cat-pulse {
     animation: none;
