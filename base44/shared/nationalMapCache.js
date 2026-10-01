@@ -22,7 +22,8 @@
 // harta in cel mult NATIONAL_MAP_FRESH_MS; profilul public e citit mereu direct.
 
 export const NATIONAL_MAP_SCOPE = 'national';
-export const NATIONAL_MAP_FORMAT = 'national-map-v1';
+// v2 adds unmapped_results for the complete public list; old snapshots must be refreshed.
+export const NATIONAL_MAP_FORMAT = 'national-map-v2';
 export const NATIONAL_MAP_ENCODING = 'gzip-base64';
 export const NATIONAL_MAP_FRESH_MS = 10 * 60 * 1000;
 export const NATIONAL_MAP_STALE_MAX_MS = 7 * 24 * 60 * 60 * 1000;
