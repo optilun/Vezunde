@@ -1168,13 +1168,15 @@ function AdjustTile() {
 
 // ── Date ───────────────────────────────────────────────────────────────────────────────────
 
-// basis = lățimea de bază (rem): pe telefon e lățimea plăcuței, pe desktop proporția din rând.
+// basis = lățimea desenului (rem) și proporția din rândul desktop.
+// mobileTiles = cele trei desene alese pentru compoziția compactă de pe telefon.
 // optional = plăcuța lipsește pe ecranele desktop înguste (1024–1279px), ca celelalte să aibă loc.
 export const CATEGORY_SETS = [
   {
     id: "medici",
     label: "Medici și clinici",
     mobileLabel: "Specialiști",
+    mobileTiles: ["doctor", "pin", "map"],
     mobileDescription: "Cabinete, clinici și optici din apropiere.",
     to: "/cauta",
     description: "Cabinete de oftalmologie, clinici și optici medicale, găsite după locul în care ești.",
@@ -1190,6 +1192,7 @@ export const CATEGORY_SETS = [
     id: "vedere",
     label: "Control de vedere",
     mobileLabel: "Control",
+    mobileTiles: ["refraction", "e", "snellen"],
     mobileDescription: "Verifică vederea și corecția optică.",
     to: "/cerere?categorie=control_vedere",
     description: "Verificarea vederii și a corecției optice, pentru adulți și copii.",
@@ -1205,6 +1208,7 @@ export const CATEGORY_SETS = [
     id: "investigatii",
     label: "Investigații",
     mobileLabel: "Investigații",
+    mobileTiles: ["oct", "fundus", "field"],
     mobileDescription: "OCT, câmp vizual și alte investigații recomandate.",
     to: "/cerere?categorie=investigatii",
     description: "Investigații recomandate de medic: tomografie OCT, câmp vizual, fund de ochi.",
@@ -1220,6 +1224,7 @@ export const CATEGORY_SETS = [
     id: "ochelari",
     label: "Ochelari și lentile",
     mobileLabel: "Ochelari",
+    mobileTiles: ["frames", "glasses", "lens"],
     mobileDescription: "Rame, lentile și măsurători pentru ochelari.",
     to: "/cerere?categorie=ochelari_lentile",
     description: "Rame, lentile și măsurători, la optometriști și optici din apropiere.",
@@ -1235,6 +1240,7 @@ export const CATEGORY_SETS = [
     id: "reparatii",
     label: "Reparații",
     mobileLabel: "Reparații",
+    mobileTiles: ["ticket", "screwdriver", "hinge"],
     mobileDescription: "Reparații și reglaje pentru ochelari.",
     to: "/cerere?categorie=reparatii_ochelari",
     description: "Șuruburi, plăcuțe, brațe îndoite: reparații și reglaje pentru ochelari.",
@@ -1247,6 +1253,49 @@ export const CATEGORY_SETS = [
     ],
   },
 ];
+
+// Desenele păstrează proporțiile și toate detaliile, ca într-o miniatură de prezentare.
+// Măsurăm spațiul disponibil, nu fereastra, inclusiv când preview-ul este într-un iframe.
+function MobileCategoryArtwork({ current, specialistIndex }) {
+  const containerRef = useRef(null);
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const tiles = current.mobileTiles.map((key) => current.tiles.find((tile) => tile.key === key));
+  const width = tiles.reduce((sum, tile) => sum + tile.basis * 16, 0) + 40;
+  const height = Math.max(...tiles.map((tile) => tile.h * 16)) + 18;
+  const scale = availableWidth > 0 ? availableWidth / width : 0;
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return undefined;
+    const observer = new ResizeObserver(([entry]) => setAvailableWidth(entry.contentRect.width));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative w-full sm:hidden" style={{ height: height * scale }} data-mobile-category-artwork={current.id}>
+      <Link
+        key={current.id}
+        to={current.to}
+        tabIndex={-1}
+        aria-hidden="true"
+        {...prefetchOnIntent(current.to)}
+        className="absolute left-0 top-0 flex origin-top-left items-start gap-2.5 px-2.5 pt-2.5"
+        style={{ width, height, transform: `scale(${scale})` }}
+      >
+        {tiles.map(({ key, Component, basis, h }, index) => (
+          <div key={key} data-artwork-tile={key} className="relative shrink-0" style={{ width: basis * 16, height: h * 16 }}>
+            <span aria-hidden="true" className="absolute -left-[9px] -top-[9px] z-10 h-2 w-2 bg-[#171717]" />
+            {index === tiles.length - 1 && <span aria-hidden="true" className="absolute -right-[9px] -top-[9px] z-10 h-2 w-2 bg-[#171717]" />}
+            <div className="cat-tile-in h-full w-full overflow-hidden" style={{ "--i": index }}>
+              <Component specialistIndex={specialistIndex} />
+            </div>
+          </div>
+        ))}
+      </Link>
+    </div>
+  );
+}
 
 // ── Banda ──────────────────────────────────────────────────────────────────────────────────
 
@@ -1292,8 +1341,7 @@ export default function CategoryStrip() {
     return () => window.clearTimeout(timer);
   }, [active, reducedMotion, inView, specialistIndex, selectionTick]);
 
-  // Pe telefon filele și plăcuțele se derulează orizontal: fila activă rămâne la vedere, iar
-  // rândul nou de plăcuțe pornește de la început.
+  // Pe telefon fila activă rămâne la vedere. Pe tabletă banda de desene revine la început.
   useEffect(() => {
     const tabs = tabsRef.current;
     const button = tabs?.querySelector('[aria-selected="true"]');
@@ -1356,9 +1404,10 @@ export default function CategoryStrip() {
       </div>
 
       <div id={panelId} role="tabpanel" aria-labelledby={`${panelId}-tab-${current.id}`} className="mt-7 lg:mt-9">
+        <MobileCategoryArtwork current={current} specialistIndex={specialistIndex} />
         <div
           ref={stripRef}
-          className="-mx-5 overflow-x-auto px-5 pb-2 [scrollbar-width:none] lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
+          className="-mx-5 hidden overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:block lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
         >
           <Link
             key={current.id}
