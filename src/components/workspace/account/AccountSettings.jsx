@@ -43,7 +43,10 @@ function SectionCard({ icon: Icon, title, description, children, danger = false 
 export default function AccountSettings({ user, accountModes = [], activeMode, onSwitchMode, onLogout, onRefresh }) {
   const [preferences, setPreferences] = useState(() => readAccountPreferences(user?.id));
   const [resetStatus, setResetStatus] = useState("idle");
-  const [eligibility, setEligibility] = useState({ status: "loading", blockers: [], summary: null });
+  const [eligibility, setEligibility] = useState({ status: "loading", blockers: [], summary: null, request: null });
+  const [deletionConfirming, setDeletionConfirming] = useState(false);
+  const [deletionSending, setDeletionSending] = useState(false);
+  const [deletionError, setDeletionError] = useState("");
 
   useEffect(() => {
     setPreferences(readAccountPreferences(user?.id));
@@ -51,7 +54,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
 
   useEffect(() => {
     let cancelled = false;
-    setEligibility({ status: "loading", blockers: [], summary: null });
+    setEligibility({ status: "loading", blockers: [], summary: null, request: null });
     base44.functions.invoke("getMyAccountDeletionEligibility", {})
       .then((response) => {
         if (cancelled) return;
@@ -59,10 +62,11 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
           status: "ready",
           blockers: response.data?.blockers || [],
           summary: response.data?.account_summary || null,
+          request: response.data?.deletion_request || null,
         });
       })
       .catch(() => {
-        if (!cancelled) setEligibility({ status: "unavailable", blockers: [], summary: null });
+        if (!cancelled) setEligibility({ status: "unavailable", blockers: [], summary: null, request: null });
       });
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -94,17 +98,34 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
   const fullName = user?.full_name || user?.name || "Utilizator VIASEE";
   const blockers = eligibility.blockers || [];
   const hasDeletionBlockers = blockers.length > 0;
-  const deletionSubject = encodeURIComponent("Solicitare stergere cont VIASEE");
-  const deletionBody = encodeURIComponent([
-    "Buna ziua,",
-    "",
-    `Solicit stergerea contului VIASEE asociat adresei ${user?.email || "-"}.`,
-    `Nume cont: ${fullName}`,
-    `ID cont: ${user?.id || "-"}`,
-    "",
-    "Inteleg ca solicitarea va fi verificata si ca anumite date pot fi pastrate atunci cand exista o obligatie legala sau un blocaj operational.",
-  ].join("\n"));
-  const deletionHref = `mailto:contact@viasee.ro?subject=${deletionSubject}&body=${deletionBody}`;
+  // 2026-10-01: cererea de stergere nu mai deschide un email (care se putea pierde). Se inregistreaza
+  // in VIASEE si apare in Admin -> Suport, cu termen de raspuns de 30 de zile. Nimic nu se sterge
+  // automat la apasarea butonului.
+  const deletionRequest = eligibility.request;
+  const formatDay = (value) => {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime())
+      ? new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "long", year: "numeric" }).format(date)
+      : "";
+  };
+  const sendDeletionRequest = async () => {
+    setDeletionSending(true);
+    setDeletionError("");
+    const response = await base44.functions.invoke("getMyAccountDeletionEligibility", { action: "request" })
+      .catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setDeletionSending(false);
+    setDeletionConfirming(false);
+    if (response.data?.error || !response.data?.deletion_request) {
+      setDeletionError(response.data?.error || "Cererea nu a putut fi înregistrată. Încearcă din nou sau scrie la contact@viasee.ro.");
+      return;
+    }
+    setEligibility({
+      status: "ready",
+      blockers: response.data.blockers || [],
+      summary: response.data.account_summary || null,
+      request: response.data.deletion_request,
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -251,18 +272,59 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
           </div>
         )}
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-sm font-bold">Solicita stergerea contului</div>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Cererea este trimisa prin email catre VIASEE. Nicio data nu este stearsa automat la apasarea butonului.</p>
+        {deletionRequest ? (
+          <div role="status" className="mt-4 rounded-2xl border border-border bg-secondary/35 p-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
+              <div>
+                <div className="text-sm font-bold">Cererea de ștergere a fost înregistrată</div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Trimisă pe {formatDay(deletionRequest.requested_at)}. Echipa VIASEE îți răspunde la {user?.email || "adresa contului"} până la {formatDay(deletionRequest.due_at)}
+                  {hasDeletionBlockers ? " și te ajută să transferi mai întâi rolul de owner." : "."}
+                </p>
+              </div>
+            </div>
           </div>
-          <a
-            href={deletionHref}
-            className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold lg:h-10 ${hasDeletionBlockers ? "border border-red-200 bg-white text-red-800 hover:bg-red-50" : "bg-red-700 text-white hover:bg-red-800"}`}
-          >
-            <Mail className="h-4 w-4" /> {hasDeletionBlockers ? "Contacteaza suportul" : "Trimite solicitarea"}
-          </a>
-        </div>
+        ) : (
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-bold">Solicită ștergerea contului</div>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+                Cererea ajunge direct la echipa VIASEE, care îți răspunde în cel mult 30 de zile. Nicio dată nu este ștearsă automat la apăsarea butonului.
+              </p>
+            </div>
+            {!deletionConfirming && (
+              <button
+                type="button"
+                disabled={eligibility.status === "loading"}
+                onClick={() => setDeletionConfirming(true)}
+                className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold disabled:opacity-50 lg:h-10 ${hasDeletionBlockers ? "border border-red-200 bg-white text-red-800 hover:bg-red-50" : "bg-red-700 text-white hover:bg-red-800"}`}
+              >
+                <TriangleAlert className="h-4 w-4" /> Trimite cererea
+              </button>
+            )}
+          </div>
+        )}
+
+        {!deletionRequest && deletionConfirming && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs leading-relaxed text-red-900">
+            <p className="font-semibold">Trimiți cererea de ștergere a contului {user?.email || ""}?</p>
+            <p className="mt-1">Contul rămâne activ până când echipa VIASEE procesează cererea. Unele date pot fi păstrate când există o obligație legală.</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <button type="button" disabled={deletionSending} onClick={sendDeletionRequest} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-red-700 px-4 text-xs font-semibold text-white hover:bg-red-800 disabled:opacity-50">
+                {deletionSending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {deletionSending ? "Se trimite..." : "Da, trimite cererea"}
+              </button>
+              <button type="button" disabled={deletionSending} onClick={() => setDeletionConfirming(false)} className="inline-flex min-h-10 items-center justify-center rounded-full border border-red-200 bg-white px-4 text-xs font-semibold text-red-900">
+                Renunță
+              </button>
+            </div>
+          </div>
+        )}
+
+        {deletionError && (
+          <p role="alert" className="mt-3 text-xs font-semibold text-red-800">{deletionError}</p>
+        )}
       </SectionCard>
     </div>
   );
