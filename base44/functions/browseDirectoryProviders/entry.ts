@@ -110,6 +110,7 @@ async function computeNationalMap(svc) {
   const logos = await loadOrganizationLogos(svc, fullDetailOrganizationIds(disclosed));
 
   const points = [];
+  const unmappedResults = [];
   const localityCounts = {};
   let totalPublished = 0;
   for (const { loc, disclosure } of disclosed) {
@@ -117,8 +118,8 @@ async function computeNationalMap(svc) {
     totalPublished += 1;
     const countKey = localityCountKey(loc.locality_name || loc.city, loc.county_name || loc.county);
     localityCounts[countKey] = (localityCounts[countKey] || 0) + 1;
-    if (disclosure.lat === null || disclosure.lng === null) continue;
-    points.push({
+    // The mobile list also includes public locations without a published position.
+    const card = {
       id: loc.id,
       name: loc.public_display_name || loc.name,
       provider_type: loc.provider_type,
@@ -130,12 +131,15 @@ async function computeNationalMap(svc) {
       map_precision: disclosure.map_precision,
       profile_control_status: disclosure.profile_control_status,
       ...cardImages(loc, disclosure, logos),
-    });
+    };
+    if (disclosure.lat === null || disclosure.lng === null) unmappedResults.push(card);
+    else points.push(card);
   }
 
   return {
     map_scope: 'national',
     results: points,
+    unmapped_results: unmappedResults,
     total_published: totalPublished,
     without_position: totalPublished - points.length,
     locality_counts: localityCounts,
