@@ -4,7 +4,7 @@
 // locatia inainte de revizuirea admin (aprobarea are nevoie de ele ca sa dea acces). Pana acum:
 //   - nu exista nicio limita: un cont putea trimite oricate locatii noi, fiecare cu organizatia ei;
 //   - la respingere locatia ramanea ciorna si organizatia activa, fara membri - orfani care apoi
-//     erau gasiti ca \"duplicat puternic\" cand proprietarul real incerca sa-si adauge locatia;
+//     erau gasiti ca "duplicat puternic" cand proprietarul real incerca sa-si adauge locatia;
 //   - verificarea de duplicate intorcea si locatii nepublicate ale altor utilizatori, cu nume si
 //     adresa.
 // Fisierul tine regulile intr-un singur loc, ca trimiterea, respingerea si verificarea de
