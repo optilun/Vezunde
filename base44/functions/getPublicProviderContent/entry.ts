@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
 
 // MODULE 3H.1C.2B — Public approved content read.
 // Reuses getPublicProviderProfile as the canonical public eligibility gate and
@@ -50,10 +51,23 @@ Deno.serve(async (req) => {
       publicMedia.push(safe);
     }
 
+    // 2026-10-01. Echipa de aici trebuie sa fie exact echipa din pagina publica. Inainte filtra
+    // doar profilele respinse/arhivate, asa ca un specialist neverificat sau care nu si-a dat
+    // consimtamantul pentru locatie aparea in raspuns (functia e publica) si in numarul
+    // "publici" din workspace. Acum: profilul trebuie sa fie in echipa intoarsa de
+    // getPublicProviderProfile (poarta canonica) si sa treaca aceeasi poarta de profil +
+    // consimtamant, aplicata din nou aici ca aparare in adancime.
+    const canonicalTeamIds = new Set(
+      (Array.isArray(publicProfile.team) ? publicProfile.team : [])
+        .map((member) => String(member?.id || ''))
+        .filter(Boolean),
+    );
     const team = [];
     for (const assignment of assignments) {
+      if (assignment.visibility_consent_status !== 'accepted') continue;
+      if (!canonicalTeamIds.has(String(assignment.professional_id || ''))) continue;
       const prof = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
-      if (!prof || prof.is_public === false || prof.public_visibility_status === 'rejected' || prof.public_visibility_status === 'archived') continue;
+      if (!prof || !isPublicProfessionalProfile(prof)) continue;
       const photo = prof.profile_photo_url && mediaById[prof.profile_photo_url]?.media_type === 'team_photo'
         ? mediaById[prof.profile_photo_url].url
         : '';
