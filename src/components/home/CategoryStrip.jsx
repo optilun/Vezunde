@@ -1174,6 +1174,8 @@ export const CATEGORY_SETS = [
   {
     id: "medici",
     label: "Medici și clinici",
+    mobileLabel: "Specialiști",
+    mobileDescription: "Cabinete, clinici și optici din apropiere.",
     to: "/cauta",
     description: "Cabinete de oftalmologie, clinici și optici medicale, găsite după locul în care ești.",
     tiles: [
@@ -1187,6 +1189,8 @@ export const CATEGORY_SETS = [
   {
     id: "vedere",
     label: "Control de vedere",
+    mobileLabel: "Control",
+    mobileDescription: "Verifică vederea și corecția optică.",
     to: "/cerere?categorie=control_vedere",
     description: "Verificarea vederii și a corecției optice, pentru adulți și copii.",
     tiles: [
@@ -1200,6 +1204,8 @@ export const CATEGORY_SETS = [
   {
     id: "investigatii",
     label: "Investigații",
+    mobileLabel: "Investigații",
+    mobileDescription: "OCT, câmp vizual și alte investigații recomandate.",
     to: "/cerere?categorie=investigatii",
     description: "Investigații recomandate de medic: tomografie OCT, câmp vizual, fund de ochi.",
     tiles: [
@@ -1213,6 +1219,8 @@ export const CATEGORY_SETS = [
   {
     id: "ochelari",
     label: "Ochelari și lentile",
+    mobileLabel: "Ochelari",
+    mobileDescription: "Rame, lentile și măsurători pentru ochelari.",
     to: "/cerere?categorie=ochelari_lentile",
     description: "Rame, lentile și măsurători, la optometriști și optici din apropiere.",
     tiles: [
@@ -1226,6 +1234,8 @@ export const CATEGORY_SETS = [
   {
     id: "reparatii",
     label: "Reparații",
+    mobileLabel: "Reparații",
+    mobileDescription: "Reparații și reglaje pentru ochelari.",
     to: "/cerere?categorie=reparatii_ochelari",
     description: "Șuruburi, plăcuțe, brațe îndoite: reparații și reglaje pentru ochelari.",
     tiles: [
@@ -1325,6 +1335,7 @@ export default function CategoryStrip() {
               <button
                 type="button"
                 role="tab"
+                aria-label={set.label}
                 id={`${panelId}-tab-${set.id}`}
                 aria-selected={selected}
                 aria-controls={panelId}
@@ -1335,7 +1346,8 @@ export default function CategoryStrip() {
                 }`}
               >
                 {selected && <span aria-hidden="true">[</span>}
-                {set.label}
+                <span className="sm:hidden">{set.mobileLabel}</span>
+                <span className="hidden sm:inline">{set.label}</span>
                 {selected && <span aria-hidden="true">]</span>}
               </button>
             </React.Fragment>
@@ -1375,13 +1387,14 @@ export default function CategoryStrip() {
         </div>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:mt-6 lg:px-2.5">
-          <p className="max-w-xl text-[0.95rem] leading-relaxed text-muted-foreground">{current.description}</p>
+          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-[0.95rem]"><span className="sm:hidden">{current.mobileDescription}</span><span className="hidden sm:inline">{current.description}</span></p>
           <Link
             to={current.to}
             {...prefetchOnIntent(current.to)}
             className="group inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-[#171717]/15 bg-white/60 px-4 py-2 text-sm font-semibold text-[#171717] outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] sm:self-auto"
           >
-            Vezi opțiunile pentru {current.label.toLowerCase()}
+            <span className="sm:hidden">Vezi opțiunile</span>
+            <span className="hidden sm:inline">Vezi opțiunile pentru {current.label.toLowerCase()}</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
           </Link>
         </div>
