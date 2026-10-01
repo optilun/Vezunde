@@ -135,7 +135,7 @@ export default function DirOpsProfiles() {
     setError("");
     try {
       await base44.functions.invoke("directoryOps", {
-        action: action.type === "verify" ? "verify_profile" : "suspend_profile",
+        action: PROFILE_ACTIONS[action.type] || "suspend_profile",
         location_id: action.locationId,
         note,
       });
@@ -378,7 +378,17 @@ export default function DirOpsProfiles() {
                 >
                   <Clock className="h-3.5 w-3.5" /> Orar
                 </button>
-                {pcs !== "verified" && (
+                {/* 2026-10-01: un profil suspendat nu se mai poate "verifica" direct; intai se ridica suspendarea. */}
+                {pcs === "suspended" && (
+                  <button
+                    type="button"
+                    onClick={() => setAction({ locationId: location.id, type: "unsuspend" })}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary sm:rounded-full"
+                  >
+                    Ridică suspendarea
+                  </button>
+                )}
+                {pcs !== "verified" && pcs !== "suspended" && (
                   <button
                     type="button"
                     onClick={() => setAction({ locationId: location.id, type: "verify" })}
@@ -440,7 +450,7 @@ export default function DirOpsProfiles() {
 
       {action && action.type !== "edit" && (
         <DirOpsActionNote
-          title={action.type === "verify" ? "Verificare profil - nota obligatorie" : "Suspendare profil - nota obligatorie"}
+          title={PROFILE_ACTION_TITLES[action.type] || PROFILE_ACTION_TITLES.suspend}
           onConfirm={run}
           onCancel={() => setAction(null)}
         />
