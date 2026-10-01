@@ -1275,7 +1275,7 @@ export default function CategoryStrip() {
   }, [running, active]);
 
   useEffect(() => {
-    if (active !== 0 || reducedMotion || !inView || hovered) return undefined;
+    if (active !== 0 || reducedMotion || !inView || (hovered && !stopped)) return undefined;
     if (!stopped && specialistIndex === SPECIALIST_CARDS.length - 1) return undefined;
     const timer = window.setTimeout(
       () => setSpecialistIndex((index) => (index + 1) % SPECIALIST_CARDS.length),
