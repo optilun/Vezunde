@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       // 2026-10-01. Fiecare trimitere creeaza o organizatie si o locatie inainte de revizuire, deci
       // numarul de propuneri in asteptare per cont e limitat (vezi newLocationClaimPolicy.js).
       const ownNewLocationClaims = await svc.entities.ProviderClaimRequest
-        .filter({ user_id: user.id, mode: { $in: [...NEW_LOCATION_CLAIM_MODES] }, status: { $in: ['in_asteptare', 'needs_more_info'] } }, '-created_date', 20)
+        .filter({ user_id: user.id, mode: { $in: [...NEW_LOCATION_CLAIM_MODES] }, status: { $in: [...ACTIVE_CLAIM_STATUSES] } }, '-created_date', 20)
         .catch(() => null);
       if (!Array.isArray(ownNewLocationClaims)) {
         return Response.json({ error: 'Nu am putut verifica solicitarile tale existente. Incearca din nou.' }, { status: 503 });
