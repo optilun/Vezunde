@@ -10,9 +10,12 @@ import {
 } from '../../shared/professionalIdentity.js';
 import {
   PROFESSIONAL_SUBMISSION_BLOCKER_LABELS,
+  isHiddenByProfessional,
+  isPublicProfessionalProfile,
   nextProfessionalProfileState,
   professionalProfileCompleteness,
   professionalSubmissionBlockers,
+  reconciledAssignmentPublicStatus,
 } from '../../shared/professionalProfileStatus.js';
 
 const ALLOWED_FIELDS = [
@@ -311,6 +314,51 @@ Deno.serve(async (req) => {
         review_note: profile.review_note || '',
         submitted_at: profile.submitted_at || null,
         has_active_assignment: hasAssignment,
+        hidden_by_professional: isHiddenByProfessional(profile),
+        hidden_by_professional_at: profile.hidden_by_professional_at || null,
+        is_publicly_visible: isPublicProfessionalProfile(profile),
+      });
+    }
+
+    // 2026-10-01. Specialistul isi ascunde / reafiseaza singur profilul public. Nu se atinge niciun
+    // status de verificare: poarta publica (isPublicProfessionalProfile) tine cont de
+    // `hidden_by_professional`, iar asocierile la locatii se reconciliaza cu aceeasi regula, ca
+    // echipa din profilul locatiei si numaratorile din workspace sa spuna acelasi lucru.
+    if (action === 'hide_profile' || action === 'show_profile') {
+      const hide = action === 'hide_profile';
+      if (isHiddenByProfessional(profile) === hide) {
+        return res({ success: true, hidden_by_professional: hide, is_publicly_visible: isPublicProfessionalProfile(profile), unchanged: true });
+      }
+      const now = new Date().toISOString();
+      const updates = hide
+        ? { hidden_by_professional: true, hidden_by_professional_at: now }
+        : { hidden_by_professional: false, hidden_by_professional_at: '' };
+      await svc.entities.ProfessionalProfile.update(profile.id, updates);
+      const nextProfile = { ...profile, ...updates };
+      let reconciledAssignments = 0;
+      for (const assignment of assignments) {
+        const location = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
+        const nextStatus = reconciledAssignmentPublicStatus({ profile: nextProfile, assignment, location });
+        if ((assignment.public_status || 'privat') === nextStatus) continue;
+        await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { public_status: nextStatus });
+        reconciledAssignments += 1;
+      }
+      await audit(
+        svc,
+        user,
+        profile.id,
+        hide ? 'hide_professional_profile' : 'show_professional_profile',
+        { hidden_by_professional: isHiddenByProfessional(profile) },
+        { hidden_by_professional: hide, reconciled_assignments: reconciledAssignments },
+        hide
+          ? 'Specialistul si-a ascuns profilul public. Statusurile de verificare nu s-au schimbat.'
+          : 'Specialistul si-a reafisat profilul public. Apare doar daca este verificat si aprobat.',
+      );
+      return res({
+        success: true,
+        hidden_by_professional: hide,
+        is_publicly_visible: isPublicProfessionalProfile(nextProfile),
+        reconciled_assignments: reconciledAssignments,
       });
     }
 
