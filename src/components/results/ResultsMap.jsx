@@ -150,7 +150,7 @@ export default function ResultsMap({
   return (
     <div className={`relative isolate ${className}`}>
       <Suspense fallback={VECTOR_LOADING}>
-        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} fitKey={fitKey} userLocation={userLocation} />
+        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} userLocation={userLocation} fitKey={fitKey} />
       </Suspense>
 
       {outsideCount > 0 && (
