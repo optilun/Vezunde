@@ -93,13 +93,81 @@ function HalftoneTile({ bg, dot, shadow, children }) {
 
 // ── Medici și clinici ──────────────────────────────────────────────────────────────────────
 
-function DoctorTile() {
+const SPECIALIST_CARDS = [
+  { kind: "doctor", title: "Medic oftalmolog", description: "Adulți și copii · consult, fund de ochi", background: "#b9a2cf" },
+  { kind: "optometrist", title: "Optometrist", description: "Evaluarea vederii · dioptrii și lentile", background: "#a9c7c7" },
+  { kind: "optician", title: "Optician", description: "Rame și lentile · montaj și ajustări", background: "#ccb4cb" },
+];
+const SPECIALIST_INTERVAL_MS = 3200;
+
+function SpecialistPortrait({ kind }) {
+  const doctor = kind === "doctor";
+  const optometrist = kind === "optometrist";
+  return (
+    <svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMax meet" className="absolute inset-x-0 bottom-0 h-[86%] w-full" aria-hidden="true">
+      <path d="M36 120C40 91 68 79 100 79s60 12 64 41Z" fill={doctor ? "#fff" : optometrist ? "#edf8f7" : "#f5eee9"} stroke="#171717" strokeWidth="3" />
+      {doctor ? (
+        <>
+          <path d="M86 80 100 104 114 80Z" fill="#684d78" stroke="#171717" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M86 80 95 120M114 80l-9 40" stroke="#171717" strokeWidth="2.5" />
+          <path d="M83 83c-10 10-11 23-1 29M117 83c10 10 11 21 3 27" fill="none" stroke="#2b2133" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="120" cy="112" r="5.5" fill="#d4c6d8" stroke="#171717" strokeWidth="2.5" />
+          <rect x="129" y="95" width="16" height="10" rx="2" fill="#684d78" />
+        </>
+      ) : optometrist ? (
+        <>
+          <path d="M78 82 100 105l22-23-8-4-14 15-14-15Z" fill="#478b8d" stroke="#171717" strokeWidth="2.5" />
+          <path d="M100 105v15" stroke="#171717" strokeWidth="2.5" />
+          <rect x="128" y="96" width="17" height="13" rx="2" fill="#478b8d" />
+          <path d="M132 101h9m-7 4h5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="55" cy="96" r="12" fill="#e8f6f3" stroke="#171717" strokeWidth="2.5" />
+          <circle cx="55" cy="96" r="6" fill="#91bbbf" stroke="#478b8d" strokeWidth="2" />
+          <path d="m55 108-3 12" stroke="#171717" strokeWidth="3" strokeLinecap="round" />
+        </>
+      ) : (
+        <>
+          <path d="M76 83 100 103l24-20" fill="none" stroke="#c99575" strokeWidth="7" strokeLinejoin="round" />
+          <path d="M74 120 82 87l18 16 18-16 8 33Z" fill="#5d4968" stroke="#171717" strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M90 111h20" stroke="#e9d9e9" strokeWidth="2" strokeLinecap="round" />
+          <g fill="none" stroke="#211a26" strokeWidth="2.5">
+            <circle cx="142" cy="103" r="8" />
+            <circle cx="162" cy="103" r="8" />
+            <path d="M150 102q2-3 4 0m-20 0-8-3m44 3 7-3" strokeLinecap="round" />
+          </g>
+        </>
+      )}
+      <rect x="91" y="63" width="18" height="18" rx="4" fill={optometrist ? "#bb8268" : "#dc9a78"} />
+      <circle cx="100" cy="47" r="23" fill={optometrist ? "#c88f72" : "#e7ad8c"} stroke="#171717" strokeWidth="2.5" />
+      {doctor ? (
+        <path d="M77 46c-1-20 12-28 24-28 15 0 24 11 22 26-8-8-21-11-32-7-6 2-10 5-14 9Z" fill="#2b2133" />
+      ) : optometrist ? (
+        <>
+          <circle cx="121" cy="24" r="10" fill="#2b2133" />
+          <path d="M77 45c0-19 11-28 24-28 15 0 24 10 22 27-7-9-18-12-30-8-7 2-12 5-16 9Z" fill="#2b2133" />
+        </>
+      ) : (
+        <path d="M77 49c-3-19 6-29 22-31 15-2 25 8 25 28-5-4-9-9-11-15-5 7-15 9-26 8-3 3-6 6-10 10Z" fill="#3d2d37" />
+      )}
+      <g fill={optometrist ? "#e8f6f3" : "#f6eefa"} stroke="#171717" strokeWidth="2.5">
+        <circle cx="90" cy="50" r="8" />
+        <circle cx="110" cy="50" r="8" />
+      </g>
+      <path d="M98 50h4" stroke="#171717" strokeWidth="2.5" />
+      <circle cx="91" cy="51" r="2" fill="#171717" />
+      <circle cx="111" cy="51" r="2" fill="#171717" />
+      <path d="M95 61c3.5 3 6.5 3 10 0" fill="none" stroke="#171717" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DoctorTile({ specialistIndex = 0 }) {
+  const specialist = SPECIALIST_CARDS[specialistIndex];
   return (
     <Tile bg="#5a4468" color="#ffffff">
       <div
         className="relative h-[52%] shrink-0 overflow-hidden"
         style={{
-          backgroundColor: "#b9a2cf",
+          backgroundColor: specialist.background,
           backgroundImage: "radial-gradient(circle, rgba(74,54,87,0.28) 0.9px, transparent 1.25px)",
           backgroundSize: "6px 6px",
         }}
@@ -109,29 +177,13 @@ function DoctorTile() {
           Primește cereri
         </span>
         <span className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[#e8e0ea]/60" />
-        <svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMax meet" className="absolute inset-x-0 bottom-0 h-[86%] w-full" aria-hidden="true">
-          <path d="M36 120C40 91 68 79 100 79s60 12 64 41Z" fill="#ffffff" stroke="#171717" strokeWidth="3" />
-          <path d="M86 80 100 104 114 80Z" fill="#684d78" stroke="#171717" strokeWidth="3" strokeLinejoin="round" />
-          <path d="M86 80 95 120M114 80l-9 40" stroke="#171717" strokeWidth="2.5" />
-          <path d="M83 83c-10 10-11 23-1 29M117 83c10 10 11 21 3 27" fill="none" stroke="#2b2133" strokeWidth="3" strokeLinecap="round" />
-          <circle cx="120" cy="112" r="5.5" fill="#d4c6d8" stroke="#171717" strokeWidth="2.5" />
-          <rect x="129" y="95" width="16" height="10" rx="2" fill="#684d78" />
-          <rect x="91" y="63" width="18" height="18" rx="4" fill="#dc9a78" />
-          <circle cx="100" cy="47" r="23" fill="#e7ad8c" stroke="#171717" strokeWidth="2.5" />
-          <path d="M77 46c-1-20 12-28 24-28 15 0 24 11 22 26-8-8-21-11-32-7-6 2-10 5-14 9Z" fill="#2b2133" />
-          <g fill="#f6eefa" stroke="#171717" strokeWidth="2.5">
-            <circle cx="90" cy="50" r="8" />
-            <circle cx="110" cy="50" r="8" />
-          </g>
-          <path d="M98 50h4" stroke="#171717" strokeWidth="2.5" />
-          <circle cx="91" cy="51" r="2" fill="#171717" />
-          <circle cx="111" cy="51" r="2" fill="#171717" />
-          <path d="M95 61c3.5 3 6.5 3 10 0" fill="none" stroke="#171717" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
+        <div key={specialist.kind} className="specialist-card-swap absolute inset-0">
+          <SpecialistPortrait kind={specialist.kind} />
+        </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col p-4">
-        <p className="font-heading text-[1.05rem] font-bold leading-tight">Medic oftalmolog</p>
-        <p className="mt-0.5 text-[11.5px] text-white/65">Adulți și copii · consult, fund de ochi</p>
+      <div key={specialist.kind} className="specialist-card-swap flex min-h-0 flex-1 flex-col p-4">
+        <p className="font-heading text-[1.05rem] font-bold leading-tight">{specialist.title}</p>
+        <p className="mt-0.5 text-[11.5px] text-white/65">{specialist.description}</p>
         <div className="mt-auto flex items-center justify-between rounded-md bg-white px-3 py-2 text-[#3f2d4c]">
           <span className="text-[12px] font-semibold">Trimite o cerere</span>
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1192,6 +1244,7 @@ export const CATEGORY_SETS = [
 export default function CategoryStrip() {
   const reducedMotion = usePrefersReducedMotion();
   const [active, setActive] = useState(0);
+  const [specialistIndex, setSpecialistIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [inView, setInView] = useState(false);
   const [stopped, setStopped] = useState(false);
@@ -1213,9 +1266,23 @@ export default function CategoryStrip() {
 
   useEffect(() => {
     if (!running) return undefined;
-    const timer = window.setTimeout(() => setActive((index) => (index + 1) % CATEGORY_SETS.length), INTERVAL_MS);
+    const delay = active === 0 ? SPECIALIST_INTERVAL_MS * SPECIALIST_CARDS.length : INTERVAL_MS;
+    const timer = window.setTimeout(() => {
+      if (active === CATEGORY_SETS.length - 1) setSpecialistIndex(0);
+      setActive((index) => (index + 1) % CATEGORY_SETS.length);
+    }, delay);
     return () => window.clearTimeout(timer);
   }, [running, active]);
+
+  useEffect(() => {
+    if (active !== 0 || reducedMotion || !inView || hovered) return undefined;
+    if (!stopped && specialistIndex === SPECIALIST_CARDS.length - 1) return undefined;
+    const timer = window.setTimeout(
+      () => setSpecialistIndex((index) => (index + 1) % SPECIALIST_CARDS.length),
+      SPECIALIST_INTERVAL_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [active, reducedMotion, inView, hovered, stopped, specialistIndex]);
 
   // Pe telefon filele și plăcuțele se derulează orizontal: fila activă rămâne la vedere, iar
   // rândul nou de plăcuțe pornește de la început.
@@ -1230,6 +1297,7 @@ export default function CategoryStrip() {
 
   const select = (index) => {
     setStopped(true);
+    if (index === 0) setSpecialistIndex(0);
     setActive(index);
   };
 
@@ -1308,7 +1376,7 @@ export default function CategoryStrip() {
                   <span aria-hidden="true" className="absolute -right-[9px] -top-[9px] z-10 h-2 w-2 bg-[#171717]" />
                 )}
                 <div className="cat-tile-in h-full w-full overflow-hidden shadow-[0_14px_34px_rgba(30,24,18,0.08)]" style={{ "--i": index }}>
-                  <Component />
+                  <Component specialistIndex={specialistIndex} />
                 </div>
               </div>
             ))}
