@@ -650,154 +650,20 @@ export async function handle(req: Request) {
       return Response.json({ success: true });
     }
 
-    // ---------- CLAIM APPROVAL ----------
-    if (action === 'approve_claim') {
-      const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
-      if (!claim) return bad('Revendicarea nu exista');
-      const alreadyApproved = claim.status === 'aprobata';
-      if (!['in_asteptare', 'aprobata'].includes(claim.status)) {
-        return bad('Revendicarea nu este in asteptare sau aprobata');
-      }
-      if (claim.mode === 'new_location_duplicate_review') {
-        return bad('Cerere de clarificare duplicat — nu poate fi aprobata direct. Creeaza locatia doar prin fluxul canonic "Adauga locatie".');
-      }
-      if (!claim.location_id) return bad('Revendicarea nu are locatie asociata');
-
-      const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
-      if (!loc) return bad('Locatia revendicata nu exista');
-      if (!loc.provider_profile_type) {
-        return bad('Locatia nu are provider_profile_type — clasifica profilul inainte de aprobare');
-      }
-
-      const note = String(p.note || '').trim();
-      const submitted = parseJSON(claim.submitted_payload);
-      const isAccessRequest = submitted.request_type === 'access_request_existing_claimed_profile';
-      const memberRole = isAccessRequest ? 'location_staff' : 'organization_owner';
-      const locUpdates = alreadyApproved ? {} : {
-        claim_verification_status: 'approved',
-        profile_control_status: loc.profile_control_status === 'verified' ? 'verified' : 'claimed',
-        profile_control_status_updated_at: new Date().toISOString(),
-        profile_control_status_reason: note || (isAccessRequest ? 'Cerere acces aprobata' : 'Revendicare aprobata'),
-      };
-      if (!alreadyApproved && loc.status === 'in_verificare') locUpdates.status = 'publicata';
-
-      if (!alreadyApproved) {
-        await svc.entities.ProviderLocation.update(loc.id, locUpdates);
-        await svc.entities.ProviderClaimRequest.update(claim.id, {
-          status: 'aprobata',
-          reviewed_at: new Date().toISOString(),
-          review_notes: note,
-        });
-      }
-
-      let activeMembership = null;
-      if (claim.user_id) {
-        const existing = await svc.entities.ProviderMembership.filter({
-          user_id: claim.user_id,
-          location_id: loc.id,
-          status: 'active',
-        });
-        activeMembership = existing[0] || null;
-        if (!activeMembership && !alreadyApproved) {
-          activeMembership = await svc.entities.ProviderMembership.create({
-            user_id: claim.user_id,
-            location_id: loc.id,
-            organization_id: loc.organization_id || claim.organization_id || null,
-            role: memberRole,
-            status: 'active',
-          });
-        }
-      }
-
-      let promotedDraftCount = 0;
-      if (activeMembership && claim.user_id) {
-        const prepDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
-          claim_request_id: claim.id,
-          submitted_by_user_id: claim.user_id,
-          access_origin: 'claim_preparation',
-          location_id: loc.id,
-          status: { $in: ['draft', 'needs_more_info'] },
-        }, '-created_date', 100);
-        for (const draft of prepDrafts) {
-          if (draft.preparation_locked_at) continue;
-          await svc.entities.ProviderWorkspaceSubmission.update(draft.id, {
-            access_origin: 'provider_workspace',
-          });
-          promotedDraftCount += 1;
-        }
-      }
-
-      if (!alreadyApproved || promotedDraftCount > 0) {
-        await audit(svc, user, {
-          entity_type: 'ProviderClaimRequest',
-          entity_id: claim.id,
-          action_type: isAccessRequest ? 'approve_access_request' : 'approve_claim',
-          changed_fields: alreadyApproved
-            ? ['preparation_draft_promotion']
-            : ['status', 'claim_verification_status', 'profile_control_status', 'membership_role', 'preparation_draft_promotion'],
-          previous: { status: claim.status, profile_control_status: loc.profile_control_status },
-          next: {
-            ...locUpdates,
-            membership_role: memberRole,
-            promoted_preparation_drafts: promotedDraftCount,
-          },
-          note,
-        });
-      }
-
+    // ---------- CLAIM APPROVAL / REJECTION (retrase 2026-10-01) ----------
+    // Aici exista o a treia cale de aprobare a revendicarilor, apelabila doar prin API admin (nicio
+    // interfata nu o folosea). Dadea rol de organization_owner pentru orice revendicare de locatie si
+    // publica direct locatiile noi aflate in verificare - alte reguli decat caile folosite de
+    // Directory Ops -> Revendicari. Ca sa existe o singura sursa de adevar, raspunde acum cu 410 si
+    // trimite la handlerele canonice: adminProviderClaimReview (revendicari fara scope si locatii
+    // noi) si adminProviderScopedClaimReview (revendicari cu scope).
+    if (action === 'approve_claim' || action === 'reject_claim') {
       return Response.json({
-        success: true,
-        promoted_preparation_drafts: promotedDraftCount,
-        already_approved: alreadyApproved,
-        membership_role: memberRole,
-      });
-    }
-
-    // ---------- CLAIM REJECTION ----------
-    if (action === 'reject_claim') {
-      const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
-      if (!claim) return bad('Revendicarea nu exista');
-      if (claim.status !== 'in_asteptare') return bad('Revendicarea nu este in asteptare');
-      const note = String(p.note || '').trim();
-      if (!note) return bad('Respingerea unei revendicari necesita o nota');
-
-      const rejectedAt = new Date().toISOString();
-      await svc.entities.ProviderClaimRequest.update(claim.id, {
-        status: 'respinsa',
-        reviewed_at: rejectedAt,
-        review_notes: note,
-      });
-      if (claim.location_id) {
-        const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
-        if (loc) {
-          await svc.entities.ProviderLocation.update(loc.id, { claim_verification_status: 'rejected' });
-        }
-      }
-
-      const prepDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
-        claim_request_id: claim.id,
-        access_origin: 'claim_preparation',
-      }, '-created_date', 100);
-      let lockedDraftCount = 0;
-      for (const draft of prepDrafts) {
-        if (draft.preparation_locked_at) continue;
-        await svc.entities.ProviderWorkspaceSubmission.update(draft.id, {
-          preparation_locked_at: rejectedAt,
-          preparation_lock_reason: 'claim_rejected',
-        });
-        lockedDraftCount += 1;
-      }
-
-      await audit(svc, user, {
-        entity_type: 'ProviderClaimRequest',
-        entity_id: claim.id,
-        action_type: 'reject_claim',
-        changed_fields: ['status', 'preparation_draft_lock'],
-        previous: { status: claim.status },
-        next: { status: 'respinsa', locked_preparation_drafts: lockedDraftCount },
-        note,
-      });
-      return Response.json({ success: true, locked_preparation_drafts: lockedDraftCount });
+        error: 'Actiune retrasa. Revendicarile se aproba sau se resping din Directory Ops -> Revendicari.',
+        code: 'claim_action_retired',
+        use_function: 'adminProviderClaimReview',
+        use_scoped_function: 'adminProviderScopedClaimReview',
+      }, { status: 410 });
     }
 
     return bad('Actiune necunoscuta');
