@@ -165,7 +165,7 @@ export default function SituationExplainer() {
                   onClick={() => selectRole(index)}
                   onKeyDown={(event) => activateFromKeyboard(event, index)}
                   className={`relative min-h-[4.75rem] border-l border-black/20 px-3 py-3 sm:min-h-[6.75rem] sm:py-4 text-left outline-none transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] sm:px-5 lg:min-h-[5.75rem] lg:py-2 ${
-                    selected ? "text-foreground" : "text-muted-foreground/[0.58] hover:text-foreground"
+                    selected ? "text-foreground" : "text-muted-foreground/80 hover:text-foreground sm:text-muted-foreground/[0.58]"
                   }`}
                 >
                   <span className="flex items-center gap-3">
