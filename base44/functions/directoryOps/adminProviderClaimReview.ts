@@ -1,4 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  ARCHIVED_ORGANIZATION_PATCH,
+  canArchiveClaimCreatedOrganization,
+  rejectedNewLocationPatch,
+} from '../../shared/newLocationClaimPolicy.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const LOCATION_MEMBER_ROLES = ['location_manager', 'location_staff'];
@@ -35,6 +40,62 @@ async function audit(svc, user, claim, actionType, previous, next, note) {
     note: note || '',
     performed_at: new Date().toISOString(),
   });
+}
+
+// 2026-10-01. O locatie noua respinsa nu ramane ciorna "activa" si organizatia ei nu ramane
+// activa fara membri: amandoua se arhiveaza (nimic nu se sterge), cu audit pe fiecare entitate.
+// Locatia sau organizatia preluata intre timp pe alta cale (publicata, revendicata, cu alte
+// locatii sau membri) nu se atinge - vezi shared/newLocationClaimPolicy.js.
+async function archiveRejectedNewLocation(svc, user, claim, note) {
+  const result = { location_archived: false, organization_archived: false };
+  const location = claim.location_id
+    ? await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null)
+    : null;
+  const locationPatch = rejectedNewLocationPatch(location);
+  if (location && locationPatch) {
+    await svc.entities.ProviderLocation.update(location.id, locationPatch);
+    await svc.entities.DirectoryAuditRecord.create({
+      entity_type: 'ProviderLocation',
+      entity_id: location.id,
+      action_type: 'archive_rejected_new_location',
+      changed_fields: Object.keys(locationPatch),
+      previous_values: JSON.stringify(Object.fromEntries(Object.keys(locationPatch).map((key) => [key, location[key] ?? null]))),
+      new_values: JSON.stringify(locationPatch),
+      admin_user_id: user.id,
+      admin_email: user.email,
+      note: note || '',
+      performed_at: new Date().toISOString(),
+    });
+    result.location_archived = true;
+  } else if (location) {
+    await svc.entities.ProviderLocation.update(location.id, { claim_verification_status: 'rejected' });
+  }
+
+  if (!claim.organization_id) return result;
+  const organization = await svc.entities.ProviderOrganization.get(claim.organization_id).catch(() => null);
+  if (!organization) return result;
+  const [organizationLocations, activeMemberships] = await Promise.all([
+    svc.entities.ProviderLocation.filter({ organization_id: organization.id }, '-created_date', 20).catch(() => null),
+    svc.entities.ProviderMembership.filter({ organization_id: organization.id, status: 'active' }, '-created_date', 5).catch(() => null),
+  ]);
+  // Daca nu stim sigur ca organizatia e goala, nu o atingem.
+  if (!Array.isArray(organizationLocations) || !Array.isArray(activeMemberships)) return result;
+  if (!canArchiveClaimCreatedOrganization({ claim, organization, organizationLocations, activeMemberships })) return result;
+  await svc.entities.ProviderOrganization.update(organization.id, { ...ARCHIVED_ORGANIZATION_PATCH });
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: 'ProviderOrganization',
+    entity_id: organization.id,
+    action_type: 'archive_rejected_new_location_organization',
+    changed_fields: Object.keys(ARCHIVED_ORGANIZATION_PATCH),
+    previous_values: JSON.stringify({ status: organization.status ?? null, public_visibility_status: organization.public_visibility_status ?? null }),
+    new_values: JSON.stringify(ARCHIVED_ORGANIZATION_PATCH),
+    admin_user_id: user.id,
+    admin_email: user.email,
+    note: note || '',
+    performed_at: new Date().toISOString(),
+  });
+  result.organization_archived = true;
+  return result;
 }
 
 async function ensureMembership(svc, values) {
@@ -86,13 +147,13 @@ export async function handle(req: Request) {
         reviewed_at: rejectedAt,
         review_notes: note,
       });
-      if (claim.location_id) {
+      let archiveResult = { location_archived: false, organization_archived: false };
+      if (claim.mode === 'new_location') {
+        archiveResult = await archiveRejectedNewLocation(svc, user, claim, note);
+      } else if (claim.location_id) {
         const location = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
         if (location) {
-          await svc.entities.ProviderLocation.update(location.id, {
-            claim_verification_status: 'rejected',
-            ...(claim.mode === 'new_location' ? { status: 'draft', public_visibility_status: 'draft' } : {}),
-          });
+          await svc.entities.ProviderLocation.update(location.id, { claim_verification_status: 'rejected' });
         }
       }
       const drafts = await svc.entities.ProviderWorkspaceSubmission.filter({
@@ -108,8 +169,8 @@ export async function handle(req: Request) {
         });
         lockedDraftCount += 1;
       }
-      await audit(svc, user, claim, 'reject_provider_onboarding', { status: claim.status }, { status: 'respinsa', locked_drafts: lockedDraftCount }, note);
-      return Response.json({ success: true, locked_drafts: lockedDraftCount });
+      await audit(svc, user, claim, 'reject_provider_onboarding', { status: claim.status }, { status: 'respinsa', locked_drafts: lockedDraftCount, ...archiveResult }, note);
+      return Response.json({ success: true, locked_drafts: lockedDraftCount, ...archiveResult });
     }
 
     if (p.action !== 'approve') return Response.json({ error: 'Actiune invalida' }, { status: 400 });
