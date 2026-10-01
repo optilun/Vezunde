@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { isRetiredLocationProposal, providerSafeIdentityCandidate } from '../../shared/newLocationClaimPolicy.js';
 
 // Module 3H.1B.1 — Provider Identity Gate v1.
 // Deterministic, READ-ONLY duplicate-candidate detection. No AI, no Google data
@@ -56,16 +57,36 @@ Deno.serve(async (req) => {
     const domain = domainOf(cand.website);
     const email = emailNorm(cand.public_email);
 
-    const [allLocs, allOrgs] = await Promise.all([
-      svc.entities.ProviderLocation.list(null, 500),
-      svc.entities.ProviderOrganization.list(null, 500),
+    // 2026-10-01. Inainte se citeau doar primele 500 de locatii (din peste 1000), deci jumatate
+    // din director nu era comparata deloc. Duplicatele puternice si posibile cer aceeasi
+    // localitate (sau acelasi email), asa ca acum se citesc COMPLET locatiile din localitate si
+    // cele cu acelasi email public; cele mai recente 500 raman doar pentru semnalele informative
+    // din alte localitati (likely_distinct, care nu blocheaza).
+    const isProviderContext = context === 'provider_new_location';
+    const rawEmail = String(cand.public_email || '').trim();
+    const emailVariants = [...new Set([rawEmail, email].filter(Boolean))];
+    const [sameLocalityLocs, recentLocs, emailLocs, allOrgs] = await Promise.all([
+      svc.entities.ProviderLocation.filter({ locality_siruta_code: siruta }, '-created_date', 5000),
+      svc.entities.ProviderLocation.list('-created_date', 500),
+      emailVariants.length > 0
+        ? svc.entities.ProviderLocation.filter({ public_email: { $in: emailVariants } }, '-created_date', 100).catch(() => [])
+        : Promise.resolve([]),
+      svc.entities.ProviderOrganization.list(null, 5000),
     ]);
+    const locationById = new Map();
+    for (const l of [...sameLocalityLocs, ...emailLocs, ...recentLocs]) {
+      if (l?.id && !locationById.has(l.id)) locationById.set(l.id, l);
+    }
+    const allLocs = [...locationById.values()];
     const orgNameById = {};
     for (const o of allOrgs) orgNameById[o.id] = o.name || '';
 
     const candidates = [];
     for (const l of allLocs) {
       if (p.exclude_location_id && l.id === p.exclude_location_id) continue;
+      // O propunere de locatie respinsa/arhivata nu mai reprezinta pe nimeni: nu blocheaza
+      // proprietarul real si nu se arata furnizorilor. Adminul o vede in continuare.
+      if (isProviderContext && isRetiredLocationProposal(l)) continue;
       const lToks = tokens(l.name);
       const lOrgName = orgNameById[l.organization_id] || '';
       // Canonical geographic identity: SIRUTA only — never city/county text.
@@ -129,7 +150,14 @@ Deno.serve(async (req) => {
     }
 
     candidates.sort((a, b) => b.score - a.score);
-    const top = candidates.slice(0, limit);
+    // Un furnizor nu vede detaliile locatiilor nepublice ale altora (vezi providerSafeIdentityCandidate);
+    // cele nepublice care oricum nu blocheaza (likely_distinct) nu se mai trimit deloc.
+    const top = (isProviderContext
+      ? candidates
+        .map((candidate) => providerSafeIdentityCandidate(candidate, locationById.get(candidate.location_id)))
+        .filter((candidate) => candidate && (candidate.is_public || candidate.severity !== 'likely_distinct'))
+      : candidates
+    ).slice(0, limit);
     // likely_distinct never blocks.
     const blocking_level = top.some((c) => c.severity === 'strong_duplicate')
       ? 'strong_duplicate_review_required'
