@@ -17,15 +17,19 @@ export default function IdentityDuplicatePanel({ check, submitting, onClaim, onC
       <div className="mt-4 space-y-3">
         {check.candidates.map((c) => (
           <div key={c.location_id} className="rounded-xl border border-border bg-card p-4">
-            <div className="font-semibold text-sm">{c.name}</div>
+            {/* 2026-10-01: o propunere nepublica a altcuiva vine fara nume si adresa; nu poate fi revendicata. */}
+            <div className="font-semibold text-sm">{c.is_public === false ? "O locație propusă de altcineva, aflată în verificare" : c.name}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {c.organization_name ? `${c.organization_name} · ` : ""}
               {c.locality_name}{c.county_name ? `, ${c.county_name}` : ""}{c.address ? ` · ${c.address}` : ""}
             </div>
+            {c.is_public === false && (
+              <div className="text-xs text-muted-foreground mt-1">Dacă este aceeași locație, explică mai jos și echipa VIASEE verifică ambele propuneri.</div>
+            )}
             {c.matched_fields?.length > 0 && (
               <div className="text-xs text-muted-foreground mt-1">Potrivire: {c.matched_fields.join(", ")}</div>
             )}
-            {strong && c.severity === "strong_duplicate" && (
+            {strong && c.severity === "strong_duplicate" && c.is_public !== false && (
               <button type="button" onClick={() => onClaim(c)} className="mt-3 px-4 py-2 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#171717" }}>
                 Revendica acest profil
               </button>
