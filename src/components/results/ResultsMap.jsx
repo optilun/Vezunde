@@ -64,6 +64,8 @@ export default function ResultsMap({
   rankById = null,
   // 2026-09-28 (audit /cauta, B6): vezi VectorResultsCanvas (fara reincadrare la date noi).
   fitKey = null,
+  // 2026-10-01: pozitia vizitatorului ({ lat, lng, accuracy }), desenata ca punct + cerc de precizie.
+  userLocation = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
   // Starea „vazut” se citeste o data la deschiderea hartii (revenirea de pe un profil o redeschide).
@@ -131,7 +133,7 @@ export default function ResultsMap({
 
   if (vectorFailed) return <div className={`relative isolate ${className}`}>
     <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-sm">Se încarcă harta 2D...</div>}>
-      <LegacyResultsMap {...{results, fitResults, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea, rankById}} className="h-full w-full" />
+      <LegacyResultsMap {...{results, fitResults, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea, rankById, userLocation}} className="h-full w-full" />
     </Suspense>
     <details className="absolute left-3 top-24 z-[500] max-w-60 rounded-2xl border border-border bg-card text-xs shadow-sm">
       <summary className="flex min-h-11 cursor-pointer items-center px-3 font-semibold">Hartă 2D · De ce?</summary>
@@ -148,7 +150,7 @@ export default function ResultsMap({
   return (
     <div className={`relative isolate ${className}`}>
       <Suspense fallback={VECTOR_LOADING}>
-        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} fitKey={fitKey} />
+        <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} selectedCard={floatingCard} revealArea={revealArea} fitKey={fitKey} userLocation={userLocation} />
       </Suspense>
 
       {outsideCount > 0 && (
