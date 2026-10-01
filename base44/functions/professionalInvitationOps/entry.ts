@@ -392,9 +392,10 @@ async function inspectInvitation(svc, user, payload, req) {
   if (normalizeEmail(user.email) !== invitation.invited_email_normalized) {
     // Cu linkul din email, persoana poate afla la ce adresa (mascata) a fost trimisa invitatia,
     // ca sa stie cu ce cont sa se autentifice. Fara token nu se spune nimic despre invitatie.
+    if (!viaToken) return response({ error: 'Invitatie invalida' }, 404);
     return response({
       error: 'Invitatia este destinata altui email',
-      ...(viaToken ? { invited_email_masked: maskEmail(invitation.invited_email_normalized) } : {}),
+      invited_email_masked: maskEmail(invitation.invited_email_normalized),
     }, 403);
   }
   if (invitation.status === 'accepted') {
