@@ -108,7 +108,7 @@ const search = readSearchPage();
 {
   assert.doesNotMatch(search, /ProviderCard/, '/cauta nu mai foloseste cardul vechi');
   assert.match(search, /listLayout="grid"/);
-  assert.match(search, /<DirectoryResultCard location=\{location\} onShowMap=\{onShowMap\} rank=\{rank\} details=\{<ServiceMatchDetails location=\{location\} \/>\} \/>/);
+  assert.match(search, /<DirectoryResultCard compactMobile location=\{location\} onShowMap=\{onShowMap\} rank=\{rank\} details=\{<ServiceMatchDetails location=\{location\} \/>\} \/>/);
   const details = read('src/components/results/ServiceMatchDetails.jsx');
   assert.match(details, /buildProviderDecisionConfidence\(/, 'acelasi panou de incredere, din aceleasi date');
   assert.match(details, /<DecisionConfidencePanel confidence=\{confidenceForLocation\(location\)\}/);
