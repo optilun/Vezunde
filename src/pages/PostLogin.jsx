@@ -20,15 +20,21 @@ export default function PostLogin() {
       return () => { active = false; };
     }
 
-    base44.functions.invoke("acceptProviderMemberInvitation", { action: "list_mine" })
-      .then((response) => {
-        if (!active) return;
-        const invitations = response.data?.invitations || [];
-        setDestination(invitations.length > 0 ? "/accept-provider-invitation" : getPostLoginDestination(user));
-      })
-      .catch(() => {
-        if (active) setDestination(getPostLoginDestination(user));
-      });
+    // 2026-10-01: se verifica si invitatiile de specialist, nu doar cele de membru. Cine a primit o
+    // invitatie si s-a autentificat fara sa deschida linkul din email ajunge direct la ea. Daca are
+    // ambele tipuri, accesul in organizatie vine primul; cea de specialist ramane in cont.
+    const countInvitations = (functionName) => base44.functions.invoke(functionName, { action: "list_mine" })
+      .then((response) => (response.data?.invitations || []).length)
+      .catch(() => 0);
+    Promise.all([
+      countInvitations("acceptProviderMemberInvitation"),
+      countInvitations("professionalInvitationOps"),
+    ]).then(([memberCount, professionalCount]) => {
+      if (!active) return;
+      if (memberCount > 0) setDestination("/accept-provider-invitation");
+      else if (professionalCount > 0) setDestination("/accept-professional-invitation");
+      else setDestination(getPostLoginDestination(user));
+    });
 
     return () => { active = false; };
   }, [user]);
