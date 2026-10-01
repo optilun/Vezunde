@@ -17,17 +17,18 @@ export default function CategoryShowcase() {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
             Servicii și specialiști
           </p>
-          <h2 id={headingId} className="mx-auto mt-4 max-w-[68rem] text-balance font-heading text-[2.4rem] font-extrabold leading-[1.06] tracking-[-0.055em] min-[390px]:text-[2.6rem] sm:text-[3.5rem] lg:text-[4rem] xl:text-[4.5rem]">
-            <span className="block lg:whitespace-nowrap">Tot ce ai nevoie pentru vedere.</span>
-            <span className="block">Într-un singur loc.</span>
+          <h2 id={headingId} className="mx-auto mt-3 max-w-[68rem] sm:mt-4 text-balance font-heading text-[2rem] font-extrabold leading-[1.06] tracking-[-0.055em] sm:text-[3.5rem] lg:text-[4rem] xl:text-[4.5rem]">
+            <span className="sm:hidden">Totul pentru vedere.</span>
+            <span className="hidden sm:block lg:whitespace-nowrap">Tot ce ai nevoie pentru vedere.</span>
+            <span className="hidden sm:block">Într-un singur loc.</span>
           </h2>
         </Reveal>
 
-        <Reveal delay={80} className="mt-9 sm:mt-11">
+        <Reveal delay={80} className="mt-6 sm:mt-11">
           <CategoryStrip />
         </Reveal>
 
-        <Reveal delay={120} className="mt-10 flex justify-center sm:mt-12 lg:mt-14">
+        <Reveal delay={120} className="mt-6 flex justify-center sm:mt-12 lg:mt-14">
           <Link
             to="/ghid"
             aria-label="Vezi ghidul VIASEE"
@@ -37,7 +38,7 @@ export default function CategoryShowcase() {
             <span aria-hidden="true" className="order-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f8f4ec] text-[#171717] sm:h-14 sm:w-14">
               <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none sm:h-7 sm:w-7" />
             </span>
-            <span className="font-heading text-2xl font-bold leading-none tracking-[-0.035em] sm:text-[2rem]">Vezi ghidul complet</span>
+            <span className="font-heading text-xl font-bold leading-none tracking-[-0.035em] sm:text-[2rem]"><span className="sm:hidden">Ghid pentru vedere</span><span className="hidden sm:inline">Vezi ghidul complet</span></span>
           </Link>
         </Reveal>
       </div>
