@@ -332,7 +332,7 @@ Deno.serve(async (req) => {
       const now = new Date().toISOString();
       const updates = hide
         ? { hidden_by_professional: true, hidden_by_professional_at: now }
-        : { hidden_by_professional: false, hidden_by_professional_at: '' };
+        : { hidden_by_professional: false, hidden_by_professional_at: null };
       await svc.entities.ProfessionalProfile.update(profile.id, updates);
       const nextProfile = { ...profile, ...updates };
       let reconciledAssignments = 0;
