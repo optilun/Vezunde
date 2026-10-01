@@ -84,8 +84,10 @@
   [data-mobile-directory-card] [data-card-cover] { width: 72px; height: 72px; aspect-ratio: 1; border-radius: 12px; }
   [data-mobile-directory-card] [data-card-cover] > svg { inset: 0; width: 32px; height: 32px; margin: auto; color: #4f6080; opacity: .55; }
   [data-mobile-directory-card] [data-card-cover] > span,
-  [data-mobile-directory-card] [data-card-badges],
   [data-mobile-directory-card] [data-card-quick-actions] { display: none; }
+  [data-mobile-directory-card] [data-card-badges] { top: 3px; left: 3px; }
+  [data-mobile-directory-card] [data-card-badges] > span:last-child { display: none; }
+  [data-mobile-directory-card] [data-card-badges] > span:first-child:not(:last-child) { height: 22px; min-width: 22px; font-size: 10px; }
   [data-mobile-directory-card] [data-card-type] { display: block; font-size: 11px; line-height: 1.4; margin-bottom: 4px; }
   [data-mobile-directory-card] [data-card-title-row] { margin-top: 0; }
   [data-mobile-directory-card] h3 { font-size: 17px; line-height: 1.35; }
