@@ -249,7 +249,8 @@ export default function LocationsWithMap({
           <Dialog open={mobileView === "map"} onOpenChange={(open) => { if (!open && mobileView === "map") onToggleMobileView(); }}>
             <DialogContent
               data-mobile-map-dialog
-              className="inset-0 left-0 top-0 z-[60] flex h-[100dvh] w-[100vw] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none data-[state=open]:animate-none data-[state=closed]:animate-none [&>button]:hidden"
+              style={{ animation: "none" }}
+              className="inset-0 left-0 top-0 z-[60] flex h-[100dvh] w-[100vw] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:hidden"
               onCloseAutoFocus={(event) => { event.preventDefault(); mapToggleRef.current?.focus({ preventScroll: true }); }}
             >
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
