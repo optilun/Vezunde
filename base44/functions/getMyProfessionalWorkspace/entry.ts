@@ -39,6 +39,9 @@ function sanitizeProfile(profile) {
     submitted_at: profile.submitted_at || null,
     profile_completeness: Number(profile.profile_completeness || 0),
     is_public: profile.is_public === true,
+    // 2026-10-01: specialistul isi poate ascunde singur profilul (manageMyProfessionalProfile).
+    hidden_by_professional: profile.hidden_by_professional === true,
+    hidden_by_professional_at: profile.hidden_by_professional_at || null,
   };
 }
 
