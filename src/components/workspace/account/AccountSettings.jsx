@@ -95,7 +95,6 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
   const selectedStartMode = preferences.startMode === "last" || visibleModes.some((mode) => mode.key === preferences.startMode)
     ? preferences.startMode
     : "last";
-  const fullName = user?.full_name || user?.name || "Utilizator VIASEE";
   const blockers = eligibility.blockers || [];
   const hasDeletionBlockers = blockers.length > 0;
   // 2026-10-01: cererea de stergere nu mai deschide un email (care se putea pierde). Se inregistreaza
