@@ -55,6 +55,18 @@ export default function AcceptProviderInvitation() {
   const [pendingInvitations, setPendingInvitations] = useState([]);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [professionalInvitationCount, setProfessionalInvitationCount] = useState(0);
+
+  // 2026-10-01: /dupa-login trimite aici intai invitatiile de membru. Daca acelasi email are si o
+  // invitatie de specialist, dupa acceptare apare un link catre ea, ca sa nu se piarda.
+  useEffect(() => {
+    if (!result) return undefined;
+    let active = true;
+    base44.functions.invoke("professionalInvitationOps", { action: "list_mine" })
+      .then((response) => { if (active) setProfessionalInvitationCount((response.data?.invitations || []).length); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [result]);
 
   useEffect(() => {
     let active = true;
@@ -167,6 +179,11 @@ export default function AcceptProviderInvitation() {
             <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
               <div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-800" /><div><h2 className="text-sm font-bold text-green-950">Accesul a fost confirmat</h2><p className="mt-1 text-xs leading-relaxed text-green-900">Poți deschide acum workspace-ul {result.invitation?.organization?.name || "organizației"}.</p></div></div>
               <Link to="/contul-meu?mode=provider" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-green-950 px-4 py-2 text-xs font-semibold text-white">Deschide workspace-ul organizației</Link>
+              {professionalInvitationCount > 0 && (
+                <Link to="/accept-professional-invitation" className="mt-3 block text-xs font-semibold text-green-950 underline underline-offset-4">
+                  Ai și {professionalInvitationCount === 1 ? "o invitație" : `${professionalInvitationCount} invitații`} de specialist. Vezi invitația
+                </Link>
+              )}
             </div>
           )}
         </div>
