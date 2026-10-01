@@ -98,7 +98,19 @@ export function isPublicProfessionalProfile(profile) {
   const state = professionalProfileState(profile);
   return state.is_public === true
     && state.verification_status === 'verified'
-    && state.public_visibility_status === 'approved';
+    && state.public_visibility_status === 'approved'
+    && !isHiddenByProfessional(profile);
+}
+
+/**
+ * 2026-10-01. Specialistul isi poate ascunde singur profilul public, din contul lui, si il poate
+ * reafisa oricand. Ascunderea NU schimba niciun status de verificare sau de vizibilitate (altfel
+ * reafisarea ar cere o noua decizie de admin): e o conditie in plus in poarta publica de mai sus,
+ * deci toate locurile care o folosesc (pagina specialistului, echipa locatiei, cautare,
+ * recomandari, sitemap) il ascund deodata.
+ */
+export function isHiddenByProfessional(profile) {
+  return profile?.hidden_by_professional === true;
 }
 
 export function isProfessionalProfileLocked(profile) {
@@ -248,6 +260,7 @@ export default {
   PROFESSIONAL_SUBMISSION_BLOCKER_LABELS,
   professionalProfileState,
   isPublicProfessionalProfile,
+  isHiddenByProfessional,
   isProfessionalProfileLocked,
   nextProfessionalProfileState,
   assignmentPublicEligibility,
