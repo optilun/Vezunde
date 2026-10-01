@@ -3,6 +3,8 @@ import { Loader2, MapPin, LocateFixed, ChevronDown } from "lucide-react";
 import { loadNationalDirectoryMap, NATIONAL_MAP_ERROR_MESSAGE } from "@/lib/nationalDirectoryMap";
 import { loadNationalMapSnapshot } from "@/lib/nationalMapEarly";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
+import useDesktopResults from "@/hooks/useDesktopResults";
+import { completeDirectoryRows, directoryRowsInView } from "../../shared/mobileDirectoryList.js";
 import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import useRememberScroll from "@/hooks/useRememberScroll";
@@ -33,6 +35,7 @@ function formatSnapshotDate(value) {
 
 export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [saved] = useState(() => readSearchSession().national || {});
+  const desktop = useDesktopResults();
   const scrollRestored = useRef(false);
   const [state, setState] = useState({ status: "loading", points: [], meta: null, error: "" });
   const type = providerType;
@@ -79,7 +82,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [visibleIds, setVisibleIds] = useState(null);
   const [pageSize, setPageSize] = useState(saved.pageSize || 24);
   // E2: alegerea explicita lista/harta (comuna cu /cauta pe o localitate); altfel harta.
-  const [mobileView, setMobileView] = useState(() => readMobileViewChoice(saved.mobileView || "map"));
+  const [mobileView, setMobileView] = useState(() => readMobileViewChoice("list"));
   const toggleMobileView = useCallback(() => setMobileView((view) => {
     const next = view === "map" ? "list" : "map";
     rememberMobileViewChoice(next);
@@ -105,7 +108,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     setState({ status: "loading", points: [], meta: null, error: "" });
     const show = (data, snapshotAt = null) => setState({
       status: "ready",
-      points: Array.isArray(data?.results) ? data.results : [],
+      points: completeDirectoryRows(data),
       meta: {
         total: Number(data?.total_published) || 0,
         withoutPosition: Number(data?.without_position) || 0,
@@ -185,12 +188,11 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       bounds: [[Math.max(-90, origin.lat-latDelta), Math.max(-180, origin.lng-lngDelta)], [Math.min(90, origin.lat+latDelta), Math.min(180, origin.lng+lngDelta)]],
     };
   }, [origin, radiusKm]);
-  const centerOrder = !origin && Boolean(mapCenter);
+  const centerOrder = desktop && !origin && Boolean(mapCenter);
   const inView = useMemo(() => {
-    const ids = visibleIds === null ? null : new Set(visibleIds);
-    const shown = ids ? orderedPoints.filter((point) => ids.has(point.id)) : orderedPoints;
+    const shown = directoryRowsInView(orderedPoints, { followViewport: desktop, visibleIds });
     return centerOrder ? orderByDistanceFrom(shown, mapCenter) : shown;
-  }, [orderedPoints, visibleIds, centerOrder, mapCenter]);
+  }, [orderedPoints, visibleIds, centerOrder, mapCenter, desktop]);
   // 2026-09-28 (audit /cauta, C4): numarul din zona vizibila se schimba la fiecare mutare a hartii.
   // Cititorul de ecran il primeste o singura data, dupa ce harta se opreste, nu la fiecare cadru.
   const [announcedCount, setAnnouncedCount] = useState(null);
@@ -201,7 +203,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   }, [inView.length, state.status]);
   // 2026-09-28 (audit /cauta, B7): aceeasi functie intre randari (randurile listei sunt memoizate).
   const renderPointCard = useCallback(
-    (point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} distanceKm={origin ? distanceKm(origin, point) : null} />,
+    (point, onShowMap) => <DirectoryResultCard compactMobile location={point} onShowMap={onShowMap} distanceKm={origin ? distanceKm(origin, point) : null} />,
     [origin],
   );
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
@@ -215,18 +217,22 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   }, [inView, pageSize, selectedIndex]);
 
   const geoMessage = geoStatus === "denied" ? LOCATION_DENIED_MESSAGE : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
+  const locationAction = <button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-white shadow-md px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
+            {geoStatus === "loading" ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <LocateFixed aria-hidden="true" className="h-4 w-4" />}
+            {geoStatus === "loading" ? (geoProgress ? `Se precizează poziția (${formatAccuracy(geoProgress)})...` : "Se caută poziția...") : "În apropierea mea"}
+          </button>;
   const listHeader = <div className="mb-4">
       <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
-        {origin || saved.nearbyOrder || centerOrder ? "Locații în zona explorată" : "Explorează România"}
+        {!desktop ? (origin ? "Locații după distanță" : "Locații în România") : origin || saved.nearbyOrder || centerOrder ? "Locații în zona explorată" : "Explorează România"}
       </h2>
       <details className="group mt-1 text-muted-foreground">
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
-          <span>{inView.length} {inView.length === 1 ? "locație" : "locații"} în zona vizibilă</span>
+          <span>{inView.length} {inView.length === 1 ? "locație" : "locații"}{desktop ? " în zona vizibilă" : " în listă"}</span>
           <span className="inline-flex items-center gap-1 text-xs text-[#4f6080]">Despre rezultate <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></span>
         </summary>
         <div className="mt-2 space-y-2 rounded-xl border border-border bg-secondary/50 p-3 text-xs leading-relaxed">
           <p>{origin ? "Ordine: apropiere de poziția dispozitivului." : centerOrder ? "Ordine: apropiere de centrul hărții. Mută harta și lista se reordonează." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>
-          <p>Lista urmărește zona vizibilă pe hartă. Pozițiile pot fi aproximative; verifică adresa din profil.</p>
+          <p>{desktop ? "Lista urmărește zona vizibilă pe hartă." : "Lista include locațiile de tipul ales, inclusiv cele fără pin publicat. Alege localitatea pentru rezultate din zona ta."} Pozițiile pot fi aproximative; verifică adresa din profil.</p>
           {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații din director nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
         </div>
       </details>
@@ -242,6 +248,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         <span>Zonă inițială: aprox. {radiusKm} km.</span>
         {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-secondary">Extinde la {radiusKm * 2} km</button>}
       </div>}
+      {!desktop && <div className="mt-2">{locationAction}</div>}
       {filterSummary}
     </div>;
 
@@ -249,7 +256,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
     <section aria-label="Explorează locațiile pe hartă" className="mt-3">
       {/* 2026-09-24. Pe telefon, cat se incarca directorul, locul are deja inaltimea hartii (70vh +
           spatiul de deasupra ei), ca nota de sub harta sa nu fie impinsa in jos cand apare harta. */}
-      <div className="min-h-[max(24rem,calc(70vh+0.75rem))] lg:min-h-[24rem]">
+      <div className="min-h-[16rem] pb-20 lg:min-h-[24rem] lg:pb-0">
         {state.status === "loading" && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> Se încarcă directorul...
@@ -286,11 +293,9 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
           <>
             <LocationsWithMap
               fixedDesktop
+              mobileFullscreen
               listHeader={listHeader}
-              mapActions={<button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-white shadow-md px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
-            {geoStatus === "loading" ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <LocateFixed aria-hidden="true" className="h-4 w-4" />}
-            {geoStatus === "loading" ? (geoProgress ? `Se precizează poziția (${formatAccuracy(geoProgress)})...` : "Se caută poziția...") : "În apropierea mea"}
-          </button>}
+              mapActions={locationAction}
               mapStatus={geoMessage}
               results={visiblePoints}
               listResults={listedPoints}
