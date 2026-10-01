@@ -4,7 +4,7 @@ import "./mapMarkers.css";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapLocationCard from "./MapLocationCard";
 import MapClusterList from "./MapClusterList";
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { Circle, CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -206,6 +206,7 @@ export default function ResultsMap({
   storageKey = null,
   focusArea = null,
   rankById = null,
+  userLocation = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
   const [visited] = useState(readVisitedProfiles);
@@ -269,6 +270,11 @@ export default function ResultsMap({
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <FitToPoints points={fitModel.points} signature={fitSignature} storageKey={storageKey} />
         <FocusArea area={focusArea} />
+        {/* 2026-10-01: pozitia vizitatorului; Leaflet masoara raza cercului direct in metri. */}
+        {userLocation && Number.isFinite(userLocation.lat) && Number.isFinite(userLocation.lng) && <>
+          {Number.isFinite(userLocation.accuracy) && userLocation.accuracy > 0 && <Circle center={[userLocation.lat, userLocation.lng]} radius={userLocation.accuracy} interactive={false} pathOptions={{ color: "#4285f4", weight: 1, opacity: 0.45, fillColor: "#4285f4", fillOpacity: 0.14 }} />}
+          <CircleMarker center={[userLocation.lat, userLocation.lng]} radius={8} interactive={false} pathOptions={{ color: "#ffffff", weight: 3, fillColor: "#4285f4", fillOpacity: 1 }} />
+        </>}
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />
         <MapResizeWatcher />
