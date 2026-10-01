@@ -9,6 +9,8 @@ const STEPS = [
   {
     number: "01",
     title: "Descrii ce ai nevoie",
+    mobileTitle: "Spui ce cauți",
+    mobileDescription: "Descrii pe scurt ce ai nevoie.",
     description:
       "Explici cu propriile cuvinte de ce ai nevoie — nu trebuie să știi denumirea exactă a serviciului sau a specialistului.",
     kind: "input",
@@ -21,6 +23,8 @@ const STEPS = [
   {
     number: "02",
     title: "Răspunzi la câteva întrebări",
+    mobileTitle: "Răspunzi",
+    mobileDescription: "Pentru cine, ce serviciu și unde.",
     description:
       "Alegi câteva răspunsuri: pentru cine cauți, ce fel de ajutor ai nevoie și în ce zonă. Durează mai puțin de un minut.",
     kind: "choices",
@@ -33,6 +37,8 @@ const STEPS = [
   {
     number: "03",
     title: "Vezi unde poți merge",
+    mobileTitle: "Compari opțiunile",
+    mobileDescription: "Vezi servicii, adrese și date de contact.",
     description:
       "Primești o listă de opțiuni potrivite din zona ta, pe care le poți compara înainte să alegi.",
     kind: "results",
@@ -125,7 +131,7 @@ export default function HowItWorks() {
   return (
     <section
       aria-labelledby="how-viasee-works-title"
-      className="mx-auto mt-28 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
+      className="mx-auto mt-16 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
     >
       <Reveal className="grid gap-8 lg:grid-cols-[1.55fr_0.75fr] lg:items-end lg:gap-16">
         <div>
@@ -134,14 +140,15 @@ export default function HowItWorks() {
           </p>
           <h2
             id="how-viasee-works-title"
-            className="mt-5 max-w-[58rem] font-heading text-[clamp(2.7rem,5.8vw,5.7rem)] font-extrabold leading-[0.94] tracking-[-0.065em] text-[#171717]"
+            className="mt-5 max-w-[58rem] font-heading text-[2rem] sm:text-[clamp(2.7rem,5.8vw,5.7rem)] font-extrabold leading-[0.94] tracking-[-0.065em] text-[#171717]"
           >
-            De la ce cauți
-            <span className="block">la unde poți merge.</span>
+            <span className="sm:hidden">Un specialist,<br />în trei pași.</span>
+            <span className="hidden sm:inline">De la ce cauți</span>
+            <span className="hidden sm:block">la unde poți merge.</span>
           </h2>
         </div>
 
-        <div className="lg:pb-1">
+        <div className="hidden sm:block lg:pb-1">
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Totul pornește de la o descriere simplă a ceea ce cauți. Pe baza câtorva întrebări scurte, ajungi la o listă cu cabinetele, clinicile și opticile din zona ta care se potrivesc. Este un ghid de orientare — nu un diagnostic și nu o consultație medicală.
           </p>
@@ -158,7 +165,26 @@ export default function HowItWorks() {
         </div>
       </Reveal>
 
-      <div className="relative mt-14 sm:mt-16 lg:mt-24">
+      <div className="mt-6 sm:hidden">
+        <div className="grid gap-3">
+          {STEPS.map((step) => (
+            <article key={step.number} className={"flex min-h-28 items-center gap-3 overflow-hidden rounded-2xl border border-black/10 p-4 " + step.tone}>
+              <span className="self-start pt-1 font-mono text-[10px] font-semibold text-foreground/60">{step.number}</span>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-heading text-lg font-bold leading-tight">{step.mobileTitle}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-foreground/65">{step.mobileDescription}</p>
+              </div>
+              <div className="h-16 w-20 shrink-0"><StepGraphic kind={step.kind} accent={step.accent} /></div>
+            </article>
+          ))}
+        </div>
+        <p className="mt-5 text-center text-xs leading-relaxed text-muted-foreground">Servicii · Adrese · Contact · Statusul profilului</p>
+        <Link to="/cerere" {...prefetchOnIntent("/cerere")} className="mt-5 flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#171717] px-6 text-sm font-semibold text-white">
+          Începe căutarea<ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
+
+      <div className="relative mt-14 hidden sm:mt-16 sm:block lg:mt-24">
         <span
           aria-hidden="true"
           className="pointer-events-none absolute left-0 right-0 top-[47%] hidden h-px bg-black/25 lg:block"
@@ -218,7 +244,7 @@ export default function HowItWorks() {
         </div>
       </div>
 
-      <Reveal className="mt-24 border-y-[3px] border-[#171717] sm:mt-28">
+      <Reveal className="mt-24 hidden border-y-[3px] border-[#171717] sm:mt-28 sm:block">
         <div className="grid lg:grid-cols-[1.1fr_2fr]">
           <div className="border-b border-black/20 px-1 py-7 lg:border-b-0 lg:border-r lg:px-0 lg:py-9 lg:pr-10">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/65 sm:text-[11px]">
