@@ -78,20 +78,26 @@ function MobileHeader({ scrolled, onMenuOpen, onMenuPreload, opaque, transparent
             : "border-transparent bg-white/85"
       }`}
     >
-      <div className="mx-auto flex h-16 items-center justify-between gap-2 px-4 sm:px-8">
+      <div className="mx-auto flex h-16 items-center justify-between gap-1 px-3 min-[390px]:gap-2 min-[390px]:px-4 sm:px-8">
         <Link
           to="/"
           className="flex min-w-0 items-center"
           aria-label="VIASEE - Pagina principală"
         >
           <ViaseeBrand
-            symbolClassName="h-8 w-8"
-            wordmarkClassName="h-[18px] w-auto"
+            symbolClassName="h-6 w-6 min-[390px]:h-8 min-[390px]:w-8"
+            wordmarkClassName="h-[13px] w-auto min-[390px]:h-[18px]"
           />
         </Link>
 
-        <div className="flex items-center gap-1">
-          <HeaderAccountLink />
+        <div className="flex shrink-0 items-center gap-1">
+          <div className="hidden sm:block"><HeaderAccountLink /></div>
+          <Link
+            to="/cauta"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#171717] px-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#2B2B2B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-offset-2 min-[390px]:px-3 sm:hidden"
+          >
+            Găsește specialist
+          </Link>
           <button
             type="button"
             onClick={onMenuOpen}
