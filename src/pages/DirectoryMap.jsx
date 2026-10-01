@@ -298,6 +298,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
               listLayout="grid"
               integratedMapAction
               focusArea={focusArea}
+              userLocation={origin}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={setSelectedId}
