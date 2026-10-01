@@ -256,13 +256,13 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
             {blockers.map((blocker, index) => (
               <p key={`${blocker.code || "blocker"}-${index}`} className="text-xs leading-relaxed text-red-900/80">{blocker.message}</p>
             ))}
-            <p className="text-xs leading-relaxed text-red-900/80">Transfera mai intai rolul de owner unui alt utilizator activ, apoi reia solicitarea.</p>
+            <p className="text-xs leading-relaxed text-red-900/80">Rolul de owner trebuie transferat unui alt utilizator activ înainte de ștergere. Poți trimite cererea acum, iar echipa VIASEE te ajută cu transferul.</p>
           </div>
         )}
 
         {eligibility.status === "unavailable" && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-            Verificarea automata nu este disponibila momentan. Solicitarea poate fi trimisa suportului pentru verificare manuala.
+            Verificarea automată nu este disponibilă momentan. Dacă trimiterea cererii nu reușește, scrie-ne la contact@viasee.ro.
           </div>
         )}
 
