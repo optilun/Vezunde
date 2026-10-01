@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { prefetchOnIntent } from "@/lib/routePrefetch";
 import Reveal from "@/components/common/Reveal";
 import { useInViewport, usePrefersReducedMotion } from "@/lib/motion";
 
@@ -7,6 +9,9 @@ const ROLES = [
   {
     number: "01",
     term: "optician medical",
+    mobileDefinition: "Ochelari, lentile, reglaje și reparații.",
+    mobileWhen: "Ai o prescripție sau vrei să-ți ajustezi ochelarii.",
+    mobileDifference: "Nu oferă diagnostic sau tratament medical.",
     termSize: "text-[clamp(3.35rem,6.5vw,6.5rem)]",
     type: "/ specialist tehnic / ochelari și dispozitive optice",
     navDescription: "ochelari, reglaje și reparații",
@@ -17,12 +22,15 @@ const ROLES = [
     difference:
       "Nu efectuează consultații medicale și nu diagnostichează ori tratează afecțiuni oculare.",
     cta: "Găsește o optică",
-    to: "/cerere?categorie=reparatii",
+    to: "/cerere?categorie=ochelari_lentile",
     accent: "#a97825",
   },
   {
     number: "02",
     term: "optometrist",
+    mobileDefinition: "Evaluarea vederii și a dioptriilor.",
+    mobileWhen: "Vrei să verifici corecția pentru ochelari sau lentile.",
+    mobileDifference: "Evaluarea optometrică nu înlocuiește consultația medicală.",
     termSize: "text-[clamp(3.35rem,8vw,7.5rem)]",
     type: "/ specialist în evaluarea funcției vizuale /",
     navDescription: "evaluarea vederii și corecție optică",
@@ -39,6 +47,9 @@ const ROLES = [
   {
     number: "03",
     term: "medic oftalmolog",
+    mobileDefinition: "Consultații, diagnostic și tratament.",
+    mobileWhen: "Vrei să verifici sănătatea ochilor sau ai simptome.",
+    mobileDifference: "Diagnostichează și tratează afecțiunile oculare.",
     termSize: "text-[clamp(3.25rem,6vw,5.8rem)]",
     type: "/ medic specialist / sănătatea ochilor",
     navDescription: "diagnostic și tratament",
@@ -117,22 +128,21 @@ export default function SituationExplainer() {
     <section
       ref={sectionRef}
       aria-labelledby="specialist-guide-title"
-      className="mx-auto mt-20 max-w-[84rem] px-5 sm:mt-24 lg:mt-28"
+      className="mx-auto mt-16 max-w-[84rem] px-5 sm:mt-24 lg:mt-28"
     >
       <Reveal threshold={0.1}>
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground/75 sm:text-[11px]">
-          Ghid VIASEE · Cine te poate ajuta
+          <span className="sm:hidden">Ghid VIASEE</span><span className="hidden sm:inline">Ghid VIASEE · Cine te poate ajuta</span>
         </p>
 
-        <div className="mt-7 grid gap-8 lg:grid-cols-[0.78fr_2.22fr] lg:items-end lg:gap-10">
+        <div className="mt-4 grid gap-5 sm:mt-7 sm:gap-8 lg:grid-cols-[0.78fr_2.22fr] lg:items-end lg:gap-10">
           <h2
             id="specialist-guide-title"
             className="font-heading text-2xl font-extrabold leading-[1.02] tracking-[-0.035em] sm:text-3xl"
           >
-            Nu știi de ce specialist ai nevoie?
-            <span className="mt-1 block font-display text-[1.08em] font-medium italic text-muted-foreground/60">
-              Te ajutăm să alegi.
-            </span>
+            <span className="sm:hidden">Cine te poate ajuta?</span>
+            <span className="hidden sm:inline">Nu știi de ce specialist ai nevoie?</span>
+            <span className="mt-1 hidden font-display text-[1.08em] font-medium italic text-muted-foreground/60 sm:block">Te ajutăm să alegi.</span>
           </h2>
 
           <div
@@ -154,7 +164,7 @@ export default function SituationExplainer() {
                   tabIndex={selected ? 0 : -1}
                   onClick={() => selectRole(index)}
                   onKeyDown={(event) => activateFromKeyboard(event, index)}
-                  className={`relative min-h-[6.75rem] border-l border-black/20 px-3 py-4 text-left outline-none transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] sm:px-5 lg:min-h-[5.75rem] lg:py-2 ${
+                  className={`relative min-h-[4.75rem] border-l border-black/20 px-3 py-3 sm:min-h-[6.75rem] sm:py-4 text-left outline-none transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] sm:px-5 lg:min-h-[5.75rem] lg:py-2 ${
                     selected ? "text-foreground" : "text-muted-foreground/[0.58] hover:text-foreground"
                   }`}
                 >
@@ -189,8 +199,30 @@ export default function SituationExplainer() {
           role="tabpanel"
           aria-labelledby={`role-index-${active}`}
           aria-live={hasUserSelected ? "polite" : "off"}
-          className="role-content-fade mt-12 sm:mt-14"
+          className="role-content-fade mt-6 sm:mt-14"
         >
+          <div className="sm:hidden">
+            <div className="border-y-2 border-[#171717] py-5">
+              <div className="flex items-start gap-3">
+                <RoleMark color={current.accent} />
+                <p className="font-heading text-2xl font-bold leading-tight tracking-[-0.035em]">{current.mobileDefinition}</p>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-foreground/75">{current.mobileWhen}</p>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{current.mobileDifference}</p>
+              <Link to={current.to} {...prefetchOnIntent(current.to)} className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4">
+                {current.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <details onToggle={(event) => { if (event.currentTarget.open) setHasUserSelected(true); }} className="border-b border-black/15">
+              <summary className="cursor-pointer py-4 text-sm font-semibold">Vezi detalii despre acest rol</summary>
+              <div className="space-y-3 pb-5 text-sm leading-relaxed text-muted-foreground">
+                <p>{current.definition}</p>
+                <p>{current.difference}</p>
+                <p className="text-xs">Competențele depind de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.</p>
+              </div>
+            </details>
+          </div>
+          <div className="hidden sm:block">
           <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
             <h3
               className={`${current.termSize} min-w-0 font-heading font-extrabold leading-[0.82] tracking-[-0.075em] text-[#171717]`}
@@ -236,6 +268,7 @@ export default function SituationExplainer() {
             <span>
               Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
             </span>
+          </div>
           </div>
         </div>
       </Reveal>
