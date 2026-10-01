@@ -1,6 +1,8 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { List, Map as MapIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import useDesktopResults from "@/hooks/useDesktopResults";
 import ResultsMap from "./ResultsMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
@@ -17,6 +19,7 @@ export default function LocationsWithMap({
   storageKey,
   focusArea,
   fixedDesktop = false,
+  mobileFullscreen = false,
   listHeader,
   mapActions,
   mapStatus,
@@ -52,6 +55,8 @@ export default function LocationsWithMap({
   userLocation = null,
 }) {
   const gridLayout = listLayout === "grid";
+  const desktop = useDesktopResults();
+  const mapToggleRef = useRef(null);
   const searchRows = results || NO_ROWS;
   // Fara puncte de context, `mapRows` este chiar `searchRows` (aceeasi referinta) si camera se incadreaza
   // pe el, ca inainte. Cu context, camera se incadreaza doar pe rezultatele cautarii.
@@ -163,6 +168,29 @@ export default function LocationsWithMap({
       ? "relative max-lg:absolute max-lg:inset-x-0 max-lg:top-0 max-lg:invisible max-lg:pointer-events-none max-lg:[&_.maplibregl-ctrl-attrib]:!invisible"
       : "relative hidden lg:block";
 
+  const renderMapPanel = (fullscreen = false) => (
+          <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${fullscreen ? "flex-1 min-h-0 h-full" : mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
+            <ResultsMap
+              results={mapRows}
+              fitResults={fitRows}
+              selectedId={selectedId}
+              hoveredId={hoveredId}
+              onSelect={onSelect}
+              onHover={onHover}
+              onViewportChange={onViewportChange}
+              storageKey={mapStorageKey}
+              focusArea={focusArea}
+              rankById={rankById}
+              fitKey={fitKey}
+              userLocation={userLocation}
+              className={fullscreen ? "h-full w-full overflow-hidden" : fixedDesktop ? "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-full" : "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"}
+            />
+            {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
+            {mapActions && <div className="absolute right-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]">{mapActions}</div>}
+            {mapOverlay}
+          </div>
+  );
+
   return (
     <>
       {hasPositions && (
@@ -172,11 +200,12 @@ export default function LocationsWithMap({
           <button
             type="button"
             data-map-toggle
+            ref={mapToggleRef}
             onClick={onToggleMobileView}
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-lg transition-colors hover:border-foreground/40"
           >
             {mobileView === "map" ? <List aria-hidden="true" className="h-4 w-4" /> : <MapIcon aria-hidden="true" className="h-4 w-4" />}
-            {mobileView === "map" ? "Vezi lista" : "Vezi pe hartă"}
+            {mobileView === "map" ? "Vezi lista" : mobileFullscreen ? "Hartă" : "Vezi pe hartă"}
           </button>
         </div>
       )}
@@ -186,7 +215,7 @@ export default function LocationsWithMap({
           si tableta elementul este `relative`, deci era impins in jos cu ~370 px si primul rezultat
           ajungea sub ecran. */}
       <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { "--workspace-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "relative mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8 lg:top-[var(--workspace-top)]" : "relative mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8 lg:top-[var(--workspace-top)]" : "mt-4")}>
-        <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
+        <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${!mobileFullscreen && mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
           {listHeader}
           <div className={gridLayout
             ? resultGridClassName(hasPositions)
@@ -215,27 +244,24 @@ export default function LocationsWithMap({
 
         {/* C4 (2026-09-28): div, nu element aside: harta e parte din rezultate, nu continut complementar
             (axe: „landmark-complementary-is-top-level”). Harta are propria regiune etichetata. */}
-        {hasPositions && (
-          <div data-results-map className={`isolate min-w-0 ${fixedDesktop ? "lg:h-full lg:overflow-hidden" : "lg:sticky lg:top-[var(--aside-top)]"} ${mobileMapClass}`} style={fixedDesktop ? undefined : { "--aside-top": "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
-            <ResultsMap
-              results={mapRows}
-              fitResults={fitRows}
-              selectedId={selectedId}
-              hoveredId={hoveredId}
-              onSelect={onSelect}
-              onHover={onHover}
-              onViewportChange={onViewportChange}
-              storageKey={mapStorageKey}
-              focusArea={focusArea}
-              rankById={rankById}
-              fitKey={fitKey}
-              userLocation={userLocation}
-              className={fixedDesktop ? "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-full" : "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"}
-            />
-            {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
-            {mapActions && <div className="absolute right-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]">{mapActions}</div>}
-            {mapOverlay}
-          </div>
+        {hasPositions && (!mobileFullscreen || desktop) && (desktop || mapShownOnce || mobileView === "map") && renderMapPanel()}
+        {hasPositions && mobileFullscreen && !desktop && (
+          <Dialog open={mobileView === "map"} onOpenChange={(open) => { if (!open && mobileView === "map") onToggleMobileView(); }}>
+            <DialogContent
+              data-mobile-map-dialog
+              className="inset-0 left-0 top-0 z-[60] flex h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:hidden"
+              onCloseAutoFocus={(event) => { event.preventDefault(); mapToggleRef.current?.focus({ preventScroll: true }); }}
+            >
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+                <DialogTitle className="text-base">Harta locațiilor</DialogTitle>
+                <button type="button" onClick={onToggleMobileView} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">
+                  <List aria-hidden="true" className="h-4 w-4" /> Vezi lista
+                </button>
+              </div>
+              <DialogDescription className="sr-only">Explorează locațiile pe hartă. Filtrele și poziția listei sunt păstrate la revenire.</DialogDescription>
+              {renderMapPanel(true)}
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </>
