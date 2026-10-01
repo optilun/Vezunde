@@ -8,11 +8,11 @@ import React from "react";
 //  - corpul (cap, halat, brate) sta SUB foaie, deci partea de jos dispare sub marginea ei;
 //  - mainile stau DEASUPRA foii, ca degetele sa para ca apuca marginea.
 // Linia marginii foii e la y = 180 in desen, adica la 75% din inaltime: de aici translate-y-[-75%].
-// Pe ecrane mici (fara efectul de pin) figura nu se afiseaza, ca sa nu incarce layout-ul.
+// Pe telefon figura este mai mica, cu spatiu rezervat in hero; desktopul pastreaza pozitia originala.
 
 const SEAM_WRAPPER =
-  "pointer-events-none absolute top-0 hidden aspect-square w-[12rem] -translate-y-[75%] lg:block xl:w-[15rem]";
-const SEAM_POSITION = { right: "max(3rem, calc(50% - 38rem))" };
+  "pointer-events-none absolute right-4 top-0 aspect-square w-24 -translate-y-[75%] sm:right-6 sm:w-28 lg:right-[var(--seam-right)] lg:w-[12rem] xl:w-[15rem]";
+const SEAM_POSITION = { "--seam-right": "max(3rem, calc(50% - 38rem))" };
 
 const INK = "#171717";
 const COAT = "#FFFDF8";
