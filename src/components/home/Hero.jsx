@@ -267,10 +267,9 @@ export default function Hero({ onStartedChange } = {}) {
                   <button
                     type="submit"
                     aria-label="Găsește opțiuni"
-                    className="ml-auto flex h-11 touch-manipulation items-center justify-center gap-2 rounded-full px-4 shadow-[0_6px_18px_rgba(20,20,20,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95 sm:w-11 sm:px-0"
+                    className="ml-auto flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full shadow-[0_6px_18px_rgba(20,20,20,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95"
                     style={{ backgroundColor: "#171717", color: "#FFFFFF" }}
                   >
-                    <span className="text-sm font-semibold sm:hidden">Găsește</span>
                     <ArrowUp className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
                   </button>
                 </div>
