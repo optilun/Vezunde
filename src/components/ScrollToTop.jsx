@@ -57,7 +57,8 @@ export default function ScrollToTop() {
       };
     }
 
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // Search restores its own list position after results arrive, including explicit profile return links.
+    if (pathname !== "/cauta") window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     const animationFrame = window.requestAnimationFrame(() => {
       document.getElementById("main-content")?.focus({ preventScroll: true });
     });
