@@ -6,6 +6,7 @@ import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readMobileViewChoice, readSearchSession, rememberMobileViewChoice, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import useRememberScroll from "@/hooks/useRememberScroll";
+import { locatePrecisely, MAX_USABLE_ACCURACY_M } from "@/lib/preciseLocation";
 
 import { distanceKm, mapCenterForOrdering, nearestDirectory, orderByDistanceFrom } from "../../shared/nearbyDirectory.js";
 
@@ -39,22 +40,29 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [geoStatus, setGeoStatus] = useState("idle");
   const [radiusKm, setRadiusKm] = useState(15);
   const geoRequest = useRef(0);
+  const geoCancel = useRef(null);
   const alive = useRef(true);
+  // 2026-10-01. Pozitie de inalta precizie, rafinata cateva secunde (GPS pe telefon / tableta,
+  // Wi-Fi pe laptop), fara pozitii din cache. Vezi lib/preciseLocation.js.
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) { setGeoStatus("unavailable"); return; }
+    geoCancel.current?.();
     const requestId = ++geoRequest.current;
     setGeoStatus("loading");
-    navigator.geolocation.getCurrentPosition((position) => {
+    const search = locatePrecisely();
+    geoCancel.current = search.cancel;
+    search.promise.then((fix) => {
       if (!alive.current || requestId !== geoRequest.current) return;
-      if (position.coords.accuracy > 5000) { setGeoStatus("imprecise"); return; }
-      setRadiusKm(15);
-      setOrigin({ lat: position.coords.latitude, lng: position.coords.longitude, requestId });
+      if (fix.accuracy > MAX_USABLE_ACCURACY_M) { setGeoStatus("imprecise"); return; }
+      setRadiusKm(fix.accuracy > 1000 ? 30 : 15);
+      setOrigin({ lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, requestId });
       setSelectedId(null);
       setPageSize(24);
       setGeoStatus("ready");
-    }, (error) => {
-      if (alive.current && requestId === geoRequest.current) setGeoStatus(error.code === 1 ? "denied" : "unavailable");
-    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    }).catch((error) => {
+      if (error?.cancelled) return;
+      if (alive.current && requestId === geoRequest.current) setGeoStatus(error?.code === 1 ? "denied" : "unavailable");
+    });
   }, []);
   useEffect(() => {
     alive.current = true;
@@ -62,7 +70,7 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
       // Do not interrupt a returning user's map exploration.
       if (alive.current && permission.state === "granted" && !readSearchSession().maps?.national) requestLocation();
     }).catch(() => {});
-    return () => { alive.current = false; geoRequest.current += 1; };
+    return () => { alive.current = false; geoRequest.current += 1; geoCancel.current?.(); };
   }, [requestLocation]);
   const [retry, setRetry] = useState(0);
   const [visibleIds, setVisibleIds] = useState(null);
