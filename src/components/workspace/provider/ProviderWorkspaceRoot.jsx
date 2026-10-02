@@ -10,6 +10,7 @@ import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import {
   providerLocationModuleUrl,
   providerSectionUrl,
+  providerSelectionUrl,
   shouldRedirectProviderRoute,
 } from "@/lib/providerWorkspaceLifecycle";
 import LocationSwitcher from "./LocationSwitcher";
@@ -166,6 +167,7 @@ export default function ProviderWorkspaceRoot({
   const accessMetaOrganizationRef = useRef("");
   const previousSectionRef = useRef(requestedSection);
   const hasCompletedInitialSectionSyncRef = useRef(false);
+  const appliedSelectionRequestRef = useRef("");
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
   const organizationContexts = useMemo(() => organizationContextsFor(workspace), [workspace]);
@@ -436,10 +438,17 @@ export default function ProviderWorkspaceRoot({
     }
   }, [routeLocationId, selectedLocationId, allLocations, workspace.memberships]);
 
+  // 2026-10-02. Parametrii organization/location din URL se aplica o singura data pentru fiecare
+  // valoare noua. Inainte efectul rula la fiecare schimbare a locatiei alese si readucea locatia
+  // din URL, deci comutatorul de organizatie/locatie nu avea efect (test E2E 2026-10-02).
   useEffect(() => {
+    const requestKey = `${requestedOrganizationId}|${requestedLocationId}`;
+    if (appliedSelectionRequestRef.current === requestKey) return;
     const requestedLocationExists = allLocations.some((location) => location.id === requestedLocationId);
     const nextLocationId = requestedLocationExists ? requestedLocationId : requestedOrganizationLocationId;
-    if (nextLocationId && nextLocationId !== selectedLocationId) setSelectedLocationId(nextLocationId);
+    if (!nextLocationId) return;
+    appliedSelectionRequestRef.current = requestKey;
+    if (nextLocationId !== selectedLocationId) setSelectedLocationId(nextLocationId);
   }, [requestedLocationId, requestedOrganizationId, requestedOrganizationLocationId, selectedLocationId, allLocations]);
 
   useEffect(() => {
@@ -490,21 +499,37 @@ export default function ProviderWorkspaceRoot({
     return resolveProviderLocationAccess(targetContext || workspace, locationId);
   };
 
-  const selectLocation = (locationId) => {
-    if (accessMetaMatchesOrganization && !scopedLocationIds.has(locationId)) return;
+  const organizationIdForLocation = (locationId) => organizationContexts.find((context) => (
+    context.locations?.some((location) => location.id === locationId)
+    || context.memberships?.some((membership) => membership.location_id === locationId)
+  ))?.organization?.id || "";
+
+  const applyLocationSelection = (locationId) => {
     setSelectedLocationId(locationId);
     rememberProviderLocation(user?.id, locationId);
     if (activeLocationModule) {
       const targetAccess = accessForLocation(locationId);
       if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) routerNavigate(providerLocationModuleUrl(locationId, activeLocationModule));
       else routerNavigate("/contul-meu?s=locations");
+      return;
     }
+    const selectionUrl = providerSelectionUrl(params, { organizationId: organizationIdForLocation(locationId), locationId });
+    if (selectionUrl) routerNavigate(selectionUrl, { replace: true });
   };
 
+  const selectLocation = (locationId) => {
+    if (accessMetaMatchesOrganization && !scopedLocationIds.has(locationId)) return;
+    applyLocationSelection(locationId);
+  };
+
+  // 2026-10-02. scopedLocationIds sunt locatiile organizatiei curente, deci selectLocation refuza
+  // orice locatie din alta organizatie. La schimbarea organizatiei accesul se recalculeaza pentru
+  // organizatia noua (loadAccessMeta + efectul care alege prima locatie permisa).
   const selectOrganization = (organizationId) => {
+    if (!organizationId || organizationId === selectedOrganizationId) return;
     const context = organizationContexts.find((item) => item.organization?.id === organizationId);
     const locationId = context?.locations?.[0]?.id || context?.memberships?.[0]?.location_id || "";
-    if (locationId) selectLocation(locationId);
+    if (locationId) applyLocationSelection(locationId);
   };
 
   const openLocationModule = (moduleKey, locationId = selectedLocationId) => {
