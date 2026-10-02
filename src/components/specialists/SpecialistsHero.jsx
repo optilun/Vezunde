@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   Building2,
+  Check,
   Loader2,
   MapPin,
   MapPinPlus,
@@ -68,7 +69,7 @@ export default function SpecialistsHero() {
   const searched = audience === "organization" && query.trim().length >= 2;
 
   return (
-    <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[1.08fr_1fr] gap-8 lg:gap-8 items-center relative">
+    <section id="profilul-tau" className="scroll-mt-24 max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[1.08fr_1fr] gap-8 lg:gap-8 items-center relative">
       <div className="relative z-10 text-center lg:text-left">
         <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.08] text-3xl sm:text-5xl">
           Administrează prezența ta pe VIASEE.
@@ -88,12 +89,13 @@ export default function SpecialistsHero() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setAudience(option.id)}
-                className={`min-w-0 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B9994] focus-visible:ring-offset-2 sm:p-4 ${
+                className={`relative min-w-0 rounded-2xl border p-3 pr-6 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B9994] focus-visible:ring-offset-2 sm:p-4 sm:pr-7 ${
                   selected
                     ? "border-[#6B9994] bg-[#EFF5F3] shadow-sm"
                     : "border-border bg-card hover:border-[#9FBDB8] hover:bg-[#F7FAF9]"
                 }`}
               >
+                {selected && <Check aria-hidden="true" className="absolute right-2 top-2 h-4 w-4 text-[#2E6666] sm:right-3 sm:top-3" />}
                 <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2.5">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${
                     selected ? "bg-[#2E6666] text-white" : "bg-secondary text-foreground"
@@ -102,7 +104,7 @@ export default function SpecialistsHero() {
                   </span>
                   <span className="font-heading text-sm font-bold">{option.title}</span>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{option.description}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-[#59665E]">{option.description}</p>
               </button>
             );
           })}
@@ -112,7 +114,7 @@ export default function SpecialistsHero() {
           <div className="mt-6 max-w-2xl mx-auto lg:mx-0">
             <div className="mb-3 text-left">
               <h2 className="font-heading text-base font-bold">Caută locația ta</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-[13px] leading-relaxed text-[#59665E]">
                 O găsești aici? Revendică profilul sau solicită acces.
               </p>
             </div>
@@ -209,7 +211,7 @@ export default function SpecialistsHero() {
                 Adaugă o locație nouă
               </button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">
+            <p className="mt-2 text-[13px] text-[#59665E] text-center sm:text-left">
               Publicarea se face după verificare.
             </p>
           </div>
@@ -230,13 +232,13 @@ export default function SpecialistsHero() {
               Continuă cu profilul tău
               <ArrowRight className="h-4 w-4" />
             </button>
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-[13px] leading-relaxed text-[#59665E]">
               Ai deja un profil? Îl regăsești după autentificare.
             </p>
           </div>
         )}
       </div>
-      <SpecialistsLocationArtwork />
+      <SpecialistsLocationArtwork audience={audience} />
     </section>
   );
 }
