@@ -21,7 +21,7 @@ export default function SpecialistsVisualInvitation() {
           Un profil clar.<br />Mai aproape de pacienți.
         </h2>
 
-        <div aria-hidden="true" className="mx-auto mt-12 grid w-full max-w-[340px] grid-cols-[1.05fr_1fr_1fr] items-start gap-3 text-left sm:mt-16 sm:max-w-[760px] sm:grid-cols-[1.35fr_.5fr_1fr_.52fr_1fr] sm:gap-3">
+        <div aria-hidden="true" className="mx-auto mt-12 grid w-full max-w-[340px] grid-cols-[1.05fr_1fr_1fr] items-start gap-3 text-left sm:mt-16 sm:max-w-[600px] lg:w-[58%] lg:max-w-[720px] sm:grid-cols-[1.35fr_.5fr_1fr_.52fr_1fr] sm:gap-3">
           <CollageTile className="bg-[#FFFDF7] p-2.5 text-[#242733] sm:p-4">
             <div className="flex items-center justify-between border-b border-[#DCE3F6] pb-2 text-[8px] font-bold sm:pb-3 sm:text-[11px]">
               <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#405AE9]" />VIASEE</span>
