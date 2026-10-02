@@ -2,8 +2,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   ARCHIVED_ORGANIZATION_PATCH,
   canArchiveClaimCreatedOrganization,
+  isRetiredLocationProposal,
   rejectedNewLocationPatch,
 } from '../../shared/newLocationClaimPolicy.js';
+import {
+  DISTINCT_APPROVAL_NOTE_MIN_LENGTH,
+  missingProposalFields,
+  newDuplicateCandidates,
+  newLocationRecord,
+  newOrganizationRecord,
+} from '../../shared/newLocationProposal.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const LOCATION_MEMBER_ROLES = ['location_manager', 'location_staff'];
@@ -98,6 +106,129 @@ async function archiveRejectedNewLocation(svc, user, claim, note) {
   return result;
 }
 
+async function auditCreatedEntity(svc, user, entityType, entity, note) {
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: entityType,
+    entity_id: entity.id,
+    action_type: 'create_from_duplicate_review_distinct',
+    changed_fields: Object.keys(entity || {}).filter((key) => !['id', 'created_date', 'updated_date', 'created_by_id', 'is_sample'].includes(key)),
+    previous_values: JSON.stringify({}),
+    new_values: JSON.stringify({ name: entity.name || '', status: entity.status || '', public_visibility_status: entity.public_visibility_status || '' }),
+    admin_user_id: user.id,
+    admin_email: user.email,
+    note: note || '',
+    performed_at: new Date().toISOString(),
+  });
+}
+
+// 2026-10-02. O cerere marcata duplicat (new_location_duplicate_review) nu crea nimic la
+// trimitere, iar adminul o putea doar respinge. Daca adminul decide ca e o locatie distincta,
+// cererea devine acum o locatie noua obisnuita - aceleasi date si aceeasi forma ca la trimitere
+// (shared/newLocationProposal.js) - si se aproba apoi pe calea normala, cu istoric complet.
+// Siguranta: motivul adminului e obligatoriu; duplicatele aparute dupa trimitere opresc aprobarea
+// pana cand adminul le confirma; locatia ramane ciorna nepublicata si neverificata.
+async function materializeDistinctProposal(base44, svc, user, claim, p, note) {
+  if (claim.mode !== 'new_location_duplicate_review') {
+    return { status: 400, error: 'Doar o cerere marcata duplicat se aproba ca locatie distincta' };
+  }
+  if (!ACTIVE_CLAIM_STATUSES.includes(claim.status)) return { status: 400, error: 'Solicitarea nu mai poate fi aprobata' };
+  if (note.length < DISTINCT_APPROVAL_NOTE_MIN_LENGTH) {
+    return { status: 400, error: `Scrie de ce este o locatie distincta (minim ${DISTINCT_APPROVAL_NOTE_MIN_LENGTH} caractere)` };
+  }
+  if (!claim.user_id) return { status: 400, error: 'Solicitarea nu are utilizator asociat' };
+  if (claim.location_id) return { status: 409, error: 'Cererea are deja o locatie creata' };
+
+  const submitted = parseJSON(claim.submitted_payload);
+  if (clean(claim.claim_subject_type || submitted.claim_subject_type) !== 'organization') {
+    return { status: 400, error: 'O locatie noua se aproba doar in numele unei organizatii' };
+  }
+  const proposed = submitted.proposed_location || {};
+  const missing = missingProposalFields(proposed);
+  if (missing.length > 0) return { status: 400, error: `Propunerea nu are toate datele necesare (${missing.join(', ')})` };
+  const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: clean(proposed.locality_siruta_code), is_active: true }).catch(() => []);
+  const geo = geoRows[0];
+  if (!geo) return { status: 400, error: 'Localitatea propusa nu mai este valida' };
+
+  const identityRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
+    context: 'admin_create',
+    candidate: {
+      organization_name: clean(submitted.organization_name),
+      location_name: clean(proposed.name),
+      provider_profile_type: clean(proposed.provider_profile_type),
+      locality_siruta_code: geo.siruta_code,
+      address: clean(proposed.address),
+      phone_public: clean(proposed.phone_public),
+      public_email: clean(proposed.public_email),
+      website: '',
+    },
+    limit: 25,
+  }).catch((error) => ({ data: { error: error?.response?.data?.error || error?.message || 'eroare' } }));
+  const identity = identityRaw?.data ?? identityRaw ?? {};
+  if (identity.error) return { status: 503, error: 'Verificarea duplicatelor a esuat. Incearca din nou.' };
+  const currentCandidates = Array.isArray(identity.candidates) ? identity.candidates : [];
+  const candidateIds = [...new Set(currentCandidates.map((candidate) => candidate.location_id).filter(Boolean))];
+  const candidateLocations = candidateIds.length > 0
+    ? await svc.entities.ProviderLocation.filter({ id: { $in: candidateIds } }, '-created_date', candidateIds.length).catch(() => [])
+    : [];
+  const retiredLocationIds = candidateLocations.filter((location) => isRetiredLocationProposal(location)).map((location) => location.id);
+  const snapshot = parseJSON(claim.identity_check_snapshot);
+  const snapshotCandidates = Array.isArray(snapshot.candidates) ? snapshot.candidates : [];
+  const acknowledgedIds = Array.isArray(p.acknowledged_candidate_ids) ? p.acknowledged_candidate_ids.map(clean).filter(Boolean) : [];
+  const fresh = newDuplicateCandidates({ snapshotCandidates, currentCandidates, retiredLocationIds, acknowledgedIds });
+  if (fresh.length > 0) {
+    return {
+      status: 409,
+      code: 'new_duplicate_candidates',
+      error: 'Au aparut locatii asemanatoare dupa trimiterea cererii. Verifica-le inainte de aprobare.',
+      candidates: fresh.map((candidate) => ({
+        location_id: candidate.location_id,
+        name: candidate.name || '',
+        organization_name: candidate.organization_name || '',
+        locality_name: candidate.locality_name || '',
+        county_name: candidate.county_name || '',
+        address: candidate.address || '',
+        severity: candidate.severity,
+        score: candidate.score,
+        matched_fields: candidate.matched_fields || [],
+      })),
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const organization = await svc.entities.ProviderOrganization.create(
+    newOrganizationRecord({ name: submitted.organization_name || proposed.name, providerProfileType: proposed.provider_profile_type }),
+  );
+  await auditCreatedEntity(svc, user, 'ProviderOrganization', organization, note);
+  const location = await svc.entities.ProviderLocation.create(newLocationRecord({ proposed, geo, organizationId: organization.id, nowIso }));
+  await auditCreatedEntity(svc, user, 'ProviderLocation', location, note);
+
+  const distinctReview = {
+    approved_as_distinct_at: nowIso,
+    admin_user_id: user.id,
+    admin_email: user.email,
+    note,
+    snapshot_candidate_ids: snapshotCandidates.map((candidate) => candidate?.location_id).filter(Boolean),
+    acknowledged_candidate_ids: acknowledgedIds,
+  };
+  await svc.entities.ProviderClaimRequest.update(claim.id, {
+    mode: 'new_location',
+    organization_id: organization.id,
+    location_id: location.id,
+    submitted_payload: JSON.stringify({ ...submitted, mode: 'new_location', location_id: location.id, distinct_review: distinctReview }),
+  });
+  await audit(
+    svc,
+    user,
+    claim,
+    'approve_duplicate_review_as_distinct',
+    { mode: claim.mode, organization_id: null, location_id: null },
+    { mode: 'new_location', organization_id: organization.id, location_id: location.id, acknowledged_candidate_ids: acknowledgedIds },
+    note,
+  );
+  const refreshed = await svc.entities.ProviderClaimRequest.get(claim.id);
+  return { claim: refreshed };
+}
+
 // 2026-10-01. Accesul primit dintr-o revendicare poarta acum originea lui (`access_origin: 'claim'`,
 // `claim_request_id`, `claim_scope`), ca in workspace si in audit sa se poata spune din ce cerere
 // vine. Un membership existent (de exemplu dintr-o invitatie) isi pastreaza originea; doar unul
@@ -142,7 +273,7 @@ export async function handle(req: Request) {
 
     const svc = base44.asServiceRole;
     const p = await req.json().catch(() => ({}));
-    const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
+    let claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
     if (!claim) return Response.json({ error: 'Solicitarea nu exista' }, { status: 404 });
     const note = clean(p.note);
 
@@ -183,7 +314,17 @@ export async function handle(req: Request) {
       return Response.json({ success: true, locked_drafts: lockedDraftCount, ...archiveResult });
     }
 
-    if (p.action !== 'approve') return Response.json({ error: 'Actiune invalida' }, { status: 400 });
+    if (p.action === 'approve_distinct') {
+      const result = await materializeDistinctProposal(base44, svc, user, claim, p, note);
+      if (!result.claim) {
+        const { status, ...body } = result;
+        return Response.json(body, { status });
+      }
+      // De aici cererea e o locatie noua obisnuita si se aproba pe calea normala de mai jos.
+      claim = result.claim;
+    } else if (p.action !== 'approve') {
+      return Response.json({ error: 'Actiune invalida' }, { status: 400 });
+    }
     if (!ACTIVE_CLAIM_STATUSES.includes(claim.status)) {
       return Response.json({ error: 'Solicitarea nu mai poate fi aprobata' }, { status: 400 });
     }
