@@ -106,7 +106,7 @@ const identity = await read('base44/functions/findProviderIdentityCandidates/ent
 assert.doesNotMatch(identity, /ProviderLocation\.list\(null, 500\)/, 'verificarea nu mai citeste doar primele 500 de locatii');
 assert.match(identity, /ProviderLocation\.filter\(\{ locality_siruta_code: siruta \}/);
 assert.match(identity, /isProviderContext && isRetiredLocationProposal\(l\)/);
-assert.match(identity, /providerSafeIdentityCandidate\(candidate, locationById\.get\(candidate\.location_id\)\)/);
+assert.match(identity, /providerSafeIdentityCandidate\(candidate, locationById\.get\(candidate\.location_id\), \{ ownLocation: ownLocationIds\.has\(candidate\.location_id\) \}\)/);
 
 const panel = await read('src/components/provider/IdentityDuplicatePanel.jsx');
 assert.match(panel, /c\.severity === "strong_duplicate" && c\.is_public !== false/, 'o propunere nepublica nu poate fi revendicata');

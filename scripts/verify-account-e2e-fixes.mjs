@@ -23,7 +23,7 @@ const claimSchema = await read('base44/entities/ProviderClaimRequest.jsonc');
 const snapshotField = claimSchema.slice(claimSchema.indexOf('"identity_check_snapshot"'), claimSchema.indexOf('"status"'));
 assert.match(snapshotField, /"read":\s*\{\s*"user_condition":\s*\{\s*"role":\s*"admin"/, 'snapshot-ul ramane citibil doar de admin');
 const identity = await read('base44/functions/findProviderIdentityCandidates/entry.ts');
-assert.match(identity, /providerSafeIdentityCandidate\(candidate, locationById\.get\(candidate\.location_id\)\)/, 'furnizorul primeste in continuare varianta ascunsa');
+assert.match(identity, /providerSafeIdentityCandidate\(candidate, locationById\.get\(candidate\.location_id\), \{ ownLocation: ownLocationIds\.has\(candidate\.location_id\) \}\)/, 'furnizorul primeste in continuare varianta ascunsa');
 
 // ---------- F1: dialogul de aprobare arata rolul trimis ----------
 const dirOpsClaims = await read('src/components/admin/directory/DirOpsClaims.jsx');
