@@ -11,19 +11,20 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
+import SpecialistsLocationArtwork from "./SpecialistsLocationArtwork";
 
 const AUDIENCE_OPTIONS = [
   {
     id: "organization",
     icon: Building2,
     title: "Reprezint o organizație",
-    description: "Optică medicală, clinică, cabinet sau altă locație de servicii pentru vedere.",
+    description: "Optică, clinică sau cabinet.",
   },
   {
     id: "professional",
     icon: Stethoscope,
     title: "Sunt specialist",
-    description: "Medic oftalmolog, optometrist sau optician, independent sau asociat unei locații.",
+    description: "Oftalmolog, optometrist sau optician.",
   },
 ];
 
@@ -68,23 +69,14 @@ export default function SpecialistsHero() {
 
   return (
     <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[52%_48%] gap-8 lg:gap-8 items-center relative">
-      <img
-        src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/8bc17e08f_generated_image.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none select-none hidden lg:block w-full max-w-md mx-auto lg:max-w-none lg:absolute lg:right-[-4%] lg:top-1/2 lg:-translate-y-1/2 lg:w-[56%] opacity-90"
-        style={{
-          maskImage: "radial-gradient(ellipse 68% 68% at 45% 50%, black 55%, transparent 96%)",
-          WebkitMaskImage: "radial-gradient(ellipse 68% 68% at 45% 50%, black 55%, transparent 96%)",
-        }}
-      />
+
 
       <div className="relative z-10 text-center lg:text-left">
         <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.08] text-3xl sm:text-5xl">
           Administrează prezența ta pe VIASEE.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          Revendică un profil existent sau creează unul nou pentru organizația, locația sau activitatea ta profesională.
+          Locația sau profilul tău profesional, mai ușor de administrat.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3">
@@ -98,15 +90,15 @@ export default function SpecialistsHero() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setAudience(option.id)}
-                className={`min-w-0 rounded-2xl border p-3 text-left transition-colors sm:p-4 ${
+                className={`min-w-0 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9D86AE] focus-visible:ring-offset-2 sm:p-4 ${
                   selected
-                    ? "border-foreground bg-foreground/[0.04]"
-                    : "border-border bg-card hover:border-foreground/35"
+                    ? "border-[#9D86AE] bg-[#F3EEF6] shadow-sm"
+                    : "border-border bg-card hover:border-[#B9A9C5] hover:bg-[#FAF8FC]"
                 }`}
               >
                 <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2.5">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                    selected ? "bg-foreground text-background" : "bg-secondary text-foreground"
+                    selected ? "bg-[#6A5078] text-white" : "bg-secondary text-foreground"
                   }`}>
                     <Icon className="h-4.5 w-4.5" />
                   </span>
@@ -123,7 +115,7 @@ export default function SpecialistsHero() {
             <div className="mb-3 text-left">
               <h2 className="font-heading text-base font-bold">Găsește organizația sau locația</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Caută mai întâi profilul existent. Așa evităm duplicatele și păstrăm istoricul locației.
+                Caută profilul existent înainte să adaugi unul nou.
               </p>
             </div>
 
@@ -135,7 +127,7 @@ export default function SpecialistsHero() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Nume sau adresă"
-                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-[#EEF2F3] transition-shadow"
+                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:border-[#9D86AE] focus:ring-[#E7DDED] transition-shadow"
                 />
                 {loading && (
                   <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
@@ -220,7 +212,7 @@ export default function SpecialistsHero() {
               </button>
             </div>
             <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">
-              O locație nouă este analizată înainte de publicare.
+              Publicarea se face după verificare.
             </p>
           </div>
         ) : (
@@ -228,24 +220,25 @@ export default function SpecialistsHero() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Profil profesional VIASEE
             </p>
-            <h2 className="mt-2 font-heading text-xl font-bold">Profilul tău rămâne separat de orice organizație</h2>
+            <h2 className="mt-2 font-heading text-xl font-bold">Un profil, oriunde lucrezi</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Creezi un singur profil profesional. După verificare, îl poți asocia cu una sau mai multe locații unde lucrezi, fără să creezi câte un profil pentru fiecare locație.
+              Creează-ți profilul și asociază-l cu locațiile unde lucrezi, după verificare.
             </p>
             <button
               type="button"
               onClick={() => navigate("/profil-profesional/nou")}
               className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-foreground px-5 text-sm font-semibold text-background hover:opacity-90 transition-opacity"
             >
-              Creează sau administrează profilul
+              Continuă cu profilul tău
               <ArrowRight className="h-4 w-4" />
             </button>
             <p className="mt-3 text-xs text-muted-foreground">
-              Dacă ai deja un profil asociat contului tău, vei fi direcționat automat către el după autentificare.
+              Ai deja un profil? Îl regăsești după autentificare.
             </p>
           </div>
         )}
       </div>
+      <SpecialistsLocationArtwork />
     </section>
   );
 }
