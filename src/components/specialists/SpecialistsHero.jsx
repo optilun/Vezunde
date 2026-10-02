@@ -17,8 +17,8 @@ const AUDIENCE_OPTIONS = [
   {
     id: "organization",
     icon: Building2,
-    title: "Reprezint o organizație",
-    description: "Optică, clinică sau cabinet.",
+    title: "Optică, clinică sau cabinet",
+    description: "Administrez una sau mai multe locații.",
   },
   {
     id: "professional",
@@ -74,10 +74,10 @@ export default function SpecialistsHero() {
           Administrează prezența ta pe VIASEE.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          Locația sau profilul tău profesional, mai ușor de administrat.
+          Prezintă-ți serviciile, actualizează datele și gestionează locațiile.
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3" role="group" aria-label="Alege ce vrei să administrezi">
           {AUDIENCE_OPTIONS.map((option) => {
             const Icon = option.icon;
             const selected = audience === option.id;
@@ -88,21 +88,21 @@ export default function SpecialistsHero() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setAudience(option.id)}
-                className={`min-w-0 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9D86AE] focus-visible:ring-offset-2 sm:p-4 ${
+                className={`min-w-0 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B9994] focus-visible:ring-offset-2 sm:p-4 ${
                   selected
-                    ? "border-[#9D86AE] bg-[#F3EEF6] shadow-sm"
-                    : "border-border bg-card hover:border-[#B9A9C5] hover:bg-[#FAF8FC]"
+                    ? "border-[#6B9994] bg-[#EFF5F3] shadow-sm"
+                    : "border-border bg-card hover:border-[#9FBDB8] hover:bg-[#F7FAF9]"
                 }`}
               >
                 <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2.5">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                    selected ? "bg-[#6A5078] text-white" : "bg-secondary text-foreground"
+                    selected ? "bg-[#2E6666] text-white" : "bg-secondary text-foreground"
                   }`}>
                     <Icon className="h-4.5 w-4.5" />
                   </span>
                   <span className="font-heading text-sm font-bold">{option.title}</span>
                 </div>
-                <p className="mt-3 hidden text-xs leading-relaxed text-muted-foreground sm:block">{option.description}</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{option.description}</p>
               </button>
             );
           })}
@@ -111,9 +111,9 @@ export default function SpecialistsHero() {
         {audience === "organization" ? (
           <div className="mt-6 max-w-2xl mx-auto lg:mx-0">
             <div className="mb-3 text-left">
-              <h2 className="font-heading text-base font-bold">Găsește organizația sau locația</h2>
+              <h2 className="font-heading text-base font-bold">Caută locația ta</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Caută profilul existent înainte să adaugi unul nou.
+                O găsești aici? Revendică profilul sau solicită acces.
               </p>
             </div>
 
@@ -124,8 +124,8 @@ export default function SpecialistsHero() {
                   aria-label="Nume, localitate sau adresă"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Nume sau adresă"
-                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:border-[#9D86AE] focus:ring-[#E7DDED] transition-shadow"
+                  placeholder="Numele locației"
+                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:border-[#6B9994] focus:ring-[#DCEBE6] transition-shadow"
                 />
                 {loading && (
                   <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
