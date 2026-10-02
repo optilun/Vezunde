@@ -38,11 +38,12 @@ assert.equal(isRetiredLocationProposal({ status: 'draft', public_visibility_stat
 assert.equal(isRetiredLocationProposal({ status: 'publicata', claim_verification_status: 'rejected' }), false, 'o locatie publica (revendicare respinsa) ramane in verificarea de duplicate');
 assert.equal(isRetiredLocationProposal({ status: 'in_verificare', claim_verification_status: 'pending' }), false);
 
-assert.deepEqual(rejectedNewLocationPatch({ status: 'in_verificare', profile_control_status: 'directory' }), {
+assert.deepEqual(rejectedNewLocationPatch({ status: 'in_verificare', profile_control_status: 'directory', verification_state: 'in_verification' }), {
   claim_verification_status: 'rejected',
   status: 'draft',
   public_visibility_status: 'archived',
   active_status: 'inactiva',
+  verification_state: 'unclaimed',
 });
 assert.equal(rejectedNewLocationPatch({ status: 'publicata' }), null, 'o locatie publicata nu se arhiveaza din respingere');
 assert.equal(rejectedNewLocationPatch({ status: 'draft', profile_control_status: 'claimed' }), null, 'o locatie controlata nu se arhiveaza din respingere');
