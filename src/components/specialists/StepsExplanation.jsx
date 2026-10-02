@@ -9,7 +9,7 @@ const STEPS = [
   },
   {
     icon: UserCheck,
-    label: "Confirmi legatura",
+    label: "Confirmi legătura",
     text: "Ne spui cine ești și ce relație ai cu organizația, locația sau activitatea profesională.",
   },
   {
