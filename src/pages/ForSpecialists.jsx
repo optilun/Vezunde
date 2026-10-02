@@ -5,6 +5,7 @@ import SpecialistsCapabilities from "@/components/specialists/SpecialistsCapabil
 import StepsExplanation from "@/components/specialists/StepsExplanation";
 import SpecialistsFAQ from "@/components/specialists/SpecialistsFAQ";
 import SpecialistsFooter from "@/components/specialists/SpecialistsFooter";
+import SpecialistsVisualInvitation from "@/components/specialists/SpecialistsVisualInvitation";
 
 export default function ForSpecialists() {
   return (
@@ -15,6 +16,7 @@ export default function ForSpecialists() {
         <StepsExplanation />
         <SpecialistsCapabilities />
         <SpecialistsFAQ />
+        <SpecialistsVisualInvitation />
       </main>
       <SpecialistsFooter />
     </div>
