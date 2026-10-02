@@ -102,10 +102,15 @@ export const ARCHIVED_ORGANIZATION_PATCH = Object.freeze({
  * Candidatul de duplicat aratat unui furnizor (nu unui admin). Locatiile nepublice ale altora
  * raman in calcul - doua persoane care propun acelasi loc trebuie sa ajunga la admin - dar fara
  * nume, adresa sau organizatie: furnizorul afla doar ca exista o propunere in verificare.
+ *
+ * 2026-10-02. O locatie a contului (are acces la ea sau a propus-o el) nu e "a altcuiva": se
+ * arata cu nume si adresa si marcata `is_own`, fara buton de revendicare (test E2E 2026-10-02).
  */
-export function providerSafeIdentityCandidate(candidate, location) {
+export function providerSafeIdentityCandidate(candidate, location, { ownLocation = false } = {}) {
   if (!candidate) return null;
-  if (isLocationPubliclyListed(location)) return { ...candidate, is_public: true };
+  const isPublic = isLocationPubliclyListed(location);
+  if (ownLocation) return { ...candidate, recommended_action: 'review_manually', is_public: isPublic, is_own: true };
+  if (isPublic) return { ...candidate, is_public: true };
   return {
     location_id: candidate.location_id,
     name: '',
