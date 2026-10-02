@@ -29,6 +29,16 @@ export function isTransientError(error) {
   return status === 408 || status === 429 || status >= 500;
 }
 
+// 2026-10-02. Mesajul brut al platformei („Rate limit exceeded”) ajungea direct in contul de
+// furnizor. Il inlocuim cu o explicatie in romana; celelalte mesaje raman neschimbate.
+export const RATE_LIMIT_MESSAGE = 'Serverul a primit prea multe cereri deodată. Reîncearcă în câteva secunde.';
+
+export function readableErrorMessage(message, fallback = '') {
+  const text = String(message || '').trim();
+  if (!text) return fallback;
+  return /rate limit/i.test(text) ? RATE_LIMIT_MESSAGE : text;
+}
+
 export async function withTransientRetry(run, {
   delaysMs = PROFILE_RETRY_DELAYS_MS,
   wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
