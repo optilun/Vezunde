@@ -44,7 +44,7 @@ export default function SpecialistsCapabilities() {
         <h2 className="mt-2 font-heading text-2xl sm:text-3xl font-bold tracking-tight">
           Totul la îndemână, într-un singur cont
         </h2>
-        <p className="mt-3 mx-auto max-w-2xl text-sm sm:text-base leading-relaxed text-muted-foreground">
+        <p className="mt-3 mx-auto max-w-2xl text-sm sm:text-base leading-relaxed text-[#59665E]">
           Locațiile, echipa și profilul profesional, fiecare cu informațiile sale.
         </p>
       </div>
@@ -54,12 +54,14 @@ export default function SpecialistsCapabilities() {
           const Icon = item.icon;
 
           return (
-            <div key={item.title} className="rounded-2xl border border-border bg-card p-5 transition-[border-color,box-shadow] hover:border-[#B3CCC5] hover:shadow-sm">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF2EF] text-[#2E6666]">
-                <Icon className="h-4.5 w-4.5" />
+            <div key={item.title} className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EAF2EF] text-[#2E6666]">
+                  <Icon aria-hidden="true" className="h-4.5 w-4.5" />
+                </div>
+                <h3 className="font-heading text-sm font-bold">{item.title}</h3>
               </div>
-              <h3 className="mt-4 font-heading text-sm font-bold">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+              <p className="mt-3 text-sm leading-relaxed text-[#59665E]">{item.text}</p>
             </div>
           );
         })}
