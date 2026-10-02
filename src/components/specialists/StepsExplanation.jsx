@@ -38,8 +38,8 @@ export default function StepsExplanation() {
               <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center mx-auto relative z-10 text-xs font-bold">
                 {index + 1}
               </div>
-              <div className="mt-4 w-9 h-9 rounded-xl bg-[#F1EBF5] flex items-center justify-center mx-auto">
-                <Icon className="w-4.5 h-4.5 text-[#6A5078]" />
+              <div className="mt-4 w-9 h-9 rounded-xl bg-[#EAF2EF] flex items-center justify-center mx-auto">
+                <Icon className="w-4.5 h-4.5 text-[#2E6666]" />
               </div>
               <h3 className="mt-3 font-heading font-bold">{step.label}</h3>
               <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed max-w-[235px] mx-auto">
