@@ -83,7 +83,7 @@ assert.doesNotMatch(materialize, /public_visibility_status: 'approved'|status: '
 const handleStart = review.indexOf('export async function handle(');
 const handle = review.slice(handleStart);
 assert.match(handle, /if \(p\.action === 'approve_distinct'\) \{[\s\S]*claim = result\.claim;[\s\S]*\} else if \(p\.action !== 'approve'\)/, 'dupa creare, cererea trece pe calea normala de aprobare');
-assert.match(handle, /claim\.mode === 'new_location_duplicate_review'\) \{\s*return Response\.json\(\{ error: 'Cererea de clarificare duplicat nu poate fi aprobata direct' \}/, '\"Aproba\" simplu ramane blocat pentru duplicate');
+assert.match(handle, /claim\.mode === 'new_location_duplicate_review'\) \{\s*return Response\.json\(\{ error: 'Cererea de clarificare duplicat nu poate fi aprobata direct' \}/, 'butonul Aproba simplu ramane blocat pentru duplicate');
 
 // ---------- 5. Panoul admin ----------
 const ui = await read('src/components/admin/directory/DirOpsClaims.jsx');
