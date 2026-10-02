@@ -70,7 +70,7 @@ export function rejectedNewLocationPatch(location) {
     status: 'draft',
     public_visibility_status: 'archived',
     active_status: 'inactiva',
-    // 2026-10-02. Propunerea respinsa nu mai e „in verificare” (test E2E). O stare verified sau
+    // 2026-10-02. Propunerea respinsa nu mai ramane 'in_verification' (test E2E). O stare verified sau
     // suspended pusa de admin nu se suprascrie.
     ...(['verified', 'suspended'].includes(clean(location.verification_state)) ? {} : { verification_state: 'unclaimed' }),
   };
