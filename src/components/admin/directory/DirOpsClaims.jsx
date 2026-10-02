@@ -145,6 +145,9 @@ export default function DirOpsClaims() {
       }
       throw error;
     }
+    if (response.data?.code === "new_duplicate_candidates") {
+      setAction((current) => ({ ...current, newCandidates: response.data.candidates || [] }));
+    }
     if (response.data?.error) throw new Error(response.data.error);
     setAction(null);
     await load();
