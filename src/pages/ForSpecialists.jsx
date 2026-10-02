@@ -8,7 +8,7 @@ import SpecialistsFooter from "@/components/specialists/SpecialistsFooter";
 
 export default function ForSpecialists() {
   return (
-    <div className="flex min-h-screen min-h-dvh min-w-0 flex-col overflow-x-clip bg-background font-body text-foreground">
+    <div className="flex min-h-screen min-h-dvh min-w-0 flex-col overflow-x-clip bg-[#F8F4EC] font-body text-[#211c25]" style={{ backgroundImage: "radial-gradient(rgba(52,48,43,0.12) 0.7px, transparent 0.8px)", backgroundSize: "24px 24px" }}>
       <SpecialistsHeader />
       <main className="min-w-0 flex-1 overflow-x-clip">
         <SpecialistsHero />
