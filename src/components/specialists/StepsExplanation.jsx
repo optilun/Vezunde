@@ -21,33 +21,24 @@ const STEPS = [
 
 export default function StepsExplanation() {
   return (
-    <section
-      id="cum-functioneaza"
-      className="max-w-4xl mx-auto px-5 pt-6 pb-4 sm:pt-8 sm:pb-6 border-t border-border/60"
-    >
-      <div className="relative grid sm:grid-cols-3 gap-6 sm:gap-6">
-        <div
-          aria-hidden
-          className="hidden sm:block absolute top-5 left-[16.5%] right-[16.5%] h-px bg-border"
-        />
-        {STEPS.map((step, index) => {
-          const Icon = step.icon;
-
-          return (
-            <div key={step.label} className="relative text-center">
-              <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center mx-auto relative z-10 text-xs font-bold">
-                {index + 1}
+    <section id="cum-functioneaza" aria-labelledby="specialists-steps-title" className="scroll-mt-24 border-y border-[#d9d2dc] bg-[#ede5f1]/65">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-8 sm:py-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#684d78] sm:text-xs">Cum funcționează</p>
+          <h2 id="specialists-steps-title" className="mt-4 max-w-sm font-heading text-3xl font-semibold leading-[1.1] tracking-[-0.035em] sm:text-4xl">Trei pași.<br />Un profil care te reprezintă.</h2>
+        </div>
+        <ol className="grid gap-6">
+          {STEPS.map((step, index) => {
+            const Icon = step.icon;
+            return <li key={step.label} className="flex items-start gap-4">
+              <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#684d78]/25 bg-[#fffdf9] font-mono text-sm text-[#684d78]">0{index + 1}</span>
+              <div className="flex-1 border-b border-[#684d78]/20 pb-5">
+                <h3 className="flex items-center justify-between gap-3 font-heading text-base font-semibold sm:text-lg">{step.label}<Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-[#684d78]" /></h3>
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#665f69]">{step.text}</p>
               </div>
-              <div className="mt-4 w-9 h-9 rounded-xl bg-secondary flex items-center justify-center mx-auto">
-                <Icon className="w-4.5 h-4.5 text-foreground" />
-              </div>
-              <h3 className="mt-3 font-heading font-bold">{step.label}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed max-w-[235px] mx-auto">
-                {step.text}
-              </p>
-            </div>
-          );
-        })}
+            </li>;
+          })}
+        </ol>
       </div>
     </section>
   );
