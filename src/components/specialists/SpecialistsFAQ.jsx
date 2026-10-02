@@ -76,7 +76,7 @@ export default function SpecialistsFAQ() {
         <Accordion type="single" collapsible>
           {FAQ_ITEMS.map((item, index) => (
             <AccordionItem key={item.q} value={`item-${index}`}>
-              <AccordionTrigger className="min-h-14 text-left text-sm font-semibold hover:text-[#6A5078]">{item.q}</AccordionTrigger>
+              <AccordionTrigger className="min-h-14 text-left text-sm font-semibold hover:text-[#2E6666]">{item.q}</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
                 <div className="space-y-3 pb-1">
                   {item.a.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
