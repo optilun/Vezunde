@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Building2, Clock3, Glasses, MapPin } from "lucide-react";
+import { ArrowUpRight, Building2, Clock3, Glasses } from "lucide-react";
 import SpecialistsPortrait from "./SpecialistsPortrait";
 
 function CollageTile({ className = "", children }) {
