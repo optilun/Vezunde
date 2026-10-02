@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
+import SpecialistsPresenceArtwork from "./SpecialistsPresenceArtwork";
 
 const AUDIENCE_OPTIONS = [
   {
@@ -67,27 +68,21 @@ export default function SpecialistsHero() {
   const searched = audience === "organization" && query.trim().length >= 2;
 
   return (
-    <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[52%_48%] gap-10 lg:gap-8 items-center relative">
-      <img
-        src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/8bc17e08f_generated_image.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none select-none order-first lg:order-last w-full max-w-md mx-auto lg:max-w-none lg:absolute lg:right-[-4%] lg:top-1/2 lg:-translate-y-1/2 lg:w-[56%] opacity-90"
-        style={{
-          maskImage: "radial-gradient(ellipse 68% 68% at 45% 50%, black 55%, transparent 96%)",
-          WebkitMaskImage: "radial-gradient(ellipse 68% 68% at 45% 50%, black 55%, transparent 96%)",
-        }}
-      />
+    <section id="incepe" className="relative mx-auto grid max-w-7xl scroll-mt-24 items-start gap-10 px-4 pb-12 pt-8 sm:px-8 sm:pb-20 sm:pt-14 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:pt-16">
+      <div className="order-last hidden lg:sticky lg:top-28 lg:mt-14 lg:block">
+        <SpecialistsPresenceArtwork professional={audience === "professional"} />
+      </div>
 
-      <div className="relative z-10 text-center lg:text-left">
-        <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.08] text-3xl sm:text-5xl">
-          Administrează prezența ta pe VIASEE.
+      <div className="relative z-10 min-w-0 text-left">
+        <p className="mb-4 flex items-center gap-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#684d78] sm:text-xs"><span aria-hidden="true" className="h-2 w-2 bg-[#684d78]" /> VIASEE pentru specialiști</p>
+        <h1 className="font-heading text-[clamp(2.5rem,6vw,4rem)] font-bold leading-[1.04] tracking-[-0.045em]">
+          <span className="block">Locul tău pe</span><span className="block text-[#684d78]">VIASEE.</span>
         </h1>
-        <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          Revendică un profil existent sau creează unul nou pentru organizația, locația sau activitatea ta profesională.
+        <p className="mt-5 max-w-lg text-sm leading-relaxed text-[#665f69] sm:text-base">
+          Clinici, optici și profesioniști în îngrijirea vederii. Revendică un profil existent sau creează unul nou.
         </p>
 
-        <div className="mt-7 grid gap-3 sm:grid-cols-2">
+        <div role="group" aria-label="Alege tipul profilului" className="mt-6 grid grid-cols-2 gap-2 sm:mt-8 sm:gap-3">
           {AUDIENCE_OPTIONS.map((option) => {
             const Icon = option.icon;
             const selected = audience === option.id;
@@ -98,43 +93,44 @@ export default function SpecialistsHero() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setAudience(option.id)}
-                className={`rounded-2xl border p-4 text-left transition-colors ${
+                className={`min-w-0 rounded-2xl border p-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#684d78] sm:p-4 ${
                   selected
-                    ? "border-foreground bg-foreground/[0.04]"
-                    : "border-border bg-card hover:border-foreground/35"
+                    ? "border-[#684d78] bg-[#ede5f1] shadow-[inset_0_0_0_1px_#684d78]"
+                    : "border-[#d9d2dc] bg-white/75 hover:border-[#684d78]/60"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2.5">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                    selected ? "bg-foreground text-background" : "bg-secondary text-foreground"
+                    selected ? "bg-[#684d78] text-white" : "bg-[#f0ece4] text-[#665f69]"
                   }`}>
-                    <Icon className="h-4.5 w-4.5" />
+                    <Icon aria-hidden="true" className="h-5 w-5" />
                   </span>
-                  <span className="font-heading text-sm font-bold">{option.title}</span>
+                  <span className="font-heading text-[13px] font-semibold leading-snug sm:text-sm">{option.title}</span>
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{option.description}</p>
+                <p className="mt-3 hidden text-xs leading-relaxed text-[#665f69] sm:block">{option.description}</p>
               </button>
             );
           })}
         </div>
 
         {audience === "organization" ? (
-          <div className="mt-6 max-w-2xl mx-auto lg:mx-0">
+          <div className="mt-3 rounded-2xl border border-[#d9d2dc] bg-[#fffdf9] p-4 shadow-[0_8px_30px_rgba(44,32,54,0.04)] sm:p-6">
             <div className="mb-3 text-left">
-              <h2 className="font-heading text-base font-bold">Găsește organizația sau locația</h2>
+              <h2 className="font-heading text-base font-bold">Găsește profilul locației</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Caută mai întâi profilul existent. Așa evităm duplicatele și păstrăm istoricul locației.
+                Caută numele sau adresa. Dacă profilul există, îl poți revendica sau solicita acces.
               </p>
             </div>
 
-            <div className="relative flex flex-col sm:flex-row gap-2.5">
-              <div className="relative flex-1">
+            <div className="relative flex gap-2">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
+                  aria-label="Nume, localitate sau adresă"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Nume, localitate sau adresă"
-                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-[#EEF2F3] transition-shadow"
+                  className="h-12 w-full rounded-xl border border-[#d9d2dc] bg-white pl-10 pr-8 text-sm outline-none transition-shadow focus:ring-2 focus:ring-[#684d78]/30"
                 />
                 {loading && (
                   <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
@@ -147,7 +143,7 @@ export default function SpecialistsHero() {
                     .getElementById("hero-search-results")
                     ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
                 }
-                className="h-12 px-6 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+                className="h-12 shrink-0 rounded-xl bg-[#211c25] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 sm:px-6"
               >
                 Caută
               </button>
@@ -187,7 +183,7 @@ export default function SpecialistsHero() {
                             state: { selectedLocation: loc },
                           })
                         }
-                        className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
+                        className="min-h-11 shrink-0 rounded-full bg-[#684d78] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                       >
                         {requestsAccess ? "Solicită acces" : "Revendică această locație"}
                       </button>
@@ -201,8 +197,8 @@ export default function SpecialistsHero() {
               </div>
             )}
 
-            <div className="mt-5 pt-5 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
-              <span className="text-sm text-muted-foreground flex items-center gap-1.5 justify-center sm:justify-start">
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#e5dfe8] pt-3">
+              <span className="flex items-center gap-1.5 text-xs text-[#665f69]">
                 <MapPinPlus className="w-4 h-4 shrink-0" />
                 Nu găsești locația?
               </span>
@@ -213,28 +209,28 @@ export default function SpecialistsHero() {
                     state: { startFlow: "new_location" },
                   })
                 }
-                className="px-5 py-2.5 rounded-full border border-border bg-card text-sm font-medium hover:border-foreground/40 transition-colors"
+                className="min-h-11 rounded-full px-2 text-xs font-semibold text-[#684d78] underline decoration-[#684d78]/35 underline-offset-4 hover:decoration-[#684d78]"
               >
                 Adaugă o locație nouă
               </button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               O locație nouă este analizată înainte de publicare.
             </p>
           </div>
         ) : (
-          <div className="mt-6 max-w-2xl mx-auto lg:mx-0 rounded-2xl border border-border bg-card p-5 sm:p-6 text-left">
+          <div className="mt-3 rounded-2xl border border-[#d9d2dc] bg-[#fffdf9] p-4 text-left shadow-[0_8px_30px_rgba(44,32,54,0.04)] sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Profil profesional VIASEE
             </p>
-            <h2 className="mt-2 font-heading text-xl font-bold">Profilul tău rămâne separat de orice organizație</h2>
+            <h2 className="mt-2 font-heading text-xl font-bold">Un profil. Toate locurile unde lucrezi.</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Creezi un singur profil profesional. După verificare, îl poți asocia cu una sau mai multe locații unde lucrezi, fără să creezi câte un profil pentru fiecare locație.
+              Creezi profilul tău de oftalmolog, optometrist sau optician. După verificare, îl asociezi cu locațiile unde lucrezi.
             </p>
             <button
               type="button"
               onClick={() => navigate("/profil-profesional/nou")}
-              className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-foreground px-5 text-sm font-semibold text-background hover:opacity-90 transition-opacity"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between gap-2 rounded-xl bg-[#684d78] px-4 py-2 text-left text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               Creează sau administrează profilul
               <ArrowRight className="h-4 w-4" />
