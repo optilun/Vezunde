@@ -37,10 +37,10 @@ export default function StepsExplanation() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 sm:mt-4 sm:justify-center">
-                  <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-[#2E6666]" />
+                  <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-[#405AE9]" />
                   <h3 className="font-heading font-bold">{step.label}</h3>
                 </div>
-                <p className="mt-1.5 max-w-[260px] text-sm leading-relaxed text-[#59665E] sm:mx-auto">
+                <p className="mt-1.5 max-w-[260px] text-sm leading-relaxed text-[#657087] sm:mx-auto">
                   {step.text}
                 </p>
               </div>
