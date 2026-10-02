@@ -67,7 +67,10 @@ expect('src/components/provider/ClaimRelationStep.jsx', 'requestedLocationRoleFo
 expect('src/components/provider/ClaimRelationStep.jsx', 'intreaga organizatie', 'Pasul de relatie explica optiunea organizationala separata');
 expect('src/components/provider/ClaimReviewStep.jsx', 'requestedRoleForClaimScope', 'Revizuirea afiseaza rolul pentru scope-ul ales');
 expect('src/components/provider/ClaimReviewStep.jsx', 'Locatii incluse', 'Revizuirea afiseaza explicit locatiile solicitate');
-expect('src/components/provider/steps/WizClaimRelation.jsx', 'requestedLocationRoleForRelationship', 'Wizardul de locatie noua pastreaza maparea explicita');
+// 2026-10-02: la o locatie noua cererea creeaza si organizatia, iar backendul (ROLE_BY_RELATIONSHIP)
+// da owner organizatiei proprietarului; pasul de relatie arata acelasi rol (test E2E 2026-10-02).
+expect('src/components/provider/steps/WizClaimRelation.jsx', 'requestedRoleForRelationship(contact.claimant_relationship)', 'Wizardul de locatie noua arata rolul acordat de backend');
+reject('src/components/provider/steps/WizClaimRelation.jsx', 'requestedLocationRoleForRelationship', 'Wizardul de locatie noua nu foloseste maparea pentru revendicarea unei locatii existente');
 expect('base44/functions/submitProviderClaim/entry.ts', "claim_scope: 'location'", 'Backendul legacy marcheaza revendicarea profilului existent ca fiind limitata la locatie');
 expect('base44/functions/submitProviderClaim/entry.ts', 'LOCATION_ROLE_BY_RELATIONSHIP', 'Backendul legacy nu transforma relatia cu afacerea in owner de organizatie pentru un claim de locatie');
 expect('base44/functions/submitProviderScopedClaim/entry.ts', 'normalizeClaimScopeSelection', 'Backendul canonic valideaza scope-ul si locatiile');
