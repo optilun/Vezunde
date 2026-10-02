@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
+import { readableErrorMessage } from "@/lib/transientRetry";
 import {
   accountWorkspaceFunction,
   keepWorkspaceIdentity,
@@ -35,12 +36,11 @@ function WorkspaceLoading() {
 }
 
 function workspaceErrorMessage(result) {
+  const fallback = "Datele acestui modul nu au putut fi încărcate.";
   if (result?.status === "fulfilled") {
-    return result.value?.data?.error || "Datele acestui modul nu au putut fi încărcate.";
+    return readableErrorMessage(result.value?.data?.error, fallback);
   }
-  return result?.reason?.response?.data?.error
-    || result?.reason?.message
-    || "Datele acestui modul nu au putut fi încărcate.";
+  return readableErrorMessage(result?.reason?.response?.data?.error || result?.reason?.message, fallback);
 }
 
 function WorkspaceModuleError({ title, message, retrying = false, onRetry }) {
@@ -176,7 +176,7 @@ export default function MyAccount() {
     if (requestId !== refreshRequestRef.current[workspaceKey]) return null;
 
     if (!response.data || response.data.error) {
-      const message = response.data?.error || "Workspace-ul nu a putut fi actualizat.";
+      const message = readableErrorMessage(response.data?.error, "Workspace-ul nu a putut fi actualizat.");
       console.error(`Account ${workspaceKey} workspace refresh failed:`, message);
       setWorkspaceErrors((current) => ({ ...current, [workspaceKey]: message }));
       setWorkspaceRefreshing((current) => ({ ...current, [workspaceKey]: false }));
