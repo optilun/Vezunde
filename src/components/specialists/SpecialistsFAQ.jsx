@@ -39,19 +39,18 @@ const FAQ_ITEMS = [
 
 export default function SpecialistsFAQ() {
   return (
-    <section id="intrebari" aria-labelledby="specialists-faq-title" className="border-t border-[#d9d2dc] bg-[#fffdf9]">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-8 sm:py-16 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
-        <div>
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#684d78] sm:text-xs">Bine de știut</p>
-          <h2 id="specialists-faq-title" className="mt-4 font-heading text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">Întrebări frecvente.</h2>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-[#665f69]">Despre revendicare, verificare și gestionarea profilului tău.</p>
-          <a href="mailto:contact@viasee.ro" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#684d78] underline underline-offset-4">Ai nevoie de ajutor? Scrie-ne.</a>
-        </div>
+    <section className="max-w-3xl mx-auto px-5 py-8 sm:py-10">
+      <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-center">
+        Întrebări frecvente
+      </h2>
+      <div className="mt-5 bg-card border border-border rounded-2xl px-5 sm:px-7">
         <Accordion type="single" collapsible>
           {FAQ_ITEMS.map((item, index) => (
-            <AccordionItem key={item.q} value={`item-${index}`} className="border-[#e5dfe8]">
-              <AccordionTrigger className="min-h-14 gap-4 text-left text-sm font-medium hover:text-[#684d78]">{item.q}</AccordionTrigger>
-              <AccordionContent className="pr-6 text-sm leading-relaxed text-[#665f69]">{item.a}</AccordionContent>
+            <AccordionItem key={item.q} value={`item-${index}`}>
+              <AccordionTrigger className="text-left font-medium">{item.q}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground leading-relaxed">
+                {item.a}
+              </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
