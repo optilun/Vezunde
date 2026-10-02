@@ -54,8 +54,8 @@ export default function SpecialistsCapabilities() {
           const Icon = item.icon;
 
           return (
-            <div key={item.title} className="rounded-2xl border border-border bg-card p-5 transition-[border-color,box-shadow] hover:border-[#C4B5CE] hover:shadow-sm">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1EBF5] text-[#6A5078]">
+            <div key={item.title} className="rounded-2xl border border-border bg-card p-5 transition-[border-color,box-shadow] hover:border-[#B3CCC5] hover:shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF2EF] text-[#2E6666]">
                 <Icon className="h-4.5 w-4.5" />
               </div>
               <h3 className="mt-4 font-heading text-sm font-bold">{item.title}</h3>
