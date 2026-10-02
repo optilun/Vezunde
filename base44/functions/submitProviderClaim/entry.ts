@@ -4,6 +4,11 @@ import {
   NEW_LOCATION_LIMIT_MESSAGE,
   newLocationClaimLimitReached,
 } from '../../shared/newLocationClaimPolicy.js';
+import {
+  newLocationRecord,
+  newOrganizationRecord,
+  proposedLocationSnapshot,
+} from '../../shared/newLocationProposal.js';
 
 const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
@@ -220,17 +225,9 @@ Deno.serve(async (req) => {
         requested_membership_role: requestedMembershipRole,
         organization_name: org.name,
         request_type: 'new_patient_facing_location',
-        proposed_location: {
-          name: l.name,
-          provider_type: l.provider_type,
-          provider_profile_type: l.provider_profile_type,
-          locality_siruta_code: geo.siruta_code,
-          locality_name: geo.name,
-          county_name: geo.county_name || '',
-          address: l.address,
-          phone_public: phonePublic,
-          public_email: publicEmail,
-        },
+        // 2026-10-02. Aceeasi forma ca la crearea locatiei (shared/newLocationProposal.js), ca o
+        // cerere marcata duplicat sa poata deveni locatie daca adminul decide ca e distincta.
+        proposed_location: proposedLocationSnapshot({ ...l, phone_public: phonePublic, public_email: publicEmail }, geo),
         contact: { contact_name: c.contact_name, email: c.email, phone: c.phone || '' },
         ...(identityNote ? { identity_difference_note: identityNote, identity_blocking_level: identityBlocking } : {}),
       };
@@ -269,47 +266,17 @@ Deno.serve(async (req) => {
       }
 
       if (claimSubjectType === 'organization') {
-        const newOrg = await svc.entities.ProviderOrganization.create({
-          name: org.name,
-          status: 'activa',
-          organization_type: l.provider_profile_type,
-        });
+        const newOrg = await svc.entities.ProviderOrganization.create(
+          newOrganizationRecord({ name: org.name, providerProfileType: l.provider_profile_type }),
+        );
         organizationId = newOrg.id;
       }
 
-      const locData = {
-        name: l.name,
-        provider_type: l.provider_type,
-        provider_profile_type: l.provider_profile_type,
-        locality_siruta_code: geo.siruta_code,
-        locality_name: geo.name,
-        county_code: geo.county_code || '',
-        county_name: geo.county_name || '',
-        uat_code: geo.uat_code || '',
-        uat_name: geo.uat_name || '',
-        city: geo.name,
-        county: geo.county_name || '',
-        address: l.address,
-        phone_public: phonePublic,
-        public_email: publicEmail,
-        availability_status: 'necunoscuta',
-        status: 'in_verificare',
-        public_visibility_status: 'draft',
-        profile_control_status: 'directory',
-        claim_verification_status: 'pending',
-        profile_control_status_updated_at: new Date().toISOString(),
-        profile_control_status_reason: 'Locatie noua trimisa spre verificare',
-        verification_state: 'in_verification',
-        active_status: 'activa',
-        is_verified: false,
-        data_source: l.place_id ? 'google_place_reference' : 'manual',
-        last_confirmed_at: new Date().toISOString(),
-      };
-      if (l.place_id) locData.place_id = String(l.place_id);
-      if (typeof l.lat === 'number') locData.lat = l.lat;
-      if (typeof l.lng === 'number') locData.lng = l.lng;
-      if (organizationId) locData.organization_id = organizationId;
-      const loc = await svc.entities.ProviderLocation.create(locData);
+      const loc = await svc.entities.ProviderLocation.create(newLocationRecord({
+        proposed: { ...l, phone_public: phonePublic, public_email: publicEmail },
+        geo,
+        organizationId,
+      }));
       locationId = loc.id;
       businessName = l.name;
       submittedPayload = JSON.stringify({ mode: 'new_location', location_id: locationId, ...reviewSnapshot });
