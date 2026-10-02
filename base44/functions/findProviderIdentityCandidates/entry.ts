@@ -81,6 +81,20 @@ Deno.serve(async (req) => {
     const orgNameById = {};
     for (const o of allOrgs) orgNameById[o.id] = o.name || '';
 
+    // 2026-10-02. Locatiile contului (membership activ sau propunere/revendicare proprie, activa
+    // ori aprobata) nu se mai arata ca "propuse de altcineva" (test E2E 2026-10-02).
+    const ownLocationIds = new Set();
+    if (isProviderContext) {
+      const [ownMemberships, ownClaims] = await Promise.all([
+        svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500).catch(() => []),
+        svc.entities.ProviderClaimRequest.filter({ user_id: user.id }, '-created_date', 100).catch(() => []),
+      ]);
+      for (const membership of ownMemberships) if (membership?.location_id) ownLocationIds.add(membership.location_id);
+      for (const claim of ownClaims) {
+        if (claim?.location_id && ['in_asteptare', 'needs_more_info', 'aprobata'].includes(claim.status)) ownLocationIds.add(claim.location_id);
+      }
+    }
+
     const candidates = [];
     for (const l of allLocs) {
       if (p.exclude_location_id && l.id === p.exclude_location_id) continue;
@@ -154,8 +168,8 @@ Deno.serve(async (req) => {
     // cele nepublice care oricum nu blocheaza (likely_distinct) nu se mai trimit deloc.
     const top = (isProviderContext
       ? candidates
-        .map((candidate) => providerSafeIdentityCandidate(candidate, locationById.get(candidate.location_id)))
-        .filter((candidate) => candidate && (candidate.is_public || candidate.severity !== 'likely_distinct'))
+        .map((candidate) => providerSafeIdentityCandidate(candidate, locationById.get(candidate.location_id), { ownLocation: ownLocationIds.has(candidate.location_id) }))
+        .filter((candidate) => candidate && (candidate.is_public || candidate.is_own || candidate.severity !== 'likely_distinct'))
       : candidates
     ).slice(0, limit);
     // likely_distinct never blocks.
