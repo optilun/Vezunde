@@ -42,10 +42,10 @@ export default function SpecialistsCapabilities() {
         <h2 id="specialists-capabilities-title" className="mt-4 font-heading text-3xl font-semibold leading-[1.1] tracking-[-0.035em] sm:text-4xl">Totul, în același loc.</h2>
         <p className="mt-4 text-sm leading-relaxed text-[#665f69] sm:text-base">Organizația, locațiile și profilul profesional au fiecare spațiul lor. Tu le gestionezi din același cont.</p>
       </div>
-      <div className="mt-8 grid overflow-hidden rounded-2xl border border-[#d9d2dc] bg-[#fffdf9] sm:mt-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-[#d9d2dc] bg-[#d9d2dc] sm:mt-10 sm:grid-cols-2 lg:grid-cols-3">
         {ITEMS.map((item, index) => {
           const Icon = item.icon;
-          return <div key={item.title} className="border-b border-[#e5dfe8] p-5 last:border-b-0 sm:min-h-[190px] sm:p-6">
+          return <div key={item.title} className="bg-[#fffdf9] p-5 sm:min-h-[190px] sm:p-6">
             <div className="flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ede5f1] text-[#684d78]"><Icon aria-hidden="true" className="h-5 w-5" /></div>
               <span aria-hidden="true" className="font-mono text-xs text-[#aaa0af]">0{index + 1}</span>
