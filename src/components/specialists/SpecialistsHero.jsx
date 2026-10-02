@@ -68,9 +68,7 @@ export default function SpecialistsHero() {
   const searched = audience === "organization" && query.trim().length >= 2;
 
   return (
-    <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[52%_48%] gap-8 lg:gap-8 items-center relative">
-
-
+    <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[1.08fr_1fr] gap-8 lg:gap-8 items-center relative">
       <div className="relative z-10 text-center lg:text-left">
         <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.08] text-3xl sm:text-5xl">
           Administrează prezența ta pe VIASEE.
