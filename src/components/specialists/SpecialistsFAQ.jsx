@@ -1,9 +1,10 @@
 import React from "react";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import { ArrowDown } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@/components/ui/accordion";
 
 const FAQ_ITEMS = [
@@ -67,18 +68,24 @@ const FAQ_ITEMS = [
 
 export default function SpecialistsFAQ() {
   return (
-    <section className="max-w-3xl mx-auto px-5 py-8 sm:py-10">
-      <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-center">
-        Întrebări frecvente
-      </h2>
-      <p className="mt-2 text-center text-sm text-muted-foreground">Profiluri, revendicare și acces, explicate pas cu pas.</p>
-      <div className="mt-5 bg-card border border-border rounded-2xl px-5 sm:px-7">
-        <Accordion type="single" collapsible>
+    <section aria-labelledby="specialists-faq-title" className="bg-white px-5 py-14 sm:px-8 sm:py-24">
+      <div className="mx-auto grid max-w-7xl gap-9 lg:grid-cols-[.85fr_1.15fr] lg:gap-16">
+        <h2 id="specialists-faq-title" className="font-heading text-[clamp(2.5rem,5.3vw,5rem)] font-bold leading-[1.03] tracking-[-.045em]">
+          Întrebări<br />frecvente
+        </h2>
+        <Accordion type="single" collapsible defaultValue="item-0" className="min-w-0 border-t-2 border-[#242733]">
           {FAQ_ITEMS.map((item, index) => (
-            <AccordionItem key={item.q} value={`item-${index}`}>
-              <AccordionTrigger className="min-h-14 text-left text-sm font-semibold hover:text-[#2E6666]">{item.q}</AccordionTrigger>
-              <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                <div className="space-y-3 pb-1">
+            <AccordionItem key={item.q} value={`item-${index}`} className="border-b-2 border-[#242733]">
+              <AccordionPrimitive.Header>
+                <AccordionPrimitive.Trigger className="group flex w-full items-start justify-between gap-5 py-6 text-left font-heading text-lg font-semibold leading-snug text-[#242733] transition-colors hover:text-[#405AE9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#405AE9] focus-visible:ring-offset-4 sm:gap-8 sm:py-8 sm:text-2xl">
+                  <span>{item.q}</span>
+                  <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-current sm:h-9 sm:w-9">
+                    <ArrowDown className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none sm:h-6 sm:w-6" strokeWidth={2.5} />
+                  </span>
+                </AccordionPrimitive.Trigger>
+              </AccordionPrimitive.Header>
+              <AccordionContent className="pb-7 pr-1 text-base leading-[1.65] text-[#424958] sm:pb-10 sm:pr-12 sm:text-lg">
+                <div className="space-y-5">
                   {item.a.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
                 </div>
               </AccordionContent>
@@ -89,3 +96,4 @@ export default function SpecialistsFAQ() {
     </section>
   );
 }
+
