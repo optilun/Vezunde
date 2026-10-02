@@ -7,9 +7,12 @@ import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import SignedInNotice from "@/components/SignedInNotice";
 import { clearPostLoginRedirect, getAuthRoute, getPostLoginRedirect } from "@/lib/postLoginRedirect";
 
-const LOGIN_METHOD_HELP = "Nu am putut conecta acest e-mail cu parola introdusă. Dacă ai creat contul cu Google, folosește Continuă cu Google. Dacă ai creat cont cu parolă, verifică parola sau folosește opțiunea de resetare a parolei.";
+// 2026-10-02: contul creat din Base44 (de exemplu administratorul) nu are parolă pentru site până
+// când i se setează una din "Ai uitat parola?".
+const LOGIN_METHOD_HELP = "Nu am putut conecta acest e-mail cu parola introdusă. Dacă ai creat contul cu Google, folosește Continuă cu Google. Dacă ai creat cont cu parolă, verifică parola sau folosește opțiunea de resetare a parolei. Dacă nu ai setat încă o parolă pentru acest site, o poți seta din „Ai uitat parola?”.";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -56,6 +59,7 @@ export default function Login() {
         </>
       }
     >
+      <SignedInNotice />
       <Button variant="outline" className="w-full h-12 text-sm font-medium mb-3" onClick={handleGoogle}>
         <GoogleIcon className="w-5 h-5 mr-2" />
         Continuă cu Google
