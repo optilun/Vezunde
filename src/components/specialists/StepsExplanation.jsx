@@ -25,30 +25,29 @@ export default function StepsExplanation() {
       id="cum-functioneaza" style={{ scrollMarginTop: "5rem" }}
       className="max-w-4xl mx-auto px-5 pt-6 pb-4 sm:pt-8 sm:pb-6 border-t border-border/60"
     >
-      <div className="relative grid sm:grid-cols-3 gap-6 sm:gap-6">
-        <div
-          aria-hidden
-          className="hidden sm:block absolute top-5 left-[16.5%] right-[16.5%] h-px bg-border"
-        />
+      <ol className="relative grid gap-5 sm:grid-cols-3 sm:gap-6">
+        <li aria-hidden="true" className="pointer-events-none absolute bottom-9 left-[17px] top-5 w-px bg-border sm:bottom-auto sm:left-[16.5%] sm:right-[16.5%] sm:h-px sm:w-auto" />
         {STEPS.map((step, index) => {
           const Icon = step.icon;
 
           return (
-            <div key={step.label} className="relative text-center">
-              <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center mx-auto relative z-10 text-xs font-bold">
+            <li key={step.label} className="relative flex items-start gap-4 sm:block sm:text-center">
+              <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background sm:mx-auto sm:h-10 sm:w-10">
                 {index + 1}
               </div>
-              <div className="mt-4 w-9 h-9 rounded-xl bg-[#EAF2EF] flex items-center justify-center mx-auto">
-                <Icon className="w-4.5 h-4.5 text-[#2E6666]" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 sm:mt-4 sm:justify-center">
+                  <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-[#2E6666]" />
+                  <h3 className="font-heading font-bold">{step.label}</h3>
+                </div>
+                <p className="mt-1.5 max-w-[260px] text-sm leading-relaxed text-[#59665E] sm:mx-auto">
+                  {step.text}
+                </p>
               </div>
-              <h3 className="mt-3 font-heading font-bold">{step.label}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed max-w-[235px] mx-auto">
-                {step.text}
-              </p>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
     </section>
   );
 }
