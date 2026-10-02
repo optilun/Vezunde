@@ -129,7 +129,7 @@ export default function SpecialistsHero() {
                   aria-label="Nume, localitate sau adresă"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Nume, localitate sau adresă"
+                  placeholder="Nume sau adresă"
                   className="h-12 w-full rounded-xl border border-[#d9d2dc] bg-white pl-10 pr-8 text-sm outline-none transition-shadow focus:ring-2 focus:ring-[#684d78]/30"
                 />
                 {loading && (
