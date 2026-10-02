@@ -22,13 +22,13 @@ export default function SpecialistsVisualInvitation() {
         </h2>
 
         <div aria-hidden="true" className="mx-auto mt-12 grid w-full max-w-[340px] grid-cols-[1.05fr_1fr_1fr] items-start gap-3 text-left sm:mt-16 sm:max-w-[600px] lg:w-[58%] lg:max-w-[720px] sm:grid-cols-[1.35fr_.5fr_1fr_.52fr_1fr] sm:gap-3">
-          <CollageTile className="bg-[#FFFDF7] p-2.5 text-[#242733] sm:p-4">
-            <div className="flex items-center justify-between border-b border-[#DCE3F6] pb-2 text-[8px] font-bold sm:pb-3 sm:text-[11px]">
+          <CollageTile className="bg-[#FFFDF7] p-2.5 text-[#242733] sm:p-3">
+            <div className="flex items-center justify-between border-b border-[#DCE3F6] pb-2 text-[8px] font-bold sm:pb-2 sm:text-[10px]">
               <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#405AE9]" />VIASEE</span>
               <ArrowRight className="h-2.5 w-2.5 text-[#405AE9] sm:h-3.5 sm:w-3.5" />
             </div>
-            <p className="mt-3 text-[10px] font-bold leading-tight sm:mt-4 sm:text-base">Optică · Clinică</p>
-            <div className="mt-3 space-y-2.5 text-[7px] text-[#657087] sm:mt-4 sm:space-y-3 sm:text-[11px]">
+            <p className="mt-3 text-[10px] font-bold leading-tight sm:mt-3 sm:text-sm">Optică · Clinică</p>
+            <div className="mt-3 space-y-2.5 text-[7px] text-[#657087] sm:mt-3 sm:space-y-2 sm:text-[10px]">
               {[[MapPin, "Adresă și contact"], [Clock3, "Program"], [Glasses, "Servicii"]].map(([Icon, label]) => (
                 <div key={label} className="flex items-center gap-1.5 sm:gap-2">
                   <Icon className="h-2.5 w-2.5 shrink-0 text-[#405AE9] sm:h-3.5 sm:w-3.5" strokeWidth={1.8} />
@@ -36,7 +36,7 @@ export default function SpecialistsVisualInvitation() {
                 </div>
               ))}
             </div>
-            <p className="mt-3 border-t border-[#DCE3F6] pt-2 text-[7px] font-semibold text-[#405AE9] sm:mt-4 sm:pt-3 sm:text-[10px]">Profilul locației</p>
+            <p className="mt-3 border-t border-[#DCE3F6] pt-2 text-[7px] font-semibold text-[#405AE9] sm:mt-3 sm:pt-2 sm:text-[9px]">Profilul locației</p>
           </CollageTile>
           <CollageTile className="hidden sm:block">
             <GlassesIllustration className="w-full" />
