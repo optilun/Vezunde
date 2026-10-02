@@ -30,7 +30,3 @@ dist-ssr
 .env
 .vite
 base44/.app.jsonc
-
-# Temporary image transfer files
-.image-transfers/
-
