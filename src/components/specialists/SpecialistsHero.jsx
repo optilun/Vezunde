@@ -89,22 +89,22 @@ export default function SpecialistsHero() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setAudience(option.id)}
-                className={`relative min-w-0 rounded-2xl border p-3 pr-6 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B9994] focus-visible:ring-offset-2 sm:p-4 sm:pr-7 ${
+                className={`relative min-w-0 rounded-2xl border p-3 pr-6 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#405AE9] focus-visible:ring-offset-2 sm:p-4 sm:pr-7 ${
                   selected
-                    ? "border-[#6B9994] bg-[#EFF5F3] shadow-sm"
-                    : "border-border bg-card hover:border-[#9FBDB8] hover:bg-[#F7FAF9]"
+                    ? "border-[#405AE9] bg-[#EEF2FF] shadow-sm"
+                    : "border-border bg-card hover:border-[#A5B7EE] hover:bg-[#F8FAFF]"
                 }`}
               >
-                {selected && <Check aria-hidden="true" className="absolute right-2 top-2 h-4 w-4 text-[#2E6666] sm:right-3 sm:top-3" />}
+                {selected && <Check aria-hidden="true" className="absolute right-2 top-2 h-4 w-4 text-[#405AE9] sm:right-3 sm:top-3" />}
                 <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2.5">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                    selected ? "bg-[#2E6666] text-white" : "bg-secondary text-foreground"
+                    selected ? "bg-[#405AE9] text-white" : "bg-secondary text-foreground"
                   }`}>
                     <Icon className="h-4.5 w-4.5" />
                   </span>
                   <span className="font-heading text-sm font-bold">{option.title}</span>
                 </div>
-                <p className="mt-2 text-[13px] leading-relaxed text-[#59665E]">{option.description}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-[#657087]">{option.description}</p>
               </button>
             );
           })}
@@ -114,7 +114,7 @@ export default function SpecialistsHero() {
           <div className="mt-6 max-w-2xl mx-auto lg:mx-0">
             <div className="mb-3 text-left">
               <h2 className="font-heading text-base font-bold">Caută locația ta</h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-[#59665E]">
+              <p className="mt-1 text-[13px] leading-relaxed text-[#657087]">
                 O găsești aici? Revendică profilul sau solicită acces.
               </p>
             </div>
@@ -127,7 +127,7 @@ export default function SpecialistsHero() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Numele locației"
-                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:border-[#6B9994] focus:ring-[#DCEBE6] transition-shadow"
+                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:border-[#405AE9] focus:ring-[#DCE4FF] transition-shadow"
                 />
                 {loading && (
                   <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
@@ -211,7 +211,7 @@ export default function SpecialistsHero() {
                 Adaugă o locație nouă
               </button>
             </div>
-            <p className="mt-2 text-[13px] text-[#59665E] text-center sm:text-left">
+            <p className="mt-2 text-[13px] text-[#657087] text-center sm:text-left">
               Publicarea se face după verificare.
             </p>
           </div>
@@ -232,7 +232,7 @@ export default function SpecialistsHero() {
               Continuă cu profilul tău
               <ArrowRight className="h-4 w-4" />
             </button>
-            <p className="mt-3 text-[13px] leading-relaxed text-[#59665E]">
+            <p className="mt-3 text-[13px] leading-relaxed text-[#657087]">
               Ai deja un profil? Îl regăsești după autentificare.
             </p>
           </div>
