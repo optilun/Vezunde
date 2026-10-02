@@ -123,15 +123,28 @@ export default function DirOpsClaims() {
   const run = async (note) => {
     const scoped = action.scoped === true;
     const functionName = scoped ? "adminProviderScopedClaimReview" : "adminProviderClaimReview";
-    const response = await base44.functions.invoke(functionName, {
-      action: action.type,
-      claim_id: action.claimId,
-      note,
-      ...(action.type === "approve" ? {
-        approved_role: action.approvedRole,
-        ...(scoped ? { approved_location_ids: action.approvedLocationIds } : {}),
-      } : {}),
-    });
+    const approving = action.type === "approve" || action.type === "approve_distinct";
+    let response;
+    try {
+      response = await base44.functions.invoke(functionName, {
+        action: action.type,
+        claim_id: action.claimId,
+        note,
+        ...(approving ? {
+          approved_role: action.approvedRole,
+          ...(scoped ? { approved_location_ids: action.approvedLocationIds } : {}),
+        } : {}),
+        ...(action.type === "approve_distinct" ? { acknowledged_candidate_ids: action.acknowledgedIds || [] } : {}),
+      });
+    } catch (error) {
+      // 2026-10-02. Duplicatele aparute dupa trimitere opresc aprobarea; adminul le vede aici si
+      // le poate confirma explicit (bifa de mai jos), apoi apasa din nou pe Confirma.
+      const data = error.response?.data;
+      if (data?.code === "new_duplicate_candidates") {
+        setAction((current) => ({ ...current, newCandidates: data.candidates || [] }));
+      }
+      throw error;
+    }
     if (response.data?.error) throw new Error(response.data.error);
     setAction(null);
     await load();
@@ -230,6 +243,24 @@ export default function DirOpsClaims() {
                               Aproba
                             </button>
                           )}
+                          {isDuplicateReview && (
+                            <button
+                              type="button"
+                              onClick={() => setAction({
+                                claimId: claim.id,
+                                type: "approve_distinct",
+                                scoped: false,
+                                requestedRole,
+                                approvedRole: defaultApprovedRole,
+                                roleOptions,
+                                newCandidates: [],
+                                acknowledgedIds: [],
+                              })}
+                              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-foreground bg-card px-3 text-xs font-semibold sm:min-h-9 sm:rounded-md"
+                            >
+                              Aproba ca locatie distincta
+                            </button>
+                          )}
                           {scoped && (
                             <button
                               type="button"
@@ -241,7 +272,7 @@ export default function DirOpsClaims() {
                           )}
                           <button
                             type="button"
-                            onClick={() => setAction({ claimId: claim.id, type: "reject", scoped })}
+                            onClick={() => setAction({ claimId: claim.id, type: "reject", scoped, duplicateReview: isDuplicateReview })}
                             className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-destructive sm:min-h-9 sm:rounded-md sm:px-3"
                           >
                             Respinge
@@ -271,7 +302,7 @@ export default function DirOpsClaims() {
                   <AdminClaimIdentityContext claim={claim} />
                   {isDuplicateReview && canReview && (
                     <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                      Nicio locatie nu a fost creata. Daca este distincta, creeaz-o prin fluxul canonic „Adauga locatie”, apoi inchide cererea cu o nota.
+                      Nicio locatie nu a fost creata inca. Daca este o locatie diferita, foloseste „Aproba ca locatie distincta”: locatia se creeaza din datele trimise, ca ciorna nepublicata, si furnizorul primeste accesul. Daca este aceeasi locatie, respinge cererea si scrie-i furnizorului ce sa faca.
                     </p>
                   )}
                 </div>
@@ -282,11 +313,64 @@ export default function DirOpsClaims() {
 
         {action && (
           <DirOpsActionNote
-            title={action.type === "approve" ? "Aproba solicitarea si accesul" : action.type === "request_more_info" ? "Solicita informatii suplimentare" : "Respinge solicitarea"}
+            title={action.type === "approve" ? "Aproba solicitarea si accesul" : action.type === "approve_distinct" ? "Aproba ca locatie distincta" : action.type === "request_more_info" ? "Solicita informatii suplimentare" : "Respinge solicitarea"}
             noteOptional={action.type === "approve"}
             onConfirm={run}
             onCancel={() => setAction(null)}
           >
+            {action.type === "approve_distinct" && (
+              <div>
+                <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                  Locatia si organizatia se creeaza din datele trimise de furnizor, ca ciorna nepublicata si neverificata, apoi cererea se aproba ca o locatie noua obisnuita.
+                  <span className="mt-1 block">Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole] || action.requestedRole}</span></span>
+                  <span className="mt-1 block font-medium text-foreground">Scrie mai jos de ce este o locatie diferita (minim 15 caractere). Motivul ramane in istoric.</span>
+                </div>
+
+                {action.newCandidates?.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    <div className="font-semibold">Locatii asemanatoare aparute dupa trimiterea cererii</div>
+                    <ul className="mt-2 space-y-1.5">
+                      {action.newCandidates.map((candidate) => (
+                        <li key={candidate.location_id}>
+                          <span className="font-semibold">{candidate.name || "Locatie fara nume"}</span>
+                          {[candidate.organization_name, candidate.locality_name, candidate.address].filter(Boolean).length > 0 && ` · ${[candidate.organization_name, candidate.locality_name, candidate.address].filter(Boolean).join(" · ")}`}
+                          {candidate.matched_fields?.length > 0 && <span className="block text-amber-800">Potrivire: {candidate.matched_fields.join(", ")}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                    <label className="mt-2 flex cursor-pointer items-start gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4"
+                        checked={action.newCandidates.every((candidate) => action.acknowledgedIds?.includes(candidate.location_id))}
+                        onChange={(event) => setAction((current) => ({
+                          ...current,
+                          acknowledgedIds: event.target.checked
+                            ? [...new Set([...(current.acknowledgedIds || []), ...current.newCandidates.map((candidate) => candidate.location_id)])]
+                            : (current.acknowledgedIds || []).filter((id) => !current.newCandidates.some((candidate) => candidate.location_id === id)),
+                        }))}
+                      />
+                      <span>Am verificat: sunt locatii diferite de cea propusa.</span>
+                    </label>
+                  </div>
+                )}
+
+                <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
+                <select
+                  id="approved-role"
+                  value={action.approvedRole}
+                  onChange={(event) => setAction((current) => ({ ...current, approvedRole: event.target.value }))}
+                  className="mt-2 min-h-11 w-full rounded-xl border border-input bg-card px-3 py-2 text-base sm:min-h-10 sm:rounded-md sm:text-sm"
+                >
+                  {(action.roleOptions || LOCATION_ROLE_OPTIONS).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </div>
+            )}
+            {action.type === "reject" && action.duplicateReview && (
+              <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                Furnizorul vede motivul in contul lui. Daca este aceeasi locatie, spune-i ce sa faca: sa revendice profilul existent (daca este public) sau ca propunerea existenta este deja in verificare.
+              </div>
+            )}
             {action.type === "approve" && (
               <div>
                 <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
