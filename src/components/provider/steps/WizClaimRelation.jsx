@@ -1,19 +1,24 @@
 import React from "react";
 import ChoiceCard from "@/components/intake/ChoiceCard";
 import ContinueButton from "@/components/intake/ContinueButton";
-import { CLAIMANT_RELATIONSHIPS, REQUESTED_ROLE_LABELS, requestedLocationRoleForRelationship } from "@/components/provider/ContactIdentityFields";
+import { CLAIMANT_RELATIONSHIPS, REQUESTED_ROLE_LABELS, requestedRoleForRelationship } from "@/components/provider/ContactIdentityFields";
 
+// 2026-10-02. Pasul apare doar la o locatie NOUA, unde cererea creeaza si organizatia. Backendul
+// (submitProviderClaim, ROLE_BY_RELATIONSHIP) acorda owner organizatiei pentru proprietar si
+// reprezentant, deci textul si rolul afisat urmeaza aceeasi regula. Inainte se folosea maparea
+// pentru revendicarea unei locatii existente: aici scria "Manager locatie", iar la revizuire si
+// la aprobare "Owner organizatie" (test E2E 2026-10-02).
 const RELATION_HINTS = {
-  owner: "Confirmi relatia cu afacerea, dar aceasta cerere acorda acces doar la locatia selectata.",
-  organization_representative: "Soliciti acces pentru locatia selectata. Administrarea intregii organizatii se verifica separat.",
-  location_manager: "Soliciti administrarea locatiei selectate, fara control asupra intregii organizatii.",
+  owner: "Creezi organizatia si prima ei locatie. Dupa verificare devii owner al organizatiei.",
+  organization_representative: "Reprezinti organizatia cu acordul ei. Dupa verificare primesti rolul de owner al organizatiei.",
+  location_manager: "Soliciti administrarea acestei locatii, fara control asupra organizatiei.",
   authorized_staff: "Soliciti acces operational limitat pentru actualizarea locatiei.",
 };
 
 export default function WizClaimRelation({ data, update, next, loading = false }) {
   const contact = data.contact;
   const setContact = (patch) => update({ contact: { ...contact, ...patch } });
-  const requestedRole = requestedLocationRoleForRelationship(contact.claimant_relationship);
+  const requestedRole = requestedRoleForRelationship(contact.claimant_relationship);
   const valid = Boolean(contact.claimant_relationship && contact.representation_confirmed);
 
   return (
@@ -32,7 +37,7 @@ export default function WizClaimRelation({ data, update, next, loading = false }
 
       {contact.claimant_relationship && (
         <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Acces solicitat pentru aceasta locatie: <span className="font-semibold text-foreground">{REQUESTED_ROLE_LABELS[requestedRole]}</span>. Rolul final este confirmat de VIASEE la verificare.
+          Acces solicitat: <span className="font-semibold text-foreground">{REQUESTED_ROLE_LABELS[requestedRole]}</span>. Rolul final este confirmat de VIASEE la verificare.
         </div>
       )}
 
