@@ -184,21 +184,34 @@ Deno.serve(async (req) => {
       if (identity.error) return Response.json({ error: 'Verificarea duplicatelor a esuat' }, { status: 500 });
       identityNote = String(p.identity_difference_note || '').trim();
       identityBlocking = identity.blocking_level || 'none';
+      // 2026-10-02. Furnizorul primeste candidatii nepublici fara nume si adresa
+      // (providerSafeIdentityCandidate), dar snapshot-ul de mai jos il citeste doar adminul.
+      // Numele si adresa se completeaza aici din ProviderLocation, cu service role, ca adminul
+      // sa vada cu ce locatie seamana cererea.
+      const identityCandidates = identity.candidates || [];
+      const candidateIds = [...new Set(identityCandidates.map((candidate) => candidate.location_id).filter(Boolean))];
+      const candidateLocations = candidateIds.length > 0
+        ? await svc.entities.ProviderLocation.filter({ id: { $in: candidateIds } }, '-created_date', candidateIds.length).catch(() => [])
+        : [];
+      const candidateLocationById = new Map(candidateLocations.map((location) => [location.id, location]));
       identitySnapshot = JSON.stringify({
         blocking_level: identityBlocking,
         source_flow: 'provider_new_location_wizard',
         identity_difference_note: identityNote,
-        candidates: (identity.candidates || []).map((candidate) => ({
-          location_id: candidate.location_id,
-          name: candidate.name,
-          locality_name: candidate.locality_name,
-          county_name: candidate.county_name,
-          address: candidate.address,
-          severity: candidate.severity,
-          score: candidate.score,
-          matched_fields: candidate.matched_fields,
-          recommended_action: candidate.recommended_action,
-        })),
+        candidates: identityCandidates.map((candidate) => {
+          const location = candidateLocationById.get(candidate.location_id) || {};
+          return {
+            location_id: candidate.location_id,
+            name: candidate.name || location.public_display_name || location.name || '',
+            locality_name: candidate.locality_name || location.locality_name || location.city || '',
+            county_name: candidate.county_name || location.county_name || location.county || '',
+            address: candidate.address || location.address || '',
+            severity: candidate.severity,
+            score: candidate.score,
+            matched_fields: candidate.matched_fields,
+            recommended_action: candidate.recommended_action,
+          };
+        }),
       });
 
       const reviewSnapshot = {
