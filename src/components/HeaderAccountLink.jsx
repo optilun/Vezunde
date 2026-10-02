@@ -30,8 +30,11 @@ export default function HeaderAccountLink() {
     ? { to: "/admin/operatiuni", label: "Administrare" }
     : { to: "/contul-meu", label: "Contul meu" };
 
+  // 2026-10-02: la trecerea cu mouse-ul se vede cu ce cont esti conectat (util cand folosesti
+  // alternativ contul de test si pe cel de admin in acelasi browser).
+  const accountLabel = user.email ? `Conectat ca ${user.email}` : undefined;
   return (
-    <Link to={destination.to} className={className}>
+    <Link to={destination.to} className={className} title={accountLabel}>
       {destination.label}
     </Link>
   );
