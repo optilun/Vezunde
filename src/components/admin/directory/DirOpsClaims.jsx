@@ -49,6 +49,20 @@ function requestedRoleForClaim(claim, scope) {
     : requestedRole;
 }
 
+// 2026-10-02. Aceeasi regula ca adminProviderClaimReview / adminProviderScopedClaimReview:
+// rolul de owner se poate acorda doar la o cerere pentru organizatie sau la o locatie noua
+// (cererea creeaza si organizatia). Revendicarea unei locatii existente ramane la roluri de locatie.
+function ownerRoleAllowed(claim, scope, payload = parsePayload(claim.submitted_payload)) {
+  if (scope) return scope.claim_scope === "organization";
+  return !(claim.mode === "claim" || payload.claim_scope === "location");
+}
+
+// Valoarea implicita trebuie sa fie mereu una din optiunile afisate; altfel dialogul arata un
+// rol si trimite altul (vezi testul E2E din 2026-10-02).
+function roleInOptions(role, options) {
+  return options.some((option) => option.value === role) ? role : options[0]?.value || "";
+}
+
 function approvalDefaultForClaim(claim, scope, requestedRole) {
   const payload = parsePayload(claim.submitted_payload);
   if (scope) return requestedRole;
@@ -155,7 +169,9 @@ export default function DirOpsClaims() {
                       : claim.mode || "claim";
               const requestedRole = requestedRoleForClaim(claim, scope);
               const approvedRole = scope?.approved_membership_role || payload.approved_membership_role || "";
-              const defaultApprovedRole = approvalDefaultForClaim(claim, scope, requestedRole);
+              const canGrantOwner = ownerRoleAllowed(claim, scope, payload);
+              const roleOptions = canGrantOwner ? ROLE_OPTIONS : LOCATION_ROLE_OPTIONS;
+              const defaultApprovedRole = roleInOptions(approvalDefaultForClaim(claim, scope, requestedRole), roleOptions);
               const canReview = REVIEWABLE_STATUSES.has(claim.status);
               const includedIds = includedSelections.map((item) => item.location_id);
               const summarizedSelections = selections.map((selection) => locationSummary(selection, locations));
@@ -200,8 +216,9 @@ export default function DirOpsClaims() {
                                 claimScope,
                                 requestedRole,
                                 approvedRole: defaultApprovedRole,
+                                roleOptions,
                                 isAccessRequest,
-                                locationScoped: claimScope !== "organization",
+                                locationScoped: !canGrantOwner,
                                 includedLocations: summarizedSelections.filter((item) => item.decision === "included"),
                                 approvedLocationIds: includedIds,
                                 primaryLocationId: scope?.primary_location_id || claim.location_id,
@@ -320,7 +337,7 @@ export default function DirOpsClaims() {
                   onChange={(event) => setAction((current) => ({ ...current, approvedRole: event.target.value }))}
                   className="mt-2 min-h-11 w-full rounded-xl border border-input bg-card px-3 py-2 text-base sm:min-h-10 sm:rounded-md sm:text-sm"
                 >
-                  {(action.claimScope === "organization" ? ROLE_OPTIONS : LOCATION_ROLE_OPTIONS).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {(action.roleOptions || LOCATION_ROLE_OPTIONS).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul si poate elimina locatii din aprobarea finala. Nu se poate adauga o locatie care nu a fost solicitata.</p>
               </div>
