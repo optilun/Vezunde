@@ -7,6 +7,7 @@ import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
+import { readableErrorMessage } from "@/lib/transientRetry";
 import {
   providerLocationModuleUrl,
   providerSectionUrl,
@@ -241,7 +242,7 @@ export default function ProviderWorkspaceRoot({
     if (requestId !== accessMetaRequestRef.current) return;
 
     if (!response.data || response.data.error) {
-      setAccessMetaError(response.data?.error || "Datele de acces nu au putut fi încărcate.");
+      setAccessMetaError(readableErrorMessage(response.data?.error, "Datele de acces nu au putut fi încărcate."));
       setAccessMetaLoading(false);
       return;
     }
