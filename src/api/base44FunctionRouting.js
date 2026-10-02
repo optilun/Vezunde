@@ -11,6 +11,26 @@ import {
   invokeProviderWorkspaceFunction,
 } from '../../shared/providerWorkspaceFunctionRouting.js';
 import { getBase44LatestFunctionClient } from './base44LatestFunctionClient.js';
+import { withTransientRetry } from '../lib/transientRetry.js';
+
+// 2026-10-02. Contul de furnizor porneste 6-8 functii aproape deodata (spatiu, profil profesional,
+// pregatire, membri, prezentare, plan, sincronizare acces). Cand aplicatia e incarcata (cron-ul
+// de import, alte sesiuni), Base44 raspunde uneori "Rate limit exceeded" (HTTP 500) si contul
+// arata "Nu am putut incarca" (test E2E 2026-10-02). Functiile de mai jos DOAR CITESC date
+// (verificat: niciun create/update/delete in modulele lor), deci se pot reincerca in siguranta.
+// Functiile care scriu nu se reincearca automat: o eroare la jumatatea lor ar putea dubla efectul.
+export const READ_ONLY_RETRY_FUNCTIONS = Object.freeze(new Set([
+  'getMyProviderWorkspace',
+  'getMyProfessionalWorkspace',
+  'getMyProviderOnboardingWorkspace',
+  'getMyProviderMembers',
+  'getProviderWorkspaceOverview',
+  'getProviderEntitlement',
+  'getProviderLocationComparison',
+  'getProviderProfileCompleteness',
+  'getProviderLogoReviewStatus',
+]));
+export const READ_ONLY_RETRY_DELAYS_MS = Object.freeze([800, 2000]);
 
 // Trebuie sa fie identica cu DIRECTORY_IMPORT_RUNTIME_REVISION din
 // base44/functions/directoryOps/directoryImportOpsLatest.ts - adaptorul care raspunde
@@ -52,10 +72,12 @@ export function installBase44FunctionRouting(client, options = {}) {
   const rawFunctions = client.functions;
   const rawInvoke = rawFunctions.invoke.bind(rawFunctions);
 
+  const retryOptions = options.readOnlyRetry || { delaysMs: READ_ONLY_RETRY_DELAYS_MS };
+
   const routedFunctions = new Proxy(rawFunctions, {
     get(target, property) {
       if (property === 'invoke') {
-        return async (logicalName, payload = {}) => {
+        const invokeRouted = async (logicalName, payload = {}) => {
           if (DIRECTORY_FUNCTION_ROUTES[logicalName]) {
             if (logicalName === 'directoryImportOps') {
               const directoryImportClient = options.directoryImportClient
@@ -75,6 +97,9 @@ export function installBase44FunctionRouting(client, options = {}) {
           }
           return rawInvoke(logicalName, payload);
         };
+        return (logicalName, payload = {}) => (READ_ONLY_RETRY_FUNCTIONS.has(logicalName)
+          ? withTransientRetry(() => invokeRouted(logicalName, payload), retryOptions)
+          : invokeRouted(logicalName, payload));
       }
       return Reflect.get(target, property, target);
     },
