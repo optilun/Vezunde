@@ -3,8 +3,8 @@
 // Testele din browser (claude/audit-conturi-specialist-2026-10-01.md, sectiunea 15) au gasit:
 //   F8 - la cererile marcate duplicat, adminul nu vedea numele si adresa locatiei gasite:
 //        snapshot-ul salva varianta ascunsa pentru furnizor;
-//   F1 - dialogul de aprobare a unei locatii noi arata \"Manager locatie\" dar trimitea
-//        \"Owner organizatie\" (valoarea implicita nu era in lista);
+//   F1 - dialogul de aprobare a unei locatii noi arata "Manager locatie" dar trimitea
+//        "Owner organizatie" (valoarea implicita nu era in lista);
 //   F3 - comutatorul de organizatie din spatiul furnizorului nu schimba organizatia;
 //   F11 - locatia respinsa ramanea cu verification_state 'in_verification'.
 import assert from 'node:assert/strict';
@@ -32,7 +32,7 @@ assert.match(dirOpsClaims, /if \(scope\) return scope\.claim_scope === "organiza
 assert.match(dirOpsClaims, /return !\(claim\.mode === "claim" \|\| payload\.claim_scope === "location"\);/, 'aceeasi regula ca adminProviderClaimReview (isLocationScopedClaim)');
 assert.match(dirOpsClaims, /roleInOptions\(approvalDefaultForClaim\(claim, scope, requestedRole\), roleOptions\)/, 'valoarea implicita e mereu una din optiunile afisate');
 assert.match(dirOpsClaims, /\(action\.roleOptions \|\| LOCATION_ROLE_OPTIONS\)\.map/, 'lista din dialog vine din aceeasi decizie');
-assert.match(dirOpsClaims, /locationScoped: !canGrantOwner/, 'avertismentul \"nu poate acorda owner\" apare doar cand chiar nu poate');
+assert.match(dirOpsClaims, /locationScoped: !canGrantOwner/, 'avertismentul "nu poate acorda owner" apare doar cand chiar nu poate');
 const claimReview = await read('base44/functions/directoryOps/adminProviderClaimReview.ts');
 assert.match(claimReview, /const isLocationScopedClaim = claim\.mode === 'claim' \|\| submitted\.claim_scope === 'location';/, 'regula din backend pe care o oglindeste interfata');
 
@@ -58,7 +58,7 @@ const selectLocationBlock = root.slice(root.indexOf('const selectLocation = '), 
 assert.match(selectLocationBlock, /scopedLocationIds\.has\(locationId\)/, 'in aceeasi organizatie se pastreaza filtrul de acces');
 assert.match(root, /providerSelectionUrl\(params, \{ organizationId: organizationIdForLocation\(locationId\), locationId \}\)/, 'URL-ul urmeaza alegerea');
 
-// ---------- F11: locatia respinsa nu mai e \"in verificare\" ----------
+// ---------- F11: locatia respinsa nu mai e "in verificare" ----------
 assert.equal(rejectedNewLocationPatch({ status: 'draft', profile_control_status: 'directory', verification_state: 'in_verification' }).verification_state, 'unclaimed');
 assert.equal(rejectedNewLocationPatch({ status: 'draft', profile_control_status: 'directory' }).verification_state, 'unclaimed');
 assert.equal('verification_state' in rejectedNewLocationPatch({ status: 'draft', profile_control_status: 'directory', verification_state: 'suspended' }), false, 'o suspendare pusa de admin nu se suprascrie');
