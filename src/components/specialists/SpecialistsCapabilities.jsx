@@ -5,32 +5,32 @@ const ITEMS = [
   {
     icon: Building2,
     title: "Organizație și locații",
-    text: "Păstrezi separat identitatea organizației și informațiile fiecărei locații.",
+    text: "Toate locațiile, cu datele fiecăreia.",
   },
   {
     icon: Clock3,
-    title: "Program și informații publice",
-    text: "Actualizezi datele practice pe care pacienții le folosesc când aleg o locație.",
+    title: "Program și contact",
+    text: "Orele de lucru, adresa și datele de contact.",
   },
   {
     icon: MapPinned,
     title: "Servicii pe locație",
-    text: "Configurezi serviciile acolo unde sunt oferite, fără să le presupunem pentru întreaga organizație.",
+    text: "Serviciile oferite în fiecare locație.",
   },
   {
     icon: Users,
     title: "Echipă și acces",
-    text: "Organizațiile pot administra accesul membrilor și legătura specialiștilor cu locațiile.",
+    text: "Roluri și acces pentru oamenii din echipă.",
   },
   {
     icon: Stethoscope,
     title: "Profil profesional",
-    text: "Specialistul are un profil propriu, separat de organizații și reutilizabil în mai multe locații.",
+    text: "Un singur profil, asociat cu locațiile unde lucrezi.",
   },
   {
     icon: ShieldCheck,
-    title: "Informații analizate",
-    text: "Anumite informații și modificări sunt analizate înainte să devină publice.",
+    title: "Verificarea informațiilor",
+    text: "Date analizate înainte de publicare, când este necesar.",
   },
 ];
 
@@ -42,10 +42,10 @@ export default function SpecialistsCapabilities() {
           Ce poți administra
         </p>
         <h2 className="mt-2 font-heading text-2xl sm:text-3xl font-bold tracking-tight">
-          Un singur cont, roluri și informații separate corect
+          Totul la îndemână, într-un singur cont
         </h2>
         <p className="mt-3 mx-auto max-w-2xl text-sm sm:text-base leading-relaxed text-muted-foreground">
-          VIASEE separă organizația, locația și profilul profesional, astfel încât fiecare informație să rămână legată de entitatea corectă.
+          Locațiile, echipa și profilul profesional, fiecare cu informațiile sale.
         </p>
       </div>
 
@@ -54,12 +54,12 @@ export default function SpecialistsCapabilities() {
           const Icon = item.icon;
 
           return (
-            <div key={item.title} className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
+            <div key={item.title} className="rounded-2xl border border-border bg-card p-5 transition-[border-color,box-shadow] hover:border-[#C4B5CE] hover:shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1EBF5] text-[#6A5078]">
                 <Icon className="h-4.5 w-4.5" />
               </div>
               <h3 className="mt-4 font-heading text-sm font-bold">{item.title}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.text}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
             </div>
           );
         })}
