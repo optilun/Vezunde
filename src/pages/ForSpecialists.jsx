@@ -1,7 +1,6 @@
 import React from "react";
 import SpecialistsHeader from "@/components/specialists/SpecialistsHeader";
 import SpecialistsHero from "@/components/specialists/SpecialistsHero";
-import SpecialistsCapabilities from "@/components/specialists/SpecialistsCapabilities";
 import StepsExplanation from "@/components/specialists/StepsExplanation";
 import SpecialistsFAQ from "@/components/specialists/SpecialistsFAQ";
 import SpecialistsFooter from "@/components/specialists/SpecialistsFooter";
@@ -14,9 +13,8 @@ export default function ForSpecialists() {
       <main className="min-w-0 flex-1 overflow-x-clip">
         <SpecialistsHero />
         <StepsExplanation />
-        <SpecialistsCapabilities />
-        <SpecialistsFAQ />
         <SpecialistsVisualInvitation />
+        <SpecialistsFAQ />
       </main>
       <SpecialistsFooter />
     </div>
