@@ -1,9 +1,5 @@
 const KEY = "viasee.claim.search_selection";
 const TTL_MS = 30 * 60 * 1000;
-const PREVIOUS_DRAFT_KEYS = [
-  "pending_new_location_wizard", "pending_claim_contact", "pending_claim_location",
-  "pending_claim_scope", "pending_claim_step",
-];
 
 function sessionStorageOrNull() {
   try { return typeof window === "undefined" ? null : window.sessionStorage; }
@@ -23,7 +19,6 @@ export function rememberClaimSearchSelection(selection, storage = sessionStorage
       } : null,
     };
     storage.setItem(KEY, JSON.stringify({ at: now, entry }));
-    for (const key of PREVIOUS_DRAFT_KEYS) storage.removeItem(key);
   } catch { /* Navigation still works when session storage is unavailable. */ }
 }
 
