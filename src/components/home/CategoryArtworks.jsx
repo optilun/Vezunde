@@ -153,6 +153,7 @@ export function SnellenTile() {
 }
 
 export function ConsultationPhoto() { return <Photo src={HOME + "eye-consultation-v1.jpg"} label="Un control, mai multă claritate." number="01" />; }
+export function ExaminationPhoto() { return <Photo src={HOME + "eye-consultation-v1.jpg"} label="Mai aproape de detalii." number="03" />; }
 export function ConnectionPhoto() { return <Photo src={SPECIALISTS + "optician-client-editorial-v1.webp"} position="50% 30%" />; }
 export function StillLifePhoto() { return <Photo src={SPECIALISTS + "optical-stilllife-v2.webp"} />; }
 export function IrisPhoto() { return <Photo src={SPECIALISTS + "iris-lens-flower-v2.webp"} />; }
