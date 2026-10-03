@@ -5,6 +5,7 @@ import { activeLinksByLocation, claimOrganizationLinkStatus } from '../../shared
 import {
   allowedRolesForClaimScope,
   isApprovedRoleAllowed,
+  ownerApprovalCoversOrganization,
   uniqueClaimLocationIds,
 } from '../../shared/providerClaimScopePolicy.js';
 
@@ -281,6 +282,17 @@ export async function handle(req: Request) {
       claimOrganizationLinkStatus(location, linksByLocationId.get(location.id) || [], stateByLocationId.get(location.id)),
     ))) {
       return Response.json({ error: 'Legatura unei locatii cu organizatia necesita reconciliere inainte de aprobare.' }, { status: 409 });
+    }
+    // 2026-10-03 (structura conturilor, pasul 3): fara „owner selectiv”. Proprietarul acopera toata
+    // organizatia, deci se aproba doar daca aprobarea cuprinde toate locatiile ei de acum.
+    if (approvedRole === 'organization_owner') {
+      const organizationLocations = await svc.entities.ProviderLocation.filter({ organization_id: scope.organization_id }, '-created_date', 500);
+      if (!ownerApprovalCoversOrganization(approvedLocationIds, organizationLocations.map((location) => location.id))) {
+        return Response.json({
+          error: 'Rolul de Proprietar acopera toata organizatia. Aproba toate locatiile ei sau muta intai din organizatie locatiile care nu apartin solicitantului (Directory Ops -> Mapare organizatii si locatii). Altfel aproba ca Manager locatie.',
+          code: 'owner_requires_full_organization',
+        }, { status: 409 });
+      }
     }
     const approvedLocationById = new Map(approvedLocationRows.map((location) => [location.id, location]));
     const approvedSet = new Set(approvedLocationIds);
