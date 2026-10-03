@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from "react";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
-import { APPLICANT_NAV } from "@/lib/workspaceNav";
+import { getApplicantNav } from "@/lib/workspaceNav";
 
 const ApplicantStatus = lazy(() => import("./ApplicantStatus"));
 
@@ -22,7 +22,7 @@ export default function ApplicantWorkspaceRoot({ user, workspace, onLogout, mode
 
   return (
     <ProviderAppShell
-      navItems={APPLICANT_NAV}
+      navItems={getApplicantNav({ hasActiveClaim: true }).filter((item) => item.key === "status")}
       activeKey="status"
       onNavigate={() => {}}
       user={user}
