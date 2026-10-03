@@ -10,14 +10,16 @@ import {
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 import { PROFESSIONAL_TYPE_CODES, professionalTypeLabel } from '../../shared/professionalIdentity.js';
+import {
+  PROVIDER_MANAGER_ROLE,
+  PROVIDER_ROLE_LABELS,
+  canAssignProviderRole,
+  highestProviderAccessRole,
+  providerRoleCoversOrganization,
+} from '../../shared/providerRolePolicy.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
-const ROLE_LABELS = {
-  organization_owner: 'Owner organizatie',
-  organization_admin: 'Administrator organizatie',
-  location_manager: 'Manager locatie',
-  location_staff: 'Membru locatie',
-};
+const ROLE_LABELS = PROVIDER_ROLE_LABELS;
 
 function res(body, status = 200) { return Response.json(body, { status }); }
 function role(value) {
@@ -70,6 +72,10 @@ function token() {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// 2026-10-03 (structura conturilor, pasul 3). Rolul actorului in fiecare organizatie, dupa matricea
+// comuna (shared/providerRolePolicy.js): proprietarul si administratorul acopera toate locatiile,
+// managerul doar locatiile lui. Un rand vechi de proprietar limitat la anumite locatii conteaza ca
+// manager pe acele locatii (nu mai exista azi; nu mai poate fi creat).
 async function actorScope(svc, userId) {
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: userId, status: 'active' }, '-created_date', 500);
   const ownerLocationIds = new Set();
@@ -77,6 +83,8 @@ async function actorScope(svc, userId) {
   const ownerOrganizationIds = new Set();
   const wideOwnerOrganizationIds = new Set();
   const adminOrganizationIds = new Set();
+  const roleByOrganization = new Map();
+  const locationIdsByOrganization = new Map();
   const resolutionByOrganization = new Map();
 
   for (const membership of memberships) {
@@ -87,26 +95,38 @@ async function actorScope(svc, userId) {
       organizationId = clean(location?.organization_id, 200);
     }
     if (!organizationId) continue;
+    let effectiveRole = accessRole;
     if (accessRole === ORGANIZATION_OWNER_ROLE) {
-      ownerOrganizationIds.add(organizationId);
-      if (membership.location_id) ownerLocationIds.add(membership.location_id);
       if (!resolutionByOrganization.has(organizationId)) resolutionByOrganization.set(organizationId, await loadOrganizationOwnerScopeResolution(svc, organizationId));
-      if (membershipHasOrganizationWideAccess(membership, resolutionByOrganization.get(organizationId))) wideOwnerOrganizationIds.add(organizationId);
+      if (membershipHasOrganizationWideAccess(membership, resolutionByOrganization.get(organizationId))) {
+        ownerOrganizationIds.add(organizationId);
+        wideOwnerOrganizationIds.add(organizationId);
+      } else {
+        effectiveRole = PROVIDER_MANAGER_ROLE;
+      }
     }
-    if (accessRole === ORGANIZATION_ADMIN_ROLE && membership.organization_wide_access === true) {
-      adminOrganizationIds.add(organizationId);
-      if (membership.location_id) adminLocationIds.add(membership.location_id);
+    if (accessRole === ORGANIZATION_ADMIN_ROLE) adminOrganizationIds.add(organizationId);
+    if (![ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, PROVIDER_MANAGER_ROLE].includes(effectiveRole)) continue;
+    roleByOrganization.set(organizationId, highestProviderAccessRole([roleByOrganization.get(organizationId), effectiveRole]));
+    if (effectiveRole === PROVIDER_MANAGER_ROLE && membership.location_id) {
+      const own = locationIdsByOrganization.get(organizationId) || new Set();
+      own.add(membership.location_id);
+      locationIdsByOrganization.set(organizationId, own);
     }
   }
 
-  for (const organizationId of new Set([...wideOwnerOrganizationIds, ...adminOrganizationIds])) {
+  for (const [organizationId, role] of roleByOrganization.entries()) {
+    if (!providerRoleCoversOrganization(role)) continue;
     const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
+    const all = locationIdsByOrganization.get(organizationId) || new Set();
     for (const location of locations) {
-      if (wideOwnerOrganizationIds.has(organizationId)) ownerLocationIds.add(location.id);
-      if (adminOrganizationIds.has(organizationId)) adminLocationIds.add(location.id);
+      all.add(location.id);
+      if (role === ORGANIZATION_OWNER_ROLE) ownerLocationIds.add(location.id);
+      if (role === ORGANIZATION_ADMIN_ROLE) adminLocationIds.add(location.id);
     }
+    locationIdsByOrganization.set(organizationId, all);
   }
-  return { ownerLocationIds, adminLocationIds, ownerOrganizationIds, wideOwnerOrganizationIds, adminOrganizationIds };
+  return { ownerLocationIds, adminLocationIds, ownerOrganizationIds, wideOwnerOrganizationIds, adminOrganizationIds, roleByOrganization, locationIdsByOrganization };
 }
 
 async function loadLocations(svc, locationIds) {
@@ -276,15 +296,17 @@ Deno.serve(async (req) => {
 
     const scope = await actorScope(svc, user.id);
     const isPlatformAdmin = user.role === 'admin';
-    const organizationWide = roleRequiresOrganizationWideAccess(proposedRole)
-      || (proposedRole === ORGANIZATION_OWNER_ROLE && payload.organization_wide_access === true);
+    // 2026-10-03 (structura conturilor, pasul 3): fara „owner selectiv”. Proprietarul si
+    // administratorul primesc mereu toata organizatia, inclusiv locatiile viitoare; managerul si
+    // membrul primesc doar locatiile bifate. Flagul trimis de interfata nu mai decide nimic.
+    const organizationWide = providerRoleCoversOrganization(proposedRole);
     let organizationId = requestedOrganizationId;
     let loaded;
 
     if (organizationWide) {
       if (!organizationId) return res({ error: 'organization_id este obligatoriu pentru accesul la intreaga organizatie' }, 400);
-      if (!isPlatformAdmin && !scope.wideOwnerOrganizationIds.has(organizationId)) {
-        return res({ error: 'Doar un owner cu acces la intreaga organizatie poate acorda acest rol' }, 403);
+      if (!isPlatformAdmin && !canAssignProviderRole(scope.roleByOrganization.get(organizationId), proposedRole)) {
+        return res({ error: 'Doar proprietarul organizatiei poate invita proprietari sau administratori' }, 403);
       }
       loaded = await loadOrganizationLocations(svc, organizationId);
       if (loaded.error) return res({ error: loaded.error }, loaded.status);
@@ -298,14 +320,12 @@ Deno.serve(async (req) => {
       organizationId = organizationIds[0];
       if (requestedOrganizationId && requestedOrganizationId !== organizationId) return res({ error: 'Organizatia nu corespunde locatiilor' }, 403);
 
-      if (isPrivilegedProviderRole(proposedRole)) {
-        if (!isPlatformAdmin && (!scope.ownerOrganizationIds.has(organizationId) || !includesAll(scope.ownerLocationIds, locationIds))) {
-          return res({ error: 'Doar ownerul poate acorda rol de owner pentru locatiile selectate' }, 403);
+      if (!isPlatformAdmin) {
+        const actorRole = scope.roleByOrganization.get(organizationId) || '';
+        if (!canAssignProviderRole(actorRole, proposedRole)) {
+          return res({ error: actorRole === PROVIDER_MANAGER_ROLE ? 'Managerul locatiei poate invita doar membri' : 'Nu ai dreptul sa acorzi acest rol' }, 403);
         }
-      } else {
-        const actorLocationIds = new Set([...scope.ownerLocationIds, ...scope.adminLocationIds]);
-        const actorOrganizationIds = new Set([...scope.ownerOrganizationIds, ...scope.adminOrganizationIds]);
-        if (!isPlatformAdmin && (!actorOrganizationIds.has(organizationId) || !includesAll(actorLocationIds, locationIds))) {
+        if (!includesAll(scope.locationIdsByOrganization.get(organizationId) || new Set(), locationIds)) {
           return res({ error: 'Nu poti invita utilizatori pentru aceste locatii' }, 403);
         }
       }
@@ -331,7 +351,7 @@ Deno.serve(async (req) => {
       ? loaded.locations.filter((location) => specialist.locationIds.includes(location.id))
       : [];
     if (specialist.requested) {
-      const actorLocationIds = new Set([...scope.ownerLocationIds, ...scope.adminLocationIds]);
+      const actorLocationIds = scope.locationIdsByOrganization.get(organizationId) || new Set();
       if (!isPlatformAdmin && !includesAll(actorLocationIds, specialist.locationIds)) {
         return res({ error: 'Nu poti invita specialisti pentru aceste locatii' }, 403);
       }
