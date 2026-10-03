@@ -24,6 +24,7 @@ export const READ_ONLY_RETRY_FUNCTIONS = Object.freeze(new Set([
   'getMyProfessionalWorkspace',
   'getMyProviderOnboardingWorkspace',
   'getMyProviderMembers',
+  'getMyPatientRequests',
   'getProviderWorkspaceOverview',
   'getProviderEntitlement',
   'getProviderLocationComparison',

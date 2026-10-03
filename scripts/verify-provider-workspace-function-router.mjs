@@ -15,6 +15,7 @@ const functionsRoot = path.join(root, 'base44/functions');
 const routerRoot = path.join(functionsRoot, PROVIDER_WORKSPACE_FUNCTION_ENDPOINT);
 const expectedLogicalNames = [
   'getMyAccountDeletionEligibility',
+  'getMyPatientRequests',
   'getMyProviderMembers',
   'getMyProviderOnboardingWorkspace',
   'getProviderEntitlement',
