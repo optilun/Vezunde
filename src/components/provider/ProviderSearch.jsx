@@ -92,7 +92,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
             organization={organization}
             onClaimOrganization={(org) => {
               const primary = org.locations.find((item) => item.id === org.primary_location_id) || org.locations[0];
-              if (primary) handleClaim(primary, { preferredScope: "organization" });
+              if (primary) handleClaim(primary, { preferredScope: "organization", selectedOrganization: org });
             }}
             onClaimLocation={(location) => handleClaim(location)}
           />
