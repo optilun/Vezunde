@@ -3,6 +3,12 @@ import {
   candidateRelation,
   validateLocationResolution,
 } from '../../shared/providerLocationIdentityResolution.js';
+import {
+  loadOrganizationOwnerScopeResolution,
+  planNewLocationAccess,
+  plannedAccessNeedsUpdate,
+} from '../../shared/providerOrganizationOwnerScope.js';
+import { deriveCanonicalDirectoryState } from '../../shared/directoryCanonicalModel.js';
 
 const SECTION = 'location_create';
 const EXISTING_ITEM_KEY = 'existing_location';
@@ -118,6 +124,11 @@ async function providerRequestExisting(svc: any, user: any, payload: Record<stri
   }
   if (target.organization_id === context.organizationId) {
     return res({ success: true, open_existing: true, location_id: target.id });
+  }
+  // 2026-10-03. Datele unei locatii nepublice a altei organizatii (nume, adresa, telefon) nu se
+  // dau unui furnizor. Se pot asocia doar locatii publice din director.
+  if (deriveCanonicalDirectoryState(target).is_publicly_available !== true) {
+    return res({ error: 'Locatia selectata nu poate fi asociata prin acest flux' }, 409);
   }
 
   const currentOrganization = target.organization_id
@@ -242,38 +253,32 @@ async function adminList(svc: any, user: any) {
   return res({ submissions });
 }
 
-async function destinationOwners(svc: any, organizationId: string) {
-  const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
-  return [...new Set(memberships
-    .filter((membership: any) => membership.status === 'active' && normalizeRole(membership.role) === 'organization_owner')
-    .map((membership: any) => membership.user_id)
-    .filter(Boolean))];
-}
-
-async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string) {
-  const owners = await destinationOwners(svc, organizationId);
-  const locationMemberships = await svc.entities.ProviderMembership.filter({ location_id: locationId }, '-created_date', 500);
+// 2026-10-03. Inainte, orice owner activ al organizatiei primea locatia asociata, cu un rand fara
+// `organization_wide_access`. Pentru un owner limitat la anumite locatii, randul acela conta ca
+// acces la toata organizatia, iar sincronizarea il extindea apoi la toate locatiile. Acum se
+// foloseste acelasi plan ca la extinderea cu o locatie noua (planNewLocationAccess): ownerii si
+// administratorii cu acces la toata organizatia primesc locatia cu flag explicit; solicitantul,
+// daca e limitat, primeste doar locatia ceruta.
+async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string, requesterUserId = '') {
+  const [organizationMemberships, locationMemberships] = await Promise.all([
+    svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1500),
+    svc.entities.ProviderMembership.filter({ location_id: locationId }, '-created_date', 500),
+  ]);
+  const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
+  const memberships = [...organizationMemberships, ...locationMemberships.filter((row: any) => row.organization_id !== organizationId)];
+  const plan = planNewLocationAccess({ memberships, resolution, organizationId, locationId, requesterUserId });
   const touched: string[] = [];
-  for (const ownerUserId of owners) {
-    const existing = locationMemberships.find((membership: any) => membership.user_id === ownerUserId);
-    if (!existing) {
-      const created = await svc.entities.ProviderMembership.create({
-        user_id: ownerUserId,
-        organization_id: organizationId,
-        location_id: locationId,
-        role: 'organization_owner',
-        status: 'active',
-      });
+  for (const item of plan) {
+    if (!item.existing) {
+      const created = await svc.entities.ProviderMembership.create({ user_id: item.user_id, location_id: locationId, ...item.desired });
       touched.push(created.id);
-    } else if (existing.status !== 'active' || normalizeRole(existing.role) !== 'organization_owner' || existing.organization_id !== organizationId) {
-      await svc.entities.ProviderMembership.update(existing.id, {
-        organization_id: organizationId,
-        role: 'organization_owner',
-        status: 'active',
+    } else if (plannedAccessNeedsUpdate(item.existing, item.desired)) {
+      await svc.entities.ProviderMembership.update(item.existing.id, {
+        ...item.desired,
         reactivated_by_user_id: actorId,
         reactivated_at: new Date().toISOString(),
       });
-      touched.push(existing.id);
+      touched.push(item.existing.id);
     }
   }
   return touched;
@@ -353,21 +358,25 @@ async function approveExistingResolution(svc: any, user: any, submission: any, p
     claim_verification_status: target.claim_verification_status,
   };
   const now = new Date().toISOString();
-  const deactivatedMembershipIds = relation === 'other_organization'
+  // 2026-10-03. Si o locatie fara organizatie (`unassigned_directory`) isi pierde accesele vechi
+  // (randuri cu organization_id gol); altfel un owner al locatiei izolate ar fi contat ca owner
+  // in organizatia destinatie. In prezent nu exista locatii fara organizatie.
+  const deactivatedMembershipIds = relation !== 'same_organization'
     ? await deactivatePreviousMemberships(svc, target.id, destinationOrganizationId, user.id)
     : [];
   // 2026-10-01. Asocierea unui profil existent cu organizatia este o revendicare aprobata, nu o
   // verificare. Un profil deja verificat isi pastreaza verificarea; restul devin "claimed" si se
   // verifica separat (Directory Ops -> Profiluri), ca orice alta locatie. `last_verified_at` nu
   // se mai muta, pentru ca nu s-a verificat nimic acum.
-  const alreadyVerified = target.profile_control_status === 'verified'
+  // 2026-10-03. La transferul catre alta organizatie verificarea nu se mai pastreaza: noua
+  // organizatie nu a fost verificata. Iar asocierea nu mai publica locatia: starea de publicare
+  // ramane cea de dinainte (o ciorna sau un profil ascuns nu devine public ca efect secundar).
+  const alreadyVerified = relation !== 'other_organization'
+    && target.profile_control_status === 'verified'
     && target.verification_state === 'verified'
     && target.is_verified === true;
   const updates = {
     organization_id: destinationOrganizationId,
-    status: 'publicata',
-    active_status: 'activa',
-    public_visibility_status: 'approved',
     profile_control_status: alreadyVerified ? 'verified' : 'claimed',
     claim_verification_status: 'approved',
     verification_state: alreadyVerified ? 'verified' : 'in_verification',
@@ -380,7 +389,7 @@ async function approveExistingResolution(svc: any, user: any, submission: any, p
     last_confirmed_at: now,
   };
   await svc.entities.ProviderLocation.update(target.id, updates);
-  const ownerMembershipIds = await propagateOwners(svc, destinationOrganizationId, target.id, user.id);
+  const ownerMembershipIds = await propagateOwners(svc, destinationOrganizationId, target.id, user.id, clean(submission.submitted_by_user_id, 120));
   const previousOrganizationUpdate = relation === 'other_organization'
     ? await archiveEmptyOrganization(svc, previousOrganizationId, now)
     : null;
