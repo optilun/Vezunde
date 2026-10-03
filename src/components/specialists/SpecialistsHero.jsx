@@ -15,6 +15,7 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 import SpecialistsLocationArtwork from "./SpecialistsLocationArtwork";
 import OrganizationSearchResult from "@/components/provider/OrganizationSearchResult";
 import { standaloneClaimLocations } from "@/lib/claimSearchResults";
+import { rememberClaimSearchSelection } from "@/lib/claimSearchSelection";
 
 const AUDIENCE_OPTIONS = [
   {
@@ -83,6 +84,10 @@ export default function SpecialistsHero() {
 
   const searched = audience === "organization" && query.trim().length >= 2;
   const standaloneLocations = standaloneClaimLocations(results, organizations);
+  const startClaimFlow = (state) => {
+    rememberClaimSearchSelection(state);
+    navigate("/adauga-sau-revendica", { state });
+  };
 
   return (
     <section id="profilul-tau" className="relative mx-auto max-w-6xl scroll-mt-24 px-5 pb-14 pt-10 sm:pb-16 sm:pt-12">
@@ -181,13 +186,11 @@ export default function SpecialistsHero() {
                       organization={organization}
                       onClaimOrganization={(org) => {
                         const primary = org.locations.find((loc) => loc.id === org.primary_location_id) || org.locations[0];
-                        if (primary) navigate("/adauga-sau-revendica", {
-                          state: { selectedLocation: primary, selectedOrganization: org, preferredScope: "organization" },
+                        if (primary) startClaimFlow({
+                          selectedLocation: primary, selectedOrganization: org, preferredScope: "organization",
                         });
                       }}
-                      onClaimLocation={(loc) => navigate("/adauga-sau-revendica", {
-                        state: { selectedLocation: loc },
-                      })}
+                      onClaimLocation={(loc) => startClaimFlow({ selectedLocation: loc })}
                     />
                   ))}
                   {standaloneLocations.map((loc) => {
@@ -218,9 +221,7 @@ export default function SpecialistsHero() {
                         <button
                           type="button"
                           onClick={() =>
-                            navigate("/adauga-sau-revendica", {
-                              state: { selectedLocation: loc },
-                            })
+                            startClaimFlow({ selectedLocation: loc })
                           }
                           className="min-h-11 shrink-0 px-3.5 py-2 rounded-full text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
                         >
@@ -245,9 +246,7 @@ export default function SpecialistsHero() {
                 <button
                   type="button"
                   onClick={() =>
-                    navigate("/adauga-sau-revendica", {
-                      state: { startFlow: "new_location" },
-                    })
+                    startClaimFlow({ startFlow: "new_location" })
                   }
                   className="px-5 py-2.5 rounded-full border border-border bg-card text-sm font-medium hover:border-foreground/40 transition-colors"
                 >
