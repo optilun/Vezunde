@@ -163,10 +163,10 @@ export default function Hero({ onStartedChange } = {}) {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.56]"
+        className="pointer-events-none absolute inset-0 opacity-[0.82]"
         style={{
           backgroundImage:
-            "radial-gradient(circle, rgba(52,48,43,0.16) 0 0.75px, transparent 1px)",
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Crect x='0' y='0' width='1.8' height='1.8' rx='.3' fill='%2334302b' fill-opacity='.26'/%3E%3C/svg%3E\")",
           backgroundSize: "24px 24px",
           maskImage:
             "radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, transparent 42%, rgba(0,0,0,0.16) 62%, rgba(0,0,0,0.74) 84%, black 100%)",
@@ -176,10 +176,10 @@ export default function Hero({ onStartedChange } = {}) {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] opacity-[0.47]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] opacity-[0.64]"
         style={{
           backgroundImage:
-            "radial-gradient(circle, rgba(52,48,43,0.15) 0 0.7px, transparent 0.95px)",
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Crect x='0' y='0' width='1.6' height='1.6' rx='.25' fill='%2334302b' fill-opacity='.21'/%3E%3C/svg%3E\")",
           backgroundSize: "20px 20px",
           maskImage:
             "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.12) 28%, black 100%)",
@@ -240,7 +240,7 @@ export default function Hero({ onStartedChange } = {}) {
               className="home-fade-up mt-6 w-full max-w-xl sm:mt-10"
               style={{ "--home-delay": "120ms" }}
             >
-              <div className="relative rounded-[1.35rem] border border-black/[0.05] bg-white p-3.5 text-left shadow-[0_18px_55px_rgba(20,20,20,0.10)] transition-shadow duration-500 focus-within:shadow-[0_22px_65px_rgba(20,20,20,0.16)] sm:rounded-[1.5rem] sm:p-4">
+              <div className="relative rounded-xl border border-black/[0.10] bg-white p-3.5 text-left shadow-[0_2px_4px_rgba(28,24,18,0.035),0_14px_34px_rgba(28,24,18,0.10)] transition-shadow duration-300 focus-within:shadow-[0_2px_5px_rgba(28,24,18,0.04),0_18px_42px_rgba(28,24,18,0.14)] motion-reduce:transition-none sm:rounded-[0.875rem] sm:p-4">
                 {animating && !text && (
                   <div className="pointer-events-none absolute left-5 right-14 top-4.5 truncate text-[15px] sm:left-6 sm:right-16 sm:top-5 sm:text-base" style={{ color: "#6F6A63" }}>
                     {prefersReducedMotion ? <><span className="sm:hidden">{MOBILE_PROMPTS[0]}</span><span className="hidden sm:inline">{PROMPTS[0]}</span></> : <TypingPrompt active={animating && !started} />}
