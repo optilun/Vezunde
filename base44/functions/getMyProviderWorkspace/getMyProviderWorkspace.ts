@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { expandOwnerWorkspaceScope } from '../../shared/providerOwnerWorkspaceScope.js';
 import {
-  PROVIDER_CAPABILITIES,
   capabilitiesForProviderRoles,
   highestProviderAccessRole,
   normalizeProviderAccessRole,
@@ -24,12 +23,6 @@ const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'
 // (shared/providerRolePolicy.js). Rolul se citeste cu marcajul de administrator: un administrator
 // (salvat ca `location_manager` + `organization_role: organization_admin`) primeste drepturile de
 // administrator, nu pe cele de manager.
-const CAPABILITY_ORDER = PROVIDER_CAPABILITIES;
-
-function normalizeMemberRole(value) {
-  return normalizeProviderAccessRole(value);
-}
-
 function membershipAccessRole(membership) {
   return normalizeProviderAccessRole(providerAccessRoleFromMembership(membership));
 }
