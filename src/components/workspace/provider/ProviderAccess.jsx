@@ -72,15 +72,24 @@ function RoleChoice({ role, selected, disabled = false, onSelect }) {
 }
 
 // Tabelul „Ce poate fiecare rol”, din aceeași matrice pe care o aplică și serverul.
+// 2026-10-03: buton simplu în loc de <details> (în Chrome, tabelul din <details> rămânea îngust).
 function RoleMatrix() {
+  const [open, setOpen] = useState(false);
   return (
-    <details className="group mt-4 rounded-2xl border border-border bg-background/60">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold">
+    <div className="mt-4 rounded-2xl border border-border bg-background/60">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="provider-role-matrix"
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold"
+      >
         Ce poate fiecare rol
-        <ChevronRight className="h-4 w-4 transition group-open:rotate-90" aria-hidden="true" />
-      </summary>
-      <div className="overflow-x-auto border-t border-border">
-        <table className="w-full min-w-[560px] text-left text-xs">
+        <ChevronRight className={`h-4 w-4 transition ${open ? "rotate-90" : ""}`} aria-hidden="true" />
+      </button>
+      {open && <div id="provider-role-matrix" className="w-full overflow-x-auto border-t border-border">
+        <table className="w-full min-w-[560px] table-fixed text-left text-xs">
+          <colgroup><col className="w-[34%]" />{ALL_ROLES.map((role) => <col key={role} />)}</colgroup>
           <thead>
             <tr className="border-b border-border">
               <th scope="col" className="px-4 py-2.5 font-semibold text-muted-foreground"><span className="sr-only">Drept</span></th>
@@ -105,8 +114,8 @@ function RoleMatrix() {
             ))}
           </tbody>
         </table>
-      </div>
-    </details>
+      </div>}
+    </div>
   );
 }
 
