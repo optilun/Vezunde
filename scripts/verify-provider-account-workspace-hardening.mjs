@@ -129,8 +129,11 @@ assert.match(settings, /onClick=\{\(\) => void loadLifecycle\(\)\}/);
 assert.match(membersEndpoint, /status: 'active'/);
 assert.match(membersEndpoint, /current_actor_role: ''[\s\S]*can_manage_members: false/);
 assert.match(membersEndpoint, /return res\(\{ error: 'Nu ai dreptul sa gestionezi utilizatorii acestei organizatii' \}, 403\)/);
+// 2026-10-03 (structura conturilor, pasul 3): rolurile si drepturile vin din matricea comuna.
+assert.match(root, /from "\.\.\/\.\.\/\.\.\/\.\.\/shared\/providerRolePolicy\.js"/);
+const rolePolicy = await read('shared/providerRolePolicy.js');
 for (const role of ['organization_owner', 'organization_admin', 'location_manager', 'location_staff']) {
-  assert.match(root, new RegExp(role));
+  assert.match(rolePolicy, new RegExp(role));
 }
 assert.match(root, /current_actor_wide_access/);
 assert.match(root, /fallbackWideOrganizationAccess/);
