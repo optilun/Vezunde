@@ -4,6 +4,8 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
 import { readableErrorMessage } from "@/lib/transientRetry";
+import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
+import { PROVIDER_ACCESS_ROLES } from "../../shared/providerRolePolicy.js";
 import {
   accountWorkspaceFunction,
   keepWorkspaceIdentity,
