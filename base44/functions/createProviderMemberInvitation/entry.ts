@@ -9,6 +9,7 @@ import {
   roleRequiresOrganizationWideAccess,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
+import { PROFESSIONAL_TYPE_CODES, professionalTypeLabel } from '../../shared/professionalIdentity.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 const ROLE_LABELS = {
@@ -125,6 +126,55 @@ async function loadOrganizationLocations(svc, organizationId) {
   const locations = all.filter(eligibleLocation);
   if (locations.length === 0) return { error: 'Organizatia nu are locatii active eligibile pentru acces', status: 409 };
   return { locations };
+}
+
+// 2026-10-03 (structura conturilor, pasul 2). O singura invitatie in echipa poate cere si afisarea
+// publica ca specialist. Se creeaza aceleasi invitatii de specialist ca din pagina „Specialiști” a
+// locatiei, legate de invitatia de echipa (`bundled_member_invitation_id`): fara email separat, se
+// accepta si se revoca impreuna cu ea.
+function specialistRequest(payload, memberLocationIds) {
+  const input = payload?.specialist;
+  if (!input || typeof input !== 'object') return { requested: false };
+  const professionalType = clean(input.professional_type, 40);
+  if (!PROFESSIONAL_TYPE_CODES.includes(professionalType)) return { error: 'Tip profesional invalid pentru afisarea ca specialist', status: 400 };
+  const locationIds = ids(input.location_ids);
+  if (locationIds.length === 0) return { error: 'Alege cel putin o locatie la care persoana apare ca specialist', status: 400 };
+  const allowed = new Set(memberLocationIds);
+  if (!locationIds.every((id) => allowed.has(id))) return { error: 'Specialistul poate aparea doar la locatiile incluse in invitatie', status: 400 };
+  return { requested: true, professionalType, locationIds };
+}
+
+function specialistEmailText({ professionalType, locationNames }) {
+  return [
+    `Vei aparea si ca ${professionalTypeLabel(professionalType)} pe pagina publica a locatiilor:`,
+    ...locationNames.map((name) => `- ${name}`),
+    'Profilul tau profesional apare public abia dupa ce este verificat de VIASEE. Poti retrage oricand afisarea din contul tau.',
+  ].join('\n');
+}
+
+async function createBundledSpecialistInvitations(svc, user, { memberInvitation, invitedEmail, specialist, locations, organizationId, expiresAt, delivery }) {
+  const created = [];
+  for (const location of locations) {
+    const pending = await svc.entities.ProfessionalInvitation.filter({ location_id: location.id, invited_email_normalized: invitedEmail, status: 'pending' }, '-created_date', 20).catch(() => []);
+    if (pending.some((item) => item.professional_type === specialist.professionalType && new Date(item.expires_at).getTime() > Date.now())) continue;
+    const row = await svc.entities.ProfessionalInvitation.create({
+      organization_id: organizationId,
+      location_id: location.id,
+      invited_email_normalized: invitedEmail,
+      professional_type: specialist.professionalType,
+      invited_by_user_id: user.id,
+      status: 'pending',
+      // Tokenul nu se trimite nicaieri: invitatia se accepta impreuna cu cea de echipa (acelasi email).
+      secure_token_hash: await hash(token()),
+      expires_at: expiresAt,
+      delivery_status: delivery.sent ? 'sent' : 'manual_required',
+      delivery_provider: delivery.provider || 'manual',
+      last_delivery_attempt_at: new Date().toISOString(),
+      bundled_member_invitation_id: memberInvitation.id,
+    });
+    created.push(row);
+  }
+  return created;
 }
 
 async function audit(svc, user, record) {
@@ -275,6 +325,18 @@ Deno.serve(async (req) => {
       return res({ error: 'Exista deja o invitatie activa pentru acest email si acest acces' }, 409);
     }
 
+    const specialist = specialistRequest(payload, loaded.locations.map((location) => location.id));
+    if (specialist.error) return res({ error: specialist.error }, specialist.status);
+    const specialistLocations = specialist.requested
+      ? loaded.locations.filter((location) => specialist.locationIds.includes(location.id))
+      : [];
+    if (specialist.requested) {
+      const actorLocationIds = new Set([...scope.ownerLocationIds, ...scope.adminLocationIds]);
+      if (!isPlatformAdmin && !includesAll(actorLocationIds, specialist.locationIds)) {
+        return res({ error: 'Nu poti invita specialisti pentru aceste locatii' }, 403);
+      }
+    }
+
     const rawToken = token();
     const days = Math.min(Math.max(Number(payload.expires_in_days || 7), 1), 30);
     const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
@@ -309,7 +371,11 @@ Deno.serve(async (req) => {
         expiry_date: new Date(expiresAt).toLocaleDateString('ro-RO'),
       },
     }) : copy;
-    const delivery = await deliverInvitation(base44, existingUser, { to: invitedEmail, ...rendered });
+    const specialistText = specialist.requested
+      ? specialistEmailText({ professionalType: specialist.professionalType, locationNames: specialistLocations.map((location) => location.public_display_name || location.name || 'Locatie') })
+      : '';
+    const message = specialistText ? { ...rendered, body: `${rendered.body}\n\n${specialistText}` } : rendered;
+    const delivery = await deliverInvitation(base44, existingUser, { to: invitedEmail, ...message });
     const attemptedAt = new Date().toISOString();
     const deliveryUpdate = {
       delivery_status: delivery.sent ? 'sent' : 'manual_required',
@@ -320,6 +386,17 @@ Deno.serve(async (req) => {
     };
     await svc.entities.ProviderMemberInvitation.update(invitation.id, deliveryUpdate);
     const updatedInvitation = { ...invitation, ...deliveryUpdate };
+    const specialistInvitations = specialist.requested
+      ? await createBundledSpecialistInvitations(svc, user, {
+        memberInvitation: invitation,
+        invitedEmail,
+        specialist,
+        locations: specialistLocations,
+        organizationId,
+        expiresAt,
+        delivery,
+      })
+      : [];
 
     await audit(svc, user, {
       entity_type: 'ProviderMemberInvitation',
@@ -336,6 +413,8 @@ Deno.serve(async (req) => {
         delivery_status: deliveryUpdate.delivery_status,
         delivery_provider: deliveryUpdate.delivery_provider,
         delivery_kind: delivery.deliveryKind || '',
+        specialist_professional_type: specialist.requested ? specialist.professionalType : '',
+        specialist_invitation_ids: specialistInvitations.map((row) => row.id),
       },
       note: delivery.sent
         ? `Invitatia a fost trimisa prin infrastructura Base44 (${delivery.deliveryKind || 'invite'}).`
@@ -346,6 +425,7 @@ Deno.serve(async (req) => {
       invitation: safe(updatedInvitation),
       invitation_token: rawToken,
       invitation_link: invitationLink,
+      specialist_invitation_count: specialistInvitations.length,
       email_sent: delivery.sent,
       delivery_status: deliveryUpdate.delivery_status,
       delivery_provider: deliveryUpdate.delivery_provider,
