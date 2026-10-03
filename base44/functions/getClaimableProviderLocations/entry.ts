@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { deriveCanonicalDirectoryState } from '../../shared/directoryCanonicalModel.js';
 
 const STATUS_LABELS = {
   directory: 'Profil din director',
@@ -52,7 +53,12 @@ Deno.serve(async (req) => {
     const { locations, organizations } = await searchIndex(svc);
     const organizationNames = Object.fromEntries(organizations.map((organization) => [organization.id, organization.name]));
 
+    // 2026-10-03. Aceeasi poarta ca getProviderClaimScopeOptions (pasul urmator al revendicarii):
+    // doar locatiile publice dupa modelul canonic. Inainte se verifica doar `status: publicata`, deci
+    // o locatie ascunsa (public_visibility_status archived/rejected/needs_more_info) aparea in
+    // cautare, iar revendicarea se oprea la pasul urmator.
     const publicList = locations
+      .filter((location) => deriveCanonicalDirectoryState(location).is_publicly_available === true)
       .filter((location) => location.active_status !== 'inactiva' && (location.profile_control_status || 'directory') !== 'suspended')
       .filter((location) => {
         const profileType = String(location.provider_profile_type || '').trim();
