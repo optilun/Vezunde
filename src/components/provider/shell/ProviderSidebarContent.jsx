@@ -9,6 +9,7 @@ import {
   HelpCircle,
   LogOut,
   MessageSquareText,
+  Plus,
   Settings,
   Sparkles,
   Stethoscope,
@@ -45,6 +46,7 @@ function workspaceIcon(kind) {
   if (kind === "organization") return Building2;
   if (kind === "professional") return Stethoscope;
   if (kind === "applicant") return ClipboardCheck;
+  if (kind === "create") return Plus;
   return CircleUserRound;
 }
 
@@ -148,7 +150,7 @@ export default function ProviderSidebarContent({
                 <DropdownMenuSeparator className="my-2" />
                 <DropdownMenuLabel className="flex items-center justify-between px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>Organizatii</span>
-                  <span>{organizationItems.length}</span>
+                  <span>{organizationItems.filter((item) => item.kind !== "create").length}</span>
                 </DropdownMenuLabel>
                 <div className="max-h-60 overflow-y-auto overscroll-contain">
                   {organizationItems.map((item) => <WorkspaceMenuItem key={item.key} item={item} user={user} />)}

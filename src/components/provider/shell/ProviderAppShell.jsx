@@ -33,7 +33,7 @@ export default function ProviderAppShell({
   // Some sections (e.g. "access") are reachable without being a persistent
   // sidebar tab — navItems won't contain them, so the breadcrumb needs an
   // explicit label instead of silently falling back to the first nav item.
-  const SECONDARY_SECTION_LABELS = { access: "Acces si utilizatori" };
+  const SECONDARY_SECTION_LABELS = { access: "Echipă" };
   const activeLabel =
     navItems.find((item) => item.key === activeKey)?.label ||
     SECONDARY_SECTION_LABELS[activeKey] ||

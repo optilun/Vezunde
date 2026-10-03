@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
@@ -91,6 +91,7 @@ function providerOrganizationContexts(workspace) {
 
 export default function MyAccount() {
   const [params, setParams] = useSearchParams();
+  const routerNavigate = useNavigate();
   const [providerWorkspace, setProviderWorkspace] = useState(null);
   const [professionalWorkspace, setProfessionalWorkspace] = useState(null);
   const [onboardingWorkspace, setOnboardingWorkspace] = useState(null);
@@ -256,18 +257,22 @@ export default function MyAccount() {
   const hasProviderWorkspace = providerWorkspace?.mode === "provider_workspace";
   const hasProfessionalWorkspace = professionalWorkspace?.mode === "professional_workspace";
   const hasApplicantWorkspace = onboardingWorkspace?.mode === "applicant_preparation";
+  // 2026-10-03 (structura conturilor, pasul 1). Solicitarile de organizatie stau in grupul
+  // Organizatii, nu in contul personal: spatiul exista cand e o solicitare activa sau un istoric.
+  const hasClaimHistory = !hasApplicantWorkspace && Boolean(onboardingWorkspace?.latest_claim_status);
+  const hasApplicantSpace = hasApplicantWorkspace || hasClaimHistory;
 
   const accountModes = [
     { key: "personal", label: MODE_LABELS.personal },
     ...(hasProviderWorkspace ? [{ key: "provider", label: MODE_LABELS.provider }] : []),
     ...(hasProfessionalWorkspace ? [{ key: "professional", label: MODE_LABELS.professional }] : []),
-    ...(hasApplicantWorkspace ? [{ key: "applicant", label: MODE_LABELS.applicant }] : []),
+    ...(hasApplicantSpace ? [{ key: "applicant", label: hasApplicantWorkspace ? MODE_LABELS.applicant : "Organizații · Solicitări" }] : []),
   ];
   const availableModeKeys = new Set(accountModes.map((mode) => mode.key));
   const preferences = readAccountPreferences(user.id);
   const requestedMode = params.get("mode");
   const preferredMode = preferences.startMode === "last" ? preferences.lastMode : preferences.startMode;
-  const fallbackMode = [requestedMode, preferredMode, "provider", "professional", "applicant", "personal"]
+  const fallbackMode = [requestedMode, preferredMode, "provider", "professional", ...(hasApplicantWorkspace ? ["applicant"] : []), "personal"]
     .find((mode) => availableModeKeys.has(mode)) || "personal";
   const resolvedMode = activeMode && availableModeKeys.has(activeMode) ? activeMode : fallbackMode;
   const requestedWorkspaceIssue = {
@@ -295,17 +300,17 @@ export default function MyAccount() {
       next.delete("location");
     }
     const settingsOpen = params.get("s") === "settings" || params.get("ps") === "settings";
-    if (settingsOpen && mode !== "applicant") {
-      if (mode === "professional") {
-        next.delete("s");
-        next.set("ps", "settings");
-      } else {
-        next.delete("ps");
-        next.set("s", "settings");
-      }
+    // 2026-10-03: profilul profesional nu mai are setari proprii (erau setarile contului, dublate).
+    // Setarile contului raman in contul personal, deschise si din meniul avatarului.
+    if (settingsOpen && (mode === "provider" || mode === "personal")) {
+      next.delete("ps");
+      next.set("s", "settings");
+    } else if (mode === "professional") {
+      if (settingsOpen) next.delete("s");
+      if (next.get("ps") === "settings") next.delete("ps");
     } else if (mode === "applicant") {
       next.delete("ps");
-      if (next.get("s") === "settings") next.set("s", "overview");
+      next.delete("s");
     }
     setParams(next, { replace: true });
     setActiveMode(mode);
@@ -379,7 +384,16 @@ export default function MyAccount() {
       professionalProfileId: professionalWorkspace.professional?.id || "",
       active: resolvedMode === "professional",
       onClick: () => switchMode("professional"),
-    }] : []),
+    }] : [{
+      // 2026-10-03: profilul profesional se poate crea direct din comutatorul contului.
+      key: "create-professional",
+      kind: "create",
+      group: "account",
+      label: "Creează profil profesional",
+      subtitle: "Optometrist, oftalmolog, optician",
+      active: false,
+      onClick: () => routerNavigate("/profil-profesional/nou"),
+    }]),
     ...(hasProviderWorkspace && organizationContexts.length ? organizationContexts.map((context) => {
       const organization = context.organization || {};
       const firstLocationId = context.locations?.[0]?.id || context.memberships?.[0]?.location_id || "";
@@ -406,15 +420,24 @@ export default function MyAccount() {
       active: resolvedMode === "provider",
       onClick: () => switchMode("provider"),
     }] : []),
-    ...(hasApplicantWorkspace ? [{
+    ...(hasApplicantSpace ? [{
       key: "applicant",
       kind: "applicant",
       group: "organizations",
-      label: onboardingWorkspace.location_summary?.name || "Solicitare în verificare",
-      subtitle: "Solicitare în verificare",
+      label: hasApplicantWorkspace ? (onboardingWorkspace.location_summary?.name || "Solicitare în verificare") : "Solicitări de organizație",
+      subtitle: hasApplicantWorkspace ? "Solicitare în verificare" : "Istoric solicitări",
       active: resolvedMode === "applicant",
       onClick: () => switchMode("applicant"),
     }] : []),
+    {
+      key: "create-organization",
+      kind: "create",
+      group: "organizations",
+      label: "Adaugă sau revendică",
+      subtitle: "O optică, clinică sau cabinet",
+      active: false,
+      onClick: () => routerNavigate("/adauga-sau-revendica"),
+    },
   ];
   const sharedAccountProps = {
     accountModes,
@@ -448,7 +471,7 @@ export default function MyAccount() {
     );
   }
 
-  if (resolvedMode === "applicant" && hasApplicantWorkspace) {
+  if (resolvedMode === "applicant" && hasApplicantSpace) {
     return (
       <Suspense fallback={<WorkspaceLoading />}>
         <ApplicantWorkspaceRoot

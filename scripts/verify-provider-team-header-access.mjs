@@ -38,7 +38,8 @@ const memberLoads = [root, shell, header, access]
   .match(/invoke\("getMyProviderMembers"/g) || [];
 assert.equal(memberLoads.length, 1, 'getMyProviderMembers trebuie sa aiba o singura sursa frontend');
 
-assert.doesNotMatch(navigation, /key:\s*"access"/);
+// 2026-10-03 (structura conturilor, pasul 1): „Echipă” intră în meniul organizației.
+assert.match(navigation, /key: "access", label: "Echipă"/);
 assert.match(navigation, /key:\s*"settings"/);
 assert.match(navigation, /canManageMembers/);
 assert.match(settings, /title="Acces și utilizatori"/);
