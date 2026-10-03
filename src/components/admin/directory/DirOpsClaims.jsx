@@ -303,6 +303,25 @@ export default function DirOpsClaims() {
                   )}
 
                   <AdminClaimIdentityContext claim={claim} />
+                  {/* 2026-10-03: sugestiile de retea bifate de furnizor erau salvate doar in payload, iar
+                      adminul nu le vedea. Raman informative: nu intra in aprobare. */}
+                  {payload.network_suggestion_accepted === true && Array.isArray(payload.network_suggested_location_ids) && payload.network_suggested_location_ids.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-border bg-background p-3 text-xs">
+                      <div className="font-semibold">Furnizorul a semnalat ca aceste locatii fac parte din aceeasi retea</div>
+                      <ul className="mt-1.5 space-y-1 text-muted-foreground">
+                        {payload.network_suggested_location_ids.map((locationId) => {
+                          const suggested = locations[locationId] || {};
+                          return (
+                            <li key={locationId}>
+                              <span className="font-medium text-foreground">{suggested.public_display_name || suggested.name || locationId}</span>
+                              {[suggested.city || suggested.locality_name, suggested.address].filter(Boolean).length > 0 && ` · ${[suggested.city || suggested.locality_name, suggested.address].filter(Boolean).join(", ")}`}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <p className="mt-1.5 text-muted-foreground">Nu sunt incluse in aceasta aprobare. Daca relatia se confirma, asociaza-le organizatiei din Directory Ops → Mapare organizatii si locatii.</p>
+                    </div>
+                  )}
                   {isDuplicateReview && canReview && (
                     <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                       Nicio locatie nu a fost creata inca. Daca este o locatie diferita, foloseste „Aproba ca locatie distincta”: locatia se creeaza din datele trimise, ca ciorna nepublicata, si furnizorul primeste accesul. Daca este aceeasi locatie, respinge cererea si scrie-i furnizorului ce sa faca.
