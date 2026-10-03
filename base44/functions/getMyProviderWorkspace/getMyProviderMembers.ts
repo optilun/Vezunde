@@ -60,18 +60,17 @@ function safeMembership(membership, userInfo, organizationId = '', resolution = 
   };
 }
 async function userInfo(svc, userId) { return await svc.entities.User.get(userId).catch(() => null); }
-// 2026-10-03. Utilizatorii se citesc grupat; daca citirea grupata esueaza, revenim la citirea
-// unuia cate unul (comportamentul vechi).
+// 2026-10-03. Utilizatorii se citesc grupat. Cei care lipsesc din raspunsul grupat (sau toti, daca
+// citirea grupata esueaza) se citesc unul cate unul, ca inainte.
 async function usersById(svc, userIds) {
   const ids = uniqueIds(userIds);
-  const users = await getManyByIds(svc.entities.User, ids).catch(() => null);
-  if (users) return users;
-  const fallback = new Map();
+  const users = await getManyByIds(svc.entities.User, ids).catch(() => new Map());
   for (const userId of ids) {
+    if (users.has(userId)) continue;
     const info = await userInfo(svc, userId);
-    if (info) fallback.set(userId, info);
+    if (info) users.set(userId, info);
   }
-  return fallback;
+  return users;
 }
 function highest(roles) {
   if (roles.includes(ORGANIZATION_OWNER_ROLE)) return ORGANIZATION_OWNER_ROLE;
