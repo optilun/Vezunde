@@ -191,7 +191,10 @@ Deno.serve(async (req) => {
         if (await expireIfNeeded(svc, invitation)) continue;
         const context = await loadContext(svc, invitation);
         if (context.error) continue;
-        invitations.push(invitationView(invitation, context.organization, context.locations));
+        invitations.push({
+          ...invitationView(invitation, context.organization, context.locations),
+          specialist: await specialistView(svc, await bundledSpecialistInvitations(svc, invitation)),
+        });
       }
       return res({ invitations, count: invitations.length });
     }

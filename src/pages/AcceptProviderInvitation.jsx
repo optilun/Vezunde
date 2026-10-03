@@ -56,6 +56,9 @@ export default function AcceptProviderInvitation() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [professionalInvitationCount, setProfessionalInvitationCount] = useState(0);
+  // 2026-10-03 (structura conturilor, pasul 2): acordul de afisare ca specialist, cand invitatia
+  // de echipa o cere. Bifat implicit, pentru ca invitatia o anunta explicit; se poate debifa.
+  const [specialistConsent, setSpecialistConsent] = useState(true);
 
   // 2026-10-01: /dupa-login trimite aici intai invitatiile de membru. Daca acelasi email are si o
   // invitatie de specialist, dupa acceptare apare un link catre ea, ca sa nu se piarda.
@@ -109,6 +112,7 @@ export default function AcceptProviderInvitation() {
     const response = await base44.functions.invoke("acceptProviderMemberInvitation", {
       action: "accept",
       ...(token ? { token } : { invitation_id: invitation.id }),
+      specialist_visibility_consent: specialistConsent,
     }).catch((requestError) => ({
       data: { error: requestError.response?.data?.error || requestError.message || "Invitația nu a putut fi acceptată." },
     }));
@@ -169,7 +173,22 @@ export default function AcceptProviderInvitation() {
                 <div className="mt-3 space-y-2.5">{(invitation.locations || []).map((location) => <div key={location.id} className="flex items-start gap-3 rounded-xl bg-secondary/30 p-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><div className="min-w-0"><p className="text-sm font-semibold">{location.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{[location.city, location.county, location.address].filter(Boolean).join(" · ") || "Adresa nu este afișată"}</p></div></div>)}</div>
                 {formatDate(invitation.expires_at) && <p className="mt-3 text-[11px] text-muted-foreground">Invitația este valabilă până la {formatDate(invitation.expires_at)}.</p>}
               </section>
-              <div className="rounded-2xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">Acceptarea creează sau reactivează numai accesul descris mai sus. Contul personal VIASEE nu este modificat și nu se creează automat un profil profesional.</div>
+              {invitation.specialist && (
+                <section className="rounded-2xl border border-border p-4 sm:p-5">
+                  <h2 className="text-sm font-bold">Apari și ca {invitation.specialist.professional_type_label || "specialist"}</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Organizația te invită să apari pe pagina publică a locațiilor:</p>
+                  <ul className="mt-2 space-y-1 text-sm font-semibold">{(invitation.specialist.locations || []).map((location) => <li key={location.id}>{location.name}{location.city ? <span className="font-normal text-muted-foreground"> · {location.city}</span> : null}</li>)}</ul>
+                  <label htmlFor="specialist-consent" className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-relaxed">
+                    <input id="specialist-consent" type="checkbox" checked={specialistConsent} onChange={(event) => setSpecialistConsent(event.target.checked)} className="mt-0.5" />
+                    <span>Accept să apar public la aceste locații, după ce profilul meu profesional este verificat de VIASEE. Pot retrage oricând acordul din contul meu.</span>
+                  </label>
+                </section>
+              )}
+              <div className="rounded-2xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">
+                {invitation.specialist
+                  ? "Acceptarea creează accesul descris mai sus și, dacă nu ai deja, un profil profesional privat. Îl completezi și îl trimiți spre verificare din contul tău."
+                  : "Acceptarea creează sau reactivează numai accesul descris mai sus. Contul personal VIASEE nu este modificat și nu se creează automat un profil profesional."}
+              </div>
               <button type="button" disabled={accepting} onClick={accept} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:opacity-50">{accepting && <Loader2 className="h-4 w-4 animate-spin" />}{accepting ? "Se acceptă invitația..." : "Acceptă accesul"}</button>
             </div>
           )}
@@ -179,6 +198,14 @@ export default function AcceptProviderInvitation() {
             <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
               <div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-800" /><div><h2 className="text-sm font-bold text-green-950">Accesul a fost confirmat</h2><p className="mt-1 text-xs leading-relaxed text-green-900">Poți deschide acum workspace-ul {result.invitation?.organization?.name || "organizației"}.</p></div></div>
               <Link to="/contul-meu?mode=provider" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-green-950 px-4 py-2 text-xs font-semibold text-white">Deschide workspace-ul organizației</Link>
+              {(result.specialist_results || []).length > 0 && (
+                <div className="mt-4 rounded-xl border border-green-200 bg-white/60 p-3 text-xs leading-relaxed text-green-950">
+                  {(result.specialist_results || []).every((item) => item.success)
+                    ? "Ești asociat și ca specialist. Completează-ți profilul profesional și trimite-l spre verificare ca să apari public."
+                    : `Asocierea ca specialist nu a reușit${(result.specialist_results || []).find((item) => item.error)?.error ? `: ${(result.specialist_results || []).find((item) => item.error).error}` : "."}`}
+                  <Link to="/contul-meu?mode=professional&ps=profile" className="mt-2 block font-semibold underline underline-offset-4">Deschide profilul profesional</Link>
+                </div>
+              )}
               {professionalInvitationCount > 0 && (
                 <Link to="/accept-professional-invitation" className="mt-3 block text-xs font-semibold text-green-950 underline underline-offset-4">
                   Ai și {professionalInvitationCount === 1 ? "o invitație" : `${professionalInvitationCount} invitații`} de specialist. Vezi invitația
