@@ -10,6 +10,11 @@ import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import { readableErrorMessage } from "@/lib/transientRetry";
 import { focusRefreshGate } from "@/lib/focusRefreshGate";
 import {
+  PROVIDER_ROLE_CAPABILITIES,
+  highestProviderAccessRole,
+  providerRoleHasCapability,
+} from "../../../../shared/providerRolePolicy.js";
+import {
   providerLocationModuleUrl,
   providerSectionUrl,
   providerSelectionUrl,
