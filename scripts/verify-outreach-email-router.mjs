@@ -384,16 +384,16 @@ assert.match(
   'Banda de sus are nevoie de un bgcolor solid ca fallback pentru Outlook',
 );
 
-// Culorile si tipografia vin din designul real al site-ului, nu inventate. Aceste valori sunt
-// citite direct din src/index.css si din sectiunea de categorii a home-ului (CategoryShowcase.jsx +
-// CategoryStrip.jsx, unde stau acum culorile placutelor).
+// Emailurile pastreaza paleta lor aprobata si tipografia site-ului.
+// Artworkurile editoriale ale categoriilor au o paleta proprie (cobalt, bleumarin, crem);
+// o schimbare a fotografiilor nu modifica automat tema emailurilor.
 for (const [token, value] of [['INK', '#171717'], ['CREAM', '#f8f4ec'], ['LILAC', '#e8e0ea'], ['LILAC_EDGE', '#d4c6d8'], ['BLUE', '#345bc8']]) {
   assert.match(policySource, new RegExp(`const ${token} = '${value}'`), `${token} trebuie sa ramana culoarea reala din designul VIASEE (${value})`);
 }
 assert.doesNotMatch(policySource, /Fraunces/, 'Titlurile din email urmeaza hero-ul site-ului: Manrope greu, nu serif');
 const homeShowcase = source('src/components/home/CategoryShowcase.jsx') + source('src/components/home/CategoryStrip.jsx');
-for (const value of ['#e8e0ea', '#d4c6d8', '#345bc8']) {
-  assert.ok(homeShowcase.includes(value), `Culoarea ${value} trebuie sa existe in sectiunea de categorii: emailul o reia de acolo`);
+for (const value of ['#171717', '#f8f4ec']) {
+  assert.ok(homeShowcase.includes(value), `Culoarea comuna ${value} trebuie sa existe in sectiunea de categorii`);
 }
 
 // Fisa se construieste per destinatar, nu o data pe campanie.
