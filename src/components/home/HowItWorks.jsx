@@ -8,45 +8,30 @@ import { softGlowBackground } from "@/lib/softGlow";
 const STEPS = [
   {
     number: "01",
-    title: "Descrii ce ai nevoie",
-    mobileTitle: "Spui ce cauți",
-    mobileDescription: "Descrii pe scurt ce ai nevoie.",
-    description:
-      "Explici cu propriile cuvinte de ce ai nevoie — nu trebuie să știi denumirea exactă a serviciului sau a specialistului.",
+    title: "Spui ce cauți",
+    description: "Descrie ce ai nevoie, în cuvintele tale.",
     kind: "input",
     accent: "#345bc8",
-    tone: "bg-[#dce5e9]",
-    glow: softGlowBackground("169 198 215", 0.35),
-    placement: "lg:col-span-4 lg:mt-14",
-    shape: "rounded-[1.75rem_1.75rem_0.55rem_1.75rem]",
+    tone: "bg-[#f0f2ee]",
+    glow: softGlowBackground("169 198 215", 0.10),
   },
   {
     number: "02",
-    title: "Răspunzi la câteva întrebări",
-    mobileTitle: "Răspunzi",
-    mobileDescription: "Pentru cine, ce serviciu și unde.",
-    description:
-      "Alegi câteva răspunsuri: pentru cine cauți, ce fel de ajutor ai nevoie și în ce zonă. Durează mai puțin de un minut.",
+    title: "Răspunzi pe scurt",
+    description: "Alegi pentru cine cauți și în ce zonă.",
     kind: "choices",
     accent: "#a97825",
-    tone: "bg-[#eadcba]",
-    glow: softGlowBackground("211 181 101", 0.32),
-    placement: "lg:col-span-3 lg:-mt-3",
-    shape: "rounded-[0.55rem_1.75rem_1.75rem_1.75rem]",
+    tone: "bg-[#f5f0e5]",
+    glow: softGlowBackground("211 181 101", 0.09),
   },
   {
     number: "03",
-    title: "Vezi unde poți merge",
-    mobileTitle: "Compari opțiunile",
-    mobileDescription: "Vezi servicii, adrese și date de contact.",
-    description:
-      "Primești o listă de opțiuni potrivite din zona ta, pe care le poți compara înainte să alegi.",
+    title: "Compari opțiunile",
+    description: "Vezi serviciile, adresa și datele de contact.",
     kind: "results",
     accent: "#735c80",
-    tone: "bg-[#e8e0ea]",
-    glow: softGlowBackground("190 169 200", 0.34),
-    placement: "lg:col-span-5 lg:mt-8",
-    shape: "rounded-[1.75rem_0.55rem_1.75rem_1.75rem]",
+    tone: "bg-[#f3eff2]",
+    glow: softGlowBackground("190 169 200", 0.09),
   },
 ];
 
@@ -74,55 +59,54 @@ const RESULT_PRINCIPLES = [
 function StepGraphic({ kind, accent }) {
   if (kind === "input") {
     return (
-      <svg viewBox="0 0 320 170" className="h-full w-full" fill="none" aria-hidden="true">
-        <path d="M34 36H286M34 134H286" stroke="#171717" strokeOpacity=".18" />
-        <rect x="50" y="57" width="220" height="58" rx="18" fill="#F8F4EC" fillOpacity=".72" stroke="#171717" strokeOpacity=".28" />
-        <path d="M76 79H205M76 94H168" stroke="#171717" strokeWidth="6" strokeLinecap="round" strokeOpacity=".72" />
-        <rect x="236" y="72" width="28" height="28" rx="14" fill={accent} />
-        <path d="M245 86H255M251 81L256 86L251 91" stroke="#F8F4EC" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M34 36V50M286 36V50M34 120V134M286 120V134" stroke="#171717" strokeOpacity=".42" />
+      <svg viewBox="0 0 320 170" className="h-full w-full" fill="none" aria-hidden="true" focusable="false">
+        <path d="M28 37H292M28 133H292M28 37V49M292 37V49M28 121V133M292 121V133" stroke="#171717" strokeOpacity=".18" />
+        <rect x="40" y="55" width="240" height="68" rx="9" fill="#171717" fillOpacity=".04" />
+        <rect x="40" y="51" width="240" height="68" rx="9" fill="#fffdf8" stroke="#171717" strokeOpacity=".20" />
+        <text x="56" y="73" fill="#77736b" fontSize="10" fontFamily="Arial, sans-serif">Spune-ne ce cauți</text>
+        <text x="56" y="96" fill="#171717" fontSize="14" fontFamily="Arial, sans-serif">Control de vedere</text>
+        <circle cx="253" cy="85" r="15" fill={accent} />
+        <path d="M247 85H259M254 80L259 85L254 90" stroke="#fffdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
   if (kind === "choices") {
     return (
-      <svg viewBox="0 0 260 170" className="h-full w-full" fill="none" aria-hidden="true">
-        <path d="M48 28V142" stroke="#171717" strokeOpacity=".24" />
-        {[54, 91, 128].map((y, index) => (
-          <g key={y}>
-            <rect
-              x="48"
-              y={y - 14}
-              width={index === 1 ? 174 : 148}
-              height="28"
-              rx="14"
-              fill={index === 1 ? accent : "#F8F4EC"}
-              fillOpacity={index === 1 ? "1" : ".68"}
-              stroke="#171717"
-              strokeOpacity={index === 1 ? ".08" : ".22"}
-            />
-            <circle cx="48" cy={y} r="7" fill={index === 1 ? "#171717" : "#F8F4EC"} stroke="#171717" strokeWidth="2" />
-            <path d={index === 1 ? `M72 ${y}H164` : `M72 ${y}H142`} stroke={index === 1 ? "#F8F4EC" : "#171717"} strokeWidth="5" strokeLinecap="round" strokeOpacity={index === 1 ? ".86" : ".58"} />
-          </g>
-        ))}
-        <path d="M38 28H58M38 142H58" stroke="#171717" strokeOpacity=".5" />
+      <svg viewBox="0 0 320 170" className="h-full w-full" fill="none" aria-hidden="true" focusable="false">
+        <path d="M48 24V146M38 24H58M38 146H58" stroke="#171717" strokeOpacity=".20" />
+        {["Pentru mine", "Control de vedere", "În apropiere"].map((label, index) => {
+          const y = 45 + index * 40;
+          const selected = index === 1;
+          return (
+            <g key={label}>
+              <rect x="64" y={y - 15} width="210" height="30" rx="6" fill={selected ? accent : "#fffdf8"} stroke="#171717" strokeOpacity={selected ? ".06" : ".18"} />
+              <circle cx="48" cy={y} r="6" fill={selected ? accent : "#fffdf8"} stroke={selected ? accent : "#79766e"} strokeWidth="1.5" />
+              {selected && <path d={`M45 ${y}L47 ${y + 2}L51 ${y - 2}`} stroke="#fffdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
+              <text x="78" y={y + 4} fill={selected ? "#fffdf8" : "#484640"} fontSize="12" fontFamily="Arial, sans-serif">{label}</text>
+            </g>
+          );
+        })}
       </svg>
     );
   }
 
   return (
-    <svg viewBox="0 0 360 170" className="h-full w-full" fill="none" aria-hidden="true">
-      <circle cx="100" cy="85" r="50" stroke="#171717" strokeOpacity=".18" />
-      <circle cx="100" cy="85" r="29" stroke={accent} strokeWidth="9" strokeOpacity=".92" />
-      <circle cx="100" cy="85" r="6" fill="#171717" />
-      <path d="M30 85H170M100 15V155" stroke="#171717" strokeOpacity=".2" />
-      <rect x="186" y="35" width="144" height="100" rx="18" fill="#F8F4EC" fillOpacity=".68" stroke="#171717" strokeOpacity=".24" />
-      <rect x="202" y="51" width="32" height="32" rx="8" fill={accent} fillOpacity=".9" />
-      <path d="M248 58H310M248 73H289" stroke="#171717" strokeWidth="5" strokeLinecap="round" strokeOpacity=".68" />
-      <path d="M202 101H310M202 116H274" stroke="#171717" strokeWidth="5" strokeLinecap="round" strokeOpacity=".34" />
-      <path d="M170 85H186" stroke="#171717" strokeWidth="2" />
-      <rect x="174" y="81" width="8" height="8" fill="#171717" />
+    <svg viewBox="0 0 320 170" className="h-full w-full" fill="none" aria-hidden="true" focusable="false">
+      <circle cx="67" cy="85" r="35" stroke="#171717" strokeOpacity=".14" />
+      <path d="M21 85H113M67 39V131" stroke="#171717" strokeOpacity=".14" />
+      <path d="M67 109S46 88 46 73A21 21 0 0 1 88 73C88 88 67 109 67 109Z" fill={accent} />
+      <circle cx="67" cy="73" r="7" fill="#fffdf8" />
+      <path d="M103 85H126" stroke="#171717" strokeOpacity=".45" />
+      <rect x="111" y="82" width="6" height="6" fill="#171717" />
+      <rect x="126" y="45" width="166" height="88" rx="9" fill="#171717" fillOpacity=".04" />
+      <rect x="126" y="41" width="166" height="88" rx="9" fill="#fffdf8" stroke="#171717" strokeOpacity=".20" />
+      <rect x="139" y="55" width="26" height="26" rx="5" fill={accent} fillOpacity=".12" />
+      <path d="M147 73V62H157V73M144 73H160M150 65H154M150 68H154" stroke={accent} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="174" y="65" fill="#171717" fontSize="11" fontFamily="Arial, sans-serif">Optică medicală</text>
+      <text x="174" y="79" fill="#77736b" fontSize="9" fontFamily="Arial, sans-serif">Servicii pentru vedere</text>
+      <path d="M139 92H279" stroke="#171717" strokeOpacity=".12" />
+      <text x="139" y="112" fill="#646159" fontSize="11" fontFamily="Arial, sans-serif">Adresă · Contact</text>
     </svg>
   );
 }
@@ -168,13 +152,13 @@ export default function HowItWorks() {
       <div className="mt-6 sm:hidden">
         <div className="grid gap-3">
           {STEPS.map((step) => (
-            <article key={step.number} className={"flex min-h-28 items-center gap-3 overflow-hidden rounded-2xl border border-black/10 p-4 " + step.tone}>
+            <article key={step.number} className={"flex min-h-28 items-center gap-3 overflow-hidden rounded-xl border border-black/[0.12] p-4 shadow-[0_2px_3px_rgba(28,24,18,0.025),0_6px_16px_rgba(28,24,18,0.04)] " + step.tone}>
               <span className="self-start pt-1 font-mono text-[10px] font-semibold text-foreground/60">{step.number}</span>
               <div className="min-w-0 flex-1">
-                <h3 className="font-heading text-lg font-bold leading-tight">{step.mobileTitle}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-foreground/65">{step.mobileDescription}</p>
+                <h3 className="font-heading text-lg font-bold leading-tight">{step.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-foreground/65">{step.description}</p>
               </div>
-              <div className="h-16 w-20 shrink-0"><StepGraphic kind={step.kind} accent={step.accent} /></div>
+              <div className="h-20 w-24 shrink-0"><StepGraphic kind={step.kind} accent={step.accent} /></div>
             </article>
           ))}
         </div>
@@ -184,57 +168,43 @@ export default function HowItWorks() {
         </Link>
       </div>
 
-      <div className="relative mt-14 hidden sm:mt-16 sm:block lg:mt-24">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute left-0 right-0 top-[47%] hidden h-px bg-black/25 lg:block"
-        />
-
-        <div className="relative grid gap-5 lg:grid-cols-12 lg:items-start lg:gap-4">
+      <div className="mt-10 hidden sm:mt-12 sm:block">
+        <div className="grid gap-4 md:grid-cols-3 lg:gap-5">
           {STEPS.map((step, index) => (
             <Reveal
               as="article"
               key={step.number}
               delay={index * 70}
-              className={`relative ${step.placement}`}
+              className="relative h-full"
             >
-              {/* Halou: acelasi aspect ca vechiul blur-3xl pe -inset-5, desenat ca gradient
-                  (vezi softGlow.js): 20px + 128px = 148px. */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -inset-[148px] -z-10 opacity-70"
+                className="pointer-events-none absolute -inset-[148px] -z-10 opacity-30"
                 style={{ backgroundImage: step.glow }}
               />
-              <span
-                aria-hidden="true"
-                className="absolute -left-1.5 top-[47%] z-20 hidden h-3 w-3 bg-[#171717] lg:block"
-              />
-
-              <div className={`relative overflow-hidden border border-black/[0.11] ${step.shape} ${step.tone}`}>
+              <div className={`relative flex h-full flex-col overflow-hidden rounded-xl border border-black/[0.12] shadow-[0_2px_3px_rgba(28,24,18,0.025),0_8px_20px_rgba(28,24,18,0.04)] ${step.tone}`}>
                 <span
                   aria-hidden="true"
-                  className="absolute inset-0 opacity-25"
+                  className="pointer-events-none absolute inset-0 opacity-15"
                   style={{
                     backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
                     backgroundSize: "180px 180px",
                   }}
                 />
-                <div className="relative z-10 flex items-center justify-between border-b border-black/10 px-6 py-5">
+                <div className="relative flex items-center justify-between border-b border-black/[0.08] px-5 py-4 lg:px-6">
                   <span className="font-mono text-xs font-semibold tracking-[0.18em] text-foreground/65">
                     {step.number}
                   </span>
-                  <span className="h-3 w-3" style={{ backgroundColor: step.accent }} aria-hidden="true" />
+                  <span className="h-2.5 w-2.5" style={{ backgroundColor: step.accent }} aria-hidden="true" />
                 </div>
-
-                <div className="relative z-10 h-48 border-b border-black/10 p-5 sm:h-52">
+                <div className="relative h-40 border-b border-black/[0.08] px-3 py-2 lg:h-44 lg:px-4">
                   <StepGraphic kind={step.kind} accent={step.accent} />
                 </div>
-
-                <div className="relative z-10 min-h-[12.5rem] px-6 py-7">
-                  <h3 className="font-heading text-2xl font-extrabold leading-[1.05] tracking-[-0.04em] text-[#171717] sm:text-[2rem]">
+                <div className="relative flex-1 px-5 py-6 lg:px-6">
+                  <h3 className="font-heading text-2xl font-extrabold leading-[1.1] tracking-[-0.04em] text-[#171717] lg:text-[1.75rem]">
                     {step.title}
                   </h3>
-                  <p className="mt-4 max-w-md text-sm leading-relaxed text-foreground/65 sm:text-base">
+                  <p className="mt-3 text-sm leading-relaxed text-foreground/65 lg:text-base">
                     {step.description}
                   </p>
                 </div>
