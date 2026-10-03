@@ -69,16 +69,23 @@ export default function SpecialistsHero() {
   const searched = audience === "organization" && query.trim().length >= 2;
 
   return (
-    <section id="profilul-tau" className="scroll-mt-24 max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-14 sm:pb-20 grid lg:grid-cols-[1.08fr_1fr] gap-8 lg:gap-8 items-center relative">
-      <div className="relative z-10 text-center lg:text-left">
-        <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.08] text-3xl sm:text-5xl">
-          Administrează prezența ta pe VIASEE.
-        </h1>
-        <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          Prezintă-ți serviciile, actualizează datele și gestionează locațiile.
-        </p>
+    <section id="profilul-tau" className="relative mx-auto max-w-6xl scroll-mt-24 px-5 pb-14 pt-10 sm:pb-16 sm:pt-12">
+      <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_1fr]" data-hero-intro>
+        <div className="relative z-10 text-center lg:text-left">
+          <h1 className="font-heading text-3xl font-extrabold leading-[1.08] tracking-[-0.03em] sm:text-5xl">
+            Administrează prezența ta pe VIASEE.
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg lg:mx-0">
+            Prezintă-ți serviciile, actualizează datele și gestionează locațiile.
+          </p>
+        </div>
+        <SpecialistsLocationArtwork />
+      </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3" role="group" aria-label="Alege ce vrei să administrezi">
+      <div className="mt-7 grid gap-6 rounded-2xl border border-[#E4E4DF] bg-card p-4 shadow-[0_8px_32px_rgba(24,35,45,0.035)] sm:p-6 lg:grid-cols-[.82fr_1.35fr] lg:gap-8" data-profile-panel>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#657087]">Ce vrei să administrezi?</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-1" role="group" aria-label="Alege ce vrei să administrezi">
           {AUDIENCE_OPTIONS.map((option) => {
             const Icon = option.icon;
             const selected = audience === option.id;
@@ -89,31 +96,33 @@ export default function SpecialistsHero() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setAudience(option.id)}
-                className={`relative min-w-0 rounded-2xl border p-3 pr-6 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#405AE9] focus-visible:ring-offset-2 sm:p-4 sm:pr-7 ${
+                className={`relative min-w-0 rounded-xl border p-4 pr-8 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#405AE9] focus-visible:ring-offset-2  ${
                   selected
                     ? "border-[#405AE9] bg-[#EEF2FF] shadow-sm"
                     : "border-border bg-card hover:border-[#A5B7EE] hover:bg-[#F8FAFF]"
                 }`}
               >
                 {selected && <Check aria-hidden="true" className="absolute right-2 top-2 h-4 w-4 text-[#405AE9] sm:right-3 sm:top-3" />}
-                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2.5">
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                <div className="flex items-start gap-3">
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                     selected ? "bg-[#405AE9] text-white" : "bg-secondary text-foreground"
                   }`}>
-                    <Icon className="h-4.5 w-4.5" />
+                    <Icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="font-heading text-sm font-bold">{option.title}</span>
+                  <span className="min-w-0"><span className="block font-heading text-sm font-bold leading-snug">{option.title}</span><span className="mt-1 block text-[13px] leading-relaxed text-[#657087]">{option.description}</span></span>
                 </div>
-                <p className="mt-2 text-[13px] leading-relaxed text-[#657087]">{option.description}</p>
               </button>
             );
           })}
         </div>
 
+        </div>
+
+        <div className="min-w-0 border-t border-border pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
         {audience === "organization" ? (
-          <div className="mt-6 max-w-2xl mx-auto lg:mx-0">
-            <div className="mb-3 text-left">
-              <h2 className="font-heading text-base font-bold">Caută locația ta</h2>
+          <div className="min-w-0">
+            <div className="mb-4 text-left">
+              <h2 className="font-heading text-xl font-bold">Caută locația ta</h2>
               <p className="mt-1 text-[13px] leading-relaxed text-[#657087]">
                 O găsești aici? Revendică profilul sau solicită acces.
               </p>
@@ -127,7 +136,7 @@ export default function SpecialistsHero() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Numele locației"
-                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:border-[#405AE9] focus:ring-[#DCE4FF] transition-shadow"
+                  className="w-full h-12 pl-11 pr-10 rounded-xl bg-[#FAFAF8] border border-border text-sm outline-none focus:ring-2 focus:border-[#405AE9] focus:ring-[#DCE4FF] transition-shadow"
                 />
                 {loading && (
                   <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
@@ -194,8 +203,8 @@ export default function SpecialistsHero() {
               </div>
             )}
 
-            <div className="mt-5 pt-5 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
-              <span className="text-sm text-muted-foreground flex items-center gap-1.5 justify-center sm:justify-start">
+            <div className="mt-5 border-t border-border pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5 ">
                 <MapPinPlus className="w-4 h-4 shrink-0" />
                 Nu găsești locația?
               </span>
@@ -211,12 +220,12 @@ export default function SpecialistsHero() {
                 Adaugă o locație nouă
               </button>
             </div>
-            <p className="mt-2 text-[13px] text-[#657087] text-center sm:text-left">
+            <p className="mt-2 text-[13px] text-[#657087] text-left">
               Publicarea se face după verificare.
             </p>
           </div>
         ) : (
-          <div className="mt-6 max-w-2xl mx-auto lg:mx-0 rounded-2xl border border-border bg-card p-5 sm:p-6 text-left">
+          <div className="min-w-0 text-left">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Profil profesional VIASEE
             </p>
@@ -237,8 +246,9 @@ export default function SpecialistsHero() {
             </p>
           </div>
         )}
+        </div>
       </div>
-      <SpecialistsLocationArtwork audience={audience} />
     </section>
   );
 }
+
