@@ -11,7 +11,6 @@ import {
   EyeOff,
   LayoutDashboard,
   LockKeyhole,
-  Settings,
   Unlink,
   UserRound,
   XCircle,
@@ -19,7 +18,6 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
-const AccountSettings = lazy(() => import("@/components/workspace/account/AccountSettings"));
 const ProfessionalProfileEditor = lazy(() => import("./ProfessionalProfileEditor"));
 import {
   PROFESSIONAL_REVIEW_STATUS_LABELS,
@@ -40,8 +38,9 @@ const NAV_ITEMS = [
   { key: "overview", label: "Prezentare generală", shortLabel: "Acasă", icon: LayoutDashboard },
   { key: "profile", label: "Profil profesional", shortLabel: "Profil", icon: UserRound },
   { key: "locations", label: "Locații asociate", shortLabel: "Locații", icon: Building2 },
-  { key: "settings", label: "Setări", shortLabel: "Setări", icon: Settings },
 ];
+// 2026-10-03 (structura conturilor, pasul 1): fara „Setări” aici. Erau setarile contului, dublate;
+// raman in contul personal si in meniul avatarului („Setările contului”).
 
 function InfoCard({ label, value, hint }) {
   return (
@@ -563,9 +562,6 @@ export default function ProfessionalWorkspaceRoot({
   workspace,
   onLogout,
   onRefresh,
-  accountModes,
-  activeMode,
-  onSwitchMode,
   modeSwitches,
 }) {
   const [params, setParams] = useSearchParams();
