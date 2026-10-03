@@ -1,6 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { expandOwnerWorkspaceScope } from '../../shared/providerOwnerWorkspaceScope.js';
 import {
+  PROVIDER_CAPABILITIES,
+  capabilitiesForProviderRoles,
+  highestProviderAccessRole,
+  normalizeProviderAccessRole,
+  providerAccessRoleFromMembership,
+  providerRoleHasCapability,
+} from '../../shared/providerRolePolicy.js';
+import {
   filterByIdList,
   getManyByIds,
   groupRowsBy,
@@ -12,61 +20,34 @@ const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'servic
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
-const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
-const CAPABILITY_ORDER = [
-  'organization.view',
-  'organization.manage_profile',
-  'organization.manage_members',
-  'organization.manage_settings',
-  'organization.manage_locations',
-  'location.view',
-  'location.manage_profile',
-  'location.manage_content',
-  'location.manage_specialists',
-  'location.manage_requests',
-  'location.manage_operational_status',
-  'location.manage_settings',
-  'location.manage_lifecycle',
-];
-const ROLE_CAPABILITIES = {
-  organization_owner: [...CAPABILITY_ORDER],
-  location_manager: [
-    'organization.view',
-    'location.view',
-    'location.manage_profile',
-    'location.manage_content',
-    'location.manage_specialists',
-    'location.manage_requests',
-    'location.manage_operational_status',
-  ],
-  location_staff: [
-    'organization.view',
-    'location.view',
-    'location.manage_requests',
-    'location.manage_operational_status',
-  ],
-};
+// 2026-10-03 (structura conturilor, pasul 3). Rolurile si drepturile vin din matricea comuna
+// (shared/providerRolePolicy.js). Rolul se citeste cu marcajul de administrator: un administrator
+// (salvat ca `location_manager` + `organization_role: organization_admin`) primeste drepturile de
+// administrator, nu pe cele de manager.
+const CAPABILITY_ORDER = PROVIDER_CAPABILITIES;
 
 function normalizeMemberRole(value) {
-  if (value === 'owner') return 'organization_owner';
-  if (value === 'staff') return 'location_staff';
-  return MEMBER_ROLES.includes(value) ? value : '';
+  return normalizeProviderAccessRole(value);
+}
+
+function membershipAccessRole(membership) {
+  return normalizeProviderAccessRole(providerAccessRoleFromMembership(membership));
 }
 
 function highestRole(roles) {
-  if (roles.includes('organization_owner')) return 'organization_owner';
-  if (roles.includes('location_manager')) return 'location_manager';
-  if (roles.includes('location_staff')) return 'location_staff';
-  return '';
+  return highestProviderAccessRole(roles);
 }
 
 function capabilitiesForRole(value) {
-  return [...(ROLE_CAPABILITIES[normalizeMemberRole(value)] || [])];
+  return capabilitiesForProviderRoles([value]);
 }
 
 function mergeCapabilities(roles) {
-  const allowed = new Set(roles.flatMap((role) => capabilitiesForRole(role)));
-  return CAPABILITY_ORDER.filter((capability) => allowed.has(capability));
+  return capabilitiesForProviderRoles(roles);
+}
+
+function canManageMembersAs(role) {
+  return providerRoleHasCapability(role, 'organization.manage_members') || providerRoleHasCapability(role, 'location.manage_members');
 }
 
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
@@ -186,8 +167,8 @@ function buildOrganizationContexts(organizations, locations, memberships) {
       organization,
       current_user_role: currentUserRole,
       capabilities: mergeCapabilities(contextRoles),
-      can_manage_members: currentUserRole === 'organization_owner',
-      can_manage_settings: currentUserRole === 'organization_owner',
+      can_manage_members: canManageMembersAs(currentUserRole),
+      can_manage_settings: providerRoleHasCapability(currentUserRole, 'organization.manage_settings'),
       assigned_location_ids: contextLocations.map((location) => location.id),
       memberships: contextMemberships,
       locations: contextLocations,
@@ -223,8 +204,10 @@ function getContentSummary(contentIndex, locationId, userId) {
 
 async function getMemberSummary(svc, memberships, locationIds) {
   const roleByLocation = {};
-  for (const locationId of locationIds) roleByLocation[locationId] = highestRole(memberships.filter((membership) => membership.location_id === locationId).map((membership) => normalizeMemberRole(membership.role)));
-  const ownerLocationIds = unique(memberships.filter((membership) => normalizeMemberRole(membership.role) === 'organization_owner').map((membership) => membership.location_id));
+  for (const locationId of locationIds) roleByLocation[locationId] = highestRole(memberships.filter((membership) => membership.location_id === locationId).map(membershipAccessRole));
+  // Locatiile la care utilizatorul poate invita: proprietar si administrator peste tot, managerul
+  // la locatiile lui (membri), membrul nicaieri.
+  const ownerLocationIds = unique(memberships.filter((membership) => canManageMembersAs(membershipAccessRole(membership))).map((membership) => membership.location_id));
   const activeRowsById = new Map();
   const perLocation = {};
   const rowsByLocation = groupRowsBy(
@@ -232,7 +215,7 @@ async function getMemberSummary(svc, memberships, locationIds) {
     'location_id',
   );
   for (const locationId of locationIds) {
-    const valid = rowsFor(rowsByLocation, locationId).filter((membership) => normalizeMemberRole(membership.role));
+    const valid = rowsFor(rowsByLocation, locationId).filter((membership) => membershipAccessRole(membership));
     perLocation[locationId] = unique(valid.map((membership) => membership.user_id)).length;
     for (const membership of valid) activeRowsById.set(membership.id, membership);
   }
@@ -248,9 +231,10 @@ async function getMemberSummary(svc, memberships, locationIds) {
     counters: {
       active_members_total: unique(activeRows.map((membership) => membership.user_id)).length,
       active_members_per_location: perLocation,
-      organization_owners_count: unique(activeRows.filter((membership) => normalizeMemberRole(membership.role) === 'organization_owner').map((membership) => membership.user_id)).length,
-      location_managers_count: unique(activeRows.filter((membership) => normalizeMemberRole(membership.role) === 'location_manager').map((membership) => membership.user_id)).length,
-      location_staff_count: unique(activeRows.filter((membership) => normalizeMemberRole(membership.role) === 'location_staff').map((membership) => membership.user_id)).length,
+      organization_owners_count: unique(activeRows.filter((membership) => membershipAccessRole(membership) === 'organization_owner').map((membership) => membership.user_id)).length,
+      organization_admins_count: unique(activeRows.filter((membership) => membershipAccessRole(membership) === 'organization_admin').map((membership) => membership.user_id)).length,
+      location_managers_count: unique(activeRows.filter((membership) => membershipAccessRole(membership) === 'location_manager').map((membership) => membership.user_id)).length,
+      location_staff_count: unique(activeRows.filter((membership) => membershipAccessRole(membership) === 'location_staff').map((membership) => membership.user_id)).length,
     },
   };
 }
@@ -306,7 +290,7 @@ export async function handle(req: Request) {
     if (!user) return Response.json({ error: 'Autentificare necesara' }, { status: 401 });
     const svc = base44.asServiceRole;
     const rawMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
-    let memberships = rawMemberships.filter((membership) => normalizeMemberRole(membership.role) && membership.location_id);
+    let memberships = rawMemberships.filter((membership) => membershipAccessRole(membership) && membership.location_id);
     if (memberships.length === 0) return Response.json(await getApplicantPreparationWorkspace(svc, user));
 
     // Locatiile si organizatiile se citesc grupat; ordinea ramane cea a membership-urilor.
@@ -349,7 +333,7 @@ export async function handle(req: Request) {
       const location = locationMap.get(membership.location_id);
       const organizationId = membership.organization_id || location.organization_id || null;
       const organization = organizationId ? organizationMap.get(organizationId) : null;
-      const normalizedRole = normalizeMemberRole(membership.role);
+      const normalizedRole = membershipAccessRole(membership);
       return { membership_id: membership.id || null, virtual_owner_access: membership.virtual_owner_access === true, role: normalizedRole, capabilities: capabilitiesForRole(normalizedRole), organization_id: organizationId, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
     });
     const memberSummary = await getMemberSummary(svc, memberships, [...locationMap.keys()]);
