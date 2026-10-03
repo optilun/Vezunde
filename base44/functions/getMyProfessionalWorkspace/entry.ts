@@ -102,6 +102,25 @@ Deno.serve(async (req) => {
       rows.push(sanitizeAssignment(assignment, location));
     }
 
+    // 2026-10-03 (structura conturilor, pasul 2): cererile „Lucrez aici” trimise de specialist,
+    // inca neaprobate sau refuzate. Cele aprobate apar deja mai sus, ca asocieri active.
+    const requestRows = await svc.entities.ProfessionalLocationAssignment.filter({
+      professional_id: profile.id,
+      association_origin: 'professional_request',
+    }, '-created_date', 50).catch(() => []);
+    const associationRequests = [];
+    for (const assignment of requestRows) {
+      if (assignment.active_status === 'activ') continue;
+      if (!['pending', 'declined'].includes(assignment.association_request_status)) continue;
+      const location = await svc.entities.ProviderLocation.get(cleanString(assignment.location_id)).catch(() => null);
+      associationRequests.push({
+        ...sanitizeAssignment(assignment, location),
+        association_request_status: assignment.association_request_status,
+        association_requested_at: assignment.association_requested_at || null,
+        association_decided_at: assignment.association_decided_at || null,
+      });
+    }
+
     return Response.json({
       mode: 'professional_workspace',
       user: {
@@ -111,6 +130,7 @@ Deno.serve(async (req) => {
       },
       professional: sanitizeProfile(profile),
       assignments: rows,
+      association_requests: associationRequests,
       public_assignment_count: rows.filter((item) => item.public_status === 'public').length,
       private_assignment_count: rows.filter((item) => item.public_status !== 'public').length,
       pending_visibility_count: rows.filter((item) => item.visibility_consent_status === 'pending').length,
