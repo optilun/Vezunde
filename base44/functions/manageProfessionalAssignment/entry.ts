@@ -1,6 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assignmentPublicEligibility } from '../../shared/professionalProfileStatus.js';
 import { professionalTypeLabel } from '../../shared/professionalIdentity.js';
+import {
+  ASSOCIATION_PENDING_REQUEST_LIMIT,
+  approvedAssociationPatch,
+  associationRequestBlockReason,
+  associationRequestRecord,
+  declinedAssociationPatch,
+  isPendingAssociationRequest,
+  selfAssociationRecord,
+} from '../../shared/professionalAssociationPolicy.js';
 
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
 const PROFESSIONAL_VISIBILITY_ACTIONS = ['accept_visibility', 'decline_visibility', 'hide_visibility'];
@@ -82,6 +91,11 @@ async function listAssignments(svc, locationId, location) {
       visibility_consent_status: assignment.visibility_consent_status || 'not_requested',
       visibility_requested_at: assignment.visibility_requested_at || null,
       visibility_decided_at: assignment.visibility_decided_at || null,
+      // 2026-10-03: cererile „Lucrez aici” si afisarea ownerului (structura conturilor, pasul 2).
+      association_origin: assignment.association_origin || 'invitation',
+      association_request_status: assignment.association_request_status || '',
+      association_requested_at: assignment.association_requested_at || null,
+      is_association_request: isPendingAssociationRequest(assignment),
       verification_status: profile.verification_status || 'unverified',
       profile_review_status: profile.profile_review_status || 'draft',
       is_public: profile.is_public === true,
@@ -89,6 +103,162 @@ async function listAssignments(svc, locationId, location) {
     });
   }
   return items;
+}
+
+async function ownProfessionalProfile(svc, user) {
+  const profiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
+  return profiles[0] || null;
+}
+
+function profileSummary(profile) {
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    full_name: profile.public_display_name || profile.full_name || '',
+    professional_type: profile.professional_type || '',
+    professional_type_label: professionalTypeLabel(profile.professional_type),
+  };
+}
+
+// Organizatia afla de cerere si din email (owneri si manageri ai locatiei), nu doar din lista.
+// Trimitere „best effort”: cererea ramane valida si daca emailul nu pleaca.
+async function notifyLocationManagers(base44, svc, location, profile) {
+  try {
+    const memberships = await svc.entities.ProviderMembership.filter({ location_id: location.id, status: 'active' }, '-created_date', 50);
+    const userIds = [...new Set(memberships.filter((membership) => PROVIDER_ROLES.includes(normalizeRole(membership.role))).map((membership) => membership.user_id).filter(Boolean))].slice(0, 5);
+    const locationName = location.public_display_name || location.name || 'locatia ta';
+    const personName = profile.public_display_name || profile.full_name || 'Un specialist';
+    for (const userId of userIds) {
+      const recipient = await svc.entities.User.get(userId).catch(() => null);
+      if (!recipient?.email) continue;
+      await base44.integrations.Core.SendEmail({
+        to: recipient.email,
+        from_name: 'VIASEE',
+        subject: `Cerere de asociere la ${locationName}`,
+        body: [
+          'Buna ziua,',
+          '',
+          `${personName} a cerut sa fie asociat ca ${professionalTypeLabel(profile.professional_type)} la ${locationName}.`,
+          'Aproba sau refuza cererea din contul VIASEE: Locatii -> Specialisti.',
+          'Aprobarea nu ii da acces la contul organizatiei.',
+          '',
+          'Echipa VIASEE',
+        ].join('\n'),
+      }).catch(() => null);
+    }
+  } catch (_error) {
+    // Notificarea nu blocheaza cererea.
+  }
+}
+
+async function requestAssociation(base44, svc, user, locationId, payload) {
+  const profile = await ownProfessionalProfile(svc, user);
+  if (!profile) return res({ error: 'Creează mai întâi profilul profesional.' }, 404);
+  if (profile.profile_review_status === 'archived' || profile.public_visibility_status === 'archived') {
+    return res({ error: 'Profilul profesional este arhivat.' }, 409);
+  }
+  const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
+  const blockReason = associationRequestBlockReason(location);
+  if (blockReason) return res({ error: blockReason }, 409);
+
+  const existing = (await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: profile.id, location_id: locationId }, '-created_date', 10))[0] || null;
+  if (existing?.active_status === 'activ') return res({ error: 'Ești deja asociat acestei locații.' }, 409);
+  if (existing && isPendingAssociationRequest(existing)) return res({ success: true, already_pending: true });
+
+  const pending = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: profile.id, association_request_status: 'pending' }, '-created_date', 50);
+  if (pending.filter(isPendingAssociationRequest).length >= ASSOCIATION_PENDING_REQUEST_LIMIT) {
+    return res({ error: `Ai deja ${ASSOCIATION_PENDING_REQUEST_LIMIT} cereri în așteptare. Așteaptă un răspuns sau anulează una.` }, 429);
+  }
+
+  const now = new Date().toISOString();
+  const record = associationRequestRecord({ profile, locationId, showPublicly: payload.show_publicly !== false, userId: user.id, now });
+  const assignment = existing
+    ? await svc.entities.ProfessionalLocationAssignment.update(existing.id, record)
+    : await svc.entities.ProfessionalLocationAssignment.create(record);
+  await audit(svc, user, {
+    entity_type: 'ProfessionalLocationAssignment',
+    entity_id: assignment.id || existing?.id,
+    action_type: 'request_professional_association',
+    changed_fields: Object.keys(record),
+    previous: existing ? { active_status: existing.active_status, association_request_status: existing.association_request_status || '' } : {},
+    next: { location_id: locationId, professional_id: profile.id, association_request_status: 'pending', visibility_consent_status: record.visibility_consent_status },
+    note: 'Specialistul a cerut asocierea cu locatia. Asocierea ramane inactiva si privata pana la decizia organizatiei.',
+  });
+  await notifyLocationManagers(base44, svc, location, profile);
+  return res({ success: true, association_request_status: 'pending' });
+}
+
+async function cancelAssociationRequest(svc, user, locationId) {
+  const profile = await ownProfessionalProfile(svc, user);
+  if (!profile) return res({ error: 'Profilul profesional nu a fost găsit.' }, 404);
+  const existing = (await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: profile.id, location_id: locationId }, '-created_date', 10))[0] || null;
+  if (!existing || !isPendingAssociationRequest(existing)) return res({ success: true, already_closed: true });
+  const now = new Date().toISOString();
+  const updates = { association_request_status: 'withdrawn', association_decided_at: now, association_decided_by_user_id: user.id, public_status: 'privat' };
+  await svc.entities.ProfessionalLocationAssignment.update(existing.id, updates);
+  await audit(svc, user, {
+    entity_type: 'ProfessionalLocationAssignment',
+    entity_id: existing.id,
+    action_type: 'withdraw_professional_association_request',
+    changed_fields: Object.keys(updates),
+    previous: { association_request_status: 'pending' },
+    next: { ...updates, location_id: locationId, professional_id: profile.id },
+    note: 'Specialistul si-a anulat cererea de asociere.',
+  });
+  return res({ success: true, association_request_status: 'withdrawn' });
+}
+
+async function decideAssociationRequest(svc, user, action, assignment, location) {
+  if (!isPendingAssociationRequest(assignment)) return res({ error: 'Cererea nu mai este în așteptare.' }, 409);
+  const now = new Date().toISOString();
+  let updates;
+  if (action === 'approve_association') {
+    const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
+    if (!profile) return res({ error: 'Profilul profesional nu a fost găsit.' }, 404);
+    updates = approvedAssociationPatch({ assignment, profile, location, actorUserId: user.id, now });
+  } else {
+    updates = declinedAssociationPatch({ actorUserId: user.id, now });
+  }
+  await svc.entities.ProfessionalLocationAssignment.update(assignment.id, updates);
+  await audit(svc, user, {
+    entity_type: 'ProfessionalLocationAssignment',
+    entity_id: assignment.id,
+    action_type: action === 'approve_association' ? 'approve_professional_association' : 'decline_professional_association',
+    changed_fields: Object.keys(updates),
+    previous: { active_status: assignment.active_status, association_request_status: 'pending', public_status: assignment.public_status || 'privat' },
+    next: { ...updates, location_id: location.id, professional_id: assignment.professional_id },
+    note: action === 'approve_association'
+      ? 'Organizatia a aprobat cererea specialistului. Nu s-a acordat acces la contul organizatiei.'
+      : 'Organizatia a refuzat cererea specialistului.',
+  });
+  return res({ success: true, ...updates });
+}
+
+async function addSelfAsSpecialist(svc, user, location) {
+  const profile = await ownProfessionalProfile(svc, user);
+  if (!profile) return res({ error: 'Creează mai întâi profilul profesional din cont.', code: 'professional_profile_missing' }, 404);
+  if (profile.profile_review_status === 'archived' || profile.public_visibility_status === 'archived') {
+    return res({ error: 'Profilul profesional este arhivat.' }, 409);
+  }
+  const existing = (await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: profile.id, location_id: location.id }, '-created_date', 10))[0] || null;
+  if (existing?.active_status === 'activ') return res({ success: true, already_associated: true, public_status: existing.public_status || 'privat' });
+  const now = new Date().toISOString();
+  const record = selfAssociationRecord({ profile, location, userId: user.id, now });
+  const assignment = existing
+    ? await svc.entities.ProfessionalLocationAssignment.update(existing.id, { ...record, association_request_status: '' })
+    : await svc.entities.ProfessionalLocationAssignment.create(record);
+  await audit(svc, user, {
+    entity_type: 'ProfessionalLocationAssignment',
+    entity_id: assignment.id || existing?.id,
+    action_type: 'add_self_as_location_specialist',
+    changed_fields: Object.keys(record),
+    previous: existing ? { active_status: existing.active_status, public_status: existing.public_status || 'privat' } : {},
+    next: { location_id: location.id, professional_id: profile.id, public_status: record.public_status },
+    note: record.public_status === 'public'
+      ? 'Administratorul locatiei s-a afisat ca specialist (acelasi cont, acord dat).'
+      : 'Administratorul locatiei s-a asociat ca specialist; ramane privat pana cand profilul e verificat si locatia publica.',
+  });
+  return res({ success: true, public_status: record.public_status });
 }
 
 async function getOwnAssignment(svc, user, locationId) {
@@ -226,6 +396,8 @@ Deno.serve(async (req) => {
     const professionalId = text(payload.professional_id);
 
     if (!locationId) return res({ error: 'location_id este obligatoriu' }, 400);
+    if (action === 'request_association') return requestAssociation(base44, svc, user, locationId, payload);
+    if (action === 'cancel_association_request') return cancelAssociationRequest(svc, user, locationId);
     if (action === 'withdraw') return withdrawOwnAssignment(svc, user, locationId);
     if (PROFESSIONAL_VISIBILITY_ACTIONS.includes(action)) return decideOwnVisibility(svc, user, action, locationId);
 
@@ -233,15 +405,24 @@ Deno.serve(async (req) => {
     if (access.error) return res({ error: access.error }, access.status);
 
     if (action === 'list') {
-      return res({ assignments: await listAssignments(svc, locationId, access.location) });
+      return res({
+        assignments: await listAssignments(svc, locationId, access.location),
+        current_user_professional: profileSummary(await ownProfessionalProfile(svc, user)),
+      });
     }
 
-    if (!['deactivate', 'set_visibility', 'request_visibility'].includes(action)) return res({ error: 'Actiune invalida' }, 400);
+    if (action === 'add_self') return addSelfAsSpecialist(svc, user, access.location);
+
+    if (!['deactivate', 'set_visibility', 'request_visibility', 'approve_association', 'decline_association'].includes(action)) return res({ error: 'Actiune invalida' }, 400);
     if (!professionalId) return res({ error: 'professional_id este obligatoriu' }, 400);
 
     const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, location_id: locationId }, '-created_date', 10);
     const assignment = assignments[0] || null;
     if (!assignment) return res({ error: 'Asocierea specialistului nu a fost gasita' }, 404);
+
+    if (action === 'approve_association' || action === 'decline_association') {
+      return decideAssociationRequest(svc, user, action, assignment, access.location);
+    }
 
     if (action === 'request_visibility' || (action === 'set_visibility' && text(payload.public_status) === 'public')) {
       if (assignment.active_status !== 'activ') return res({ error: 'Doar o asociere activa poate fi propusa pentru publicare' }, 409);
