@@ -20,7 +20,7 @@ const home = homeSources['src/pages/Home.jsx'];
 // Componentele folosite efectiv de home (cele nefolosite, ex. ProvidersShowcase, nu intra in pagina).
 const used = ['src/pages/Home.jsx', 'src/components/home/Hero.jsx', 'src/components/home/CategoryShowcase.jsx',
   'src/components/home/CategoryStrip.jsx', 'src/components/home/SituationExplainer.jsx',
-  'src/components/home/HowItWorks.jsx', 'src/components/home/ProCta.jsx'];
+  'src/components/home/HowItWorks.jsx', 'src/components/home/ClientJourneyVideo.jsx', 'src/components/home/ProCta.jsx'];
 for (const file of used) {
   assert.ok(homeSources[file], `${file} lipseste`);
   const source = stripComments(homeSources[file]);
@@ -31,13 +31,7 @@ for (const file of used) {
   assert.doesNotMatch(source, /mix-blend-/, `${file}: textura se suprapune normal (diferenta sub un nivel de culoare), fara strat de amestec`);
 }
 
-// Halourile colorate raman, desenate ca gradient (aproape gratuit la derulare), nu ca filtru blur.
-// (Categoriile nu mai au halouri din 2026-09-26: banda cu placute din CategoryStrip.jsx.)
-for (const file of ['src/components/home/HowItWorks.jsx']) {
-  const source = stripComments(homeSources[file]);
-  assert.match(source, /import \{ softGlowBackground \} from "@\/lib\/softGlow"/, `${file}: halourile folosesc softGlowBackground`);
-  assert.match(source, /style=\{\{ backgroundImage: step\.glow \}\}/, `${file}: haloul e un gradient`);
-}
+// Cardurile Cum funcționează au fost înlocuite cu un video; nu mai au halouri.
 const softGlow = await read('src/lib/softGlow.js');
 assert.match(softGlow, /SOFT_GLOW_BLEED_PX = 128/);
 assert.match(softGlow, /radial-gradient\(closest-side/);
