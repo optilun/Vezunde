@@ -101,6 +101,12 @@ Deno.serve(async (req) => {
       revoked_by_user_id: user.id,
       revoked_at: revokedAt,
     });
+    // 2026-10-03 (structura conturilor, pasul 2): invitatiile de specialist trimise impreuna cu
+    // aceasta invitatie se revoca odata cu ea.
+    const bundled = await svc.entities.ProfessionalInvitation.filter({ bundled_member_invitation_id: invitation.id, status: 'pending' }, '-created_date', 20).catch(() => []);
+    for (const row of bundled) {
+      await svc.entities.ProfessionalInvitation.update(row.id, { status: 'revoked', revoked_by_user_id: user.id, revoked_at: revokedAt });
+    }
     await svc.entities.DirectoryAuditRecord.create({
       entity_type: 'ProviderMemberInvitation',
       entity_id: invitation.id,
@@ -112,7 +118,7 @@ Deno.serve(async (req) => {
         organization_wide_access: wideInvitation,
         invited_location_ids: invitedLocationIds,
       }),
-      new_values: JSON.stringify({ status: 'revoked', actor_role: actor.role }),
+      new_values: JSON.stringify({ status: 'revoked', actor_role: actor.role, revoked_specialist_invitation_ids: bundled.map((row) => row.id) }),
       admin_user_id: user.id,
       admin_email: user.email || '',
       note: `Invitatie revocata de ${actor.role} in limita scope-ului sau.`,
