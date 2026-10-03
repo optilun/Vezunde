@@ -9,6 +9,7 @@ import {
   professionalTypeLabel,
 } from '../../shared/professionalIdentity.js';
 import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
+import { reconciledAssignmentPublicStatus } from '../../shared/professionalProfileStatus.js';
 
 // 2026-09-03: lista de tipuri, traducerea tip -> rol si etichetele romanesti vin acum din
 // shared/professionalIdentity.js. Erau scrise identic si in manageMyProfessionalProfile.
@@ -515,7 +516,19 @@ async function acceptInvitation(svc, user, payload, req) {
       confirmed_by_professional_at: new Date().toISOString(),
       active_status: 'activ',
       public_status: 'privat',
+      association_origin: 'invitation',
     };
+    // 2026-10-03 (structura conturilor, pasul 2). La invitatia de echipa care anunta si afisarea ca
+    // specialist, persoana isi da acordul de afisare in acelasi pas (bifa de pe pagina de acceptare).
+    // Asocierea devine publica doar daca profilul e deja verificat si locatia publica; altfel
+    // ramane privata pana la aprobarea profilului, care reconciliaza asocierile cu acord dat.
+    if (payload.accept_visibility === true && currentInvitation.bundled_member_invitation_id) {
+      const decidedAt = new Date().toISOString();
+      assignmentData.visibility_consent_status = 'accepted';
+      assignmentData.visibility_decided_at = decidedAt;
+      assignmentData.visibility_decided_by_user_id = user.id;
+      assignmentData.public_status = reconciledAssignmentPublicStatus({ profile, assignment: assignmentData, location });
+    }
 
     let assignment;
     if (existingAssignments[0]) {
@@ -542,9 +555,13 @@ async function acceptInvitation(svc, user, payload, req) {
         status: 'accepted',
         professional_id: profile.id,
         location_id: currentInvitation.location_id,
-        assignment_public_status: 'privat',
+        assignment_public_status: assignmentData.public_status,
+        visibility_consent_status: assignmentData.visibility_consent_status || 'not_requested',
+        bundled_member_invitation_id: currentInvitation.bundled_member_invitation_id || '',
       },
-      note: 'Specialistul a confirmat asocierea. Nu s-a creat ProviderMembership si profilul nu a fost publicat.',
+      note: currentInvitation.bundled_member_invitation_id
+        ? 'Specialistul a confirmat asocierea odata cu invitatia de echipa.'
+        : 'Specialistul a confirmat asocierea. Nu s-a creat ProviderMembership si profilul nu a fost publicat.',
     });
 
     return response({
