@@ -81,8 +81,8 @@ export default function ProfessionalOnboarding() {
   return (
     <WizardShell
       split
-      step={1}
-      total={1}
+      phases={["Identitate profesională"]}
+      phaseStep={1}
       title="Creează profilul tău profesional"
       subtitle="Un profil al tău, pe care îl poți asocia ulterior cu locațiile unde lucrezi."
       onBack={() => navigate("/pentru-specialisti")}
