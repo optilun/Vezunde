@@ -6,6 +6,7 @@ import {
   organizationRoleMarkerForAccessRole,
   storedProviderRoleForAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
+import { professionalTypeLabel } from '../../shared/professionalIdentity.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 const ACTIONS = ['list_mine', 'inspect', 'accept'];
@@ -92,6 +93,41 @@ async function loadContext(svc, invitation) {
   return { organization, locations, organizationWide };
 }
 
+// 2026-10-03 (structura conturilor, pasul 2). Invitatiile de specialist trimise impreuna cu aceasta
+// invitatie de echipa: se arata inainte de acceptare si se accepta in acelasi pas.
+async function bundledSpecialistInvitations(svc, invitation) {
+  const rows = await svc.entities.ProfessionalInvitation.filter({ bundled_member_invitation_id: invitation.id, status: 'pending' }, '-created_date', 20).catch(() => []);
+  return rows.filter((row) => new Date(row.expires_at).getTime() > Date.now());
+}
+
+async function specialistView(svc, rows) {
+  if (rows.length === 0) return null;
+  const locations = [];
+  for (const row of rows) {
+    const location = await svc.entities.ProviderLocation.get(row.location_id).catch(() => null);
+    if (location) locations.push(safeLocation(location));
+  }
+  return {
+    professional_type: rows[0].professional_type,
+    professional_type_label: professionalTypeLabel(rows[0].professional_type),
+    locations,
+  };
+}
+
+async function acceptBundledSpecialistInvitations(base44, rows, visibilityConsent) {
+  const results = [];
+  for (const row of rows) {
+    const raw = await base44.functions.invoke('professionalInvitationOps', {
+      action: 'accept',
+      invitation_id: row.id,
+      accept_visibility: visibilityConsent,
+    }).catch((error) => ({ data: { error: error?.response?.data?.error || error?.message || 'Eroare' } }));
+    const data = raw?.data ?? raw ?? {};
+    results.push({ invitation_id: row.id, location_id: row.location_id, success: data.success === true, error: data.error || '' });
+  }
+  return results;
+}
+
 async function expireIfNeeded(svc, invitation) {
   if (new Date(invitation.expires_at).getTime() > Date.now()) return false;
   if (invitation.status === 'pending') await svc.entities.ProviderMemberInvitation.update(invitation.id, { status: 'expired' });
@@ -173,7 +209,8 @@ Deno.serve(async (req) => {
     const context = await loadContext(svc, invitation);
     if (context.error) return res({ error: context.error }, context.status);
     const view = invitationView(invitation, context.organization, context.locations);
-    if (action === 'inspect') return res({ invitation: view });
+    const bundled = await bundledSpecialistInvitations(svc, invitation);
+    if (action === 'inspect') return res({ invitation: { ...view, specialist: await specialistView(svc, bundled) } });
 
     const accessRole = invitation.proposed_role;
     const storedRole = storedProviderRoleForAccessRole(accessRole);
@@ -220,8 +257,14 @@ Deno.serve(async (req) => {
     });
     const source = token ? 'secure_link' : 'account_email_match';
     await auditAcceptance(svc, user, invitation, memberships, source, organizationWide);
+    // Acordul de afisare vine din bifa de pe pagina de acceptare (implicit da, pentru ca invitatia o
+    // anunta explicit). Fara bifa, asocierea se creeaza privata, ca la o invitatie de specialist simpla.
+    const specialistResults = bundled.length
+      ? await acceptBundledSpecialistInvitations(base44, bundled, payload.specialist_visibility_consent !== false)
+      : [];
     return res({
       success: true,
+      specialist_results: specialistResults,
       invitation: view,
       memberships: memberships.map((membership) => safeMembership(membership, accessRole)),
       accepted_at: acceptedAt,
