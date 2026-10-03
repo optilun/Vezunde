@@ -77,6 +77,12 @@ locations.push(
   { ...locations[0], id: 'suspended-branch', organization_id: 'org-lensa', profile_control_status: 'suspended' },
   { ...locations[0], id: 'b2b-branch', organization_id: 'org-lensa', provider_profile_type: 'optical_laboratory_b2b' },
 );
+// A fresh function instance loads the extended fixture instead of its 60-second cache.
+vm.runInNewContext(source, {
+  Deno: { serve: (fn) => { handler = fn; } },
+  Response, Date, deriveCanonicalDirectoryState,
+  createClientFromRequest: () => ({ asServiceRole: svc }),
+});
 async function search(q) {
   return (await handler({ json: async () => ({ q }) })).json();
 }
