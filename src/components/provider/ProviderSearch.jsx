@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import SimilarLocationCard from "@/components/provider/SimilarLocationCard";
 import OrganizationSearchResult from "@/components/provider/OrganizationSearchResult";
+import { standaloneClaimLocations } from "@/lib/claimSearchResults";
 
 const GooglePlacesResults = lazy(() => import("@/components/provider/GooglePlacesResults"));
 
@@ -19,9 +20,11 @@ export default function ProviderSearch({ onClaim, onNew }) {
   const reqRef = useRef(0);
 
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) { setResults([]); setOrganizations([]); setSearchError(false); return; }
     const reqId = ++reqRef.current;
+    setResults([]);
+    setOrganizations([]);
+    const q = query.trim();
+    if (q.length < 2) { setLoading(false); setSearchError(false); return; }
     const t = setTimeout(async () => {
       setLoading(true);
       try {
@@ -40,9 +43,13 @@ export default function ProviderSearch({ onClaim, onNew }) {
         if (reqId === reqRef.current) setLoading(false);
       }
     }, 300);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      reqRef.current += 1;
+    };
   }, [query, searchRetry]);
 
+  const standaloneLocations = standaloneClaimLocations(results, organizations);
   const handleClaim = (location, options) => onClaim(location, options);
   const showGoogleTrigger = query.trim().length >= 3 && !loading && !searchError && results.length === 0 && organizations.length === 0;
 
@@ -64,7 +71,8 @@ export default function ProviderSearch({ onClaim, onNew }) {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Caută după nume, oraș sau adresă"
+          placeholder="Organizație, locație, oraș sau adresă"
+          aria-label="Caută organizația sau locația"
           autoComplete="off"
           enterKeyHint="search"
           className="min-h-12 w-full rounded-xl border border-border bg-card py-3.5 pl-11 pr-11 text-base outline-none transition-colors focus:border-foreground/50 sm:text-sm"
@@ -88,7 +96,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
             onClaimLocation={(location) => handleClaim(location)}
           />
         ))}
-        {results.map((location) => {
+        {standaloneLocations.map((location) => {
           const requestsAccess = location.claim_action === "request_access";
           return (
             <div key={location.id} className="rounded-2xl border border-border bg-card p-4 sm:rounded-xl">
