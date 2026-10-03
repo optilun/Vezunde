@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Maximize, Pause, Play, RotateCcw } from "lucide-react";
-import { useInViewport, usePrefersReducedMotion } from "@/lib/motion";
+import { useInViewport, useMediaQuery, usePrefersReducedMotion } from "@/lib/motion";
 
 const CHAPTERS = [
   { title: "Spui ce cauți", short: "Descrii", time: 0 },
@@ -18,7 +18,7 @@ export default function ClientJourneyVideo() {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [failed, setFailed] = useState(false);
-  const mobile = useRef(typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches).current;
+  const mobile = useMediaQuery("(max-width: 639px)");
   const saveData = typeof navigator !== "undefined" && navigator.connection?.saveData;
 
   useEffect(() => {
