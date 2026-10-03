@@ -6,6 +6,7 @@ import {
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
+import { filterByIdList, getManyByIds, groupRowsBy, rowsFor, uniqueIds } from '../../shared/providerWorkspaceBatchQueries.js';
 
 const ACCESS_ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 function res(body, status = 200) { return Response.json(body, { status }); }
@@ -59,6 +60,19 @@ function safeMembership(membership, userInfo, organizationId = '', resolution = 
   };
 }
 async function userInfo(svc, userId) { return await svc.entities.User.get(userId).catch(() => null); }
+// 2026-10-03. Utilizatorii se citesc grupat; daca citirea grupata esueaza, revenim la citirea
+// unuia cate unul (comportamentul vechi).
+async function usersById(svc, userIds) {
+  const ids = uniqueIds(userIds);
+  const users = await getManyByIds(svc.entities.User, ids).catch(() => null);
+  if (users) return users;
+  const fallback = new Map();
+  for (const userId of ids) {
+    const info = await userInfo(svc, userId);
+    if (info) fallback.set(userId, info);
+  }
+  return fallback;
+}
 function highest(roles) {
   if (roles.includes(ORGANIZATION_OWNER_ROLE)) return ORGANIZATION_OWNER_ROLE;
   if (roles.includes(ORGANIZATION_ADMIN_ROLE)) return ORGANIZATION_ADMIN_ROLE;
@@ -67,11 +81,12 @@ function highest(roles) {
   return '';
 }
 
-async function counters(svc, locationIds, resolutionByOrganization, organizationIdByLocation) {
+// `rowsByLocation`: membership-urile locatiilor vizibile, citite o singura data (toate statusurile).
+function counters(rowsByLocation, locationIds, resolutionByOrganization, organizationIdByLocation) {
   const byId = new Map();
   const perLocation = {};
   for (const locationId of locationIds) {
-    const rows = await svc.entities.ProviderMembership.filter({ location_id: locationId, status: 'active' }, '-created_date', 500);
+    const rows = rowsFor(rowsByLocation, locationId).filter((membership) => membership.status === 'active');
     const valid = rows.filter((membership) => role(providerMembershipAccessRole(membership)));
     perLocation[locationId] = [...new Set(valid.map((membership) => membership.user_id))].length;
     for (const membership of valid) byId.set(membership.id, membership);
@@ -116,12 +131,13 @@ export async function handle(req: Request) {
     const organizationIdByMembership = new Map();
     const resolutionByOrganization = new Map();
     const locationsByOrganization = new Map();
+    const locationsWithoutOrganization = await getManyByIds(
+      svc.entities.ProviderLocation,
+      own.filter((membership) => !clean(membership.organization_id)).map((membership) => membership.location_id),
+    );
     for (const membership of own) {
       let organizationId = clean(membership.organization_id);
-      if (!organizationId) {
-        const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
-        organizationId = clean(location?.organization_id);
-      }
+      if (!organizationId) organizationId = clean(locationsWithoutOrganization.get(membership.location_id)?.organization_id);
       if (organizationId) organizationIdByLocation.set(membership.location_id, organizationId);
       organizationIdByMembership.set(membership.id, organizationId);
     }
@@ -173,21 +189,26 @@ export async function handle(req: Request) {
     const manageable = [...manageableLocationIds];
     const canManage = manageable.length > 0;
 
+    // 2026-10-03. Membership-urile tuturor locatiilor vizibile intr-o citire grupata (inainte, una
+    // per locatie aici si inca una per locatie pentru numaratori).
+    const visibleLocationIds = canManage ? manageable : assigned;
+    const rowsByLocation = groupRowsBy(
+      await filterByIdList(svc.entities.ProviderMembership, 'location_id', visibleLocationIds, {}, { sort: '-created_date' }),
+      'location_id',
+    );
     const visibleRows = new Map();
-    for (const locationId of canManage ? manageable : assigned) {
-      const rows = await svc.entities.ProviderMembership.filter({ location_id: locationId }, '-created_date', 500);
-      for (const membership of rows) {
+    for (const locationId of visibleLocationIds) {
+      for (const membership of rowsFor(rowsByLocation, locationId)) {
         if (role(providerMembershipAccessRole(membership)) && (canManage || membership.user_id === user.id)) visibleRows.set(membership.id, membership);
       }
     }
 
     const members = [];
-    const userCache = new Map();
+    const userCache = await usersById(svc, [...visibleRows.values()].map((membership) => membership.user_id));
     for (const membership of visibleRows.values()) {
-      if (!userCache.has(membership.user_id)) userCache.set(membership.user_id, await userInfo(svc, membership.user_id));
       const organizationId = organizationIdByLocation.get(membership.location_id) || membership.organization_id || '';
       if (!resolutionByOrganization.has(organizationId)) resolutionByOrganization.set(organizationId, await loadOrganizationOwnerScopeResolution(svc, organizationId));
-      members.push(safeMembership(membership, userCache.get(membership.user_id), organizationId, resolutionByOrganization.get(organizationId)));
+      members.push(safeMembership(membership, userCache.get(membership.user_id) || null, organizationId, resolutionByOrganization.get(organizationId)));
     }
 
     const pendingInvitations = canManage
@@ -203,7 +224,6 @@ export async function handle(req: Request) {
     const availableRoles = wideOwner
       ? [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff']
       : (anyOwner ? [ORGANIZATION_OWNER_ROLE, 'location_manager', 'location_staff'] : (currentActorRole === ORGANIZATION_ADMIN_ROLE ? ['location_manager', 'location_staff'] : []));
-    const visibleLocationIds = canManage ? manageable : assigned;
 
     return res({
       mode: 'provider_workspace',
@@ -220,7 +240,7 @@ export async function handle(req: Request) {
       available_invitation_roles: availableRoles,
       members,
       invitations: pendingInvitations,
-      counters: await counters(svc, visibleLocationIds, resolutionByOrganization, organizationIdByLocation),
+      counters: counters(rowsByLocation, visibleLocationIds, resolutionByOrganization, organizationIdByLocation),
     });
   } catch (error) {
     return res({ error: error?.message || 'Eroare neasteptata' }, 500);
