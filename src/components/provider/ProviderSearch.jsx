@@ -25,8 +25,9 @@ export default function ProviderSearch({ onClaim, onNew }) {
     setOrganizations([]);
     const q = query.trim();
     if (q.length < 2) { setLoading(false); setSearchError(false); return; }
+    setLoading(true);
+    setSearchError(false);
     const t = setTimeout(async () => {
-      setLoading(true);
       try {
         const res = await base44.functions.invoke("getClaimableProviderLocations", { q });
         if (res.data?.error) throw new Error(res.data.error);
