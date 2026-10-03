@@ -72,6 +72,15 @@ export function isApprovedRoleAllowed(claimScope, relationship, role) {
   return true;
 }
 
+// 2026-10-03 (structura conturilor, pasul 3): nu mai exista „owner selectiv”. Rolul de proprietar
+// se aproba doar cand aprobarea cuprinde toate locatiile organizatiei. Daca unele locatii nu sunt
+// ale solicitantului, adminul le muta intai din organizatie (Directory Ops) sau aproba ca manager.
+export function ownerApprovalCoversOrganization(approvedLocationIds = [], organizationLocationIds = []) {
+  const approved = new Set(uniqueClaimLocationIds(approvedLocationIds));
+  const organization = uniqueClaimLocationIds(organizationLocationIds);
+  return organization.length > 0 && organization.every((locationId) => approved.has(locationId));
+}
+
 export function normalizeClaimScopeSelection(input = {}) {
   const primaryLocationId = clean(input.primaryLocationId);
   const organizationId = clean(input.organizationId);
