@@ -66,7 +66,7 @@ expect('src/components/provider/ContactIdentityFields.jsx', 'requestedRoleForCla
 expect('src/components/provider/ClaimRelationStep.jsx', 'requestedLocationRoleForRelationship', 'Pasul de relatie pastreaza rolul sigur pentru o locatie');
 expect('src/components/provider/ClaimRelationStep.jsx', 'întreaga organizație', 'Pasul de relatie explica optiunea organizationala separata');
 expect('src/components/provider/ClaimReviewStep.jsx', 'requestedRoleForClaimScope', 'Revizuirea afiseaza rolul pentru scope-ul ales');
-expect('src/components/provider/ClaimReviewStep.jsx', 'Locatii incluse', 'Revizuirea afiseaza explicit locatiile solicitate');
+expect('src/components/provider/ClaimReviewStep.jsx', 'Locații incluse', 'Revizuirea afiseaza explicit locatiile solicitate');
 // 2026-10-02: la o locatie noua cererea creeaza si organizatia, iar backendul (ROLE_BY_RELATIONSHIP)
 // da owner organizatiei proprietarului; pasul de relatie arata acelasi rol (test E2E 2026-10-02).
 expect('src/components/provider/steps/WizClaimRelation.jsx', 'requestedRoleForRelationship(contact.claimant_relationship)', 'Wizardul de locatie noua arata rolul acordat de backend');
