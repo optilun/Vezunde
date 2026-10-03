@@ -5,7 +5,7 @@ export default function SpecialistsLocationArtwork() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none relative hidden aspect-[1.12] w-full select-none items-center px-5 lg:flex"
+      className="pointer-events-none relative hidden w-full select-none items-center px-5 py-5 lg:flex"
       style={{
         backgroundImage: "radial-gradient(circle, #D7D6D2 1px, transparent 1px)",
         backgroundSize: "22px 22px",
