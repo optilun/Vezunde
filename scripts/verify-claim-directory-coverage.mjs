@@ -108,4 +108,28 @@ assert.equal(standaloneClaimLocations([{ id: 'fake-name-link', name: 'Lensa inde
 assert.equal(standaloneClaimLocations([{ id: 'single-public' }], ranked.organizations).length, 1, 'A single location remains selectable');
 assert.equal(standaloneClaimLocations([{ id: 'other-org-location' }], ranked.organizations).length, 1, 'Branches of an omitted organization stay selectable');
 
-console.log('Claim directory coverage and organization link integrity: OK');
+const { rememberClaimSearchSelection, readClaimSearchSelection, clearClaimSearchSelection } = await import('../src/lib/claimSearchSelection.js');
+const savedValues = new Map([['pending_claim_location', '{"id":"previous-draft"}'], ['pending_new_location_wizard', '{"name":"previous-new-location"}']]);
+const storage = {
+  getItem: (key) => savedValues.get(key) || null,
+  setItem: (key, value) => savedValues.set(key, value),
+  removeItem: (key) => savedValues.delete(key),
+};
+rememberClaimSearchSelection({
+  selectedLocation: grouped.organizations[0].locations[0],
+  selectedOrganization: grouped.organizations[0],
+  preferredScope: 'organization',
+}, storage, 1000);
+const restored = readClaimSearchSelection(storage, 2000);
+assert.equal(restored.selectedOrganization.name, 'Lensa');
+assert.equal(restored.preferredScope, 'organization');
+assert.equal(restored.selectedOrganization.locations, undefined, 'Only the organization summary is saved');
+assert.equal(savedValues.get('pending_claim_location'), '{"id":"previous-draft"}', 'Existing claim drafts are preserved');
+assert.equal(savedValues.get('pending_new_location_wizard'), '{"name":"previous-new-location"}', 'Existing new-location drafts are preserved');
+assert.equal(readClaimSearchSelection(storage, 1000 + 31 * 60 * 1000), null, 'The selection expires');
+clearClaimSearchSelection(storage);
+assert.equal(readClaimSearchSelection(storage, 2000), null);
+assert.equal(savedValues.size, 2, 'Cleanup affects only search selection');
+assert.doesNotThrow(() => rememberClaimSearchSelection({}, { setItem: () => { throw new Error('blocked'); } }));
+assert.equal(readClaimSearchSelection({ getItem: () => '{invalid' }), null);
+console.log('Claim directory coverage, organization ranking, visibility and selection continuity: OK');
