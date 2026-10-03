@@ -24,6 +24,7 @@ const ProviderLocationComparisonPanel = lazy(() => import("./ProviderLocationCom
 const ProviderLocationModulePage = lazy(() => import("./ProviderLocationModulePage"));
 const ProviderLeadInbox = lazy(() => import("./ProviderLeadInbox"));
 const ProviderAccess = lazy(() => import("./ProviderAccess"));
+const ProviderTeamSpecialistsLinks = lazy(() => import("./ProviderTeamSpecialistsLinks"));
 const ProviderSettings = lazy(() => import("./ProviderSettings"));
 
 function WorkspaceSectionLoading() {
@@ -716,11 +717,20 @@ export default function ProviderWorkspaceRoot({
               />
             )}
             {safeSection === "access" && canManageMembers && (
-              <ProviderAccess
-                organizationId={selectedOrganizationId}
-                locations={locations}
-                onRefresh={refreshOverviewInPlace}
-              />
+              // 2026-10-03 (structura conturilor, pasul 1): „Echipă” = cine lucrează în contul
+              // organizației (acces) + cine apare public ca specialist la fiecare locație.
+              <div className="space-y-6">
+                <ProviderAccess
+                  organizationId={selectedOrganizationId}
+                  locations={locations}
+                  onRefresh={refreshOverviewInPlace}
+                />
+                <ProviderTeamSpecialistsLinks
+                  locations={locations}
+                  canOpen={(locationId) => accessForLocation(locationId).capabilities.includes("location.manage_specialists")}
+                  onOpenModule={openLocationModule}
+                />
+              </div>
             )}
             {safeSection === "settings" && canManageSettings && (
               <ProviderSettings user={user} workspace={scopedWorkspace} overview={overview} selectedLocationId={selectedLocationId} onSelectLocation={selectLocation} onSwitchMode={onSwitchMode} onNavigate={goToSection} onRefresh={refreshOverviewInPlace} onBillingSynced={() => setEntitlementRefreshTick(tick => tick + 1)} />
