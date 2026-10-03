@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff, Clock3 } from "lucide-react";
+import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff, Clock3, Stethoscope, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 
@@ -52,7 +53,14 @@ export default function ProviderTeam({ locationId }) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [currentProfessional, setCurrentProfessional] = useState(null);
 
+  // 2026-10-03 (structura conturilor, pasul 2): cererile „Lucrez aici” trimise de specialisti apar
+  // separat, cu Aprobă / Refuză. Cererile refuzate sau anulate nu mai apar in lista.
+  const associationRequests = useMemo(() => assignments.filter((item) => item.is_association_request), [assignments]);
+  const listedAssignments = useMemo(() => assignments.filter((item) => !item.is_association_request
+    && !(item.association_origin === "professional_request" && item.active_status !== "activ" && ["declined", "withdrawn"].includes(item.association_request_status))), [assignments]);
+  const selfAssociated = Boolean(currentProfessional && assignments.some((item) => item.professional_id === currentProfessional.id && item.active_status === "activ"));
   const activeAssignments = useMemo(() => assignments.filter((item) => item.active_status === "activ"), [assignments]);
   const pendingInvitations = useMemo(() => invitations.filter((item) => item.status === "pending"), [invitations]);
   const pendingVisibility = useMemo(() => assignments.filter((item) => item.active_status === "activ" && item.visibility_consent_status === "pending"), [assignments]);
@@ -67,6 +75,7 @@ export default function ProviderTeam({ locationId }) {
     setPublicTeam(publicRes.data?.team || []);
     setInvitations(inviteRes.data?.invitations || []);
     setAssignments(assignmentRes.data?.assignments || []);
+    setCurrentProfessional(assignmentRes.data?.current_user_professional || null);
     if (inviteRes.data?.error) setMsg(inviteRes.data.error);
     else if (assignmentRes.data?.error) setMsg(assignmentRes.data.error);
   };
@@ -179,6 +188,48 @@ export default function ProviderTeam({ locationId }) {
     await load();
   };
 
+  const decideAssociation = async (assignment, action) => {
+    const approving = action === "approve_association";
+    const confirmed = window.confirm(approving
+      ? `Aprobi asocierea lui ${assignment.full_name} cu această locație? Nu primește acces la contul organizației.`
+      : `Refuzi cererea lui ${assignment.full_name}?`);
+    if (!confirmed) return;
+    setSaving(true);
+    setMsg("");
+    const response = await base44.functions.invoke("manageProfessionalAssignment", {
+      action,
+      location_id: locationId,
+      professional_id: assignment.professional_id,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setSaving(false);
+    if (response.data?.error) {
+      setMsg(response.data.error);
+      return;
+    }
+    setMsg(approving
+      ? (response.data?.public_status === "public" ? "Cererea a fost aprobată. Specialistul apare public la această locație." : "Cererea a fost aprobată. Specialistul apare public după ce profilul lui este verificat.")
+      : "Cererea a fost refuzată.");
+    await load();
+  };
+
+  const addSelf = async () => {
+    setSaving(true);
+    setMsg("");
+    const response = await base44.functions.invoke("manageProfessionalAssignment", {
+      action: "add_self",
+      location_id: locationId,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setSaving(false);
+    if (response.data?.error) {
+      setMsg(response.data.error);
+      return;
+    }
+    setMsg(response.data?.public_status === "public"
+      ? "Apari acum ca specialist la această locație."
+      : "Ești asociat ca specialist. Apari public după ce profilul tău profesional este verificat și locația e publicată.");
+    await load();
+  };
+
   const copyLink = async () => {
     if (!newLink) return;
     await navigator.clipboard.writeText(newLink);
@@ -188,6 +239,33 @@ export default function ProviderTeam({ locationId }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
       <div className="order-2 space-y-4 xl:order-1">
+        {associationRequests.length > 0 && (
+          <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
+            <div className="mb-3">
+              <h2 className="text-sm font-bold">Cereri „Lucrez aici”</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Specialiști care spun că lucrează la această locație. Aprobă doar dacă știi că e adevărat. Aprobarea nu dă acces la contul organizației.</p>
+            </div>
+            <ul className="space-y-2">
+              {associationRequests.map((request) => (
+                <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-3 text-xs">
+                  <div className="min-w-0">
+                    <div className="font-bold">{request.full_name}</div>
+                    <div className="mt-0.5 text-muted-foreground">{roleLabel(request.professional_type)}{request.association_requested_at ? ` · cerere din ${formatDate(request.association_requested_at)}` : ""}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" disabled={saving} onClick={() => decideAssociation(request, "approve_association")} className="inline-flex items-center gap-1 rounded-full border border-green-200 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50">
+                      <Check className="h-3.5 w-3.5" /> Aprobă
+                    </button>
+                    <button type="button" disabled={saving} onClick={() => decideAssociation(request, "decline_association")} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
+                      <X className="h-3.5 w-3.5" /> Refuză
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -197,9 +275,9 @@ export default function ProviderTeam({ locationId }) {
             <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{activeAssignments.length} activi · {publicTeam.length} publici</span>
           </div>
 
-          {assignments.length === 0 ? <EmptyCard>Nu există specialiști asociați acestei locații.</EmptyCard> : (
+          {listedAssignments.length === 0 ? <EmptyCard>Nu există specialiști asociați acestei locații.</EmptyCard> : (
             <ul className="space-y-2">
-              {assignments.map((assignment) => {
+              {listedAssignments.map((assignment) => {
                 const status = assignmentStatus(assignment);
                 const isPublic = assignment.public_status === "public";
                 const isPending = assignment.visibility_consent_status === "pending";
@@ -280,6 +358,30 @@ export default function ProviderTeam({ locationId }) {
       </div>
 
       <aside className="order-1 space-y-4 xl:sticky xl:top-4 xl:order-2">
+        {/* 2026-10-03 (structura conturilor, pasul 2): ownerul/managerul care e si specialist se
+            afiseaza singur, fara sa-si trimita invitatie pe email. */}
+        {!selfAssociated && (
+          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Stethoscope className="h-4 w-4" /></div>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold">Lucrezi și tu aici ca specialist?</h2>
+                {currentProfessional ? (
+                  <>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Apari la această locație ca {currentProfessional.professional_type_label || "specialist"}, cu profilul tău profesional. Public doar după ce profilul e verificat de VIASEE.</p>
+                    <button type="button" disabled={saving} onClick={addSelf} className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
+                      <Stethoscope className="h-3.5 w-3.5" /> Afișează-mă ca specialist
+                    </button>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Creează-ți mai întâi <Link to="/profil-profesional/nou" className="font-semibold underline">profilul profesional</Link>, apoi te poți afișa aici dintr-un clic.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <Eye className="h-4 w-4" />
