@@ -5,6 +5,7 @@ import ClaimForm from "@/components/provider/ClaimForm";
 import NewLocationWizard from "@/components/provider/NewLocationWizard";
 import WizardShell from "@/components/intake/WizardShell";
 import SelectedLocationCard from "@/components/provider/SelectedLocationCard";
+import { clearClaimSearchSelection, readClaimSearchSelection } from "@/lib/claimSearchSelection";
 
 const PHASES = ["Găsește profilul", "Confirmă relația", "Alege accesul", "Date private", "Revizuire"];
 const STAGE_STEP = { relation: 2, scope: 3, contact: 4, review: 5 };
@@ -58,6 +59,7 @@ const getResumeClaimStep = (contact, scope, storedStep) => {
 };
 
 const clearResumeState = () => {
+  clearClaimSearchSelection();
   const storage = getSessionStorage();
   if (!storage) return;
   try {
@@ -73,7 +75,9 @@ const clearResumeState = () => {
 
 export default function AddOrClaim() {
   const navigate = useNavigate();
-  const { state: navState } = useLocation();
+  const { state: routeState } = useLocation();
+  const [savedSearchSelection] = useState(() => readClaimSearchSelection());
+  const navState = routeState || savedSearchSelection;
   const preselectedLocation = navState?.selectedLocation || null;
   const startWithNewLocation = navState?.startFlow === "new_location";
 
