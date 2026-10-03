@@ -64,7 +64,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Cauta dupa nume, oras sau adresa"
+          placeholder="Caută după nume, oraș sau adresă"
           autoComplete="off"
           enterKeyHint="search"
           className="min-h-12 w-full rounded-xl border border-border bg-card py-3.5 pl-11 pr-11 text-base outline-none transition-colors focus:border-foreground/50 sm:text-sm"
@@ -73,7 +73,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
       </div>
 
       {query.trim().length === 0 && (
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">Verificam mai intai daca profilul exista deja. Incepe sa scrii pentru a cauta.</p>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Verificăm mai întâi dacă profilul există deja. Începe să scrii pentru a căuta.</p>
       )}
 
       <div className="mt-4 space-y-3">
@@ -104,7 +104,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
                   <span className="break-words">{location.city}{location.address ? `, ${location.address}` : ""}</span>
                 </div>
                 <div className="mt-2 text-xs leading-5 text-muted-foreground">
-                  {requestsAccess ? "Profil administrat. Solicitarea va fi verificata inainte de acordarea accesului." : "Profil disponibil pentru revendicare."}
+                  {requestsAccess ? "Profil administrat. Solicitarea va fi verificată înainte de acordarea accesului." : "Profil disponibil pentru revendicare."}
                 </div>
               </div>
               <button
@@ -112,13 +112,13 @@ export default function ProviderSearch({ onClaim, onNew }) {
                 onClick={() => handleClaim(location)}
                 className="mt-4 min-h-11 w-full rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 sm:w-auto sm:rounded-full sm:text-xs"
               >
-                {requestsAccess ? "Solicita acces" : "Aceasta este locatia mea"}
+                {requestsAccess ? "Solicită acces" : "Aceasta este locația mea"}
               </button>
             </div>
           );
         })}
-        {searchError && !loading && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Cautarea nu este disponibila momentan. Incearca din nou.<button type="button" onClick={() => setSearchRetry((value) => value + 1)} className="ml-2 font-semibold underline">Reincearca</button></div>}
-        {query.trim().length >= 2 && !loading && !searchError && results.length === 0 && organizations.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>}
+        {searchError && !loading && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Căutarea nu este disponibilă momentan. Încearcă din nou.<button type="button" onClick={() => setSearchRetry((value) => value + 1)} className="ml-2 font-semibold underline">Reîncearcă</button></div>}
+        {query.trim().length >= 2 && !loading && !searchError && results.length === 0 && organizations.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locație găsită.</p>}
       </div>
 
       {showGoogleTrigger && !googleMode && (
@@ -137,7 +137,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
 
       <div className="mt-6">
         <button type="button" onClick={() => onNew()} className="min-h-12 w-full rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold transition-colors hover:border-foreground/40 sm:w-auto sm:rounded-full">
-          Nu gasesc locatia
+          Nu găsesc locația
         </button>
       </div>
     </div>

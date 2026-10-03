@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Loader2, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const QUOTA_MSG = "Momentan nu putem cauta pe Google Maps. Poti adauga locatia manual.";
+const QUOTA_MSG = "Momentan nu putem căuta pe Google Maps. Poți adăuga locația manual.";
 
 export default function GooglePlacesResults({ query, onExisting, onSimilar, onDraft }) {
   const [predictions, setPredictions] = useState([]);
@@ -93,11 +93,11 @@ export default function GooglePlacesResults({ query, onExisting, onSimilar, onDr
           </button>
         ))}
         {!loading && predictions.length === 0 && !error && !needsAuth && (
-          <p className="text-sm text-muted-foreground">Nicio locatie gasita pe Google Maps.</p>
+          <p className="text-sm text-muted-foreground">Nicio locație găsită pe Google Maps.</p>
         )}
         {needsAuth && (
           <div className="rounded-xl border border-border bg-card p-4 text-sm">
-            <p className="text-muted-foreground">Cautarea pe Google Maps este disponibila doar dupa autentificare, in fluxul de inscriere. Poti continua si manual, fara Google.</p>
+            <p className="text-muted-foreground">Căutarea pe Google Maps este disponibilă doar după autentificare, în fluxul de înscriere. Poți continua și manual, fără Google.</p>
             <button
               type="button"
               onClick={() => base44.auth.redirectToLogin(window.location.href)}

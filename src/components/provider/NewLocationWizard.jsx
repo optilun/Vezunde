@@ -8,10 +8,10 @@ import WizReviewShort from "@/components/provider/steps/WizReviewShort";
 import IdentityDuplicatePanel from "@/components/provider/IdentityDuplicatePanel";
 
 const STEPS = [
-  { key: "details", title: "Organizatia si prima locatie", subtitle: "Completeaza datele minime necesare pentru identificarea profilului.", Comp: WizOrgBasics },
-  { key: "relation", title: "Care este rolul tau?", subtitle: "Relatia declarata stabileste nivelul de acces pe care il soliciti.", Comp: WizClaimRelation },
-  { key: "contact", title: "Date private de verificare", subtitle: "Precompletam datele contului si le poti corecta inainte de trimitere.", Comp: WizClaimContact },
-  { key: "review", title: "Revizuieste solicitarea", subtitle: "Verifica organizatia, locatia si accesul solicitat inainte de trimitere.", Comp: WizReviewShort },
+  { key: "details", title: "Organizația și prima locație", subtitle: "Completează datele minime necesare pentru identificarea profilului.", Comp: WizOrgBasics },
+  { key: "relation", title: "Care este rolul tău?", subtitle: "Relația declarată stabilește nivelul de acces pe care îl soliciți.", Comp: WizClaimRelation },
+  { key: "contact", title: "Date private de verificare", subtitle: "Precompletăm datele contului și le poți corecta înainte de trimitere.", Comp: WizClaimContact },
+  { key: "review", title: "Revizuiește solicitarea", subtitle: "Verifică organizația, locația și accesul solicitat înainte de trimitere.", Comp: WizReviewShort },
 ];
 
 const INITIAL = {
@@ -142,7 +142,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   if (identityCheck) {
     const strong = identityCheck.blocking_level === "strong_duplicate_review_required";
     return (
-      <WizardShell step={STEPS.length} total={STEPS.length} title="Verificare profil existent" subtitle="Am gasit profiluri asemanatoare in VIASEE." onBack={() => setIdentityCheck(null)}>
+      <WizardShell step={STEPS.length} total={STEPS.length} title="Verificare profil existent" subtitle="Am găsit profiluri asemănătoare în VIASEE." onBack={() => setIdentityCheck(null)}>
         <IdentityDuplicatePanel
           check={identityCheck}
           submitting={submitting}
@@ -169,7 +169,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
     <WizardShell step={step + 1} total={STEPS.length} title={title} subtitle={subtitle} onBack={back}>
       {step === 0 && data.location.place_id ? (
         <p className="mb-5 text-xs rounded-lg border border-border bg-secondary px-3 py-2.5 text-muted-foreground">
-          Date preluate de pe Google Maps. Verifica si corecteaza inainte de trimitere.
+          Date preluate de pe Google Maps. Verifică și corectează inainte de trimitere.
         </p>
       ) : null}
       <Comp

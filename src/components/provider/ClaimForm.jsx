@@ -203,12 +203,12 @@ export default function ClaimForm({ location, step, preferredScope = "", onStepC
   const submit = async () => {
     persistClaimResumeState(location, contact, scope, "review");
     if (!contact.claimant_relationship || !contact.representation_confirmed) {
-      setError("Confirma relatia inainte de trimitere.");
+      setError("Confirmă relația înainte de trimitere.");
       onStepChange("relation");
       return;
     }
     if (!scopeOptions) {
-      setError("Locatiile asociate trebuie incarcate din nou.");
+      setError("Locațiile asociate trebuie încărcate din nou.");
       onStepChange("scope");
       return;
     }
@@ -219,7 +219,7 @@ export default function ClaimForm({ location, step, preferredScope = "", onStepC
       return;
     }
     if (!String(contact.contact_name || "").trim() || !String(contact.email || "").trim()) {
-      setError("Completeaza numele si emailul inainte de trimitere.");
+      setError("Completează numele și emailul înainte de trimitere.");
       onStepChange("contact");
       return;
     }

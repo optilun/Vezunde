@@ -10,10 +10,10 @@ export default function SimilarLocationCard({ location, onClaim, onContinue, onB
         onClick={onBack}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ArrowLeft className="w-4 h-4" /> Inapoi la cautare
+        <ArrowLeft className="w-4 h-4" /> Înapoi la cautare
       </button>
       <p className="mt-4 font-semibold text-sm">
-        Am gasit o locatie similara in VIASEE. Verifica daca este locatia ta.
+        Am găsit o locație similară în VIASEE. Verifică dacă este locația ta.
       </p>
       <div className="mt-3 rounded-xl border border-border bg-card p-4">
         <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[location.provider_type] || location.provider_type}</div>
@@ -31,7 +31,7 @@ export default function SimilarLocationCard({ location, onClaim, onContinue, onB
           className="mt-3 px-4 py-2 rounded-full text-xs font-semibold text-white transition-colors"
           style={{ backgroundColor: "#171717" }}
         >
-          Aceasta este locatia mea
+          Aceasta este locația mea
         </button>
       </div>
       <div className="mt-5 text-center">
@@ -40,7 +40,7 @@ export default function SimilarLocationCard({ location, onClaim, onContinue, onB
           onClick={onContinue}
           className="px-6 py-3 rounded-full border border-border bg-card text-sm font-semibold hover:border-foreground/40 transition-colors"
         >
-          Nu este aceeasi locatie — adauga locatie noua
+          Nu este aceeași locație — adaugă locație nouă
         </button>
       </div>
     </div>

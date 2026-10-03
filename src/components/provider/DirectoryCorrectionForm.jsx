@@ -4,10 +4,10 @@ import { base44 } from "@/api/base44Client";
 
 const REQUEST_TYPES = [
   { value: "incorrect_information", label: "Informatii incorecte" },
-  { value: "location_closed", label: "Locatia este inchisa" },
-  { value: "location_moved", label: "Locatia s-a mutat" },
+  { value: "location_closed", label: "Locația este închisă" },
+  { value: "location_moved", label: "Locația s-a mutat" },
   { value: "duplicate_profile", label: "Profil duplicat" },
-  { value: "wrong_organization", label: "Organizatie asociata gresit" },
+  { value: "wrong_organization", label: "Organizație asociată greșit" },
   { value: "personal_data_removal", label: "Eliminarea unor date personale" },
   { value: "other", label: "Alta problema" },
 ];
@@ -15,10 +15,10 @@ const REQUEST_TYPES = [
 const RELATIONSHIPS = [
   { value: "customer", label: "Client / vizitator" },
   { value: "owner", label: "Proprietar" },
-  { value: "organization_representative", label: "Reprezentant al organizatiei" },
+  { value: "organization_representative", label: "Reprezentant al organizației" },
   { value: "employee", label: "Angajat" },
   { value: "professional", label: "Specialist asociat" },
-  { value: "other", label: "Alta relatie" },
+  { value: "other", label: "Altă relație" },
 ];
 
 const inputClass = "min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
@@ -63,7 +63,7 @@ export default function DirectoryCorrectionForm({ location, onClose }) {
       privacy_confirmed: form.privacy_confirmed,
       company_website: form.company_website,
     }).catch((requestError) => ({
-      data: { error: requestError.response?.data?.error || requestError.message || "Sesizarea nu a putut fi trimisa" },
+      data: { error: requestError.response?.data?.error || requestError.message || "Sesizarea nu a putut fi trimisă" },
     }));
     setSubmitting(false);
 
@@ -87,13 +87,13 @@ export default function DirectoryCorrectionForm({ location, onClose }) {
             <h3 className="text-sm font-bold">Sesizarea a fost inregistrata</h3>
             <p className="mt-1 text-xs leading-relaxed">
               {result.duplicate
-                ? "Exista deja o sesizare activa similara. Am pastrat aceeasi referinta."
-                : "VIASEE va verifica informatia si sursele transmise. Profilul nu este modificat automat."}
+                ? "Există deja o sesizare activă similară. Am păstrat aceeași referință."
+                : "VIASEE va verifica informația și sursele transmise. Profilul nu este modificat automat."}
             </p>
             {result.reference && (
               <p className="mt-3 rounded-xl bg-white/75 px-3 py-2 font-mono text-xs font-semibold">Referinta: {result.reference}</p>
             )}
-            {!result.emailSent && <p className="mt-2 text-[11px] leading-relaxed">Confirmarea prin email nu a putut fi trimisa, dar sesizarea a fost salvata.</p>}
+            {!result.emailSent && <p className="mt-2 text-[11px] leading-relaxed">Confirmarea prin email nu a putut fi trimisă, dar sesizarea a fost salvată.</p>}
             <button type="button" onClick={onClose} className="mt-3 text-xs font-semibold underline underline-offset-4">Inchide</button>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function DirectoryCorrectionForm({ location, onClose }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold">Semnaleaza o problema</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Cererea este legata automat de acest profil. Nu include date medicale sau alte informatii sensibile care nu sunt necesare.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Cererea este legată automat de acest profil. Nu include date medicale sau alte informații sensibile care nu sunt necesare.</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Inchide formularul" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border hover:bg-secondary">
           <X className="h-4 w-4" />
@@ -121,7 +121,7 @@ export default function DirectoryCorrectionForm({ location, onClose }) {
           </select>
         </label>
         <label className="text-xs font-semibold text-muted-foreground">
-          Relatia cu locatia
+          Relația cu locația
           <select value={form.relationship} onChange={(event) => update("relationship", event.target.value)} className={`${inputClass} mt-1.5`}>
             {RELATIONSHIPS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
@@ -151,7 +151,7 @@ export default function DirectoryCorrectionForm({ location, onClose }) {
 
       <label className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
         <input type="checkbox" checked={form.privacy_confirmed} onChange={(event) => update("privacy_confirmed", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border" required />
-        <span>Confirm ca datele de contact sunt folosite pentru verificarea si solutionarea acestei sesizari. Inteleg ca trimiterea nu modifica automat profilul.</span>
+        <span>Confirm că datele de contact sunt folosite pentru verificarea și soluționarea acestei sesizări. Înțeleg că trimiterea nu modifică automat profilul.</span>
       </label>
 
       {error && (

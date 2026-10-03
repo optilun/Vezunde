@@ -15,10 +15,10 @@ export default function ClaimContactStep({ locationCard, contact, onChange, onCo
       <div className="space-y-3">
         <input className={inputCls} placeholder="Nume complet *" value={contact.contact_name} onChange={(e) => set("contact_name", e.target.value)} />
         <input className={inputCls} type="email" placeholder="Email *" value={contact.email} onChange={(e) => set("email", e.target.value)} />
-        <input className={inputCls} placeholder="Telefon (optional)" value={contact.phone} onChange={(e) => set("phone", e.target.value)} />
+        <input className={inputCls} placeholder="Telefon (opțional)" value={contact.phone} onChange={(e) => set("phone", e.target.value)} />
       </div>
       <ContinueButton onClick={onContinue} disabled={!valid}>
-        Continua spre revizuire
+        Continuă spre revizuire
       </ContinueButton>
     </div>
   );

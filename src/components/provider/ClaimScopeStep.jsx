@@ -74,7 +74,7 @@ export default function ClaimScopeStep({
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <p className="text-sm text-destructive">{error}</p>
           <button type="button" onClick={onRetry} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-semibold">
-            <RefreshCw className="h-3.5 w-3.5" /> Reincearca
+            <RefreshCw className="h-3.5 w-3.5" /> Reîncearcă
           </button>
         </div>
       )}
@@ -85,9 +85,9 @@ export default function ClaimScopeStep({
             <div className="mb-4 flex items-start gap-3 rounded-2xl border border-border bg-secondary/40 p-4">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card"><Building2 className="h-4 w-4" /></span>
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-muted-foreground">Organizatie asociata</div>
+                <div className="text-xs font-semibold text-muted-foreground">Organizație asociată</div>
                 <div className="mt-0.5 break-words text-sm font-bold">{options.organization.name}</div>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">VIASEE va verifica separat relatia organizatie-locatie si dreptul tau de administrare.</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">VIASEE va verifica separat relația organizație-locație și dreptul tău de administrare.</p>
               </div>
             </div>
           )}
@@ -159,18 +159,18 @@ export default function ClaimScopeStep({
 
           {options.organization_link_review_required && (
             <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-              Asocierea acestei locatii cu organizatia necesita verificare. Poti solicita numai locatia selectata; accesul se acorda dupa clarificarea legaturii.
+              Asocierea acestei locații cu organizația necesită verificare. Poți solicita numai locația selectată; accesul se acordă după clarificarea legăturii.
             </p>
           )}
           {options.organization && !canRequestOrganization && !options.organization_link_review_required && (
             <p className="mt-3 rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-              Administrarea intregii organizatii este disponibila numai proprietarului sau reprezentantului autorizat. Poti solicita una sau mai multe locatii.
+              Administrarea întregii organizații este disponibilă numai proprietarului sau reprezentantului autorizat. Poți solicita una sau mai multe locații.
             </p>
           )}
 
           {blockedPrimary && (
             <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-              Ai deja acces la locatia principala. Revendicarea nu poate fi trimisa din nou pentru aceasta locatie.
+              Ai deja acces la locația principală. Revendicarea nu poate fi trimisă din nou pentru această locație.
             </p>
           )}
 
@@ -178,9 +178,9 @@ export default function ClaimScopeStep({
             <section className="mt-5">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold">Confirma locatiile</h3>
+                  <h3 className="text-sm font-bold">Confirmă locațiile</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Bifeaza locatiile pe care le reprezinti. Cele debifate sunt salvate explicit ca „nu apartine / nu o administrez”.
+                    Bifează locațiile pe care le reprezinți. Cele debifate sunt salvate explicit ca „nu aparține / nu o administrez”.
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{selectedIds.size} selectate</span>
@@ -205,7 +205,7 @@ export default function ClaimScopeStep({
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="break-words text-sm font-semibold">{location.name}</span>
-                          {primaryLocation && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Locatie principala</span>}
+                          {primaryLocation && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Locație principală</span>}
                           {location.already_has_access && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Ai deja acces</span>}
                           {location.controlled && !location.already_has_access && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Profil administrat</span>}
                         </span>
@@ -225,12 +225,12 @@ export default function ClaimScopeStep({
           )}
 
           <label className="mt-5 block">
-            <span className="text-xs font-semibold text-muted-foreground">Lipseste o locatie din lista? (optional)</span>
+            <span className="text-xs font-semibold text-muted-foreground">Lipsește o locație din listă? (opțional)</span>
             <textarea
               value={scope.reported_missing_location || ""}
               onChange={(event) => onChange({ ...scope, reported_missing_location: event.target.value.slice(0, 1000) })}
               rows={3}
-              placeholder="Scrie numele, localitatea si adresa aproximativa. Locatia nu va fi adaugata automat; va intra in verificare."
+              placeholder="Scrie numele, localitatea și adresa aproximativă. Locația nu va fi adăugată automat; va intra în verificare."
               className="mt-2 w-full rounded-xl border border-input bg-card px-3 py-3 text-base outline-none focus:border-foreground/40 sm:text-sm"
             />
           </label>

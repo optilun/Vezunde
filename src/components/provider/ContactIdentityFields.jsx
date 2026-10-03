@@ -1,8 +1,8 @@
 export const CLAIMANT_RELATIONSHIPS = {
   owner: "Proprietar sau reprezentant legal",
-  organization_representative: "Reprezentant autorizat al organizatiei",
-  location_manager: "Manager al locatiei",
-  authorized_staff: "Angajat cu acordul organizatiei",
+  organization_representative: "Reprezentant autorizat al organizației",
+  location_manager: "Manager al locației",
+  authorized_staff: "Angajat cu acordul organizației",
 };
 
 export const REQUESTED_ROLE_BY_RELATIONSHIP = {
@@ -20,9 +20,9 @@ export const LOCATION_REQUESTED_ROLE_BY_RELATIONSHIP = {
 };
 
 export const REQUESTED_ROLE_LABELS = {
-  organization_owner: "Owner organizatie",
-  location_manager: "Manager locatie",
-  location_staff: "Membru locatie",
+  organization_owner: "Owner organizație",
+  location_manager: "Manager locație",
+  location_staff: "Membru locație",
 };
 
 export function requestedRoleForRelationship(relationship) {

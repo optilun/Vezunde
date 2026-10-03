@@ -17,13 +17,13 @@ export default function SelectedLocationCard({ location, onContinue, onChangeLoc
         <div className="mt-4 rounded-xl bg-secondary/40 px-3 py-3 text-xs leading-5 text-muted-foreground">
           {requestsAccess
             ? "Profilul este deja administrat. Vei trimite o solicitare de acces, iar rolul va fi confirmat la verificare."
-            : "Profilul nu este administrat. Vei trimite o solicitare de revendicare si vei putea pregati profilul in cont."}
+            : "Profilul nu este administrat. Vei trimite o solicitare de revendicare și vei putea pregăti profilul în cont."}
         </div>
       </div>
 
       <div className="mt-5 flex flex-col gap-3 sm:mt-6">
         <button type="button" onClick={onContinue} className="min-h-12 w-full rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90 sm:rounded-full">
-          {requestsAccess ? "Continua cu solicitarea de acces" : "Continua cu revendicarea"}
+          {requestsAccess ? "Continuă cu solicitarea de acces" : "Continuă cu revendicarea"}
         </button>
         <button type="button" onClick={onChangeLocation} className="min-h-12 w-full rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold transition-colors hover:border-foreground/40 sm:rounded-full">
           Schimba locatia

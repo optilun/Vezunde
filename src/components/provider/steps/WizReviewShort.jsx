@@ -19,21 +19,21 @@ export default function WizReviewShort({ data, onSubmit, submitting, error }) {
   const { organization: org, location: loc, contact } = data;
   const requestedRole = requestedRoleForRelationship(contact.claimant_relationship);
   const missing = [];
-  if (!org.name?.trim()) missing.push("Numele organizatiei");
-  if (!loc.name?.trim()) missing.push("Numele locatiei");
-  if (!loc.provider_type) missing.push("Tipul locatiei");
+  if (!org.name?.trim()) missing.push("Numele organizației");
+  if (!loc.name?.trim()) missing.push("Numele locației");
+  if (!loc.provider_type) missing.push("Tipul locației");
   if (!loc.locality_siruta_code) missing.push("Localitatea");
-  if (!loc.address?.trim()) missing.push("Adresa locatiei");
+  if (!loc.address?.trim()) missing.push("Adresa locației");
   if (!loc.phone_public?.trim() && !loc.public_email?.trim()) missing.push("Telefon sau email public");
-  if (!contact.contact_name?.trim()) missing.push("Numele tau");
-  if (!contact.email?.trim()) missing.push("Emailul tau");
-  if (!contact.claimant_relationship) missing.push("Relatia cu organizatia");
+  if (!contact.contact_name?.trim()) missing.push("Numele tău");
+  if (!contact.email?.trim()) missing.push("Emailul tău");
+  if (!contact.claimant_relationship) missing.push("Relația cu organizația");
   if (!contact.representation_confirmed) missing.push("Confirmarea reprezentarii");
 
   return (
     <div className="text-left">
       <div className="rounded-xl border border-border bg-card p-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Organizatie si locatie</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Organizație și locație</div>
         <Row label="Organizatie" value={org.name} />
         <Row label="Locatie" value={loc.name} />
         <Row label="Tip locatie" value={PROVIDER_TYPES[loc.provider_type] || loc.provider_type} />
@@ -63,7 +63,7 @@ export default function WizReviewShort({ data, onSubmit, submitting, error }) {
       )}
 
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        Dupa trimitere intri direct in zona de pregatire, unde poti continua configurarea profilului si a locatiei. Datele raman private pana la verificare.
+        După trimitere intri direct în zona de pregătire, unde poți continua configurarea profilului și a locației. Datele rămân private până la verificare.
       </p>
 
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}

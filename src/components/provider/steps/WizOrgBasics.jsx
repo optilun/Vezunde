@@ -49,12 +49,12 @@ export default function WizOrgBasics({ data, update, next }) {
     <div className="space-y-4 text-left">
       <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <div>
-          <h2 className="text-sm font-bold">Organizatia</h2>
+          <h2 className="text-sm font-bold">Organizația</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Datele generale ale opticii, clinicii sau cabinetului.</p>
         </div>
         <input
           className={inputCls}
-          placeholder="Numele organizatiei *"
+          placeholder="Numele organizației *"
           value={org.name}
           onChange={(event) => update({ organization: { ...org, name: event.target.value } })}
         />
@@ -66,19 +66,19 @@ export default function WizOrgBasics({ data, update, next }) {
             update({ location: { ...loc, provider_type: providerType, provider_profile_type: ORG_TYPE_TO_PROFILE_TYPE[providerType] || "" } });
           }}
         >
-          <option value="">Tipul organizatiei *</option>
+          <option value="">Tipul organizației *</option>
           {Object.entries(ORG_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <div>
-          <h2 className="text-sm font-bold">Prima locatie</h2>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locul fizic care va fi verificat si administrat in VIASEE.</p>
+          <h2 className="text-sm font-bold">Prima locație</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locul fizic care va fi verificat și administrat în VIASEE.</p>
         </div>
-        <input className={inputCls} placeholder="Numele locatiei *" value={loc.name} onChange={(event) => setLoc("name", event.target.value)} />
+        <input className={inputCls} placeholder="Numele locației *" value={loc.name} onChange={(event) => setLoc("name", event.target.value)} />
         <LocalityAutocomplete
-          placeholder="Localitatea (cauta in lista oficiala) *"
+          placeholder="Localitatea (caută în lista oficială) *"
           value={loc.locality_siruta_code ? { display_label: `${loc.city}${loc.county ? ", " + loc.county : ""}` } : null}
           onSelect={selectLocality}
         />
@@ -87,10 +87,10 @@ export default function WizOrgBasics({ data, update, next }) {
           <input className={inputCls} placeholder="Telefon public" value={loc.phone_public} onChange={(event) => setLoc("phone_public", event.target.value)} />
           <input className={inputCls} type="email" placeholder="Email public" value={loc.public_email} onChange={(event) => setLoc("public_email", event.target.value)} />
         </div>
-        <p className="text-xs text-muted-foreground">Este necesar cel putin un contact public: telefon sau email.</p>
+        <p className="text-xs text-muted-foreground">Este necesar cel puțin un contact public: telefon sau email.</p>
       </section>
 
-      <ContinueButton onClick={next} disabled={!valid}>Continua</ContinueButton>
+      <ContinueButton onClick={next} disabled={!valid}>Continuă</ContinueButton>
     </div>
   );
 }

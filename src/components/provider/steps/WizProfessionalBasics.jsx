@@ -66,9 +66,9 @@ export default function WizProfessionalBasics({ data, update, next }) {
           <option key={k} value={k}>{label}</option>
         ))}
       </select>
-      <input className={inputCls} placeholder="Numele locatiei/cabinetului (optional)" value={loc.name} onChange={(e) => setLoc("name", e.target.value)} />
+      <input className={inputCls} placeholder="Numele locației/cabinetului (opțional)" value={loc.name} onChange={(e) => setLoc("name", e.target.value)} />
       <LocalityAutocomplete
-        placeholder="Localitatea (cauta in lista oficiala) *"
+        placeholder="Localitatea (caută în lista oficială) *"
         value={loc.locality_siruta_code ? { display_label: `${loc.city}${loc.county ? ", " + loc.county : ""}` } : null}
         onSelect={selectLocality}
       />
@@ -77,14 +77,14 @@ export default function WizProfessionalBasics({ data, update, next }) {
         <input className={inputCls} placeholder="Telefon public" value={loc.phone_public} onChange={(e) => setLoc("phone_public", e.target.value)} />
         <input className={inputCls} type="email" placeholder="Email public" value={loc.public_email} onChange={(e) => setLoc("public_email", e.target.value)} />
       </div>
-      <p className="text-xs text-muted-foreground">Necesar cel putin unul: telefon sau email public.</p>
+      <p className="text-xs text-muted-foreground">Necesar cel puțin unul: telefon sau email public.</p>
 
       <div className="pt-3 mt-1 border-t border-border" />
       <input className={inputCls} placeholder="Numele persoanei care trimite cererea *" value={contact.contact_name} onChange={(e) => setContact("contact_name", e.target.value)} />
       <input className={inputCls} type="email" placeholder="Emailul persoanei care trimite cererea *" value={contact.email} onChange={(e) => setContact("email", e.target.value)} />
       <label className="flex items-start gap-3 text-sm text-muted-foreground cursor-pointer pt-1">
         <input type="checkbox" className="mt-0.5 w-4 h-4" checked={contact.representation_confirmed} onChange={(e) => setContact("representation_confirmed", e.target.checked)} />
-        <span>Confirm ca informatiile transmise sunt corecte.</span>
+        <span>Confirm că informațiile transmise sunt corecte.</span>
       </label>
       <ContinueButton onClick={next} disabled={!valid} />
     </div>

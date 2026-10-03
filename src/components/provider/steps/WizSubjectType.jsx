@@ -20,20 +20,20 @@ export default function WizSubjectType({ data, update, next }) {
   return (
     <div className="space-y-3">
       <ChoiceCard
-        label="Reprezint o organizatie"
-        hint="Pentru optici, clinici, cabinete sau organizatii cu una sau mai multe locatii care pot aparea in directorul pacientilor."
+        label="Reprezint o organizație"
+        hint="Pentru optici, clinici, cabinete sau organizații cu una sau mai multe locații care pot apărea în directorul pacienților."
         selected={data.claimSubjectType === "organization"}
         onClick={() => choose("organization")}
       />
       <ChoiceCard
         label="Sunt profesionist independent"
-        hint="Pentru medici oftalmologi, optometristi sau opticieni. Profilul este profesional si poate fi afiliat unei locatii."
+        hint="Pentru medici oftalmologi, optometriști sau opticieni. Profilul este profesional și poate fi afiliat unei locații."
         selected={data.claimSubjectType === "independent_professional"}
         onClick={() => choose("independent_professional")}
       />
       <ChoiceCard
         label="Sunt furnizor / partener B2B"
-        hint="Pentru firme care vand produse, servicii, aparatura, lentile, rame, training sau solutii pentru optici si clinici."
+        hint="Pentru firme care vând produse, servicii, aparatură, lentile, rame, training sau soluții pentru optici și clinici."
         selected={data.claimSubjectType === "b2b_supplier"}
         onClick={() => choose("b2b_supplier")}
       />

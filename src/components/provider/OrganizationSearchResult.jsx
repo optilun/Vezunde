@@ -6,7 +6,7 @@ const ORGANIZATION_TYPE_LABELS = {
   independent_optical_store: "Optica",
   ophthalmology_clinic: "Clinica oftalmologica",
   ophthalmology_office: "Cabinet oftalmologic",
-  healthcare_network: "Retea medicala",
+  healthcare_network: "Rețea medicală",
   multi_specialty_healthcare_provider: "Furnizor multi-specialitate",
 };
 
@@ -29,7 +29,7 @@ export default function OrganizationSearchResult({ organization, onClaimOrganiza
             {organization.location_count} locatii{organization.cities?.length ? ` · ${organization.cities.join(", ")}` : ""}
           </div>
           <div className="mt-2 text-xs leading-5 text-muted-foreground">
-            Poti porni solicitarea pentru tot brandul. Fiecare locatie se confirma la pasul urmator.
+            Poți porni solicitarea pentru tot brandul. Fiecare locație se confirmă la pasul următor.
           </div>
         </div>
       </div>

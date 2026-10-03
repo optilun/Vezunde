@@ -11,8 +11,8 @@ export default function IdentityDuplicatePanel({ check, submitting, onClaim, onC
     <div className="text-left">
       <p className="text-sm font-semibold">
         {check.message || (strong
-          ? "Am gasit un profil foarte asemanator. Verifica daca este deja locatia ta."
-          : "Am gasit profiluri asemanatoare. Confirma ca este o locatie diferita.")}
+          ? "Am găsit un profil foarte asemănător. Verifică dacă este deja locația ta."
+          : "Am găsit profiluri asemănătoare. Confirmă că este o locație diferită.")}
       </p>
       <div className="mt-4 space-y-3">
         {check.candidates.map((c) => (
@@ -46,27 +46,27 @@ export default function IdentityDuplicatePanel({ check, submitting, onClaim, onC
       </div>
       {strong && !showNote && (
         <button type="button" onClick={() => setShowNote(true)} className="mt-4 text-sm underline underline-offset-4">
-          Este o locatie diferita
+          Este o locație diferită
         </button>
       )}
       {showNote && (
         <div className="mt-4">
           <label className="block text-xs font-semibold text-muted-foreground mb-1">
-            Explica pe scurt de ce este o locatie diferita (minim 15 caractere) *
+            Explică pe scurt de ce este o locație diferită (minim 15 caractere) *
           </label>
           <textarea className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
           {strong && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Cererea va fi analizata manual de echipa VIASEE. Profilul nu va fi creat sau publicat pana la clarificare.
+              Cererea va fi analizată manual de echipa VIASEE. Profilul nu va fi creat sau publicat până la clarificare.
             </p>
           )}
           <button type="button" disabled={!noteOk || submitting} onClick={() => onContinueDistinct(note.trim())} className="mt-3 px-5 py-2.5 rounded-full border border-border bg-card text-sm font-semibold disabled:opacity-40">
-            {submitting ? "Se trimite..." : strong ? "Trimite spre clarificare" : "Continua — este o locatie diferita"}
+            {submitting ? "Se trimite..." : strong ? "Trimite spre clarificare" : "Continuă — este o locație diferită"}
           </button>
         </div>
       )}
       <button type="button" onClick={onCancel} className="mt-4 block text-xs text-muted-foreground underline underline-offset-4">
-        Inapoi la formular
+        Înapoi la formular
       </button>
     </div>
   );

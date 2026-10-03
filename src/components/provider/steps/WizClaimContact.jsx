@@ -11,7 +11,7 @@ export default function WizClaimContact({ data, update, next }) {
   return (
     <div className="space-y-4 text-left">
       <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-        Aceste date sunt private. Sunt folosite numai pentru verificarea solicitarii si comunicarea privind accesul. Nu apar in profilul public.
+        Aceste date sunt private. Sunt folosite numai pentru verificarea solicitării și comunicarea privind accesul. Nu apar în profilul public.
       </div>
       <input
         className={inputCls}
@@ -28,11 +28,11 @@ export default function WizClaimContact({ data, update, next }) {
       />
       <input
         className={inputCls}
-        placeholder="Telefon pentru verificare (optional)"
+        placeholder="Telefon pentru verificare (opțional)"
         value={contact.phone}
         onChange={(event) => setContact("phone", event.target.value)}
       />
-      <ContinueButton onClick={next} disabled={!valid}>Continua spre revizuire</ContinueButton>
+      <ContinueButton onClick={next} disabled={!valid}>Continuă spre revizuire</ContinueButton>
     </div>
   );
 }

@@ -9,10 +9,10 @@ import { CLAIMANT_RELATIONSHIPS, REQUESTED_ROLE_LABELS, requestedRoleForRelation
 // pentru revendicarea unei locatii existente: aici scria "Manager locatie", iar la revizuire si
 // la aprobare "Owner organizatie" (test E2E 2026-10-02).
 const RELATION_HINTS = {
-  owner: "Creezi organizatia si prima ei locatie. Dupa verificare devii owner al organizatiei.",
-  organization_representative: "Reprezinti organizatia cu acordul ei. Dupa verificare primesti rolul de owner al organizatiei.",
-  location_manager: "Soliciti administrarea acestei locatii, fara control asupra organizatiei.",
-  authorized_staff: "Soliciti acces operational limitat pentru actualizarea locatiei.",
+  owner: "Creezi organizația și prima ei locație. După verificare devii owner al organizației.",
+  organization_representative: "Reprezinți organizația cu acordul ei. După verificare primești rolul de owner al organizației.",
+  location_manager: "Soliciți administrarea acestei locații, fără control asupra organizației.",
+  authorized_staff: "Soliciți acces operațional limitat pentru actualizarea locației.",
 };
 
 export default function WizClaimRelation({ data, update, next, loading = false }) {
@@ -48,11 +48,11 @@ export default function WizClaimRelation({ data, update, next, loading = false }
           checked={contact.representation_confirmed}
           onChange={(event) => setContact({ representation_confirmed: event.target.checked })}
         />
-        <span>Confirm ca sunt autorizat sa solicit acest acces si ca informatiile transmise sunt corecte.</span>
+        <span>Confirm că sunt autorizat să solicit acest acces și că informațiile transmise sunt corecte.</span>
       </label>
 
-      <ContinueButton onClick={next} disabled={!valid} loading={loading}>Continua</ContinueButton>
-      <p className="text-center text-xs text-muted-foreground">Daca nu esti autentificat, iti vei crea contul VIASEE si vei reveni automat la pasul urmator.</p>
+      <ContinueButton onClick={next} disabled={!valid} loading={loading}>Continuă</ContinueButton>
+      <p className="text-center text-xs text-muted-foreground">Dacă nu ești autentificat, îți vei crea contul VIASEE și vei reveni automat la pasul următor.</p>
     </div>
   );
 }

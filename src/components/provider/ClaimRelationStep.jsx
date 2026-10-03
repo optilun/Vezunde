@@ -8,10 +8,10 @@ import {
 } from "@/components/provider/ContactIdentityFields";
 
 const RELATION_HINTS = {
-  owner: "In pasul urmator poti solicita o locatie, mai multe locatii sau intreaga organizatie existenta.",
-  organization_representative: "Poti solicita administrarea organizatiei numai pentru locatiile pe care le confirmi explicit.",
-  location_manager: "Poti solicita una sau mai multe locatii, fara rol de owner al organizatiei.",
-  authorized_staff: "Poti solicita acces operational limitat pentru una sau mai multe locatii.",
+  owner: "În pasul următor poți solicita o locație, mai multe locații sau întreaga organizație existentă.",
+  organization_representative: "Poți solicita administrarea organizației numai pentru locațiile pe care le confirmi explicit.",
+  location_manager: "Poți solicita una sau mai multe locații, fără rol de owner al organizației.",
+  authorized_staff: "Poți solicita acces operațional limitat pentru una sau mai multe locații.",
 };
 
 export default function ClaimRelationStep({ locationCard, contact, onChange, onContinue, loading = false }) {
@@ -46,13 +46,13 @@ export default function ClaimRelationStep({ locationCard, contact, onChange, onC
           checked={contact.representation_confirmed}
           onChange={(event) => onChange({ ...contact, representation_confirmed: event.target.checked })}
         />
-        <span>Confirm ca sunt autorizat sa solicit acces si ca informatiile transmise sunt corecte.</span>
+        <span>Confirm că sunt autorizat să solicit acces și că informațiile transmise sunt corecte.</span>
       </label>
       <ContinueButton onClick={onContinue} disabled={!valid} loading={loading}>
         Continua
       </ContinueButton>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        In pasul urmator te autentifici sau iti creezi contul VIASEE, apoi confirmi locatiile solicitate.
+        În pasul următor te autentifici sau îți creezi contul VIASEE, apoi confirmi locațiile solicitate.
       </p>
     </div>
   );
