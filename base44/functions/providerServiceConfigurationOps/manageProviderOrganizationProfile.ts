@@ -3,6 +3,7 @@ import {
   hasPublishedSectionChanges,
   sameSubmissionPayload,
 } from '../../shared/providerWorkspaceSubmissionComparison.js';
+import { providerAccessRoleFromMembership, providerRoleHasCapability } from '../../shared/providerRolePolicy.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -85,8 +86,11 @@ async function resolveOwnerAccess(svc, user, organizationId, anchorLocationId) {
   const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
   if (!organization) return { error: 'Organizatia nu a fost gasita', status: 404 };
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, organization_id: organizationId, status: 'active' }, '-created_date', 500);
-  const ownerMemberships = memberships.filter((membership) => normalizeRole(membership.role) === 'organization_owner');
-  if (user.role !== 'admin' && ownerMemberships.length === 0) return { error: 'Doar ownerul organizatiei poate modifica profilul general', status: 403 };
+  // 2026-10-03 (structura conturilor, pasul 3): profilul organizatiei il modifica proprietarul si
+  // administratorul (matricea din shared/providerRolePolicy.js).
+  const ownerMemberships = memberships.filter((membership) => normalizeRole(membership.role) === 'organization_owner'
+    || providerRoleHasCapability(providerAccessRoleFromMembership(membership), 'organization.manage_profile'));
+  if (user.role !== 'admin' && ownerMemberships.length === 0) return { error: 'Doar proprietarul sau administratorul organizatiei poate modifica profilul general', status: 403 };
   let anchorLocation = anchorLocationId ? await svc.entities.ProviderLocation.get(anchorLocationId).catch(() => null) : null;
   if (!anchorLocation || anchorLocation.organization_id !== organizationId) {
     const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 10);
