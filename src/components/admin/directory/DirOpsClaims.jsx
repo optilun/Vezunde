@@ -6,10 +6,12 @@ import AdminClaimIdentityContext from "@/components/admin/AdminClaimIdentityCont
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
 
+// 2026-10-03 (structura conturilor, pasul 3): fara „owner selectiv”. Proprietarul se aproba doar
+// cu toate locatiile organizatiei; altfel serverul refuza si cere Manager locatie.
 const ROLE_OPTIONS = [
-  { value: "organization_owner", label: "Owner organizatie" },
+  { value: "organization_owner", label: "Proprietar (toata organizatia)" },
   { value: "location_manager", label: "Manager locatie" },
-  { value: "location_staff", label: "Membru locatie" },
+  { value: "location_staff", label: "Membru" },
 ];
 const LOCATION_ROLE_OPTIONS = ROLE_OPTIONS.filter((item) => item.value !== "organization_owner");
 const ROLE_LABELS = Object.fromEntries(ROLE_OPTIONS.map((item) => [item.value, item.label]));
