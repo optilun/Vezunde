@@ -187,7 +187,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
 
   const applyRoleToForm = (role) => {
     const scope = role === "organization_admin" ? "all" : (role === "organization_owner" ? (canGrantAdmin ? "all" : "selected") : "selected");
-    setForm((current) => ({ ...current, role, scope, location_ids: scope === "all" ? allLocationIds : [] }));
+    setForm((current) => ({ ...current, role, scope, location_ids: scope === "all" ? allLocationIds : [], specialist_location_ids: scope === "all" && current.specialist ? allLocationIds : [] }));
   };
   const setFormScope = (scope) => setForm((current) => ({ ...current, scope, location_ids: scope === "all" ? allLocationIds : [], specialist_location_ids: scope === "all" && current.specialist ? allLocationIds : [] }));
   const toggleFormLocation = (id) => setForm((current) => {
