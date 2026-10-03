@@ -83,7 +83,10 @@ assert.match(syncAccess, /ORGANIZATION_ADMIN_ROLE/);
 assert.match(syncAccess, /organization_wide_access: true/);
 assert.match(expansion, /propagateOrganizationWideAccess/);
 assert.match(expansion, /organization_wide_memberships/);
-assert.match(expansion, /storedProviderRoleForAccessRole\(accessRole\)/);
+// 2026-10-03: planul de acces e in shared (planNewLocationAccess), comun cu rezolutia de identitate.
+assert.match(expansion, /planNewLocationAccess\(\{ memberships, resolution, organizationId, locationId, requesterUserId \}\)/);
+assert.match(roleScope, /export function planNewLocationAccess\(/);
+assert.match(roleScope, /role: storedProviderRoleForAccessRole\(accessRole\)/);
 
 assert.match(workspace, /organization_admin:/);
 assert.match(workspace, /"organization\.manage_members"/);

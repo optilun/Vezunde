@@ -59,7 +59,8 @@ assert.notEqual(deriveCanonicalControlStatus({ ...claimedLocation, profile_contr
 
 // ---------- 4. Nicio aprobare nu verifica automat ----------
 const identity = await read('base44/functions/providerLocationIdentityResolutionOps/entry.ts');
-const updatesStart = identity.indexOf('const alreadyVerified = target.profile_control_status');
+// 2026-10-03: la transferul catre alta organizatie verificarea nu se mai pastreaza.
+const updatesStart = identity.indexOf('const alreadyVerified = relation !== \'other_organization\'');
 const updatesBlock = identity.slice(updatesStart, identity.indexOf('await svc.entities.ProviderLocation.update(target.id, updates);', updatesStart));
 assert.ok(updatesStart > -1, 'rezolutia de identitate trebuie sa tina cont de verificarea existenta');
 assert.match(updatesBlock, /profile_control_status: alreadyVerified \? 'verified' : 'claimed'/);
