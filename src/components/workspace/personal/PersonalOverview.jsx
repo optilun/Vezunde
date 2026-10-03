@@ -101,6 +101,21 @@ export default function PersonalOverview({
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Găsește locații, urmărește cererile tale și schimbă ușor între spațiile contului.</p>
       </section>
 
+      <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><ClipboardList className="h-4 w-4" /></div>
+            <div className="min-w-0">
+              <h2 className="text-base font-bold">Cererile mele</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Cererile trimise ca pacient și răspunsurile primite de la optici și clinici.</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => onNavigate?.("requests")} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+            Vezi cererile <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
       {professional && (
         <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
