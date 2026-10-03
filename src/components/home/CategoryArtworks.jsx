@@ -4,9 +4,6 @@ import { Aperture, ArrowRight, Check, Eye, Glasses, MapPin, Wrench } from "lucid
 // Editorial photographs are decorative illustrations, not real provider profiles.
 const SPECIALISTS = "/images/specialists/";
 const HOME = "/images/home/";
-const INK = "#182359";
-const PAPER = "#FFFDF7";
-const BLUE = "#4C5AF4";
 
 export const SPECIALIST_CARDS = [
   { kind: "doctor", title: "Medic oftalmolog", description: "Consult și îngrijirea ochilor", src: SPECIALISTS + "specialist-editorial-v1.webp", position: "50% 28%" },
