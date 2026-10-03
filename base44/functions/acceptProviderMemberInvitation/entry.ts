@@ -7,6 +7,7 @@ import {
   storedProviderRoleForAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { professionalTypeLabel } from '../../shared/professionalIdentity.js';
+import { providerRoleCoversOrganization } from '../../shared/providerRolePolicy.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 const ACTIONS = ['list_mine', 'inspect', 'accept'];
@@ -45,8 +46,13 @@ function safeLocation(location) {
     address: location.address || '',
   };
 }
+// 2026-10-03 (structura conturilor, pasul 3): proprietarul si administratorul acopera mereu toata
+// organizatia; managerul si membrul doar locatiile din invitatie.
+function invitationIsOrganizationWide(invitation) {
+  return providerRoleCoversOrganization(invitation?.proposed_role) || isOrganizationWideProviderRole(invitation?.proposed_role);
+}
 function invitationView(invitation, organization, locations) {
-  const organizationWide = invitation.organization_wide_access === true || isOrganizationWideProviderRole(invitation.proposed_role);
+  const organizationWide = invitationIsOrganizationWide(invitation);
   return {
     id: invitation.id,
     organization: {
@@ -68,13 +74,18 @@ async function hash(token) {
 }
 async function loadContext(svc, invitation) {
   if (!ROLES.includes(invitation.proposed_role)) return { error: 'Rolul invitatiei este invalid', status: 400 };
+  // O invitatie veche de „owner selectiv” (doar anumite locatii) nu mai poate fi acceptata: rolul de
+  // proprietar acopera acum toata organizatia, deci invitatia trebuie retrimisa de proprietar.
+  if (invitation.proposed_role === ORGANIZATION_OWNER_ROLE && invitation.organization_wide_access !== true) {
+    return { error: 'Invitatia de proprietar trebuie retrimisa. Rolul de proprietar acopera acum toata organizatia.', status: 409 };
+  }
   const organization = invitation.organization_id
     ? await svc.entities.ProviderOrganization.get(invitation.organization_id).catch(() => null)
     : null;
   if (!organization) return { error: 'Organizatia invitatiei nu mai este disponibila', status: 404 };
   if (organization.status === 'inactiva') return { error: 'Organizatia nu este activa', status: 403 };
 
-  const organizationWide = invitation.organization_wide_access === true || isOrganizationWideProviderRole(invitation.proposed_role);
+  const organizationWide = invitationIsOrganizationWide(invitation);
   let locationIds = ids(invitation.invited_location_ids);
   if (organizationWide) {
     const currentLocations = await svc.entities.ProviderLocation.filter({ organization_id: organization.id }, '-created_date', 500);
