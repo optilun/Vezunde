@@ -245,7 +245,7 @@ async function addSelfAsSpecialist(svc, user, location) {
   const now = new Date().toISOString();
   const record = selfAssociationRecord({ profile, location, userId: user.id, now });
   const assignment = existing
-    ? await svc.entities.ProfessionalLocationAssignment.update(existing.id, { ...record, association_request_status: '' })
+    ? await svc.entities.ProfessionalLocationAssignment.update(existing.id, record)
     : await svc.entities.ProfessionalLocationAssignment.create(record);
   await audit(svc, user, {
     entity_type: 'ProfessionalLocationAssignment',
