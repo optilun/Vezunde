@@ -13,6 +13,8 @@ import {
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import SpecialistsLocationArtwork from "./SpecialistsLocationArtwork";
+import OrganizationSearchResult from "@/components/provider/OrganizationSearchResult";
+import { standaloneClaimLocations } from "@/lib/claimSearchResults";
 
 const AUDIENCE_OPTIONS = [
   {
@@ -34,10 +36,14 @@ export default function SpecialistsHero() {
   const [audience, setAudience] = useState("organization");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
   const reqRef = useRef(0);
 
   useEffect(() => {
+    const reqId = ++reqRef.current;
+    setResults([]);
+    setOrganizations([]);
     if (audience !== "organization") {
       setResults([]);
       setLoading(false);
@@ -51,7 +57,6 @@ export default function SpecialistsHero() {
       return;
     }
 
-    const reqId = ++reqRef.current;
     const t = setTimeout(async () => {
       setLoading(true);
       const res = await base44.functions
@@ -61,12 +66,17 @@ export default function SpecialistsHero() {
       if (reqId !== reqRef.current) return;
       setLoading(false);
       setResults(res.data?.locations || []);
+      setOrganizations(res.data?.organizations || []);
     }, 300);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      reqRef.current += 1;
+    };
   }, [audience, query]);
 
   const searched = audience === "organization" && query.trim().length >= 2;
+  const standaloneLocations = standaloneClaimLocations(results, organizations);
 
   return (
     <section id="profilul-tau" className="relative mx-auto max-w-6xl scroll-mt-24 px-5 pb-14 pt-10 sm:pb-16 sm:pt-12">
@@ -125,9 +135,9 @@ export default function SpecialistsHero() {
           {audience === "organization" ? (
             <div className="min-w-0">
               <div className="mb-4 text-left">
-                <h2 className="font-heading text-xl font-bold">Caută locația ta</h2>
+                <h2 className="font-heading text-xl font-bold">Caută organizația sau locația</h2>
                 <p className="mt-1 text-[13px] leading-relaxed text-[#657087]">
-                  O găsești aici? Revendică profilul sau solicită acces.
+                  Ai mai multe locații? Începe cu organizația și le alegi la pasul următor.
                 </p>
               </div>
 
@@ -138,7 +148,7 @@ export default function SpecialistsHero() {
                     aria-label="Nume, localitate sau adresă"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Numele locației"
+                    placeholder="Numele organizației sau locației"
                     className="w-full h-12 pl-11 pr-10 rounded-xl bg-[#FAFAF8] border border-border text-sm outline-none focus:ring-2 focus:border-[#405AE9] focus:ring-[#DCE4FF] transition-shadow"
                   />
                   {loading && (
@@ -160,7 +170,22 @@ export default function SpecialistsHero() {
 
               {searched && (
                 <div id="hero-search-results" className="mt-4 space-y-2.5 text-left">
-                  {results.map((loc) => {
+                  {organizations.map((organization) => (
+                    <OrganizationSearchResult
+                      key={organization.id}
+                      organization={organization}
+                      onClaimOrganization={(org) => {
+                        const primary = org.locations.find((loc) => loc.id === org.primary_location_id) || org.locations[0];
+                        if (primary) navigate("/adauga-sau-revendica", {
+                          state: { selectedLocation: primary, preferredScope: "organization" },
+                        });
+                      }}
+                      onClaimLocation={(loc) => navigate("/adauga-sau-revendica", {
+                        state: { selectedLocation: loc },
+                      })}
+                    />
+                  ))}
+                  {standaloneLocations.map((loc) => {
                     const requestsAccess = loc.claim_action === "request_access";
 
                     return (
@@ -200,7 +225,7 @@ export default function SpecialistsHero() {
                     );
                   })}
 
-                  {!loading && results.length === 0 && (
+                  {!loading && results.length === 0 && organizations.length === 0 && (
                     <p className="text-sm text-muted-foreground">Nicio locație găsită.</p>
                   )}
                 </div>
