@@ -8,6 +8,7 @@ import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import { readableErrorMessage } from "@/lib/transientRetry";
+import { focusRefreshGate } from "@/lib/focusRefreshGate";
 import {
   providerLocationModuleUrl,
   providerSectionUrl,
@@ -169,6 +170,8 @@ export default function ProviderWorkspaceRoot({
   const previousSectionRef = useRef(requestedSection);
   const hasCompletedInitialSectionSyncRef = useRef(false);
   const appliedSelectionRequestRef = useRef("");
+  const focusRefreshGateRef = useRef(null);
+  if (!focusRefreshGateRef.current) focusRefreshGateRef.current = focusRefreshGate();
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
   const organizationContexts = useMemo(() => organizationContextsFor(workspace), [workspace]);
@@ -385,6 +388,7 @@ export default function ProviderWorkspaceRoot({
     if (response.data) {
       setOverview(response.data);
       setOverviewError(false);
+      focusRefreshGateRef.current?.markLoaded();
     } else if (!silent) {
       setOverviewError(true);
     }
@@ -583,7 +587,11 @@ export default function ProviderWorkspaceRoot({
 
   useEffect(() => {
     if (safeSection !== "overview" || !selectedLocationId) return undefined;
-    const refreshOnFocus = () => { void refreshOverviewLatest.current(); };
+    // 2026-10-03. La `focus` se reincarca doar daca ultima incarcare e mai veche de 30 s (vezi
+    // src/lib/focusRefreshGate.js); altfel fiecare trecere intre ferestre pornea o rafala de cereri.
+    const refreshOnFocus = () => {
+      if (focusRefreshGateRef.current?.shouldRefresh()) void refreshOverviewLatest.current();
+    };
     window.addEventListener("focus", refreshOnFocus);
     return () => window.removeEventListener("focus", refreshOnFocus);
   }, [safeSection, selectedLocationId]);
