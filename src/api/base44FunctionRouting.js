@@ -30,7 +30,22 @@ export const READ_ONLY_RETRY_FUNCTIONS = Object.freeze(new Set([
   'getProviderProfileCompleteness',
   'getProviderLogoReviewStatus',
 ]));
-export const READ_ONLY_RETRY_DELAYS_MS = Object.freeze([800, 2000]);
+// 2026-10-03. Pauze mai lungi si aleatoare: dupa „Rate limit exceeded” platforma are nevoie de
+// cateva secunde, iar reincercarile simultane trebuie raspandite (inainte, 0,8 s si 2 s fixe,
+// deci toate cererile cazute deodata loveau din nou limita impreuna).
+export const READ_ONLY_RETRY_DELAYS_MS = Object.freeze([1500, 4000]);
+export const READ_ONLY_RETRY_JITTER_MS = 1000;
+
+// 2026-10-03. Doua cereri de citire identice (aceeasi functie, acelasi payload) pornite in timp ce
+// prima inca asteapta raspuns primesc acelasi raspuns, nu un apel nou. Nu e un cache: dupa ce
+// raspunsul vine, urmatoarea cerere pleaca din nou la server.
+export function readOnlyRequestKey(logicalName, payload = {}) {
+  try {
+    return `${logicalName}:${JSON.stringify(payload ?? {})}`;
+  } catch {
+    return '';
+  }
+}
 
 // Trebuie sa fie identica cu DIRECTORY_IMPORT_RUNTIME_REVISION din
 // base44/functions/directoryOps/directoryImportOpsLatest.ts - adaptorul care raspunde
@@ -72,7 +87,8 @@ export function installBase44FunctionRouting(client, options = {}) {
   const rawFunctions = client.functions;
   const rawInvoke = rawFunctions.invoke.bind(rawFunctions);
 
-  const retryOptions = options.readOnlyRetry || { delaysMs: READ_ONLY_RETRY_DELAYS_MS };
+  const retryOptions = options.readOnlyRetry || { delaysMs: READ_ONLY_RETRY_DELAYS_MS, jitterMs: READ_ONLY_RETRY_JITTER_MS };
+  const inFlightReads = new Map();
 
   const routedFunctions = new Proxy(rawFunctions, {
     get(target, property) {
@@ -97,9 +113,17 @@ export function installBase44FunctionRouting(client, options = {}) {
           }
           return rawInvoke(logicalName, payload);
         };
-        return (logicalName, payload = {}) => (READ_ONLY_RETRY_FUNCTIONS.has(logicalName)
-          ? withTransientRetry(() => invokeRouted(logicalName, payload), retryOptions)
-          : invokeRouted(logicalName, payload));
+        return (logicalName, payload = {}) => {
+          if (!READ_ONLY_RETRY_FUNCTIONS.has(logicalName)) return invokeRouted(logicalName, payload);
+          const key = readOnlyRequestKey(logicalName, payload);
+          if (key && inFlightReads.has(key)) return inFlightReads.get(key);
+          const request = withTransientRetry(() => invokeRouted(logicalName, payload), retryOptions);
+          if (!key) return request;
+          inFlightReads.set(key, request);
+          const release = () => { if (inFlightReads.get(key) === request) inFlightReads.delete(key); };
+          request.then(release, release);
+          return request;
+        };
       }
       return Reflect.get(target, property, target);
     },
