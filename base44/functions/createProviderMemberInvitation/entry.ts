@@ -2,11 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   ORGANIZATION_ADMIN_ROLE,
   ORGANIZATION_OWNER_ROLE,
-  isPrivilegedProviderRole,
   loadOrganizationOwnerScopeResolution,
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
-  roleRequiresOrganizationWideAccess,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
 import { PROFESSIONAL_TYPE_CODES, professionalTypeLabel } from '../../shared/professionalIdentity.js';
