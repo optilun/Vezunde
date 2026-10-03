@@ -94,3 +94,81 @@ export function membershipHasOrganizationWideAccess(membership, resolution = {})
 export function organizationApprovalIsWide(scope) {
   return isFullOrganizationApproval(scope);
 }
+
+/**
+ * Cine primeste acces la o locatie noua sau nou asociata unei organizatii.
+ *
+ * 2026-10-03. Doar ownerii si administratorii cu acces la intreaga organizatie primesc locatia,
+ * cu `organization_wide_access: true` scris explicit. Un owner limitat la anumite locatii nu mai
+ * primeste un rand fara flag (care ar fi contat ca acces la toata organizatia si l-ar fi extins,
+ * prin sincronizare, la toate locatiile). Daca solicitantul e un owner limitat, primeste doar
+ * locatia ceruta, cu `organization_wide_access: false`.
+ * Intoarce lista schimbarilor de aplicat: { user_id, existing, desired }.
+ */
+export function planNewLocationAccess({ memberships = [], resolution = {}, organizationId, locationId, requesterUserId = '' } = {}) {
+  const normalizedOrganizationId = clean(organizationId);
+  const normalizedLocationId = clean(locationId);
+  const organizationRows = memberships.filter((membership) => clean(membership?.organization_id) === normalizedOrganizationId);
+  const rolesByUser = new Map();
+  for (const membership of organizationRows) {
+    if (!membershipHasOrganizationWideAccess(membership, resolution)) continue;
+    const userId = clean(membership.user_id);
+    if (!userId) continue;
+    const roles = rolesByUser.get(userId) || [];
+    roles.push(providerMembershipAccessRole(membership));
+    rolesByUser.set(userId, roles);
+  }
+
+  const existingFor = (userId) => organizationRows.find((membership) => clean(membership.user_id) === userId && clean(membership.location_id) === normalizedLocationId)
+    || memberships.find((membership) => clean(membership.user_id) === userId && clean(membership.location_id) === normalizedLocationId)
+    || null;
+  const plan = [];
+  for (const [userId, roles] of rolesByUser.entries()) {
+    const accessRole = roles.includes(ORGANIZATION_OWNER_ROLE) ? ORGANIZATION_OWNER_ROLE : ORGANIZATION_ADMIN_ROLE;
+    const existing = existingFor(userId);
+    plan.push({
+      user_id: userId,
+      existing,
+      desired: {
+        organization_id: normalizedOrganizationId,
+        role: storedProviderRoleForAccessRole(accessRole),
+        organization_role: accessRole === ORGANIZATION_ADMIN_ROLE ? ORGANIZATION_ADMIN_ROLE : 'none',
+        status: 'active',
+        access_origin: existing?.access_origin || 'organization_sync',
+        claim_scope: 'organization',
+        organization_wide_access: true,
+      },
+    });
+  }
+
+  const requester = clean(requesterUserId);
+  const requesterIsOwner = requester && organizationRows.some((membership) => clean(membership.user_id) === requester
+    && clean(membership.status) === 'active'
+    && providerMembershipAccessRole(membership) === ORGANIZATION_OWNER_ROLE);
+  if (requesterIsOwner && !rolesByUser.has(requester)) {
+    const existing = existingFor(requester);
+    plan.push({
+      user_id: requester,
+      existing,
+      desired: {
+        organization_id: normalizedOrganizationId,
+        role: storedProviderRoleForAccessRole(ORGANIZATION_OWNER_ROLE),
+        organization_role: 'none',
+        status: 'active',
+        access_origin: existing?.access_origin || 'organization_sync',
+        claim_scope: 'location',
+        organization_wide_access: false,
+      },
+    });
+  }
+  return plan;
+}
+
+/** Un rand existent trebuie actualizat daca nu e activ sau difera de ce s-a planificat. */
+export function plannedAccessNeedsUpdate(existing, desired) {
+  if (!existing) return true;
+  return clean(existing.status) !== 'active'
+    || providerMembershipAccessRole(existing) !== providerMembershipAccessRole(desired)
+    || existing.organization_wide_access !== desired.organization_wide_access
+    || clean(existing.organization_id) !== clean(desired.organization_id);
+}
