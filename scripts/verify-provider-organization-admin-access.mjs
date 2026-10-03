@@ -42,15 +42,17 @@ assert.match(invitationSchema, /"organization_wide_access"/);
 
 assert.match(roleScope, /ORGANIZATION_ADMIN_ROLE/);
 assert.match(roleScope, /storedProviderRoleForAccessRole/);
-assert.match(roleScope, /ORGANIZATION_ADMIN_ROLE\) return 'location_manager'/);
+assert.match(roleScope, /from '\.\/providerRolePolicy\.js'/);
 assert.match(roleScope, /isPrivilegedProviderRole/);
 assert.match(roleScope, /roleRequiresOrganizationWideAccess/);
 assert.match(roleScope, /membership\.organization_wide_access === true/);
 
-assert.match(createInvitation, /roleRequiresOrganizationWideAccess\(proposedRole\)/);
-assert.match(createInvitation, /proposedRole === ORGANIZATION_OWNER_ROLE && payload\.organization_wide_access === true/);
-assert.match(createInvitation, /scope\.wideOwnerOrganizationIds/);
-assert.match(createInvitation, /scope\.adminOrganizationIds/);
+// 2026-10-03 (structura conturilor, pasul 3): fara „owner selectiv”. Proprietarul si administratorul
+// primesc mereu toata organizatia; cine ce poate da vine din matricea comuna.
+assert.match(createInvitation, /const organizationWide = providerRoleCoversOrganization\(proposedRole\);/);
+assert.doesNotMatch(createInvitation, /payload\.organization_wide_access === true/);
+assert.match(createInvitation, /canAssignProviderRole\(scope\.roleByOrganization\.get\(organizationId\), proposedRole\)/);
+assert.match(createInvitation, /scope\.locationIdsByOrganization/);
 assert.match(createInvitation, /organization_wide_access: organizationWide/);
 assert.match(createInvitation, /invited_location_ids: locationIds/);
 
@@ -61,22 +63,24 @@ assert.match(acceptInvitation, /claim_scope: organizationWide \? 'organization'/
 assert.match(acceptInvitation, /ProviderMembership\.update|ProviderMembership\.create/);
 
 assert.match(setAccess, /Un utilizator trebuie sa aiba un singur rol clar in organizatie/);
-assert.match(setAccess, /actor\.role === ORGANIZATION_ADMIN_ROLE && isPrivilegedProviderRole/);
-assert.match(setAccess, /roleRequiresOrganizationWideAccess\(selectedRole\)/);
-assert.match(setAccess, /Doar un owner global poate acorda acces la intreaga organizatie/);
-assert.match(setAccess, /Nu poti elimina ultimul owner activ al locatiei/);
+assert.match(setAccess, /canManageProviderMember\(actor\.role, currentTargetRole\)/);
+assert.match(setAccess, /canAssignProviderRole\(actor\.role, selectedRole\)/);
+assert.match(setAccess, /const organizationWide = providerRoleCoversOrganization\(selectedRole\);/);
+assert.doesNotMatch(setAccess, /requestedWideAccess/);
+assert.match(setAccess, /Nu poti elimina ultimul proprietar activ al locatiei/);
 assert.match(setAccess, /organization_role: assignment\.role === ORGANIZATION_ADMIN_ROLE/);
 assert.match(setAccess, /organization_wide_access: organizationWide/);
 
 assert.match(members, /organization_admins_count/);
 assert.match(members, /global_owners_count/);
+assert.match(members, /assignableProviderRoles\(/);
 assert.match(members, /current_actor_wide_access/);
 assert.match(members, /can_manage_privileged_roles/);
 assert.match(members, /can_grant_organization_admin/);
 assert.match(members, /available_invitation_roles/);
 assert.match(members, /manageable_location_ids/);
 
-assert.match(revokeInvitation, /isPrivilegedProviderRole|ORGANIZATION_ADMIN_ROLE/);
+assert.match(revokeInvitation, /canAssignProviderRole\(actor\.role, invitation\.proposed_role\)/);
 assert.match(revokeInvitation, /organization_wide_access/);
 assert.match(syncAccess, /membershipHasOrganizationWideAccess/);
 assert.match(syncAccess, /ORGANIZATION_ADMIN_ROLE/);
@@ -88,27 +92,21 @@ assert.match(expansion, /planNewLocationAccess\(\{ memberships, resolution, orga
 assert.match(roleScope, /export function planNewLocationAccess\(/);
 assert.match(roleScope, /role: storedProviderRoleForAccessRole\(accessRole\)/);
 
-assert.match(workspace, /organization_admin:/);
+assert.match(workspace, /const ROLE_CAPABILITIES = PROVIDER_ROLE_CAPABILITIES;/);
 assert.match(workspace, /"organization\.manage_members"/);
-assert.doesNotMatch(
-  workspace.match(/organization_admin:\s*\[[\s\S]*?\],/s)?.[0] || '',
-  /organization\.manage_settings|organization\.manage_locations|location\.archive|location\.request_closure/,
-);
 assert.match(workspace, /actorHasWideOrganizationAccess/);
 assert.match(workspace, /current_actor_wide_access/);
 assert.match(workspace, /OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES/);
 assert.match(workspace, /scopedLocationIds/);
 assert.match(workspace, /syncProviderOrganizationOwnerAccess/);
 
+assert.match(accessUi, /PROVIDER_ACCESS_ROLES/);
 assert.match(accessUi, /organization_owner/);
 assert.match(accessUi, /organization_admin/);
-assert.match(accessUi, /location_manager/);
-assert.match(accessUi, /location_staff/);
-assert.match(accessUi, /Toată organizația/);
-assert.match(accessUi, /Locații selectate/);
-assert.match(accessUi, /organization_wide_access: form\.scope === "all"/);
-assert.match(accessUi, /organization_wide_access: edit\.scope === "all"/);
-assert.match(labels, /organization_admin: "Administrator organizație"/);
+assert.doesNotMatch(accessUi, /ScopeChoice|selectiv|owner global/);
+assert.match(accessUi, /organization_wide_access: providerRoleCoversOrganization\(form\.role\)/);
+assert.match(accessUi, /organization_wide_access: providerRoleCoversOrganization\(edit\.role\)/);
+assert.match(labels, /PROVIDER_ROLE_LABELS as ROLE_LABELS/);
 assert.match(invitationUi, /organization_admin/);
 assert.match(invitationUi, /organization_wide_access/);
 assert.match(invitationUi, /locațiilor actuale și viitoare/);
