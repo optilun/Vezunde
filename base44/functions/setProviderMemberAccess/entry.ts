@@ -75,10 +75,6 @@ function targetRole(rows, userId) {
   return '';
 }
 
-function targetHasWideAccess(rows, userId, resolution) {
-  return rows.some((row) => row.user_id === userId && membershipHasOrganizationWideAccess(row, resolution));
-}
-
 // 2026-10-03 (structura conturilor, pasul 3). Rolul actorului dupa matricea comuna
 // (shared/providerRolePolicy.js): proprietarul si administratorul in toata organizatia, managerul
 // doar la locatiile lui. Un rand vechi de proprietar limitat la anumite locatii conteaza ca manager
@@ -181,10 +177,10 @@ Deno.serve(async (req) => {
     const activeOutsideScopeRows = targetRows.filter((row) => row.status === 'active' && row.location_id && !mutableLocationIds.has(row.location_id));
     const outsideRoles = [...new Set(activeOutsideScopeRows.map(providerMembershipAccessRole).filter(Boolean))];
     if (!actorCanManageAllLocations && selectedRole && outsideRoles.some((outsideRole) => outsideRole !== selectedRole)) {
-      return res({ error: 'Utilizatorul are un alt rol in locatii din afara accesului tau. Modificarea trebuie facuta de un owner global.' }, 409);
+      return res({ error: 'Utilizatorul are un alt rol in locatii din afara accesului tau. Modificarea trebuie facuta de proprietarul sau administratorul organizatiei.' }, 409);
     }
     if (!actorCanManageAllLocations && activeOutsideScopeRows.some((row) => membershipHasOrganizationWideAccess(row, scope.resolution))) {
-      return res({ error: 'Accesul organizational al utilizatorului poate fi modificat numai de un owner global.' }, 403);
+      return res({ error: 'Accesul utilizatorului la toata organizatia poate fi modificat numai de proprietar.' }, 403);
     }
 
     if (organizationWide && scope.locations.length === 0) {
