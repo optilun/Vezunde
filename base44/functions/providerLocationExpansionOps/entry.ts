@@ -3,9 +3,9 @@ import {
   ORGANIZATION_ADMIN_ROLE,
   ORGANIZATION_OWNER_ROLE,
   loadOrganizationOwnerScopeResolution,
-  membershipHasOrganizationWideAccess,
+  planNewLocationAccess,
+  plannedAccessNeedsUpdate,
   providerMembershipAccessRole,
-  storedProviderRoleForAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
 
 const PROVIDER_ROLES = [ORGANIZATION_OWNER_ROLE];
@@ -251,46 +251,27 @@ async function adminList(svc: any, user: any) {
   return res({ submissions: items });
 }
 
+// 2026-10-03. Planul vine din shared/providerOrganizationOwnerScope.js (planNewLocationAccess),
+// comun cu providerLocationIdentityResolutionOps. Inainte, solicitantul primea mereu
+// `organization_wide_access: true`, chiar daca era un owner limitat la anumite locatii; randul
+// acela il facea, prin sincronizare, owner pe toata organizatia.
 async function propagateOrganizationWideAccess(svc: any, organizationId: string, locationId: string, actorId: string, requesterUserId: string) {
   const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1500);
   const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
-  const rolesByUser = new Map<string, string[]>();
-  for (const membership of memberships) {
-    if (!membershipHasOrganizationWideAccess(membership, resolution)) continue;
-    const userId = text(membership.user_id, 200);
-    if (!userId) continue;
-    const roles = rolesByUser.get(userId) || [];
-    roles.push(providerMembershipAccessRole(membership));
-    rolesByUser.set(userId, roles);
-  }
-  const requesterHasOwnerMembership = memberships.some((membership: any) => membership.user_id === requesterUserId
-    && membership.status === 'active'
-    && role(membership.role) === ORGANIZATION_OWNER_ROLE);
-  if (requesterUserId && requesterHasOwnerMembership && !rolesByUser.has(requesterUserId)) rolesByUser.set(requesterUserId, [ORGANIZATION_OWNER_ROLE]);
-
+  const plan = planNewLocationAccess({ memberships, resolution, organizationId, locationId, requesterUserId });
   const changed: Array<Record<string, unknown>> = [];
-  for (const [userId, roles] of rolesByUser.entries()) {
-    const accessRole = roles.includes(ORGANIZATION_OWNER_ROLE) ? ORGANIZATION_OWNER_ROLE : ORGANIZATION_ADMIN_ROLE;
-    const existing = memberships.find((membership: any) => membership.user_id === userId && membership.location_id === locationId);
-    const desired = {
-      organization_id: organizationId,
-      role: storedProviderRoleForAccessRole(accessRole),
-      organization_role: accessRole === ORGANIZATION_ADMIN_ROLE ? ORGANIZATION_ADMIN_ROLE : 'none',
-      status: 'active',
-      access_origin: existing?.access_origin || 'organization_sync',
-      claim_scope: 'organization',
-      organization_wide_access: true,
-    };
-    if (!existing) {
-      const row = await svc.entities.ProviderMembership.create({ user_id: userId, location_id: locationId, ...desired });
-      changed.push({ id: row.id, user_id: userId, role: accessRole, action: 'created' });
-    } else if (existing.status !== 'active' || providerMembershipAccessRole(existing) !== accessRole || existing.organization_wide_access !== true) {
-      await svc.entities.ProviderMembership.update(existing.id, {
-        ...desired,
+  for (const item of plan) {
+    const accessRole = providerMembershipAccessRole(item.desired);
+    if (!item.existing) {
+      const row = await svc.entities.ProviderMembership.create({ user_id: item.user_id, location_id: locationId, ...item.desired });
+      changed.push({ id: row.id, user_id: item.user_id, role: accessRole, organization_wide_access: item.desired.organization_wide_access, action: 'created' });
+    } else if (plannedAccessNeedsUpdate(item.existing, item.desired)) {
+      await svc.entities.ProviderMembership.update(item.existing.id, {
+        ...item.desired,
         reactivated_by_user_id: actorId,
         reactivated_at: new Date().toISOString(),
       });
-      changed.push({ id: existing.id, user_id: userId, role: accessRole, action: 'updated' });
+      changed.push({ id: item.existing.id, user_id: item.user_id, role: accessRole, organization_wide_access: item.desired.organization_wide_access, action: 'updated' });
     }
   }
   return changed;
