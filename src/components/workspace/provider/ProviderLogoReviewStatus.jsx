@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle2, ImagePlus, Info, Loader2, TriangleAlert } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { focusRefreshGate } from "@/lib/focusRefreshGate";
 
 const STATUS_COPY = {
   pending_review: {
@@ -69,7 +70,9 @@ export default function ProviderLogoReviewStatus({ organizationId, locationId })
     }).catch((requestError) => {
       if (mounted) setError(requestError.response?.data?.error || requestError.message || "");
     });
-    const onFocus = () => { if (mounted) void load(); };
+    // 2026-10-03. La `focus` doar daca ultima incarcare e mai veche de 30 s (src/lib/focusRefreshGate.js).
+    const gate = focusRefreshGate();
+    const onFocus = () => { if (mounted && gate.shouldRefresh()) void load(); };
     window.addEventListener("focus", onFocus);
     return () => {
       mounted = false;
