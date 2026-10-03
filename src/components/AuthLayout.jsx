@@ -1,28 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
-
-function AuthBrandPanel() {
-  return (
-    <aside aria-label="Despre VIASEE" className="relative hidden min-h-[640px] overflow-hidden rounded-[24px] bg-[#f7f4ec] lg:sticky lg:top-6 lg:block lg:h-[calc(100dvh-3rem)]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/auth/viasee-auth-artwork-v1.webp')" }}
-      />
-      <div className="absolute inset-x-[7%] top-1/2 -translate-y-1/2 text-center">
-        <h2 className="font-heading text-[clamp(1.75rem,2.5vw,3rem)] font-semibold leading-[1.12] tracking-[-0.045em] text-[#191919]">
-          <span className="block">Tot ce ai nevoie</span>
-          <span className="block">pentru vedere.</span>
-          <span className="block">Într-un singur loc.</span>
-        </h2>
-        <p className="mx-auto mt-5 max-w-[340px] text-sm leading-6 text-[#625e55]">
-          Medici, clinici, controale, investigații,<br />ochelari și reparații.
-        </p>
-      </div>
-    </aside>
-  );
-}
+import AuthArtworkPanel from "@/components/brand/AuthArtworkPanel";
 
 export default function AuthLayout({ icon: Icon, title, subtitle = "", footer = null, children, split = false }) {
   if (!split) return (
@@ -58,7 +37,7 @@ export default function AuthLayout({ icon: Icon, title, subtitle = "", footer = 
           <Link to="/confidentialitate" className="inline-flex min-h-11 items-center underline underline-offset-4">Confidențialitate</Link>
         </nav>
       </div>
-      <AuthBrandPanel />
+      <AuthArtworkPanel />
     </div>
   );
 }
