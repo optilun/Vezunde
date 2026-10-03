@@ -97,7 +97,9 @@ assert.match(claimsUi, /Furnizorul a semnalat ca aceste locatii fac parte din ac
 
 // ---------- Diacritice in formularul de revendicare ----------
 const addOrClaim = await read('src/pages/AddOrClaim.jsx');
-assert.match(addOrClaim, /title="Găsește profilul locației tale"/);
+// 2026-10-03: titlul a devenit „Găsește organizația sau locația” (revendicare pornită de la organizație,
+// altă sesiune). Verificăm doar că are diacritice.
+assert.match(addOrClaim, /title="Găsește (profilul locației tale|organizația sau locația)"/);
 assert.match(addOrClaim, /"Găsește profilul", "Confirmă relația"/);
 const search = await read('src/components/provider/ProviderSearch.jsx');
 assert.match(search, /Nu găsesc locația/);
