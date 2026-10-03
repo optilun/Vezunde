@@ -182,7 +182,7 @@ export default function SpecialistsHero() {
                       onClaimOrganization={(org) => {
                         const primary = org.locations.find((loc) => loc.id === org.primary_location_id) || org.locations[0];
                         if (primary) navigate("/adauga-sau-revendica", {
-                          state: { selectedLocation: primary, preferredScope: "organization" },
+                          state: { selectedLocation: primary, selectedOrganization: org, preferredScope: "organization" },
                         });
                       }}
                       onClaimLocation={(loc) => navigate("/adauga-sau-revendica", {
