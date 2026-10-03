@@ -1,18 +1,20 @@
+import {
+  PROVIDER_ADMIN_ROLE,
+  PROVIDER_OWNER_ROLE,
+  providerAccessRoleFromMembership,
+} from './providerRolePolicy.js';
+
 function clean(value) {
   return String(value || '').trim();
 }
 
-export const ORGANIZATION_OWNER_ROLE = 'organization_owner';
-export const ORGANIZATION_ADMIN_ROLE = 'organization_admin';
+// 2026-10-03 (structura conturilor, pasul 3): rolurile si citirea rolului dintr-un membership vin
+// din providerRolePolicy.js, sursa unica a matricei de drepturi.
+export const ORGANIZATION_OWNER_ROLE = PROVIDER_OWNER_ROLE;
+export const ORGANIZATION_ADMIN_ROLE = PROVIDER_ADMIN_ROLE;
 
 export function providerMembershipAccessRole(membership) {
-  if (!membership) return '';
-  if (clean(membership.organization_role) === ORGANIZATION_ADMIN_ROLE && membership.organization_wide_access === true) return ORGANIZATION_ADMIN_ROLE;
-  const storedRole = clean(membership.role);
-  if (storedRole === 'owner') return ORGANIZATION_OWNER_ROLE;
-  if (storedRole === 'manager') return 'location_manager';
-  if (storedRole === 'staff') return 'location_staff';
-  return storedRole;
+  return providerAccessRoleFromMembership(membership);
 }
 
 export function storedProviderRoleForAccessRole(role) {
