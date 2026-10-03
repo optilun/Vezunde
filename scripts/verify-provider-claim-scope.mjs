@@ -132,7 +132,7 @@ assert.match(adminClaims, /adminProviderScopedClaimReview/);
 assert.match(adminClaims, /approved_location_ids/);
 assert.match(adminClaims, /Aprobarea poate fi partiala/);
 assert.match(claimStatus, /approved_location_ids/);
-assert.match(claimStatus, /Aprobarea este partiala/);
+assert.match(claimStatus, /Aprobarea este parțială/);
 
 console.log('Provider claim scope checks passed.');
 

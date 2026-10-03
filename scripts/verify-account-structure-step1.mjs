@@ -136,7 +136,8 @@ assert.match(myAccount, /key: "create-professional"/);
 assert.match(myAccount, /key: "create-organization"/);
 assert.match(myAccount, /\.\.\.\(hasApplicantWorkspace \? \["applicant"\] : \[\]\), "personal"\]/, 'istoricul singur nu devine spatiul implicit');
 assert.match(sidebar, /if \(kind === "create"\) return Plus;/);
-assert.match(sidebar, /organizationItems\.filter\(\(item\) => item\.kind !== "create"\)\.length/);
+// 2026-10-03 (pasul 2): numărul din titlul grupului numără doar organizațiile, nu acțiunile sau solicitările.
+assert.match(sidebar, /organizationItems\.filter\(\(item\) => item\.kind === "organization"\)\.length/);
 assert.match(nav, /key: "requests", label: "Cererile mele"/);
 assert.match(nav, /key: "access", label: "Echipă"/);
 assert.doesNotMatch(professionalRoot, /key: "settings"/, 'profilul profesional nu mai dubleaza setarile contului');
