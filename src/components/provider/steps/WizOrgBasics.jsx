@@ -5,10 +5,10 @@ import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 const inputCls = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-foreground/50";
 
 const ORG_TYPES = {
-  optica_medicala: "Optica medicala",
+  optica_medicala: "Optică medicală",
   cabinet_optometric: "Cabinet optometric",
   cabinet_oftalmologic: "Cabinet oftalmologic",
-  clinica_oftalmologica: "Clinica oftalmologica",
+  clinica_oftalmologica: "Clinică oftalmologică",
 };
 
 const ORG_TYPE_TO_PROFILE_TYPE = {
