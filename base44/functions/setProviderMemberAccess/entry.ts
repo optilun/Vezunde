@@ -2,13 +2,18 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   ORGANIZATION_ADMIN_ROLE,
   ORGANIZATION_OWNER_ROLE,
-  isPrivilegedProviderRole,
   loadOrganizationOwnerScopeResolution,
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
-  roleRequiresOrganizationWideAccess,
   storedProviderRoleForAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
+import {
+  PROVIDER_MANAGER_ROLE,
+  canAssignProviderRole,
+  canManageProviderMember,
+  highestProviderAccessRole,
+  providerRoleCoversOrganization,
+} from '../../shared/providerRolePolicy.js';
 
 const ACCESS_ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 function res(body, status = 200) { return Response.json(body, { status }); }
@@ -74,29 +79,33 @@ function targetHasWideAccess(rows, userId, resolution) {
   return rows.some((row) => row.user_id === userId && membershipHasOrganizationWideAccess(row, resolution));
 }
 
+// 2026-10-03 (structura conturilor, pasul 3). Rolul actorului dupa matricea comuna
+// (shared/providerRolePolicy.js): proprietarul si administratorul in toata organizatia, managerul
+// doar la locatiile lui. Un rand vechi de proprietar limitat la anumite locatii conteaza ca manager
+// pe acele locatii (nu mai exista azi si nu mai poate fi creat).
 function actorScope(rows, userId, locations, resolution) {
   const ownRows = rows.filter((row) => row.user_id === userId && row.status === 'active');
-  const ownerLocationIds = new Set();
-  const adminLocationIds = new Set();
+  const managerLocationIds = new Set();
+  let role = '';
   let wideOwner = false;
   let organizationAdmin = false;
   for (const row of ownRows) {
-    const accessRole = providerMembershipAccessRole(row);
+    let accessRole = providerMembershipAccessRole(row);
     if (accessRole === ORGANIZATION_OWNER_ROLE) {
-      if (row.location_id) ownerLocationIds.add(row.location_id);
       if (membershipHasOrganizationWideAccess(row, resolution)) wideOwner = true;
+      else accessRole = PROVIDER_MANAGER_ROLE;
     }
-    if (accessRole === ORGANIZATION_ADMIN_ROLE && row.organization_wide_access === true) organizationAdmin = true;
+    if (accessRole === ORGANIZATION_ADMIN_ROLE) organizationAdmin = true;
+    if (accessRole === PROVIDER_MANAGER_ROLE && row.location_id) managerLocationIds.add(row.location_id);
+    if ([ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, PROVIDER_MANAGER_ROLE].includes(accessRole)) role = highestProviderAccessRole([role, accessRole]);
   }
-  if (wideOwner) for (const location of locations) ownerLocationIds.add(location.id);
-  if (organizationAdmin) for (const location of locations) adminLocationIds.add(location.id);
+  const allLocationIds = new Set(locations.map((location) => location.id));
   return {
-    role: wideOwner || ownerLocationIds.size > 0 ? ORGANIZATION_OWNER_ROLE : (organizationAdmin ? ORGANIZATION_ADMIN_ROLE : ''),
+    role,
     wideOwner,
     organizationAdmin,
-    ownerLocationIds,
-    adminLocationIds,
-    manageableLocationIds: new Set([...ownerLocationIds, ...adminLocationIds]),
+    ownerLocationIds: wideOwner ? allLocationIds : new Set(),
+    manageableLocationIds: providerRoleCoversOrganization(role) ? allLocationIds : managerLocationIds,
   };
 }
 
@@ -110,29 +119,29 @@ Deno.serve(async (req) => {
     const targetUserId = clean(payload.user_id);
     const organizationId = clean(payload.organization_id);
     const assignments = Array.isArray(payload.assignments) ? payload.assignments : [];
-    const requestedWideAccess = payload.organization_wide_access === true;
     if (!targetUserId || !organizationId) return res({ error: 'user_id si organization_id sunt obligatorii' }, 400);
 
     const scope = await organizationScope(svc, organizationId);
     const actor = user.role === 'admin'
-      ? { role: 'platform_admin', wideOwner: true, organizationAdmin: false, ownerLocationIds: scope.locationIds, adminLocationIds: new Set(), manageableLocationIds: scope.locationIds }
+      ? { role: 'platform_admin', wideOwner: true, organizationAdmin: false, ownerLocationIds: scope.locationIds, manageableLocationIds: scope.locationIds }
       : actorScope(scope.rows, user.id, scope.locations, scope.resolution);
-    if (!['platform_admin', ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE].includes(actor.role)) {
+    if (!canManageProviderMember(actor.role, '')) {
       return res({ error: 'Nu ai dreptul sa modifici accesul utilizatorilor' }, 403);
     }
 
-    const actorCanManageAllLocations = actor.role === 'platform_admin' || actor.wideOwner || actor.organizationAdmin;
+    const actorCanManageAllLocations = actor.role === 'platform_admin' || providerRoleCoversOrganization(actor.role);
     const mutableLocationIds = actorCanManageAllLocations ? scope.locationIds : actor.manageableLocationIds;
     const currentTargetRole = targetRole(scope.rows, targetUserId);
-    const currentTargetWide = targetHasWideAccess(scope.rows, targetUserId, scope.resolution);
-    if (actor.role === ORGANIZATION_ADMIN_ROLE && isPrivilegedProviderRole(currentTargetRole)) {
-      return res({ error: 'Administratorul organizatiei nu poate modifica owneri sau alti administratori' }, 403);
+    // Cine poate schimba accesul cuiva: doar cine i-ar putea da rolul pe care il are acum.
+    if (!canManageProviderMember(actor.role, currentTargetRole)) {
+      return res({
+        error: actor.role === ORGANIZATION_ADMIN_ROLE
+          ? 'Administratorul organizatiei nu poate modifica proprietari sau alti administratori'
+          : (actor.role === PROVIDER_MANAGER_ROLE ? 'Managerul locatiei poate modifica doar accesul membrilor' : 'Nu poti modifica accesul acestui utilizator'),
+      }, 403);
     }
-    if (actor.role === ORGANIZATION_ADMIN_ROLE && targetUserId === user.id) {
+    if (actor.role !== 'platform_admin' && actor.role !== ORGANIZATION_OWNER_ROLE && targetUserId === user.id) {
       return res({ error: 'Nu iti poti modifica propriul acces organizational' }, 403);
-    }
-    if (currentTargetWide && currentTargetRole === ORGANIZATION_OWNER_ROLE && !actor.wideOwner && actor.role !== 'platform_admin') {
-      return res({ error: 'Doar un owner cu acces la intreaga organizatie poate modifica un owner global' }, 403);
     }
 
     const normalized = [];
@@ -149,6 +158,24 @@ Deno.serve(async (req) => {
       seen.add(locationId);
       normalized.push({ location_id: locationId, role: accessRole });
     }
+    if (selectedRole && !canAssignProviderRole(actor.role, selectedRole)) {
+      return res({
+        error: actor.role === PROVIDER_MANAGER_ROLE
+          ? 'Managerul locatiei poate acorda doar rolul de membru'
+          : 'Doar proprietarul organizatiei poate acorda rolul de proprietar sau administrator',
+      }, 403);
+    }
+    // 2026-10-03 (pasul 3): fara „owner selectiv”. Proprietarul si administratorul primesc mereu
+    // toate locatiile organizatiei (si pe cele viitoare), oricare ar fi lista trimisa.
+    const organizationWide = providerRoleCoversOrganization(selectedRole);
+    if (organizationWide) {
+      normalized.length = 0;
+      seen.clear();
+      for (const location of scope.locations) {
+        seen.add(location.id);
+        normalized.push({ location_id: location.id, role: selectedRole });
+      }
+    }
 
     const targetRows = scope.rows.filter((row) => row.user_id === targetUserId);
     const activeOutsideScopeRows = targetRows.filter((row) => row.status === 'active' && row.location_id && !mutableLocationIds.has(row.location_id));
@@ -160,26 +187,12 @@ Deno.serve(async (req) => {
       return res({ error: 'Accesul organizational al utilizatorului poate fi modificat numai de un owner global.' }, 403);
     }
 
-    const requiresWide = roleRequiresOrganizationWideAccess(selectedRole);
-    const organizationWide = requiresWide || (selectedRole === ORGANIZATION_OWNER_ROLE && requestedWideAccess);
-    if (requiresWide && !requestedWideAccess) return res({ error: 'Administratorul organizatiei trebuie sa primeasca toate locatiile actuale si viitoare' }, 400);
-    if (organizationWide) {
-      if (!actor.wideOwner && actor.role !== 'platform_admin') return res({ error: 'Doar un owner global poate acorda acces la intreaga organizatie' }, 403);
-      const coversAll = scope.locations.length > 0 && scope.locations.every((location) => seen.has(location.id));
-      if (!coversAll) return res({ error: 'Accesul organizational trebuie aplicat tuturor locatiilor actuale' }, 400);
+    if (organizationWide && scope.locations.length === 0) {
+      return res({ error: 'Organizatia nu are locatii' }, 400);
     }
-
-    if (selectedRole === ORGANIZATION_OWNER_ROLE && !organizationWide) {
-      if (![ORGANIZATION_OWNER_ROLE, 'platform_admin'].includes(actor.role)) return res({ error: 'Numai ownerul poate acorda rol de owner' }, 403);
-      if (actor.role !== 'platform_admin' && !normalized.every((assignment) => actor.ownerLocationIds.has(assignment.location_id))) {
-        return res({ error: 'Poti acorda rol de owner numai pentru locatiile pe care le detii' }, 403);
-      }
-    } else if (selectedRole && !isPrivilegedProviderRole(selectedRole)) {
-      if (actor.role !== 'platform_admin' && !normalized.every((assignment) => actor.manageableLocationIds.has(assignment.location_id))) {
-        return res({ error: 'Nu poti acorda acces pentru aceste locatii' }, 403);
-      }
-    } else if (selectedRole === ORGANIZATION_ADMIN_ROLE && actor.role !== 'platform_admin' && !actor.wideOwner) {
-      return res({ error: 'Numai ownerul global poate acorda rol de administrator' }, 403);
+    if (selectedRole && !organizationWide && actor.role !== 'platform_admin'
+      && !normalized.every((assignment) => actor.manageableLocationIds.has(assignment.location_id))) {
+      return res({ error: 'Nu poti acorda acces pentru aceste locatii' }, 403);
     }
 
     const preservedOwnerLocationIds = new Set(activeOutsideScopeRows
@@ -195,7 +208,7 @@ Deno.serve(async (req) => {
         .filter((row) => row.location_id === location.id && row.status === 'active' && providerMembershipAccessRole(row) === ORGANIZATION_OWNER_ROLE)
         .map((row) => row.user_id));
       if (currentOwners.has(targetUserId) && currentOwners.size === 1 && !resultingOwnerLocationIds.has(location.id)) {
-        return res({ error: `Nu poti elimina ultimul owner activ al locatiei ${location.public_display_name || location.name || ''}`.trim() }, 400);
+        return res({ error: `Nu poti elimina ultimul proprietar activ al locatiei ${location.public_display_name || location.name || ''}`.trim() }, 400);
       }
     }
     if (targetUserId === user.id && normalized.length === 0 && activeOutsideScopeRows.length === 0) {
