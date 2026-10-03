@@ -6,8 +6,16 @@ import {
   plannedAccessNeedsUpdate,
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
+import { providerRoleHasCapability } from '../../shared/providerRolePolicy.js';
 
 const PROVIDER_ROLES = [ORGANIZATION_OWNER_ROLE];
+
+// 2026-10-03 (structura conturilor, pasul 3): locatii noi adauga proprietarul si administratorul
+// (matricea din shared/providerRolePolicy.js, `organization.manage_locations`).
+function canAddLocations(membership: any) {
+  return PROVIDER_ROLES.includes(role(membership?.role))
+    || providerRoleHasCapability(providerMembershipAccessRole(membership), 'organization.manage_locations');
+}
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 
 function res(body: Record<string, unknown>, status = 200) {
@@ -87,8 +95,8 @@ function validateLocation(raw: unknown) {
 async function providerContext(svc: any, user: any, anchorLocationId: string) {
   if (!anchorLocationId) return { error: 'Locatia curenta este obligatorie', status: 400 };
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: anchorLocationId, status: 'active' }, '-created_date', 20);
-  const membership = memberships.find((item: any) => PROVIDER_ROLES.includes(role(item.role)));
-  if (!membership) return { error: 'Doar ownerul organizatiei poate adauga locatii', status: 403 };
+  const membership = memberships.find((item: any) => canAddLocations(item));
+  if (!membership) return { error: 'Doar proprietarul sau administratorul organizatiei poate adauga locatii', status: 403 };
   const anchor = await svc.entities.ProviderLocation.get(anchorLocationId).catch(() => null);
   if (!anchor) return { error: 'Locatia curenta nu a fost gasita', status: 404 };
   const organizationId = anchor.organization_id || membership.organization_id || '';
