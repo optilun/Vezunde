@@ -67,6 +67,36 @@
     "visibility_revoked_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "association_origin": {
+      "type": "string",
+      "enum": [
+        "invitation",
+        "professional_request",
+        "owner_self"
+      ],
+      "description": "Cum a pornit asocierea: invitatia organizatiei, cererea specialistului (\u201eLucrez aici\u201d) sau ownerul care se afiseaza singur ca specialist. Lipsa = invitatie (randuri vechi)."
+    },
+    "association_request_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "declined",
+        "withdrawn"
+      ],
+      "description": "Doar pentru cererile trimise de specialist: decizia organizatiei. Cat timp e pending, asocierea ramane inactiva si privata."
+    },
+    "association_requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "association_decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "association_decided_by_user_id": {
+      "type": "string"
     }
   },
   "required": [
