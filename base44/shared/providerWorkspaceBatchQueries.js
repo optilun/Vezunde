@@ -73,10 +73,25 @@ export async function filterByIdList(entity, field, ids, query = {}, options = {
   return dedupeById(rows);
 }
 
-/** Echivalentul grupat pentru `entity.get(id)` repetat; ID-urile inexistente lipsesc din harta. */
+/**
+ * Echivalentul grupat pentru `entity.get(id).catch(() => null)` repetat. ID-urile inexistente
+ * lipsesc din harta. Ce nu vine din citirea grupata (sau totul, daca ea esueaza) se citeste unul
+ * cate unul, ca inainte - deci in cel mai rau caz comportamentul e cel vechi, nu o lista goala.
+ */
 export async function getManyByIds(entity, ids, options = {}) {
-  const rows = await filterByIdList(entity, 'id', ids, {}, options);
-  return new Map(rows.map((row) => [row.id, row]));
+  const wanted = uniqueIds(ids);
+  const byId = new Map();
+  if (!entity || wanted.length === 0) return byId;
+  const rows = await filterByIdList(entity, 'id', wanted, {}, options).catch(() => []);
+  for (const row of rows) if (row?.id) byId.set(row.id, row);
+  if (options.fallbackToGet !== false && typeof entity.get === 'function') {
+    for (const id of wanted) {
+      if (byId.has(id)) continue;
+      const row = await entity.get(id).catch(() => null);
+      if (row) byId.set(id, row);
+    }
+  }
+  return byId;
 }
 
 export function groupRowsBy(rows, field) {
