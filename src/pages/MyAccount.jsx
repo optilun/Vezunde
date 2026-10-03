@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
@@ -92,6 +92,7 @@ function providerOrganizationContexts(workspace) {
 export default function MyAccount() {
   const [params, setParams] = useSearchParams();
   const routerNavigate = useNavigate();
+  const { locationModule: routeLocationModule } = useParams();
   const [providerWorkspace, setProviderWorkspace] = useState(null);
   const [professionalWorkspace, setProfessionalWorkspace] = useState(null);
   const [onboardingWorkspace, setOnboardingWorkspace] = useState(null);
@@ -270,8 +271,13 @@ export default function MyAccount() {
   ];
   const availableModeKeys = new Set(accountModes.map((mode) => mode.key));
   const preferences = readAccountPreferences(user.id);
-  const requestedMode = params.get("mode");
-  const preferredMode = preferences.startMode === "last" ? preferences.lastMode : preferences.startMode;
+  // 2026-10-03: paginile unei locații (/contul-meu/locatii/:id/:modul) sunt mereu în spațiul
+  // organizației. Fără asta, ultimul spațiu ținut minte (de ex. „Solicitări de organizație” sau
+  // profilul profesional) deschidea alt spațiu decât modulul cerut.
+  const requestedMode = params.get("mode") || (routeLocationModule ? "provider" : null);
+  const rememberedMode = preferences.startMode === "last" ? preferences.lastMode : preferences.startMode;
+  // Istoricul solicitărilor nu devine spațiul de pornire; doar o solicitare activă poate fi.
+  const preferredMode = rememberedMode === "applicant" && !hasApplicantWorkspace ? null : rememberedMode;
   const fallbackMode = [requestedMode, preferredMode, "provider", "professional", ...(hasApplicantWorkspace ? ["applicant"] : []), "personal"]
     .find((mode) => availableModeKeys.has(mode)) || "personal";
   const resolvedMode = activeMode && availableModeKeys.has(activeMode) ? activeMode : fallbackMode;
