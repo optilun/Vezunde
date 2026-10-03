@@ -5,7 +5,7 @@ import { useInViewport, useMediaQuery, usePrefersReducedMotion } from "@/lib/mot
 const CHAPTERS = [
   { title: "Spui ce cauți", short: "Descrii", time: 0 },
   { title: "Răspunzi pe scurt", short: "Răspunzi", time: 6 },
-  { title: "Compari opțiunile", short: "Compari", time: 19 },
+  { title: "Compari opțiunile", short: "Compari", time: 24 },
 ];
 
 export default function ClientJourneyVideo() {
@@ -67,7 +67,7 @@ export default function ClientJourneyVideo() {
     else video?.requestFullscreen?.().catch(() => {});
   };
 
-  const activeChapter = currentTime >= 19 ? 2 : currentTime >= 6 ? 1 : 0;
+  const activeChapter = currentTime >= 24 ? 2 : currentTime >= 6 ? 1 : 0;
 
   return (
     <div ref={wrapperRef} className="mt-8 sm:mt-12">
