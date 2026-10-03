@@ -5,23 +5,10 @@ import { base44 } from "@/api/base44Client";
 import { INTENTS } from "@/lib/intentRegistry";
 import { readPatientRequestResumeAccess } from "@/lib/patientRequestPersistenceClient";
 import { readableErrorMessage } from "@/lib/transientRetry";
+import { patientRequestLifecycle, patientRequestResponseLabel } from "@/lib/myPatientRequests";
 
 // 2026-10-03. „Cererile mele” = cererile trimise ca pacient (structura conturilor, pasul 1).
 // Revendicarile de organizatii s-au mutat in grupul Organizatii → „Solicitări de organizație”.
-
-const LIFECYCLE = {
-  active: { label: "Activă", cls: "bg-green-100 text-green-800" },
-  resolved: { label: "Rezolvată", cls: "bg-secondary text-foreground" },
-  closed: { label: "Închisă", cls: "bg-secondary text-muted-foreground" },
-  expired: { label: "Expirată", cls: "bg-secondary text-muted-foreground" },
-};
-
-export function patientRequestLifecycle(request, now = Date.now()) {
-  const state = request?.lifecycle_state || "active";
-  const expiresAt = Date.parse(String(request?.expires_at || ""));
-  if (state === "active" && Number.isFinite(expiresAt) && expiresAt <= now) return LIFECYCLE.expired;
-  return LIFECYCLE[state] || LIFECYCLE.active;
-}
 
 function requestTitle(request) {
   return INTENTS[request.intent]?.label || request.intent_label || "Cerere";
@@ -49,7 +36,7 @@ function PatientRequestRow({ request }) {
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
               {sentAt && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Trimisă {sentAt}</span>}
               {place && <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {place}</span>}
-              <span className="inline-flex items-center gap-1.5"><MessageSquareText className="h-3.5 w-3.5" /> {request.response_count === 1 ? "1 răspuns" : `${request.response_count || 0} răspunsuri`}</span>
+              <span className="inline-flex items-center gap-1.5"><MessageSquareText className="h-3.5 w-3.5" /> {patientRequestResponseLabel(request.response_count)}</span>
             </div>
             {request.public_reference && <div className="mt-1.5 text-[11px] text-muted-foreground">Referință {request.public_reference}</div>}
           </div>
