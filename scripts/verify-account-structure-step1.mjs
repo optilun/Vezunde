@@ -135,6 +135,12 @@ assert.match(myAccount, /const hasApplicantSpace = hasApplicantWorkspace \|\| ha
 assert.match(myAccount, /key: "create-professional"/);
 assert.match(myAccount, /key: "create-organization"/);
 assert.match(myAccount, /\.\.\.\(hasApplicantWorkspace \? \["applicant"\] : \[\]\), "personal"\]/, 'istoricul singur nu devine spatiul implicit');
+// Paginile modulelor unei locatii raman in spatiul organizatiei, oricare ar fi ultimul spatiu folosit.
+assert.match(myAccount, /const requestedMode = params\.get\("mode"\) \|\| \(routeLocationModule \? "provider" : null\);/);
+assert.match(myAccount, /const routeForcesProvider = Boolean\(routeLocationModule\) && !params\.get\("mode"\)/);
+assert.match(myAccount, /rememberedMode === "applicant" && !hasApplicantWorkspace \? null : rememberedMode/, 'istoricul nu devine spatiul de pornire');
+assert.match(myAccount, /if \(routeLocationModule\) routerNavigate\(`\/contul-meu\?\$\{next\.toString\(\)\}`/, 'schimbarea spatiului paraseste pagina modulului');
+assert.doesNotMatch(myAccount, /\n    setParams\(next, \{ replace: true \}\);\n    setActiveMode/, 'toate schimbarile de spatiu trec prin applyAccountParams');
 assert.match(sidebar, /if \(kind === "create"\) return Plus;/);
 // 2026-10-03 (pasul 2): numărul din titlul grupului numără doar organizațiile, nu acțiunile sau solicitările.
 assert.match(sidebar, /organizationItems\.filter\(\(item\) => item\.kind === "organization"\)\.length/);
