@@ -52,7 +52,7 @@ export default function ClaimRelationStep({ locationCard, contact, onChange, onC
         Continua
       </ContinueButton>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        În pasul următor te autentifici sau îți creezi contul VIASEE, apoi confirmi locațiile solicitate.
+        În pasul următor confirmi locațiile pentru care soliciți acces.
       </p>
     </div>
   );
