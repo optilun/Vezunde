@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, Copy, Mail, MapPin, Search, Send, ShieldCheck, UserPlus, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 import { useProviderAccessState } from "./ProviderAccessContext";
 
 const inputCls = "w-full rounded-xl border border-foreground/15 bg-background px-4 py-3 text-[15px] outline-none transition focus:border-foreground/40 focus:ring-2 focus:ring-foreground/5";
@@ -85,6 +86,57 @@ function LocationChoice({ location, selected, disabled, onToggle }) {
   );
 }
 
+// 2026-10-03 (structura conturilor, pasul 2): aceeași invitație poate cere și afișarea publică ca
+// specialist. Persoana primește un singur email și acceptă o singură dată.
+function InviteSpecialistOption({ form, setForm, locationById }) {
+  const accessLocationIds = form.location_ids || [];
+  const toggle = (id) => setForm((current) => ({
+    ...current,
+    specialist_location_ids: current.specialist_location_ids.includes(id)
+      ? current.specialist_location_ids.filter((item) => item !== id)
+      : [...current.specialist_location_ids, id],
+  }));
+  return (
+    <div className="rounded-2xl border border-border p-3.5">
+      <label htmlFor="invite-specialist" className="flex cursor-pointer items-start gap-3">
+        <input
+          id="invite-specialist"
+          type="checkbox"
+          checked={form.specialist}
+          onChange={(event) => setForm((current) => ({ ...current, specialist: event.target.checked, specialist_location_ids: event.target.checked ? accessLocationIds : [] }))}
+          className="mt-1"
+        />
+        <span>
+          <span className="block text-sm font-bold">Apare și public ca specialist</span>
+          <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Pentru optometriști, oftalmologi și opticieni. Apare pe pagina locației doar după ce profilul lui profesional e verificat de VIASEE și își dă acordul când acceptă invitația.</span>
+        </span>
+      </label>
+      {form.specialist && (
+        <div className="mt-3 space-y-3 border-t border-border pt-3">
+          <div>
+            <label htmlFor="invite-specialist-type" className="text-xs font-semibold text-muted-foreground">Tip specialist</label>
+            <select id="invite-specialist-type" className="mt-1.5 w-full rounded-xl border border-foreground/15 bg-background px-3 py-2.5 text-sm" value={form.professional_type} onChange={(event) => setForm((current) => ({ ...current, professional_type: event.target.value }))}>
+              {Object.entries(PROFESSIONAL_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground">Apare public la</div>
+            {accessLocationIds.length === 0 ? (
+              <p className="mt-1.5 text-xs text-muted-foreground">Alege întâi locațiile de mai sus.</p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {accessLocationIds.map((id) => (
+                  <LocationChoice key={id} location={locationById[id] || { id }} selected={form.specialist_location_ids.includes(id)} disabled={false} onToggle={() => toggle(id)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserAccessSummary({ group, allIds, locationById }) {
   const wide = groupWide(group);
   const ids = activeLocationIds(group);
@@ -108,7 +160,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   const [memberOpen, setMemberOpen] = useState(null);
   const [newLink, setNewLink] = useState("");
   const [copied, setCopied] = useState(false);
-  const [form, setForm] = useState({ email: "", role: "location_staff", scope: "selected", location_ids: [] });
+  const [form, setForm] = useState({ email: "", role: "location_staff", scope: "selected", location_ids: [], specialist: false, professional_type: "optometrist", specialist_location_ids: [] });
   const [edit, setEdit] = useState({ role: "location_staff", scope: "selected", location_ids: [] });
   const locationById = useMemo(() => Object.fromEntries(locations.map((location) => [location.id, location])), [locations]);
 
@@ -137,11 +189,20 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     const scope = role === "organization_admin" ? "all" : (role === "organization_owner" ? (canGrantAdmin ? "all" : "selected") : "selected");
     setForm((current) => ({ ...current, role, scope, location_ids: scope === "all" ? allLocationIds : [] }));
   };
-  const setFormScope = (scope) => setForm((current) => ({ ...current, scope, location_ids: scope === "all" ? allLocationIds : [] }));
-  const toggleFormLocation = (id) => setForm((current) => ({ ...current, location_ids: current.location_ids.includes(id) ? current.location_ids.filter((item) => item !== id) : [...current.location_ids, id] }));
+  const setFormScope = (scope) => setForm((current) => ({ ...current, scope, location_ids: scope === "all" ? allLocationIds : [], specialist_location_ids: scope === "all" && current.specialist ? allLocationIds : [] }));
+  const toggleFormLocation = (id) => setForm((current) => {
+    const removing = current.location_ids.includes(id);
+    return {
+      ...current,
+      location_ids: removing ? current.location_ids.filter((item) => item !== id) : [...current.location_ids, id],
+      specialist_location_ids: removing
+        ? current.specialist_location_ids.filter((item) => item !== id)
+        : (current.specialist ? [...current.specialist_location_ids, id] : current.specialist_location_ids),
+    };
+  });
   const openInvite = () => {
     const role = availableRoles.includes("location_staff") ? "location_staff" : availableRoles[0];
-    setForm({ email: "", role, scope: role === "organization_admin" ? "all" : "selected", location_ids: role === "organization_admin" ? allLocationIds : [] });
+    setForm({ email: "", role, scope: role === "organization_admin" ? "all" : "selected", location_ids: role === "organization_admin" ? allLocationIds : [], specialist: false, professional_type: "optometrist", specialist_location_ids: [] });
     setMessage(""); setNewLink(""); setCopied(false); setInviteOpen(true);
   };
 
@@ -149,6 +210,8 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     const email = form.email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setMessage("Introdu un email valid."); return; }
     if (!form.location_ids.length) { setMessage("Selectează cel puțin o locație."); return; }
+    const specialistLocationIds = form.specialist ? form.specialist_location_ids.filter((id) => form.location_ids.includes(id)) : [];
+    if (form.specialist && !specialistLocationIds.length) { setMessage("Alege cel puțin o locație la care apare ca specialist."); return; }
     setSaving(true); setMessage("");
     const response = await base44.functions.invoke("createProviderMemberInvitation", {
       organization_id: organizationId,
@@ -157,6 +220,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
       invited_location_ids: form.location_ids,
       organization_wide_access: form.scope === "all",
       invitation_base_url: window.location.origin,
+      ...(form.specialist ? { specialist: { professional_type: form.professional_type, location_ids: specialistLocationIds } } : {}),
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
     if (response.data?.error) { setMessage(response.data.error); return; }
@@ -239,7 +303,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
       <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm"><div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Mail className="h-5 w-5" /><h2 className="text-lg font-bold">Invitații în așteptare</h2></div></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{invitations.length}</span></div><div className="divide-y divide-border/70">{filteredInvitations.length ? filteredInvitations.map((invitation) => { const privileged = PRIVILEGED_ROLES.has(invitation.proposed_role); const canRevoke = !privileged || canGrantAdmin || (invitation.proposed_role === "organization_owner" && !invitation.organization_wide_access && canManageOwners); return <div key={invitation.id} className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{invitation.invited_email_masked}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_LABELS[invitation.proposed_role]}{invitation.proposed_role === "organization_owner" ? (invitation.organization_wide_access ? " · global" : " · selectiv") : ""}</div></div><div className="flex-1 text-sm font-semibold">{invitation.organization_wide_access ? "Toate locațiile actuale și viitoare" : `${invitation.invited_location_ids?.length || 0} locații selectate`}</div><button type="button" disabled={!canRevoke || saving} onClick={() => revoke(invitation.id)} className="rounded-full border border-border px-3 py-2 text-sm font-semibold text-destructive disabled:opacity-45">{canRevoke ? "Revocă" : "Doar ownerul global"}</button></div>; }) : <div className="px-5 py-10 text-center text-sm text-muted-foreground">Nu există invitații în așteptare.</div>}</div></section>
 
       <Drawer open={inviteOpen} title="Invită utilizator" subtitle="Alege rolul și scope-ul înainte de trimitere." onClose={() => setInviteOpen(false)}>
-        <div className="space-y-5"><div><label className="text-xs font-semibold text-muted-foreground">Email</label><input className={`${inputCls} mt-1.5`} value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="nume@email.ro" /></div><div><div className="text-xs font-semibold text-muted-foreground">Rol</div><div className="mt-2 space-y-2">{availableRoles.map((role) => <RoleChoice key={role} role={role} selected={form.role === role} onSelect={applyRoleToForm} />)}</div></div>{form.role === "organization_owner" && <div><div className="mb-2 text-xs font-semibold text-muted-foreground">Scope owner</div><ScopeChoice value={form.scope} disabledAll={!canGrantAdmin} onChange={setFormScope} /></div>}{form.role === "organization_admin" && <div className="rounded-2xl bg-secondary/35 p-3 text-sm text-muted-foreground">Administratorul primește automat toate locațiile actuale și viitoare.</div>}<div><div className="flex justify-between"><div className="text-sm font-semibold">Locații</div>{form.scope === "selected" && locationOptions.length > 1 && <button type="button" onClick={() => setForm((current) => ({ ...current, location_ids: current.location_ids.length === allLocationIds.length ? [] : allLocationIds }))} className="text-xs font-semibold underline">{form.location_ids.length === allLocationIds.length ? "Șterge selecția" : "Selectează toate"}</button>}</div><div className="mt-3 space-y-2">{locationOptions.map((location) => <LocationChoice key={location.id} location={location} selected={form.location_ids.includes(location.id)} disabled={form.scope === "all"} onToggle={() => toggleFormLocation(location.id)} />)}</div></div>{message && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{message}</div>}{newLink && <div className="rounded-2xl border border-green-200 bg-green-50 p-3"><p className="break-all text-xs">{newLink}</p><button type="button" onClick={async () => { await navigator.clipboard.writeText(newLink); setCopied(true); }} className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold">{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copiat" : "Copiază linkul"}</button></div>}<button type="button" disabled={saving || Boolean(newLink)} onClick={createInvitation} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" />{saving ? "Se creează..." : "Trimite invitația"}</button></div>
+        <div className="space-y-5"><div><label className="text-xs font-semibold text-muted-foreground">Email</label><input className={`${inputCls} mt-1.5`} value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="nume@email.ro" /></div><div><div className="text-xs font-semibold text-muted-foreground">Rol</div><div className="mt-2 space-y-2">{availableRoles.map((role) => <RoleChoice key={role} role={role} selected={form.role === role} onSelect={applyRoleToForm} />)}</div></div>{form.role === "organization_owner" && <div><div className="mb-2 text-xs font-semibold text-muted-foreground">Scope owner</div><ScopeChoice value={form.scope} disabledAll={!canGrantAdmin} onChange={setFormScope} /></div>}{form.role === "organization_admin" && <div className="rounded-2xl bg-secondary/35 p-3 text-sm text-muted-foreground">Administratorul primește automat toate locațiile actuale și viitoare.</div>}<div><div className="flex justify-between"><div className="text-sm font-semibold">Locații</div>{form.scope === "selected" && locationOptions.length > 1 && <button type="button" onClick={() => setForm((current) => ({ ...current, location_ids: current.location_ids.length === allLocationIds.length ? [] : allLocationIds }))} className="text-xs font-semibold underline">{form.location_ids.length === allLocationIds.length ? "Șterge selecția" : "Selectează toate"}</button>}</div><div className="mt-3 space-y-2">{locationOptions.map((location) => <LocationChoice key={location.id} location={location} selected={form.location_ids.includes(location.id)} disabled={form.scope === "all"} onToggle={() => toggleFormLocation(location.id)} />)}</div></div><InviteSpecialistOption form={form} setForm={setForm} locationById={locationById} />{message && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{message}</div>}{newLink && <div className="rounded-2xl border border-green-200 bg-green-50 p-3"><p className="break-all text-xs">{newLink}</p><button type="button" onClick={async () => { await navigator.clipboard.writeText(newLink); setCopied(true); }} className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold">{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copiat" : "Copiază linkul"}</button></div>}<button type="button" disabled={saving || Boolean(newLink)} onClick={createInvitation} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" />{saving ? "Se creează..." : "Trimite invitația"}</button></div>
       </Drawer>
 
       <Drawer open={Boolean(memberOpen)} title={memberOpen?.user_name || memberOpen?.user_email_masked || "Acces utilizator"} subtitle="Modifică rolul și scope-ul utilizatorului." onClose={() => setMemberOpen(null)}>
