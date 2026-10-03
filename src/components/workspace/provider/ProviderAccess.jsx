@@ -4,16 +4,19 @@ import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 import { useProviderAccessState } from "./ProviderAccessContext";
+import {
+  PROVIDER_ACCESS_ROLES,
+  PROVIDER_ROLE_DESCRIPTIONS,
+  PROVIDER_ROLE_MATRIX,
+  providerRoleCoversOrganization,
+  providerRoleMatrixCell,
+} from "../../../../shared/providerRolePolicy.js";
 
 const inputCls = "w-full rounded-xl border border-foreground/15 bg-background px-4 py-3 text-[15px] outline-none transition focus:border-foreground/40 focus:ring-2 focus:ring-foreground/5";
-const ALL_ROLES = ["organization_owner", "organization_admin", "location_manager", "location_staff"];
-const PRIVILEGED_ROLES = new Set(["organization_owner", "organization_admin"]);
-const ROLE_DESCRIPTIONS = {
-  organization_owner: "Poate avea acces la toate locațiile sau numai la locațiile selectate. Controlează utilizatorii din propriul scope.",
-  organization_admin: "Gestionează activitatea tuturor locațiilor actuale și viitoare, fără drepturile sensibile ale ownerului.",
-  location_manager: "Gestionează conținutul și operațiunile locațiilor selectate.",
-  location_staff: "Acces operațional limitat la locațiile selectate.",
-};
+// 2026-10-03 (structura conturilor, pasul 3): patru roluri, fara „owner selectiv”. Rolurile,
+// descrierile si tabelul „Ce poate fiecare rol” vin din matricea comuna (shared/providerRolePolicy.js).
+const ALL_ROLES = PROVIDER_ACCESS_ROLES;
+const ROLE_DESCRIPTIONS = PROVIDER_ROLE_DESCRIPTIONS;
 
 function locationName(location) { return location?.public_display_name || location?.name || "Locație"; }
 function initials(value = "") { return String(value || "U").split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "U"; }
@@ -34,7 +37,7 @@ function groupRole(group) {
   const roles = group.memberships.filter((row) => row.status === "active").map((row) => row.role);
   return ALL_ROLES.find((role) => roles.includes(role)) || "";
 }
-function groupWide(group) { return group.memberships.some((row) => row.status === "active" && row.organization_wide_access === true); }
+function groupWide(group) { return providerRoleCoversOrganization(groupRole(group)) || group.memberships.some((row) => row.status === "active" && row.organization_wide_access === true); }
 function activeLocationIds(group) { return [...new Set(group.memberships.filter((row) => row.status === "active").map((row) => row.location_id).filter(Boolean))]; }
 
 function Drawer({ open, title, subtitle, onClose, children }) {
@@ -68,12 +71,42 @@ function RoleChoice({ role, selected, disabled = false, onSelect }) {
   );
 }
 
-function ScopeChoice({ value, disabledAll, onChange }) {
+// Tabelul „Ce poate fiecare rol”, din aceeași matrice pe care o aplică și serverul.
+function RoleMatrix() {
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <button type="button" disabled={disabledAll} onClick={() => onChange("all")} className={`rounded-2xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-45 ${value === "all" ? "border-foreground/25 bg-secondary/45" : "border-border"}`}><span className="block text-sm font-bold">Toată organizația</span><span className="mt-1 block text-xs text-muted-foreground">Locațiile actuale și viitoare</span></button>
-      <button type="button" onClick={() => onChange("selected")} className={`rounded-2xl border p-3 text-left ${value === "selected" ? "border-foreground/25 bg-secondary/45" : "border-border"}`}><span className="block text-sm font-bold">Locații selectate</span><span className="mt-1 block text-xs text-muted-foreground">Numai locațiile bifate</span></button>
-    </div>
+    <details className="group mt-4 rounded-2xl border border-border bg-background/60">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold">
+        Ce poate fiecare rol
+        <ChevronRight className="h-4 w-4 transition group-open:rotate-90" aria-hidden="true" />
+      </summary>
+      <div className="overflow-x-auto border-t border-border">
+        <table className="w-full min-w-[560px] text-left text-xs">
+          <thead>
+            <tr className="border-b border-border">
+              <th scope="col" className="px-4 py-2.5 font-semibold text-muted-foreground"><span className="sr-only">Drept</span></th>
+              {ALL_ROLES.map((role) => <th key={role} scope="col" className="px-3 py-2.5 font-bold">{ROLE_LABELS[role]}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {PROVIDER_ROLE_MATRIX.map((row) => (
+              <tr key={row.key} className="border-b border-border/60 last:border-0">
+                <th scope="row" className="px-4 py-2.5 font-medium">{row.label}</th>
+                {ALL_ROLES.map((role) => {
+                  const cell = providerRoleMatrixCell(row, role);
+                  return (
+                    <td key={role} className="px-3 py-2.5 text-muted-foreground">
+                      {typeof cell === "string" ? cell : cell
+                        ? <Check className="h-4 w-4 text-foreground" aria-label="Da" />
+                        : <span aria-label="Nu">—</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
@@ -160,8 +193,8 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   const [memberOpen, setMemberOpen] = useState(null);
   const [newLink, setNewLink] = useState("");
   const [copied, setCopied] = useState(false);
-  const [form, setForm] = useState({ email: "", role: "location_staff", scope: "selected", location_ids: [], specialist: false, professional_type: "optometrist", specialist_location_ids: [] });
-  const [edit, setEdit] = useState({ role: "location_staff", scope: "selected", location_ids: [] });
+  const [form, setForm] = useState({ email: "", role: "location_staff", location_ids: [], specialist: false, professional_type: "optometrist", specialist_location_ids: [] });
+  const [edit, setEdit] = useState({ role: "location_staff", location_ids: [] });
   const locationById = useMemo(() => Object.fromEntries(locations.map((location) => [location.id, location])), [locations]);
 
   useEffect(() => {
@@ -179,17 +212,17 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   const invitations = data?.invitations || [];
   const locationOptions = (data?.manageable_location_ids || []).map((id) => locationById[id]).filter(Boolean);
   const allLocationIds = locationOptions.map((location) => location.id);
+  // Rolurile pe care actorul le poate da (proprietarul: toate; administratorul: manager și membru;
+  // managerul: membru). Cineva se poate gestiona doar dacă rolul lui actual e în această listă.
   const availableRoles = data?.available_invitation_roles || [];
-  const canManageOwners = data?.can_manage_privileged_roles === true;
-  const canGrantAdmin = data?.can_grant_organization_admin === true;
+  const canManageRole = (role) => Boolean(role) && availableRoles.includes(role);
   const filteredGroups = groups.filter((group) => !query || [group.user_name, group.user_email_masked, ROLE_LABELS[groupRole(group)], ...activeLocationIds(group).map((id) => locationName(locationById[id]))].join(" ").toLowerCase().includes(query.toLowerCase()));
   const filteredInvitations = invitations.filter((invitation) => !query || [invitation.invited_email_masked, ROLE_LABELS[invitation.proposed_role]].join(" ").toLowerCase().includes(query.toLowerCase()));
 
   const applyRoleToForm = (role) => {
-    const scope = role === "organization_admin" ? "all" : (role === "organization_owner" ? (canGrantAdmin ? "all" : "selected") : "selected");
-    setForm((current) => ({ ...current, role, scope, location_ids: scope === "all" ? allLocationIds : [], specialist_location_ids: scope === "all" && current.specialist ? allLocationIds : [] }));
+    const wide = providerRoleCoversOrganization(role);
+    setForm((current) => ({ ...current, role, location_ids: wide ? allLocationIds : [], specialist_location_ids: wide && current.specialist ? allLocationIds : [] }));
   };
-  const setFormScope = (scope) => setForm((current) => ({ ...current, scope, location_ids: scope === "all" ? allLocationIds : [], specialist_location_ids: scope === "all" && current.specialist ? allLocationIds : [] }));
   const toggleFormLocation = (id) => setForm((current) => {
     const removing = current.location_ids.includes(id);
     return {
@@ -202,7 +235,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   });
   const openInvite = () => {
     const role = availableRoles.includes("location_staff") ? "location_staff" : availableRoles[0];
-    setForm({ email: "", role, scope: role === "organization_admin" ? "all" : "selected", location_ids: role === "organization_admin" ? allLocationIds : [], specialist: false, professional_type: "optometrist", specialist_location_ids: [] });
+    setForm({ email: "", role, location_ids: providerRoleCoversOrganization(role) ? allLocationIds : [], specialist: false, professional_type: "optometrist", specialist_location_ids: [] });
     setMessage(""); setNewLink(""); setCopied(false); setInviteOpen(true);
   };
 
@@ -218,7 +251,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
       invited_email: email,
       proposed_role: form.role,
       invited_location_ids: form.location_ids,
-      organization_wide_access: form.scope === "all",
+      organization_wide_access: providerRoleCoversOrganization(form.role),
       invitation_base_url: window.location.origin,
       ...(form.specialist ? { specialist: { professional_type: form.professional_type, location_ids: specialistLocationIds } } : {}),
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
@@ -240,15 +273,16 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
 
   const openMember = (group) => {
     const role = groupRole(group) || "location_staff";
-    const scope = groupWide(group) ? "all" : "selected";
-    setEdit({ role, scope, location_ids: scope === "all" ? allLocationIds : activeLocationIds(group) });
+    setEdit({ role, location_ids: providerRoleCoversOrganization(role) ? allLocationIds : activeLocationIds(group).filter((id) => allLocationIds.includes(id)) });
     setMessage(""); setMemberOpen(group);
   };
   const applyEditRole = (role) => {
-    const scope = role === "organization_admin" ? "all" : (role === "organization_owner" ? edit.scope : "selected");
-    setEdit((current) => ({ ...current, role, scope, location_ids: scope === "all" ? allLocationIds : (current.scope === "all" ? [] : current.location_ids) }));
+    setEdit((current) => {
+      const wide = providerRoleCoversOrganization(role);
+      const wasWide = providerRoleCoversOrganization(current.role);
+      return { ...current, role, location_ids: wide ? allLocationIds : (wasWide ? [] : current.location_ids) };
+    });
   };
-  const setEditScope = (scope) => setEdit((current) => ({ ...current, scope, location_ids: scope === "all" ? allLocationIds : [] }));
   const toggleEditLocation = (id) => setEdit((current) => ({ ...current, location_ids: current.location_ids.includes(id) ? current.location_ids.filter((item) => item !== id) : [...current.location_ids, id] }));
   const saveMember = async () => {
     if (!edit.location_ids.length && !window.confirm("Elimini accesul utilizatorului din toate locațiile?")) return;
@@ -256,7 +290,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     const response = await base44.functions.invoke("setProviderMemberAccess", {
       user_id: memberOpen.user_id,
       organization_id: organizationId,
-      organization_wide_access: edit.scope === "all",
+      organization_wide_access: providerRoleCoversOrganization(edit.role),
       assignments: edit.location_ids.map((location_id) => ({ location_id, role: edit.role })),
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
@@ -265,11 +299,10 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   };
 
   const currentMemberRole = memberOpen ? groupRole(memberOpen) : "";
-  const currentMemberWide = memberOpen ? groupWide(memberOpen) : false;
-  const canEditMember = !PRIVILEGED_ROLES.has(currentMemberRole)
-    || canGrantAdmin
-    || (currentMemberRole === "organization_owner" && !currentMemberWide && canManageOwners);
+  const canEditMember = canManageRole(currentMemberRole);
   const editRoles = availableRoles.length ? availableRoles : [];
+  const formWide = providerRoleCoversOrganization(form.role);
+  const editWide = providerRoleCoversOrganization(edit.role);
 
   if (loading && !data) return <div className="rounded-[20px] border border-foreground/10 bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă utilizatorii și accesul...</div>;
 
@@ -278,9 +311,10 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   return (
     <div className="space-y-6">
       <section className="rounded-[20px] border border-foreground/10 bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4"><div className="flex gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#eaf0fc] text-[#345bc8]"><ShieldCheck className="h-5 w-5" /></div><div><h1 className="font-heading text-[2rem] font-extrabold tracking-tight">Acces și utilizatori</h1><p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">Ownerul poate fi global sau selectiv. Administratorul acoperă toate locațiile. Managerul și membrul acoperă locațiile bifate.</p></div></div>{data?.can_manage_members && availableRoles.length > 0 && <button type="button" onClick={openInvite} className="inline-flex h-11 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background"><UserPlus className="h-4 w-4" /> Invită utilizator</button>}</div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Membri activi", data?.counters?.active_members_total || 0], ["Owneri globali", data?.counters?.global_owners_count || 0], ["Administratori", data?.counters?.organization_admins_count || 0], ["Invitații", invitations.length]].map(([label, value]) => <div key={label} className="rounded-[18px] bg-[#f8f4ec]/70 px-4 py-4"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-extrabold">{value}</div></div>)}</div>
+        <div className="flex flex-wrap items-start justify-between gap-4"><div className="flex gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#eaf0fc] text-[#345bc8]"><ShieldCheck className="h-5 w-5" /></div><div><h1 className="font-heading text-[2rem] font-extrabold tracking-tight">Acces și utilizatori</h1><p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">Patru roluri. Proprietarul și administratorul lucrează în toată organizația, inclusiv în locațiile noi. Managerul și membrul lucrează doar în locațiile bifate.</p></div></div>{data?.can_manage_members && availableRoles.length > 0 && <button type="button" onClick={openInvite} className="inline-flex h-11 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background"><UserPlus className="h-4 w-4" /> Invită utilizator</button>}</div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Membri activi", data?.counters?.active_members_total || 0], ["Proprietari", data?.counters?.organization_owners_count || 0], ["Administratori", data?.counters?.organization_admins_count || 0], ["Invitații", invitations.length]].map(([label, value]) => <div key={label} className="rounded-[18px] bg-[#f8f4ec]/70 px-4 py-4"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-extrabold">{value}</div></div>)}</div>
         <div className="relative mt-4"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${inputCls} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută după nume, email, rol sau locație..." /></div>
+        <RoleMatrix />
       </section>
       {accessLoadError && (
         <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
@@ -291,23 +325,22 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
       {message && !inviteOpen && !memberOpen && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>}
 
       <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm">
-        <div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Users className="h-5 w-5" /><h2 className="text-lg font-bold">Membrii organizației</h2></div><p className="mt-1 text-sm text-muted-foreground">Rol și scope clar pentru fiecare utilizator.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{groups.length}</span></div>
+        <div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Users className="h-5 w-5" /><h2 className="text-lg font-bold">Membrii organizației</h2></div><p className="mt-1 text-sm text-muted-foreground">Un singur rol pentru fiecare persoană și locațiile în care lucrează.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{groups.length}</span></div>
         <div className="divide-y divide-border/70">{filteredGroups.length ? filteredGroups.map((group) => {
           const role = groupRole(group);
-          const wide = groupWide(group);
-          const editable = !PRIVILEGED_ROLES.has(role) || canGrantAdmin || (role === "organization_owner" && !wide && canManageOwners);
-          return <div key={group.user_id} className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center"><div className="flex min-w-0 flex-1 gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">{initials(group.user_name || group.user_email_masked)}</div><div className="min-w-0"><div className="truncate text-sm font-bold">{group.user_name || group.user_email_masked}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_LABELS[role] || "Fără rol"}{role === "organization_owner" ? (wide ? " · global" : " · selectiv") : ""}</div></div></div><div className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground"><MapPin className="mr-1 inline h-3.5 w-3.5" /><UserAccessSummary group={group} allIds={allLocationIds} locationById={locationById} /></div><button type="button" disabled={!editable} onClick={() => openMember(group)} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold disabled:opacity-45">{editable ? "Gestionează accesul" : "Gestionat de ownerul global"}<ChevronRight className="h-3.5 w-3.5" /></button></div>;
+          const editable = canManageRole(role);
+          return <div key={group.user_id} className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center"><div className="flex min-w-0 flex-1 gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">{initials(group.user_name || group.user_email_masked)}</div><div className="min-w-0"><div className="truncate text-sm font-bold">{group.user_name || group.user_email_masked}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_LABELS[role] || "Fără rol"}</div></div></div><div className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground"><MapPin className="mr-1 inline h-3.5 w-3.5" /><UserAccessSummary group={group} allIds={allLocationIds} locationById={locationById} /></div><button type="button" disabled={!editable} onClick={() => openMember(group)} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold disabled:opacity-45">{editable ? "Gestionează accesul" : (role === "organization_owner" || role === "organization_admin" ? "Gestionat de proprietar" : "Gestionat de administrator")}<ChevronRight className="h-3.5 w-3.5" /></button></div>;
         }) : <div className="px-5 py-10 text-center text-sm text-muted-foreground">Nu există utilizatori care corespund căutării.</div>}</div>
       </section>
 
-      <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm"><div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Mail className="h-5 w-5" /><h2 className="text-lg font-bold">Invitații în așteptare</h2></div></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{invitations.length}</span></div><div className="divide-y divide-border/70">{filteredInvitations.length ? filteredInvitations.map((invitation) => { const privileged = PRIVILEGED_ROLES.has(invitation.proposed_role); const canRevoke = !privileged || canGrantAdmin || (invitation.proposed_role === "organization_owner" && !invitation.organization_wide_access && canManageOwners); return <div key={invitation.id} className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{invitation.invited_email_masked}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_LABELS[invitation.proposed_role]}{invitation.proposed_role === "organization_owner" ? (invitation.organization_wide_access ? " · global" : " · selectiv") : ""}</div></div><div className="flex-1 text-sm font-semibold">{invitation.organization_wide_access ? "Toate locațiile actuale și viitoare" : `${invitation.invited_location_ids?.length || 0} locații selectate`}</div><button type="button" disabled={!canRevoke || saving} onClick={() => revoke(invitation.id)} className="rounded-full border border-border px-3 py-2 text-sm font-semibold text-destructive disabled:opacity-45">{canRevoke ? "Revocă" : "Doar ownerul global"}</button></div>; }) : <div className="px-5 py-10 text-center text-sm text-muted-foreground">Nu există invitații în așteptare.</div>}</div></section>
+      <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm"><div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Mail className="h-5 w-5" /><h2 className="text-lg font-bold">Invitații în așteptare</h2></div></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{invitations.length}</span></div><div className="divide-y divide-border/70">{filteredInvitations.length ? filteredInvitations.map((invitation) => { const canRevoke = canManageRole(invitation.proposed_role); return <div key={invitation.id} className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{invitation.invited_email_masked}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_LABELS[invitation.proposed_role]}</div></div><div className="flex-1 text-sm font-semibold">{providerRoleCoversOrganization(invitation.proposed_role) || invitation.organization_wide_access ? "Toate locațiile, și cele viitoare" : `${invitation.invited_location_ids?.length || 0} ${(invitation.invited_location_ids?.length || 0) === 1 ? "locație" : "locații"}`}</div><button type="button" disabled={!canRevoke || saving} onClick={() => revoke(invitation.id)} className="rounded-full border border-border px-3 py-2 text-sm font-semibold text-destructive disabled:opacity-45">{canRevoke ? "Revocă" : "Doar proprietarul"}</button></div>; }) : <div className="px-5 py-10 text-center text-sm text-muted-foreground">Nu există invitații în așteptare.</div>}</div></section>
 
-      <Drawer open={inviteOpen} title="Invită utilizator" subtitle="Alege rolul și scope-ul înainte de trimitere." onClose={() => setInviteOpen(false)}>
-        <div className="space-y-5"><div><label className="text-xs font-semibold text-muted-foreground">Email</label><input className={`${inputCls} mt-1.5`} value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="nume@email.ro" /></div><div><div className="text-xs font-semibold text-muted-foreground">Rol</div><div className="mt-2 space-y-2">{availableRoles.map((role) => <RoleChoice key={role} role={role} selected={form.role === role} onSelect={applyRoleToForm} />)}</div></div>{form.role === "organization_owner" && <div><div className="mb-2 text-xs font-semibold text-muted-foreground">Scope owner</div><ScopeChoice value={form.scope} disabledAll={!canGrantAdmin} onChange={setFormScope} /></div>}{form.role === "organization_admin" && <div className="rounded-2xl bg-secondary/35 p-3 text-sm text-muted-foreground">Administratorul primește automat toate locațiile actuale și viitoare.</div>}<div><div className="flex justify-between"><div className="text-sm font-semibold">Locații</div>{form.scope === "selected" && locationOptions.length > 1 && <button type="button" onClick={() => setForm((current) => ({ ...current, location_ids: current.location_ids.length === allLocationIds.length ? [] : allLocationIds }))} className="text-xs font-semibold underline">{form.location_ids.length === allLocationIds.length ? "Șterge selecția" : "Selectează toate"}</button>}</div><div className="mt-3 space-y-2">{locationOptions.map((location) => <LocationChoice key={location.id} location={location} selected={form.location_ids.includes(location.id)} disabled={form.scope === "all"} onToggle={() => toggleFormLocation(location.id)} />)}</div></div><InviteSpecialistOption form={form} setForm={setForm} locationById={locationById} />{message && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{message}</div>}{newLink && <div className="rounded-2xl border border-green-200 bg-green-50 p-3"><p className="break-all text-xs">{newLink}</p><button type="button" onClick={async () => { await navigator.clipboard.writeText(newLink); setCopied(true); }} className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold">{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copiat" : "Copiază linkul"}</button></div>}<button type="button" disabled={saving || Boolean(newLink)} onClick={createInvitation} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" />{saving ? "Se creează..." : "Trimite invitația"}</button></div>
+      <Drawer open={inviteOpen} title="Invită utilizator" subtitle="Alege rolul și locațiile înainte de trimitere." onClose={() => setInviteOpen(false)}>
+        <div className="space-y-5"><div><label className="text-xs font-semibold text-muted-foreground">Email</label><input className={`${inputCls} mt-1.5`} value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="nume@email.ro" /></div><div><div className="text-xs font-semibold text-muted-foreground">Rol</div><div className="mt-2 space-y-2">{availableRoles.map((role) => <RoleChoice key={role} role={role} selected={form.role === role} onSelect={applyRoleToForm} />)}</div></div>{formWide && <div className="rounded-2xl bg-secondary/35 p-3 text-sm text-muted-foreground">{ROLE_LABELS[form.role]} primește automat toate locațiile organizației, inclusiv cele adăugate de acum înainte.</div>}<div><div className="flex justify-between"><div className="text-sm font-semibold">Locații</div>{!formWide && locationOptions.length > 1 && <button type="button" onClick={() => setForm((current) => ({ ...current, location_ids: current.location_ids.length === allLocationIds.length ? [] : allLocationIds }))} className="text-xs font-semibold underline">{form.location_ids.length === allLocationIds.length ? "Șterge selecția" : "Selectează toate"}</button>}</div><div className="mt-3 space-y-2">{locationOptions.map((location) => <LocationChoice key={location.id} location={location} selected={form.location_ids.includes(location.id)} disabled={formWide} onToggle={() => toggleFormLocation(location.id)} />)}</div></div><InviteSpecialistOption form={form} setForm={setForm} locationById={locationById} />{message && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{message}</div>}{newLink && <div className="rounded-2xl border border-green-200 bg-green-50 p-3"><p className="break-all text-xs">{newLink}</p><button type="button" onClick={async () => { await navigator.clipboard.writeText(newLink); setCopied(true); }} className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold">{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "Copiat" : "Copiază linkul"}</button></div>}<button type="button" disabled={saving || Boolean(newLink)} onClick={createInvitation} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" />{saving ? "Se creează..." : "Trimite invitația"}</button></div>
       </Drawer>
 
-      <Drawer open={Boolean(memberOpen)} title={memberOpen?.user_name || memberOpen?.user_email_masked || "Acces utilizator"} subtitle="Modifică rolul și scope-ul utilizatorului." onClose={() => setMemberOpen(null)}>
-        {memberOpen && <div className="space-y-5">{!canEditMember && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Acest rol poate fi modificat numai de un owner global.</div>}<div><div className="text-xs font-semibold text-muted-foreground">Rol</div><div className="mt-2 space-y-2">{editRoles.map((role) => <RoleChoice key={role} role={role} selected={edit.role === role} disabled={!canEditMember || saving} onSelect={applyEditRole} />)}</div></div>{edit.role === "organization_owner" && <div><div className="mb-2 text-xs font-semibold text-muted-foreground">Scope owner</div><ScopeChoice value={edit.scope} disabledAll={!canGrantAdmin} onChange={setEditScope} /></div>}{edit.role === "organization_admin" && <div className="rounded-2xl bg-secondary/35 p-3 text-sm text-muted-foreground">Administratorul trebuie să rămână pe toate locațiile actuale și viitoare.</div>}<div><div className="flex justify-between"><div className="text-sm font-semibold">Locații</div>{edit.scope === "selected" && <button type="button" onClick={() => setEdit((current) => ({ ...current, location_ids: current.location_ids.length === allLocationIds.length ? [] : allLocationIds }))} className="text-xs font-semibold underline">{edit.location_ids.length === allLocationIds.length ? "Șterge selecția" : "Selectează toate"}</button>}</div><div className="mt-3 space-y-2">{locationOptions.map((location) => <LocationChoice key={location.id} location={location} selected={edit.location_ids.includes(location.id)} disabled={!canEditMember || saving || edit.scope === "all"} onToggle={() => toggleEditLocation(location.id)} />)}</div></div>{message && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{message}</div>}<button type="button" disabled={saving || !canEditMember} onClick={saveMember} className="h-11 w-full rounded-full bg-foreground text-sm font-semibold text-background disabled:opacity-50">{saving ? "Se salvează..." : "Salvează accesul"}</button></div>}
+      <Drawer open={Boolean(memberOpen)} title={memberOpen?.user_name || memberOpen?.user_email_masked || "Acces utilizator"} subtitle="Modifică rolul și locațiile utilizatorului." onClose={() => setMemberOpen(null)}>
+        {memberOpen && <div className="space-y-5">{!canEditMember && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{currentMemberRole === "organization_owner" || currentMemberRole === "organization_admin" ? "Acest rol poate fi modificat numai de proprietar." : "Acest rol poate fi modificat numai de proprietar sau de administrator."}</div>}<div><div className="text-xs font-semibold text-muted-foreground">Rol</div><div className="mt-2 space-y-2">{editRoles.map((role) => <RoleChoice key={role} role={role} selected={edit.role === role} disabled={!canEditMember || saving} onSelect={applyEditRole} />)}</div></div>{editWide && <div className="rounded-2xl bg-secondary/35 p-3 text-sm text-muted-foreground">{ROLE_LABELS[edit.role]} lucrează în toate locațiile organizației, inclusiv în cele adăugate de acum înainte.</div>}<div><div className="flex justify-between"><div className="text-sm font-semibold">Locații</div>{!editWide && <button type="button" onClick={() => setEdit((current) => ({ ...current, location_ids: current.location_ids.length === allLocationIds.length ? [] : allLocationIds }))} className="text-xs font-semibold underline">{edit.location_ids.length === allLocationIds.length ? "Șterge selecția" : "Selectează toate"}</button>}</div><div className="mt-3 space-y-2">{locationOptions.map((location) => <LocationChoice key={location.id} location={location} selected={edit.location_ids.includes(location.id)} disabled={!canEditMember || saving || editWide} onToggle={() => toggleEditLocation(location.id)} />)}</div></div>{message && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{message}</div>}<button type="button" disabled={saving || !canEditMember} onClick={saveMember} className="h-11 w-full rounded-full bg-foreground text-sm font-semibold text-background disabled:opacity-50">{saving ? "Se salvează..." : "Salvează accesul"}</button></div>}
       </Drawer>
     </div>
   );
