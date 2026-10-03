@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { activeLinksByLocation, claimOrganizationLinkStatus } from '../base44/shared/providerOrganizationLinkIntegrity.js';
+// 2026-10-03: getClaimableProviderLocations filtreaza cu poarta canonica de publicare.
+import { deriveCanonicalDirectoryState } from '../base44/shared/directoryCanonicalModel.js';
 
 const location = { id: 'loc-1', organization_id: 'org-1' };
 const aligned = { location_id: 'loc-1', organization_id: 'org-1', link_status: 'confirmed', link_record_status: 'active' };
@@ -33,7 +35,7 @@ const svc = { entities: {
 let handler;
 vm.runInNewContext(source, {
   Deno: { serve: (fn) => { handler = fn; } },
-  Response, Date,
+  Response, Date, deriveCanonicalDirectoryState,
   createClientFromRequest: () => ({ asServiceRole: svc }),
 });
 const response = await handler({ json: async () => ({ q: 'lensa' }) });

@@ -125,7 +125,7 @@ assert.match(root, /setAccessMetaError\(readableErrorMessage\(/);
 const wizRelation = await read('src/components/provider/steps/WizClaimRelation.jsx');
 assert.match(wizRelation, /requestedRoleForRelationship\(contact\.claimant_relationship\)/);
 assert.doesNotMatch(wizRelation, /acces doar la locatia selectata/);
-assert.match(wizRelation, /Dupa verificare devii owner al organizatiei/);
+assert.match(wizRelation, /După verificare devii owner al organizației/);
 const contactFields = await read('src/components/provider/ContactIdentityFields.jsx');
 assert.match(contactFields, /owner: "organization_owner"/, 'aceeasi mapare ca ROLE_BY_RELATIONSHIP din submitProviderClaim');
 assert.match(submitClaim, /owner: 'organization_owner'/);

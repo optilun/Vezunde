@@ -123,7 +123,7 @@ assert.doesNotMatch(syncFunction, /filter\(\(membership\) => normalizeRole\(memb
 assert.match(claimForm, /pending_claim_scope/);
 assert.match(claimForm, /getProviderClaimScopeOptions/);
 assert.match(claimForm, /submitProviderScopedClaim/);
-assert.match(claimScopeStep, /Lipseste o locatie din lista/);
+assert.match(claimScopeStep, /Lipsește o locație din listă/);
 assert.match(claimScopeStep, /already_has_access/);
 assert.match(addOrClaim, /Alege accesul/);
 assert.match(addOrClaim, /claimStep === "scope"/);
