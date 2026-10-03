@@ -90,6 +90,7 @@ export default function AddOrClaim() {
     return "search";
   });
   const [selected, setSelected] = useState(initialSelectedLocation);
+  const [selectedOrganization, setSelectedOrganization] = useState(navState?.selectedOrganization || null);
   const [draft, setDraft] = useState(null);
   // Aria propusa cand solicitarea porneste de la un card de organizatie (2026-08-18).
   const [preferredScope, setPreferredScope] = useState(navState?.preferredScope || "");
@@ -113,6 +114,7 @@ export default function AddOrClaim() {
     }
     clearResumeState();
     setSelected(null);
+    setSelectedOrganization(null);
     setClaimStep("relation");
     setStage("search");
   };
@@ -127,6 +129,8 @@ export default function AddOrClaim() {
           onClaimExisting={(loc) => {
             clearResumeState();
             setSelected(loc);
+            setSelectedOrganization(null);
+            setPreferredScope("");
             setDraft(null);
             setClaimStep("relation");
             setStage("claim");
@@ -139,11 +143,12 @@ export default function AddOrClaim() {
   return (
     <div className="workspace-neutral">
       {stage === "confirm" && selected ? (
-        <WizardShell split phases={PHASES} phaseStep={1} title="Locație selectată" subtitle="Confirmă că aceasta este locația de la care pornește solicitarea.">
+        <WizardShell split phases={PHASES} phaseStep={1} title={selectedOrganization ? "Organizație selectată" : "Locație selectată"} subtitle={selectedOrganization ? "Confirmă organizația. Alegi locațiile incluse la pasul de acces." : "Confirmă că aceasta este locația de la care pornește solicitarea."}>
           <SelectedLocationCard
             location={selected}
+            organization={selectedOrganization}
             onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
-            onChangeLocation={() => { clearResumeState(); setSelected(null); setStage("search"); }}
+            onChangeLocation={() => { clearResumeState(); setSelected(null); setSelectedOrganization(null); setPreferredScope(""); setStage("search"); }}
           />
         </WizardShell>
       ) : stage === "claim" && selected ? (
@@ -163,11 +168,12 @@ export default function AddOrClaim() {
           <ClaimForm location={selected} step={claimStep} preferredScope={preferredScope} onStepChange={setClaimStep} onDone={completeOnboardingRequest} />
         </WizardShell>
       ) : (
-        <WizardShell split phases={PHASES} phaseStep={1} title="Găsește profilul locației tale" subtitle="Verificăm mai întâi dacă profilul există deja.">
+        <WizardShell split phases={PHASES} phaseStep={1} title="Găsește organizația sau locația" subtitle="Verificăm mai întâi dacă profilul există deja.">
           <ProviderSearch
             onClaim={(loc, options) => {
               clearResumeState();
               setSelected(loc);
+              setSelectedOrganization(options?.selectedOrganization || null);
               setPreferredScope(options?.preferredScope || "");
               setClaimStep("relation");
               setStage("confirm");
