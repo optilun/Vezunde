@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import {
-  filterAllPages,
   filterByIdList,
   getManyByIds,
   loadLocationContentIndex,
