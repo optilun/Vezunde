@@ -150,7 +150,7 @@ export default function ProviderSidebarContent({
                 <DropdownMenuSeparator className="my-2" />
                 <DropdownMenuLabel className="flex items-center justify-between px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>Organizatii</span>
-                  <span>{organizationItems.filter((item) => item.kind !== "create").length}</span>
+                  <span>{organizationItems.filter((item) => item.kind === "organization").length}</span>
                 </DropdownMenuLabel>
                 <div className="max-h-60 overflow-y-auto overscroll-contain">
                   {organizationItems.map((item) => <WorkspaceMenuItem key={item.key} item={item} user={user} />)}
