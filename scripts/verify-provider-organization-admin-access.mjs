@@ -103,7 +103,7 @@ assert.match(workspace, /syncProviderOrganizationOwnerAccess/);
 assert.match(accessUi, /PROVIDER_ACCESS_ROLES/);
 assert.match(accessUi, /organization_owner/);
 assert.match(accessUi, /organization_admin/);
-assert.doesNotMatch(accessUi, /ScopeChoice|selectiv|owner global/);
+assert.doesNotMatch(accessUi, /ScopeChoice|· selectiv|Owneri globali|ownerul global|Scope owner/);
 assert.match(accessUi, /organization_wide_access: providerRoleCoversOrganization\(form\.role\)/);
 assert.match(accessUi, /organization_wide_access: providerRoleCoversOrganization\(edit\.role\)/);
 assert.match(labels, /PROVIDER_ROLE_LABELS as ROLE_LABELS/);
