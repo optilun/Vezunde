@@ -14,6 +14,10 @@ const STEPS = [
   { key: "review", title: "Revizuiește solicitarea", subtitle: "Verifică organizația, locația și accesul solicitat înainte de trimitere.", Comp: WizReviewShort },
 ];
 
+const PHASES = ["Datele locației", "Relația ta", "Date private", "Revizuire"];
+const ARTWORK_TITLE = ["Locația ta.", "Un profil clar.", "De la început."];
+const ARTWORK_SUBTITLE = "Completezi datele, confirmi relația și trimiți solicitarea spre verificare.";
+
 const INITIAL = {
   claimSubjectType: "organization",
   organization: { name: "" },
@@ -142,7 +146,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   if (identityCheck) {
     const strong = identityCheck.blocking_level === "strong_duplicate_review_required";
     return (
-      <WizardShell step={STEPS.length} total={STEPS.length} title="Verificare profil existent" subtitle="Am găsit profiluri asemănătoare în VIASEE." onBack={() => setIdentityCheck(null)}>
+      <WizardShell split artworkTitle={ARTWORK_TITLE} artworkSubtitle={ARTWORK_SUBTITLE} phases={PHASES} phaseStep={STEPS.length} step={STEPS.length} total={STEPS.length} title="Verificare profil existent" subtitle="Am găsit profiluri asemănătoare în VIASEE." onBack={() => setIdentityCheck(null)}>
         <IdentityDuplicatePanel
           check={identityCheck}
           submitting={submitting}
@@ -166,7 +170,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   const { title, subtitle } = STEPS[step];
   const Comp = /** @type {any} */ (STEPS[step].Comp);
   return (
-    <WizardShell step={step + 1} total={STEPS.length} title={title} subtitle={subtitle} onBack={back}>
+    <WizardShell split artworkTitle={ARTWORK_TITLE} artworkSubtitle={ARTWORK_SUBTITLE} phases={PHASES} phaseStep={step + 1} step={step + 1} total={STEPS.length} title={title} subtitle={subtitle} onBack={back}>
       {step === 0 && data.location.place_id ? (
         <p className="mb-5 text-xs rounded-lg border border-border bg-secondary px-3 py-2.5 text-muted-foreground">
           Date preluate de pe Google Maps. Verifică și corectează inainte de trimitere.
