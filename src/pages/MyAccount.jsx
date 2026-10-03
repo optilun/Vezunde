@@ -21,11 +21,8 @@ const MODE_LABELS = {
   applicant: "Organizații · Solicitare în verificare",
 };
 
-const PROVIDER_ROLE_LABELS = {
-  organization_owner: "Owner",
-  location_manager: "Manager",
-  location_staff: "Membru",
-};
+// 2026-10-03 (structura conturilor, pasul 3): etichetele rolurilor vin din matricea comuna.
+const PROVIDER_ROLE_LABELS = ROLE_LABELS;
 
 function WorkspaceLoading() {
   return (
@@ -78,7 +75,7 @@ function providerOrganizationContexts(workspace) {
     const organizationMemberships = memberships.filter((membership) => (
       membership.organization_id === organization.id || locationIds.has(membership.location_id)
     ));
-    const role = ["organization_owner", "location_manager", "location_staff"]
+    const role = PROVIDER_ACCESS_ROLES
       .find((candidate) => organizationMemberships.some((membership) => membership.role === candidate)) || "";
     return {
       organization,

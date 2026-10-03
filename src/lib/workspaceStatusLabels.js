@@ -21,9 +21,5 @@ export const PROFILE_CONTROL_LABELS = {
   suspended: "Suspendat",
 };
 
-export const ROLE_LABELS = {
-  organization_owner: "Owner organizație",
-  organization_admin: "Administrator organizație",
-  location_manager: "Manager locație",
-  location_staff: "Membru locație",
-};
+// 2026-10-03 (structura conturilor, pasul 3): etichetele rolurilor vin din matricea comuna.
+export { PROVIDER_ROLE_LABELS as ROLE_LABELS } from "../../shared/providerRolePolicy.js";

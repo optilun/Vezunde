@@ -1,17 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Building2, ClipboardList, MapPin, Search, Stethoscope, UserRound } from "lucide-react";
-import { CLAIM_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
+import { CLAIM_STATUS_LABELS, ROLE_LABELS } from "@/lib/workspaceStatusLabels";
 import {
   PROFESSIONAL_REVIEW_STATUS_LABELS,
   PROFESSIONAL_TYPE_LABELS,
 } from "@/lib/professionalProfileCatalog";
-
-const ROLE_LABELS = {
-  organization_owner: "Owner organizație",
-  location_manager: "Manager locație",
-  location_staff: "Membru locație",
-};
 
 function organizationContexts(workspace) {
   if (workspace?.organization_contexts?.length) return workspace.organization_contexts;
