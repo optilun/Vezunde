@@ -38,7 +38,10 @@ export function associationRequestBlockReason(location) {
   return '';
 }
 
-/** Randul nou (sau actualizarea unui rand vechi) pentru cererea „Lucrez aici”. */
+/**
+ * Randul nou (sau actualizarea unui rand vechi) pentru cererea „Lucrez aici”. Campurile fara valoare
+ * nu se scriu deloc (nu string-uri goale in campuri de data).
+ */
 export function associationRequestRecord({ profile, locationId, showPublicly, userId, now }) {
   return {
     professional_id: profile.id,
@@ -49,11 +52,8 @@ export function associationRequestRecord({ profile, locationId, showPublicly, us
     association_origin: 'professional_request',
     association_request_status: 'pending',
     association_requested_at: now,
-    association_decided_at: '',
-    association_decided_by_user_id: '',
     visibility_consent_status: showPublicly ? 'accepted' : 'not_requested',
-    visibility_decided_at: showPublicly ? now : '',
-    visibility_decided_by_user_id: showPublicly ? userId : '',
+    ...(showPublicly ? { visibility_decided_at: now, visibility_decided_by_user_id: userId } : {}),
   };
 }
 
