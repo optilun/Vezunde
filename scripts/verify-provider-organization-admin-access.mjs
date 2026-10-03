@@ -107,7 +107,8 @@ assert.doesNotMatch(accessUi, /ScopeChoice|· selectiv|Owneri globali|ownerul gl
 assert.match(accessUi, /organization_wide_access: providerRoleCoversOrganization\(form\.role\)/);
 assert.match(accessUi, /organization_wide_access: providerRoleCoversOrganization\(edit\.role\)/);
 assert.match(labels, /PROVIDER_ROLE_LABELS as ROLE_LABELS/);
-assert.match(invitationUi, /organization_admin/);
+assert.match(invitationUi, /providerRoleCoversOrganization\(invitation\?\.proposed_role\)/);
+assert.doesNotMatch(invitationUi, /Rolul de owner se aplică numai locațiilor enumerate/);
 assert.match(invitationUi, /organization_wide_access/);
 assert.match(invitationUi, /locațiilor actuale și viitoare/);
 
