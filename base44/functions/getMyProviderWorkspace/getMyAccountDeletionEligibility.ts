@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { filterByIdList, getManyByIds } from '../../shared/providerWorkspaceBatchQueries.js';
 
 const PROVIDER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 
@@ -69,12 +70,17 @@ export async function handle(req: Request) {
     const ownerOrganizationIds = new Set();
     const assignedLocationIds = unique(activeMemberships.map((membership) => membership.location_id));
 
-    for (const membership of activeMemberships.filter((item) => normalizeRole(item.role) === 'organization_owner')) {
+    const ownerMemberships = activeMemberships.filter((item) => normalizeRole(item.role) === 'organization_owner');
+    const locationsWithoutOrganization = await getManyByIds(
+      svc.entities.ProviderLocation,
+      ownerMemberships.filter((membership) => !membership.organization_id).map((membership) => membership.location_id),
+    );
+    for (const membership of ownerMemberships) {
       if (membership.organization_id) {
         ownerOrganizationIds.add(membership.organization_id);
         continue;
       }
-      const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
+      const location = locationsWithoutOrganization.get(membership.location_id);
       if (location?.organization_id) ownerOrganizationIds.add(location.organization_id);
     }
 
@@ -84,11 +90,10 @@ export async function handle(req: Request) {
       const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
       const activeOwnerUserIds = new Set();
 
-      for (const location of locations) {
-        const rows = await svc.entities.ProviderMembership.filter({ location_id: location.id, status: 'active' }, '-created_date', 500);
-        for (const row of rows) {
-          if (normalizeRole(row.role) === 'organization_owner' && row.user_id) activeOwnerUserIds.add(row.user_id);
-        }
+      // 2026-10-03. O citire grupata pentru toate locatiile organizatiei, nu una per locatie.
+      const rows = await filterByIdList(svc.entities.ProviderMembership, 'location_id', locations.map((location) => location.id), { status: 'active' }, { sort: '-created_date' });
+      for (const row of rows) {
+        if (normalizeRole(row.role) === 'organization_owner' && row.user_id) activeOwnerUserIds.add(row.user_id);
       }
 
       if (activeOwnerUserIds.size === 1 && activeOwnerUserIds.has(user.id)) {
