@@ -6,8 +6,8 @@ const SPECIALISTS = "/images/specialists/";
 const HOME = "/images/home/";
 
 export const SPECIALIST_CARDS = [
-  { kind: "doctor", title: "Medic oftalmolog", description: "Consult și îngrijirea ochilor", src: SPECIALISTS + "specialist-editorial-v1.webp", position: "50% 28%" },
-  { kind: "optometrist", title: "Optometrist", description: "Vedere, dioptrii și lentile", src: HOME + "eye-consultation-v1.jpg", position: "39% 42%" },
+  { kind: "doctor", title: "Medic oftalmolog", description: "Consult și îngrijirea ochilor", src: HOME + "eye-consultation-v1.jpg", position: "50% 42%" },
+  { kind: "optometrist", title: "Optometrist", description: "Vedere, dioptrii și lentile", src: HOME + "optometrist-refraction-v1.jpg", position: "50% 36%" },
   { kind: "optician", title: "Optician", description: "Rame, montaj și ajustări", src: SPECIALISTS + "optical-team-hero-v1.webp", position: "50% 30%" },
 ];
 
@@ -152,7 +152,7 @@ export function SnellenTile() {
   );
 }
 
-export function ConsultationPhoto() { return <Photo src={HOME + "eye-consultation-v1.jpg"} label="Un control, mai multă claritate." number="01" />; }
+export function ConsultationPhoto() { return <Photo src={HOME + "optometrist-refraction-v1.jpg"} label="Un control, mai multă claritate." number="01" />; }
 export function ExaminationPhoto() { return <Photo src={HOME + "eye-consultation-v1.jpg"} label="Mai aproape de detalii." number="03" />; }
 export function ConnectionPhoto() { return <Photo src={SPECIALISTS + "optician-client-editorial-v1.webp"} position="50% 30%" />; }
 export function StillLifePhoto() { return <Photo src={SPECIALISTS + "optical-stilllife-v2.webp"} />; }
