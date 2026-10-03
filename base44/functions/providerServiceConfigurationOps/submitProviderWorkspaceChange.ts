@@ -9,6 +9,7 @@ import {
   sameSubmissionPayload,
 } from '../../shared/providerWorkspaceSubmissionComparison.js';
 import { resolveProviderTeamLocationScope } from '../../shared/providerTeamLocationScope.js';
+import { providerAccessRoleFromMembership } from '../../shared/providerRolePolicy.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 // Provider Workspace draft/submit/withdraw.
@@ -26,14 +27,16 @@ const MAX_HOURS_LEN = 500;
 const CLAIM_PREP_PUBLIC_PROFILE_FIELDS = ['public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'];
 const CLAIM_PREP_SERVICE_GROUPS = [...CANONICAL_CLAIM_PREP_SERVICE_GROUPS, 'patient_services'];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
-const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+// 2026-10-03 (structura conturilor, pasul 3): administratorul organizatiei (salvat ca manager cu
+// marcaj de administrator) poate tot ce poate managerul, plus profilul organizatiei.
+const MEMBER_ROLES = ['organization_owner', 'organization_admin', 'location_manager', 'location_staff'];
 const PROVIDER_SECTION_ROLES = {
-  public_profile: ['organization_owner'],
-  location_details: ['organization_owner', 'location_manager'],
-  services: ['organization_owner', 'location_manager'],
-  team: ['organization_owner', 'location_manager'],
-  media: ['organization_owner', 'location_manager'],
-  article: ['organization_owner', 'location_manager'],
+  public_profile: ['organization_owner', 'organization_admin'],
+  location_details: ['organization_owner', 'organization_admin', 'location_manager'],
+  services: ['organization_owner', 'organization_admin', 'location_manager'],
+  team: ['organization_owner', 'organization_admin', 'location_manager'],
+  media: ['organization_owner', 'organization_admin', 'location_manager'],
+  article: ['organization_owner', 'organization_admin', 'location_manager'],
 };
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const SPECIALIST_INVITE_ROLES = ['ophthalmologist', 'optometrist', 'optician', 'contact_lens_specialist', 'optical_workshop_specialist', 'other_specialist', 'other_relevant_specialist'];
@@ -66,6 +69,7 @@ function normalizeMemberRole(role) {
 
 function highestMemberRole(roles) {
   if (roles.includes('organization_owner')) return 'organization_owner';
+  if (roles.includes('organization_admin')) return 'organization_admin';
   if (roles.includes('location_manager')) return 'location_manager';
   if (roles.includes('location_staff')) return 'location_staff';
   return '';
@@ -540,7 +544,7 @@ async function resolveAccess(svc, user, payload) {
       location_id: requestedLocationId,
       status: 'active',
     });
-    const memberRole = highestMemberRole(memberships.map((membership) => normalizeMemberRole(membership.role)));
+    const memberRole = highestMemberRole(memberships.map((membership) => normalizeMemberRole(providerAccessRoleFromMembership(membership))));
     if (memberRole) {
       const loc = await svc.entities.ProviderLocation.get(requestedLocationId).catch(() => null);
       if (!loc) return bad({ error: 'Locatia nu a fost gasita' }, 404);
