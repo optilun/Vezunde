@@ -74,6 +74,10 @@
     "revoked_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "bundled_member_invitation_id": {
+      "type": "string",
+      "description": "2026-10-03: invitatia de specialist trimisa impreuna cu o invitatie de echipa (ProviderMemberInvitation). Se accepta si se revoca odata cu ea; nu are email separat."
     }
   },
   "required": [
