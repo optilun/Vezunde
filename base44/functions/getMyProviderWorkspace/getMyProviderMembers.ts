@@ -6,7 +6,7 @@ import {
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
-import { filterByIdList, getManyByIds, groupRowsBy, rowsFor, uniqueIds } from '../../shared/providerWorkspaceBatchQueries.js';
+import { filterByIdList, getManyByIds, groupRowsBy, rowsFor } from '../../shared/providerWorkspaceBatchQueries.js';
 
 const ACCESS_ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 function res(body, status = 200) { return Response.json(body, { status }); }
@@ -59,19 +59,8 @@ function safeMembership(membership, userInfo, organizationId = '', resolution = 
     updated_date: membership.updated_date || null,
   };
 }
-async function userInfo(svc, userId) { return await svc.entities.User.get(userId).catch(() => null); }
-// 2026-10-03. Utilizatorii se citesc grupat. Cei care lipsesc din raspunsul grupat (sau toti, daca
-// citirea grupata esueaza) se citesc unul cate unul, ca inainte.
-async function usersById(svc, userIds) {
-  const ids = uniqueIds(userIds);
-  const users = await getManyByIds(svc.entities.User, ids).catch(() => new Map());
-  for (const userId of ids) {
-    if (users.has(userId)) continue;
-    const info = await userInfo(svc, userId);
-    if (info) users.set(userId, info);
-  }
-  return users;
-}
+// 2026-10-03. Utilizatorii se citesc grupat (getManyByIds revine la `User.get` pentru ce lipseste).
+async function usersById(svc, userIds) { return await getManyByIds(svc.entities.User, userIds); }
 function highest(roles) {
   if (roles.includes(ORGANIZATION_OWNER_ROLE)) return ORGANIZATION_OWNER_ROLE;
   if (roles.includes(ORGANIZATION_ADMIN_ROLE)) return ORGANIZATION_ADMIN_ROLE;
