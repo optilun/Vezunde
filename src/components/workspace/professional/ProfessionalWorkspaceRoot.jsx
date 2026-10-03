@@ -606,16 +606,6 @@ export default function ProfessionalWorkspaceRoot({
         {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} onRefresh={onRefresh} />}
         {safeSection === "profile" && <ProfessionalProfileEditor workspace={workspace} onRefresh={onRefresh} />}
         {safeSection === "locations" && <Locations workspace={workspace} onRefresh={onRefresh} />}
-        {safeSection === "settings" && (
-          <AccountSettings
-            user={user}
-            accountModes={accountModes}
-            activeMode={activeMode}
-            onSwitchMode={onSwitchMode}
-            onRefresh={onRefresh}
-            onLogout={onLogout}
-          />
-        )}
       </Suspense>
     </ProviderAppShell>
   );
