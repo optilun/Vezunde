@@ -1,5 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
+import {
+  filterAllPages,
+  filterByIdList,
+  getManyByIds,
+  loadLocationContentIndex,
+  rowsFor,
+} from '../../shared/providerWorkspaceBatchQueries.js';
 
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -94,19 +101,16 @@ async function getMemberSummary(svc, userId, locationId, authorizedMembership = 
   };
 }
 
-async function getLocationContentSummary(svc, location, userId) {
+// 2026-10-03. Continutul tuturor locatiilor se citeste o singura data, grupat (vezi
+// base44/shared/providerWorkspaceBatchQueries.js); inainte, 6 interogari pentru fiecare locatie.
+function getLocationContentSummary(contentIndex, location, userId) {
   const locationId = location.id;
-  const rawSubmissions = await svc.entities.ProviderWorkspaceSubmission.filter({
-    location_id: locationId,
-    access_origin: 'provider_workspace',
-    status: { $in: ACTIVE_SUBMISSION_STATUSES },
-  }, '-created_date', 50);
-  const submissions = rawSubmissions.filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === userId);
-  const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
-  const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
-  const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
-  const media = await svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' });
-  const articles = await svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' });
+  const submissions = rowsFor(contentIndex.submissions, locationId).filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === userId);
+  const services = rowsFor(contentIndex.services, locationId);
+  const specialties = rowsFor(contentIndex.specialties, locationId);
+  const team = rowsFor(contentIndex.team, locationId);
+  const media = rowsFor(contentIndex.media, locationId);
+  const articles = rowsFor(contentIndex.articles, locationId);
   const pendingCount = (section) => submissions.filter((submission) => submission.section === section).length;
   const approvedMediaReferences = new Set(media.map((asset) => clean(asset.storage_reference)).filter(Boolean));
   const primaryPhoto = clean(location.photo_url);
@@ -128,9 +132,8 @@ async function getLocationContentSummary(svc, location, userId) {
   };
 }
 
-async function getAggregateContentSummary(svc, locations, userId) {
-  const summaries = [];
-  for (const location of locations) summaries.push(await getLocationContentSummary(svc, location, userId));
+function getAggregateContentSummary(contentIndex, locations, userId) {
+  const summaries = locations.map((location) => getLocationContentSummary(contentIndex, location, userId));
   return summaries.reduce((total, summary) => ({
     approved_service_count: total.approved_service_count + summary.approved_service_count,
     pending_service_review_count: total.pending_service_review_count + summary.pending_service_review_count,
@@ -386,9 +389,10 @@ export async function handle(req: Request) {
     }
 
     const permittedLocations = [];
-    for (const membership of ownMemberships) {
-      if (!normalizeMemberRole(membership.role) || !membership.location_id) continue;
-      const candidate = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
+    const roleMemberships = ownMemberships.filter((membership) => normalizeMemberRole(membership.role) && membership.location_id);
+    const candidateLocations = await getManyByIds(svc.entities.ProviderLocation, roleMemberships.map((membership) => membership.location_id));
+    for (const membership of roleMemberships) {
+      const candidate = candidateLocations.get(membership.location_id);
       if (!candidate) continue;
       if (location.organization_id ? candidate.organization_id === location.organization_id : candidate.id === location.id) permittedLocations.push(candidate);
     }
@@ -397,6 +401,8 @@ export async function handle(req: Request) {
     const permittedLocationIds = uniqueLocations.map((candidate) => candidate.id);
     const locationNames = Object.fromEntries(uniqueLocations.map((candidate) => [candidate.id, candidate.public_display_name || candidate.name || 'Locatie']));
 
+    // Continutul si modificarile active ale tuturor locatiilor: o citire grupata, nu una per locatie.
+    const contentIndex = await loadLocationContentIndex(svc, permittedLocationIds);
     const activeRows = [];
     if (organization) {
       activeRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({
@@ -405,21 +411,16 @@ export async function handle(req: Request) {
         status: { $in: ACTIVE_SUBMISSION_STATUSES },
       }, '-updated_date', 200));
     }
-    for (const candidate of uniqueLocations) {
-      activeRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({
-        location_id: candidate.id,
-        access_origin: 'provider_workspace',
-        status: { $in: ACTIVE_SUBMISSION_STATUSES },
-      }, '-updated_date', 100));
-    }
+    for (const candidate of uniqueLocations) activeRows.push(...rowsFor(contentIndex.submissions, candidate.id));
     const pendingSubs = dedupeSubmissions(activeRows)
       .filter((submission) => submission.section === 'public_profile' || permittedLocationIds.includes(submission.location_id))
       .filter((submission) => !submission.claim_request_id)
       .sort((a, b) => submissionTimestamp(b) - submissionTimestamp(a));
 
+    // Ultimele 20 se aleg din cele mai recente randuri; o pagina sortata dupa actualizare ajunge.
     const recentRows = [];
-    if (organization) recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ organization_id: organization.id }, '-updated_date', 100));
-    for (const candidate of uniqueLocations) recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: candidate.id }, '-updated_date', 50));
+    if (organization) recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ organization_id: organization.id, access_origin: 'provider_workspace' }, '-updated_date', 100));
+    recentRows.push(...await filterByIdList(svc.entities.ProviderWorkspaceSubmission, 'location_id', permittedLocationIds, { access_origin: 'provider_workspace' }, { sort: '-updated_date', pageSize: 100, maxPages: 1 }));
     const recentSubs = dedupeSubmissions(recentRows)
       .filter((submission) => submission.access_origin === 'provider_workspace')
       .filter((submission) => submission.section === 'public_profile' || permittedLocationIds.includes(submission.location_id))
@@ -429,7 +430,7 @@ export async function handle(req: Request) {
     const reviewedSubs = recentSubs.filter((submission) => ['needs_more_info', 'rejected', 'approved'].includes(submission.status));
     const latestReview = reviewedSubs[0] || null;
     const activeOrganizationSubmission = pendingSubs.find((submission) => submission.section === 'public_profile' && submission.organization_id === organization?.id) || null;
-    const contentSummary = await getAggregateContentSummary(svc, uniqueLocations, user.id);
+    const contentSummary = getAggregateContentSummary(contentIndex, uniqueLocations, user.id);
     const memberSummary = await getMemberSummary(svc, user.id, location.id, authorizedMembership);
 
     let pendingLogoUrl = '';
