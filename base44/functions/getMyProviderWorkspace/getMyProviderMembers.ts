@@ -7,6 +7,12 @@ import {
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { filterByIdList, getManyByIds, groupRowsBy, rowsFor } from '../../shared/providerWorkspaceBatchQueries.js';
+import {
+  PROVIDER_MANAGER_ROLE,
+  assignableProviderRoles,
+  highestProviderAccessRole,
+  providerRoleCoversOrganization,
+} from '../../shared/providerRolePolicy.js';
 
 const ACCESS_ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 function res(body, status = 200) { return Response.json(body, { status }); }
@@ -130,26 +136,32 @@ export async function handle(req: Request) {
       organizationIdByMembership.set(membership.id, organizationId);
     }
 
+    // 2026-10-03 (structura conturilor, pasul 3). Cine gestioneaza echipa, dupa matricea comuna:
+    // proprietarul si administratorul in toata organizatia, managerul la locatiile lui (doar membri).
+    // Un rand vechi de proprietar limitat la anumite locatii (nu mai exista azi) conteaza ca manager
+    // pe acele locatii: nu poate gestiona proprietari sau administratori.
     const managementByOrganization = new Map();
     for (const membership of own) {
       const accessRole = providerMembershipAccessRole(membership);
-      if (![ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE].includes(accessRole)) continue;
+      if (![ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, PROVIDER_MANAGER_ROLE].includes(accessRole)) continue;
       const organizationId = organizationIdByMembership.get(membership.id);
       if (!organizationId) continue;
       if (!resolutionByOrganization.has(organizationId)) resolutionByOrganization.set(organizationId, await loadOrganizationOwnerScopeResolution(svc, organizationId));
       const current = managementByOrganization.get(organizationId) || {
         role: '', wideOwner: false, organizationAdmin: false, ownerLocationIds: new Set(), manageableLocationIds: new Set(),
       };
+      let effectiveRole = accessRole;
       if (accessRole === ORGANIZATION_OWNER_ROLE) {
-        current.role = ORGANIZATION_OWNER_ROLE;
-        current.ownerLocationIds.add(membership.location_id);
-        current.manageableLocationIds.add(membership.location_id);
-        if (membershipHasOrganizationWideAccess(membership, resolutionByOrganization.get(organizationId))) current.wideOwner = true;
+        if (membershipHasOrganizationWideAccess(membership, resolutionByOrganization.get(organizationId))) {
+          current.wideOwner = true;
+          current.ownerLocationIds.add(membership.location_id);
+        } else {
+          effectiveRole = PROVIDER_MANAGER_ROLE;
+        }
       }
-      if (accessRole === ORGANIZATION_ADMIN_ROLE && membership.organization_wide_access === true) {
-        if (current.role !== ORGANIZATION_OWNER_ROLE) current.role = ORGANIZATION_ADMIN_ROLE;
-        current.organizationAdmin = true;
-      }
+      if (accessRole === ORGANIZATION_ADMIN_ROLE) current.organizationAdmin = true;
+      if (effectiveRole === PROVIDER_MANAGER_ROLE) current.manageableLocationIds.add(membership.location_id);
+      current.role = highestProviderAccessRole([current.role, effectiveRole]);
       managementByOrganization.set(organizationId, current);
     }
 
@@ -157,7 +169,7 @@ export async function handle(req: Request) {
       const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
       locationsByOrganization.set(organizationId, locations);
       for (const location of locations) organizationIdByLocation.set(location.id, organizationId);
-      if (management.wideOwner || management.organizationAdmin) for (const location of locations) management.manageableLocationIds.add(location.id);
+      if (providerRoleCoversOrganization(management.role)) for (const location of locations) management.manageableLocationIds.add(location.id);
     }
 
     if (requestedOrganizationId && !managementByOrganization.has(requestedOrganizationId) && user.role !== 'admin') {
@@ -207,22 +219,21 @@ export async function handle(req: Request) {
     const roleByLocation = Object.fromEntries(assigned.map((id) => [id, highest(scopedOwn.filter((membership) => membership.location_id === id).map(providerMembershipAccessRole))]));
     const selectedManagement = requestedOrganizationId ? managementByOrganization.get(requestedOrganizationId) : null;
     const currentActorRole = selectedManagement?.role || highest([...managementByOrganization.values()].map((item) => item.role));
+    // Proprietarul (sau un admin VIASEE) da orice rol; vezi assignableProviderRoles.
     const anyOwner = currentActorRole === ORGANIZATION_OWNER_ROLE || user.role === 'admin';
-    const wideOwner = user.role === 'admin' || Boolean(selectedManagement?.wideOwner || (!requestedOrganizationId && [...managementByOrganization.values()].some((item) => item.wideOwner)));
-    const availableRoles = wideOwner
-      ? [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff']
-      : (anyOwner ? [ORGANIZATION_OWNER_ROLE, 'location_manager', 'location_staff'] : (currentActorRole === ORGANIZATION_ADMIN_ROLE ? ['location_manager', 'location_staff'] : []));
+    const wideOwner = anyOwner;
+    const availableRoles = assignableProviderRoles(user.role === 'admin' ? 'platform_admin' : currentActorRole);
 
     return res({
       mode: 'provider_workspace',
       current_organization_id: requestedOrganizationId || null,
       current_actor_role: currentActorRole,
-      current_actor_wide_access: wideOwner || currentActorRole === ORGANIZATION_ADMIN_ROLE,
+      current_actor_wide_access: user.role === 'admin' || providerRoleCoversOrganization(currentActorRole),
       current_user_role_by_location: roleByLocation,
       assigned_location_ids: assigned,
       manageable_location_ids: manageable,
       manageable_organization_ids: relevantOrganizationIds,
-      can_manage_members: canManage,
+      can_manage_members: canManage && availableRoles.length > 0,
       can_manage_privileged_roles: anyOwner,
       can_grant_organization_admin: wideOwner,
       available_invitation_roles: availableRoles,
