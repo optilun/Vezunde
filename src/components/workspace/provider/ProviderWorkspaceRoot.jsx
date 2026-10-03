@@ -285,7 +285,7 @@ export default function ProviderWorkspaceRoot({
   // Ce ramane din drepturile de organizatie il decide rolul (matricea comuna): administratorul
   // pastreaza profilul organizatiei si locatiile noi, doar proprietarul pastreaza setarile.
   for (const capability of [...organizationCapabilities]) {
-    if (!providerRoleHasCapability(organizationActorRole, capability)) organizationCapabilities.delete(capability);
+    if (capability !== "organization.view" && !providerRoleHasCapability(organizationActorRole, capability)) organizationCapabilities.delete(capability);
   }
   const locationCapabilities = new Set([
     ...locationCapabilityList,
