@@ -23,7 +23,8 @@ assert.match(photo, /if \(stagedPreviewRef\.current\.startsWith\("blob:"\)\) URL
 
 const root = read(`${P}ProviderWorkspaceRoot.jsx`);
 assert.match(root, /refreshOverviewLatest\.current = refreshOverviewInPlace;/);
-assert.match(root, /const refreshOnFocus = \(\) => \{ void refreshOverviewLatest\.current\(\); \};/, 'focusul cheama ultima versiune');
+// 2026-10-03: focusul trece intai prin poarta de 30 s (src/lib/focusRefreshGate.js), apoi cheama tot ultima versiune.
+assert.match(root, /const refreshOnFocus = \(\) => \{\s*if \(focusRefreshGateRef\.current\?\.shouldRefresh\(\)\) void refreshOverviewLatest\.current\(\);\s*\};/, 'focusul cheama ultima versiune');
 assert.match(root, /const baseContextLocations = useMemo\(/);
 assert.match(root, /const baseContextMemberships = useMemo\(/);
 
