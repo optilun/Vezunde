@@ -62,56 +62,12 @@ function markOwnerAccessSyncCompleted(organizationId) {
   }
 }
 
-const ROLE_CAPABILITIES = {
-  organization_owner: [
-    "organization.view",
-    "organization.manage_profile",
-    "organization.manage_locations",
-    "organization.manage_members",
-    "organization.manage_settings",
-    "location.view",
-    "location.manage_profile",
-    "location.manage_content",
-    "location.manage_specialists",
-    "location.manage_requests",
-    "location.manage_operational_status",
-    "location.archive",
-    "location.request_closure",
-  ],
-  organization_admin: [
-    "organization.view",
-    "organization.manage_members",
-    "location.view",
-    "location.manage_profile",
-    "location.manage_content",
-    "location.manage_specialists",
-    "location.manage_requests",
-    "location.manage_operational_status",
-  ],
-  location_manager: [
-    "organization.view",
-    "location.view",
-    "location.manage_profile",
-    "location.manage_content",
-    "location.manage_specialists",
-    "location.manage_requests",
-    "location.manage_operational_status",
-  ],
-  location_staff: [
-    "organization.view",
-    "location.view",
-    "location.manage_requests",
-    "location.manage_operational_status",
-  ],
-};
+// 2026-10-03 (structura conturilor, pasul 3): matricea „rol -> ce poate” vine din
+// shared/providerRolePolicy.js, aceeasi pentru backend si interfata (inainte erau doua liste diferite).
+const ROLE_CAPABILITIES = PROVIDER_ROLE_CAPABILITIES;
 
 function highestRole(memberships = []) {
-  const roles = memberships.map((membership) => membership.role);
-  if (roles.includes("organization_owner")) return "organization_owner";
-  if (roles.includes("organization_admin")) return "organization_admin";
-  if (roles.includes("location_manager")) return "location_manager";
-  if (roles.includes("location_staff")) return "location_staff";
-  return "";
+  return highestProviderAccessRole(memberships.map((membership) => membership.role));
 }
 
 function organizationContextsFor(workspace) {
@@ -138,8 +94,8 @@ function organizationContextsFor(workspace) {
       organization,
       current_user_role: currentUserRole,
       capabilities: ROLE_CAPABILITIES[currentUserRole] || [],
-      can_manage_members: currentUserRole === "organization_owner" || currentUserRole === "organization_admin",
-      can_manage_settings: currentUserRole === "organization_owner",
+      can_manage_members: providerRoleHasCapability(currentUserRole, "organization.manage_members") || providerRoleHasCapability(currentUserRole, "location.manage_members"),
+      can_manage_settings: providerRoleHasCapability(currentUserRole, "organization.manage_settings"),
       memberships,
       locations: contextLocations,
     };
@@ -321,10 +277,10 @@ export default function ProviderWorkspaceRoot({
   if (!actorHasWideOrganizationAccess) {
     for (const capability of OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES) organizationCapabilities.delete(capability);
   }
-  if (!isOrganizationOwner) {
-    organizationCapabilities.delete("organization.manage_profile");
-    organizationCapabilities.delete("organization.manage_locations");
-    organizationCapabilities.delete("organization.manage_settings");
+  // Ce ramane din drepturile de organizatie il decide rolul (matricea comuna): administratorul
+  // pastreaza profilul organizatiei si locatiile noi, doar proprietarul pastreaza setarile.
+  for (const capability of [...organizationCapabilities]) {
+    if (!providerRoleHasCapability(organizationActorRole, capability)) organizationCapabilities.delete(capability);
   }
   const locationCapabilities = new Set([
     ...locationCapabilityList,
@@ -335,7 +291,7 @@ export default function ProviderWorkspaceRoot({
     locationCapabilities.delete("location.request_closure");
   }
   const scopedCapabilities = [...new Set([...organizationCapabilities, ...locationCapabilities])];
-  const canManageOrganizationProfile = Boolean(isOrganizationOwner && actorHasWideOrganizationAccess && organizationCapabilities.has("organization.manage_profile"));
+  const canManageOrganizationProfile = Boolean(actorHasWideOrganizationAccess && organizationCapabilities.has("organization.manage_profile"));
   const canViewLocations = locationCapabilities.has("location.view");
   const canManageLocationProfile = locationCapabilities.has("location.manage_profile");
   const canManageLocationContent = locationCapabilities.has("location.manage_content");
@@ -352,8 +308,7 @@ export default function ProviderWorkspaceRoot({
       : selectedContext?.can_manage_members,
   );
   const canManageSettings = Boolean(
-    isOrganizationOwner
-    && actorHasWideOrganizationAccess
+    actorHasWideOrganizationAccess
     && organizationCapabilities.has("organization.manage_settings"),
   );
   const activeLocationModule = requestedLocationModule
