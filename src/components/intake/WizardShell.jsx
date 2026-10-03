@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import OnboardingLayout from "@/components/provider/OnboardingLayout";
@@ -21,7 +21,7 @@ function PhaseStepper({ phases, phaseStep, compact = false }) {
                 {done ? <Check className="h-3.5 w-3.5" /> : idx}
               </span>
               <span className="sr-only">{label}{done ? " — finalizat" : current ? " — pasul curent" : ""}</span>
-              {idx < phases.length && <span aria-hidden="true" className={`mx-2 h-px min-w-2 flex-1 ${done ? "bg-foreground" : "bg-border"}`} />}
+              {idx < phases.length && <span aria-hidden="true" className={`mx-1.5 h-px min-w-2 flex-1 ${done ? "bg-foreground" : "bg-border"}`} />}
             </li>
           );
         })}
@@ -82,6 +82,13 @@ export default function WizardShell({
   artworkTitle,
   artworkSubtitle,
 }) {
+  const titleRef = useRef(null);
+  useEffect(() => {
+    if (!split) return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    titleRef.current?.focus({ preventScroll: true });
+  }, [split, title]);
+
   const content = (
     <div className={split ? "w-full min-w-0" : "mx-auto min-h-[calc(100dvh-1px)] w-full max-w-xl px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:min-h-0 sm:px-6 sm:py-14"}>
       <div className={split ? "flex min-w-0 items-center gap-3" : "sticky top-0 z-20 -mx-4 flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-0"}>
@@ -122,7 +129,7 @@ export default function WizardShell({
         transition={{ duration: 0.25, ease: "easeOut" }}
         className="mt-6 sm:mt-9"
       >
-        <h1 className={split ? "font-heading text-[28px] font-semibold leading-tight tracking-[-0.04em] sm:text-[32px]" : "font-heading text-[1.65rem] font-extrabold leading-tight tracking-tight sm:text-3xl"}>{title}</h1>
+        <h1 ref={titleRef} tabIndex={split ? -1 : undefined} className={split ? "outline-none font-heading text-[28px] font-semibold leading-tight tracking-[-0.04em] sm:text-[32px]" : "font-heading text-[1.65rem] font-extrabold leading-tight tracking-tight sm:text-3xl"}>{title}</h1>
         {subtitle && <p className={split ? "mt-3 max-w-prose text-sm leading-6 text-muted-foreground" : "mt-2 max-w-prose text-sm leading-6 text-muted-foreground sm:text-base"}>{subtitle}</p>}
         <div className="mt-6 min-w-0 sm:mt-7">{children}</div>
       </motion.div>
