@@ -39,8 +39,19 @@ export function readableErrorMessage(message, fallback = '') {
   return /rate limit/i.test(text) ? RATE_LIMIT_MESSAGE : text;
 }
 
+// 2026-10-03. `jitterMs` adauga o pauza aleatoare (0..jitterMs) peste fiecare asteptare. Cand mai
+// multe cereri cad deodata pe limita de trafic, fara ea se reincercau toate in aceeasi clipa si
+// loveau din nou limita impreuna. Implicit 0: paginile publice raman exact ca inainte.
+export function retryDelayMs(baseMs, jitterMs = 0, random = Math.random) {
+  const base = Math.max(0, Number(baseMs) || 0);
+  const spread = Math.max(0, Number(jitterMs) || 0);
+  return base + (spread ? Math.floor(random() * spread) : 0);
+}
+
 export async function withTransientRetry(run, {
   delaysMs = PROFILE_RETRY_DELAYS_MS,
+  jitterMs = 0,
+  random = Math.random,
   wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   let lastError = null;
@@ -50,7 +61,7 @@ export async function withTransientRetry(run, {
     } catch (error) {
       lastError = error;
       if (!isTransientError(error) || attempt === delaysMs.length) break;
-      await wait(delaysMs[attempt]);
+      await wait(retryDelayMs(delaysMs[attempt], jitterMs, random));
     }
   }
   throw lastError;
