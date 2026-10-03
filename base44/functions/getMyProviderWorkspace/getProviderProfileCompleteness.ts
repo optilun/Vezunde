@@ -5,6 +5,7 @@ import {
   computeOrganizationCompleteness,
   summarizeProviderCompleteness,
 } from '../../shared/providerProfileCompleteness.js';
+import { loadLocationContentIndex, rowsFor } from '../../shared/providerWorkspaceBatchQueries.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -28,13 +29,15 @@ async function authorize(svc, user, locationId) {
   return { location, memberships };
 }
 
-async function contentSummary(svc, location) {
-  const [services, specialties, team, media] = await Promise.all([
-    svc.entities.LocationService.filter({ location_id: location.id, is_active: true }),
-    svc.entities.LocationSpecialization.filter({ location_id: location.id, is_active: true }),
-    svc.entities.ProfessionalLocationAssignment.filter({ location_id: location.id, active_status: 'activ', public_status: 'public' }),
-    svc.entities.ProviderMediaAsset.filter({ location_id: location.id, status: 'approved' }),
-  ]);
+// 2026-10-03. Continutul se citeste o singura data pentru toate locatiile (inainte, 4 interogari
+// pornite deodata pentru FIECARE locatie - sute de apeluri simultane la o retea mare).
+const COMPLETENESS_CONTENT_PARTS = ['services', 'specialties', 'team', 'media'];
+
+function contentSummary(contentIndex, location) {
+  const services = rowsFor(contentIndex.services, location.id);
+  const specialties = rowsFor(contentIndex.specialties, location.id);
+  const team = rowsFor(contentIndex.team, location.id);
+  const media = rowsFor(contentIndex.media, location.id);
   return {
     approved_service_count: services.length + specialties.length,
     approved_public_team_count: team.length,
@@ -75,8 +78,9 @@ export async function handle(req: Request) {
     const accessibleLocations = organizationLocations.filter((item) => accessibleLocationIds.has(item.id));
     if (!accessibleLocations.some((item) => item.id === location.id)) accessibleLocations.unshift(location);
 
-    const locationRows = await Promise.all(accessibleLocations.map(async (item) => {
-      const content = await contentSummary(svc, item);
+    const contentIndex = await loadLocationContentIndex(svc, accessibleLocations.map((item) => item.id), { parts: COMPLETENESS_CONTENT_PARTS });
+    const locationRows = accessibleLocations.map((item) => {
+      const content = contentSummary(contentIndex, item);
       const completion = computeLocationCompleteness({ location: item, content });
       return {
         id: item.id,
@@ -85,7 +89,7 @@ export async function handle(req: Request) {
         profile_control_status: item.profile_control_status || item.verification_state || '',
         completion,
       };
-    }));
+    });
 
     const selectedRow = locationRows.find((item) => item.id === location.id) || locationRows[0];
     const organizationCompletion = computeOrganizationCompleteness(organization || {});
