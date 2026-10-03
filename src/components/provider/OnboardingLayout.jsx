@@ -20,7 +20,7 @@ export default function OnboardingLayout({
             <X className="h-4 w-4" aria-hidden="true" />
           </Link>
         </header>
-        <main id="main-content" className="mx-auto w-full min-w-0 max-w-[600px] flex-1 py-8 sm:py-10" data-onboarding-form>
+        <main id="main-content" className="mx-auto w-full min-w-0 max-w-[600px] flex-1 py-8 sm:py-10 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm" data-onboarding-form>
           {children}
         </main>
         <nav aria-label="Informații legale" className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
