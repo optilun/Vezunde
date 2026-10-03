@@ -1,13 +1,24 @@
 const RETURN_TO_STORAGE_KEY = "viasee.auth.return_to";
 const AUTH_PATHS = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
 
-function safeDestination(raw) {
-  if (!raw || typeof window === "undefined") return "";
+// Parametrii de pornire ai aplicatiei (vezi src/lib/app-params.js si src/lib/authReturnTo.js): nu
+// au ce cauta intr-o destinatie dupa login, altfel un link construit ar putea suprascrie sesiunea.
+const BOOTSTRAP_PARAMS = ["access_token", "clear_access_token", "app_id", "app_base_url", "functions_version", "from_url"];
+
+// 2026-10-03. Verificarea de origine nu era suficienta: `/.//evil.com/x` are aceeasi origine, dar
+// devine `//evil.com/x`, adica o adresa pe alt site cand e pusa in window.location.href (redirect
+// deschis). Acum calea trebuie sa inceapa cu un singur "/" si sa nu contina backslash - aceeasi
+// regula ca safeReturnTo din authReturnTo.js.
+export function safeDestination(raw, origin = typeof window === "undefined" ? "" : window.location.origin) {
+  if (!raw || !origin) return "";
   try {
-    const url = new URL(raw, window.location.origin);
-    if (url.origin !== window.location.origin) return "";
+    const url = new URL(raw, origin);
+    if (url.origin !== origin) return "";
     if (AUTH_PATHS.has(url.pathname)) return "";
-    return `${url.pathname}${url.search}${url.hash}`;
+    for (const param of BOOTSTRAP_PARAMS) url.searchParams.delete(param);
+    const destination = `${url.pathname}${url.search}${url.hash}`;
+    if (!destination.startsWith("/") || destination.startsWith("//") || destination.includes("\\")) return "";
+    return destination;
   } catch (_error) {
     return "";
   }
