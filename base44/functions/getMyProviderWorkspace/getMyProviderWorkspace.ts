@@ -1,5 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { expandOwnerWorkspaceScope } from '../../shared/providerOwnerWorkspaceScope.js';
+import {
+  filterByIdList,
+  getManyByIds,
+  groupRowsBy,
+  loadLocationContentIndex,
+  rowsFor,
+} from '../../shared/providerWorkspaceBatchQueries.js';
 
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
@@ -188,14 +195,19 @@ function buildOrganizationContexts(organizations, locations, memberships) {
   });
 }
 
-async function getContentSummary(svc, locationId, userId) {
-  const rawSubmissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
-  const submissions = rawSubmissions.filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === userId);
-  const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
-  const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
-  const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
-  const media = await svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' });
-  const articles = await svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' });
+// 2026-10-03. Continutul tuturor locatiilor se citeste o singura data, grupat (vezi
+// base44/shared/providerWorkspaceBatchQueries.js); aici doar se numara pentru o locatie.
+function visibleLocationSubmissions(contentIndex, locationId, userId) {
+  return rowsFor(contentIndex.submissions, locationId).filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === userId);
+}
+
+function getContentSummary(contentIndex, locationId, userId) {
+  const submissions = visibleLocationSubmissions(contentIndex, locationId, userId);
+  const services = rowsFor(contentIndex.services, locationId);
+  const specialties = rowsFor(contentIndex.specialties, locationId);
+  const team = rowsFor(contentIndex.team, locationId);
+  const media = rowsFor(contentIndex.media, locationId);
+  const articles = rowsFor(contentIndex.articles, locationId);
   const pendingCount = (section) => submissions.filter((submission) => submission.section === section).length;
   return {
     approved_service_count: services.length + specialties.length,
@@ -215,9 +227,12 @@ async function getMemberSummary(svc, memberships, locationIds) {
   const ownerLocationIds = unique(memberships.filter((membership) => normalizeMemberRole(membership.role) === 'organization_owner').map((membership) => membership.location_id));
   const activeRowsById = new Map();
   const perLocation = {};
+  const rowsByLocation = groupRowsBy(
+    await filterByIdList(svc.entities.ProviderMembership, 'location_id', locationIds, { status: 'active' }, { sort: '-created_date' }),
+    'location_id',
+  );
   for (const locationId of locationIds) {
-    const rows = await svc.entities.ProviderMembership.filter({ location_id: locationId, status: 'active' }, '-created_date', 500);
-    const valid = rows.filter((membership) => normalizeMemberRole(membership.role));
+    const valid = rowsFor(rowsByLocation, locationId).filter((membership) => normalizeMemberRole(membership.role));
     perLocation[locationId] = unique(valid.map((membership) => membership.user_id)).length;
     for (const membership of valid) activeRowsById.set(membership.id, membership);
   }
@@ -294,43 +309,42 @@ export async function handle(req: Request) {
     let memberships = rawMemberships.filter((membership) => normalizeMemberRole(membership.role) && membership.location_id);
     if (memberships.length === 0) return Response.json(await getApplicantPreparationWorkspace(svc, user));
 
+    // Locatiile si organizatiile se citesc grupat; ordinea ramane cea a membership-urilor.
+    const fetchedLocations = await getManyByIds(svc.entities.ProviderLocation, memberships.map((membership) => membership.location_id));
     const locationMap = new Map();
-    const organizationMap = new Map();
     for (const membership of memberships) {
-      if (!locationMap.has(membership.location_id)) {
-        const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
-        if (location) locationMap.set(location.id, location);
-      }
-      const location = locationMap.get(membership.location_id);
-      const organizationId = membership.organization_id || location?.organization_id || '';
-      if (organizationId && !organizationMap.has(organizationId)) {
-        const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
-        if (organization) organizationMap.set(organization.id, organization);
-      }
+      const location = fetchedLocations.get(membership.location_id);
+      if (location && !locationMap.has(location.id)) locationMap.set(location.id, location);
+    }
+    const organizationIds = unique(memberships.map((membership) => membership.organization_id || locationMap.get(membership.location_id)?.organization_id || ''));
+    const fetchedOrganizations = await getManyByIds(svc.entities.ProviderOrganization, organizationIds);
+    const organizationMap = new Map();
+    for (const organizationId of organizationIds) {
+      const organization = fetchedOrganizations.get(organizationId);
+      if (organization) organizationMap.set(organization.id, organization);
     }
 
     const expandedOwnerScope = await expandOwnerWorkspaceScope(svc, user, memberships, [...locationMap.values()]);
     memberships = expandedOwnerScope.memberships;
-    for (const location of expandedOwnerScope.locations) {
-      locationMap.set(location.id, location);
-      if (location.organization_id && !organizationMap.has(location.organization_id)) {
-        const organization = await svc.entities.ProviderOrganization.get(location.organization_id).catch(() => null);
+    for (const location of expandedOwnerScope.locations) locationMap.set(location.id, location);
+    const missingOrganizationIds = unique(expandedOwnerScope.locations.map((location) => location.organization_id || '').filter((organizationId) => !organizationMap.has(organizationId)));
+    if (missingOrganizationIds.length > 0) {
+      const extraOrganizations = await getManyByIds(svc.entities.ProviderOrganization, missingOrganizationIds);
+      for (const organizationId of missingOrganizationIds) {
+        const organization = extraOrganizations.get(organizationId);
         if (organization) organizationMap.set(organization.id, organization);
       }
     }
 
+    const locationIds = [...locationMap.keys()];
+    const contentIndex = await loadLocationContentIndex(svc, locationIds);
     let pendingReviewCount = 0;
-    for (const locationId of locationMap.keys()) {
-      const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } });
-      pendingReviewCount += submissions.filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === user.id).length;
-    }
-    for (const organizationId of organizationMap.keys()) {
-      const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ organization_id: organizationId, section: 'public_profile', access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } });
-      pendingReviewCount += submissions.filter((submission) => submission.submitted_by_user_id === user.id && !submission.location_id).length;
-    }
+    for (const locationId of locationIds) pendingReviewCount += visibleLocationSubmissions(contentIndex, locationId, user.id).length;
+    const organizationSubmissions = await filterByIdList(svc.entities.ProviderWorkspaceSubmission, 'organization_id', [...organizationMap.keys()], { section: 'public_profile', access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } });
+    pendingReviewCount += organizationSubmissions.filter((submission) => submission.submitted_by_user_id === user.id && !submission.location_id).length;
 
     const contentSummaries = new Map();
-    for (const locationId of locationMap.keys()) contentSummaries.set(locationId, await getContentSummary(svc, locationId, user.id));
+    for (const locationId of locationIds) contentSummaries.set(locationId, getContentSummary(contentIndex, locationId, user.id));
     const membershipData = memberships.filter((membership) => locationMap.has(membership.location_id)).map((membership) => {
       const location = locationMap.get(membership.location_id);
       const organizationId = membership.organization_id || location.organization_id || null;
