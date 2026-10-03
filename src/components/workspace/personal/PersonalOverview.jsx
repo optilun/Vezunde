@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, ClipboardList, MapPin, Search, UserRound } from "lucide-react";
+import { ArrowRight, Building2, ClipboardList, MapPin, Search, Stethoscope, UserRound } from "lucide-react";
 import { CLAIM_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import {
   PROFESSIONAL_REVIEW_STATUS_LABELS,
@@ -8,9 +8,9 @@ import {
 } from "@/lib/professionalProfileCatalog";
 
 const ROLE_LABELS = {
-  organization_owner: "Owner organizatie",
-  location_manager: "Manager locatie",
-  location_staff: "Membru locatie",
+  organization_owner: "Owner organizație",
+  location_manager: "Manager locație",
+  location_staff: "Membru locație",
 };
 
 function organizationContexts(workspace) {
@@ -34,7 +34,7 @@ function organizationRows(workspace, onboardingWorkspace) {
     mode: "provider",
     organizationId: context.organization.id,
     locationId: context.locations?.[0]?.id || context.memberships?.[0]?.location_id || "",
-    name: context.organization.public_display_name || context.organization.name || "Organizatie",
+    name: context.organization.public_display_name || context.organization.name || "Organizație",
     logoUrl: context.organization.logo_url || "",
     role: context.current_user_role || context.memberships?.[0]?.role || "",
     locationCount: context.locations?.length || 0,
@@ -55,14 +55,14 @@ function organizationRows(workspace, onboardingWorkspace) {
     mode: "applicant",
     organizationId,
     locationId: location.id || claim.location_id || "",
-    name: claim.business_name || location.name || "Organizatie in pregatire",
+    name: claim.business_name || location.name || "Organizație în pregătire",
     logoUrl: "",
     role: claim.requested_membership_role || "organization_owner",
     locationCount: location.id || claim.location_id ? 1 : 0,
     locality: location.locality_name || location.city || "",
     profileCompleteness: onboardingWorkspace.status_center?.preparation_progress?.percentage ?? null,
     status: "pending",
-    statusLabel: CLAIM_STATUS_LABELS[claim.status] || "In verificare",
+    statusLabel: CLAIM_STATUS_LABELS[claim.status] || "În verificare",
   });
   return rows;
 }
@@ -98,7 +98,7 @@ export default function PersonalOverview({
       <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm sm:p-6">
         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Cont personal</div>
         <h1 className="mt-1.5 font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">Salut, {user.full_name || "acolo"}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Gaseste locatii, urmareste solicitarile tale si schimba usor intre spatiile disponibile ale contului.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Găsește locații, urmărește cererile tale și schimbă ușor între spațiile contului.</p>
       </section>
 
       {professional && (
@@ -123,7 +123,7 @@ export default function PersonalOverview({
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   <span>Profil {professional.profile_completeness || 0}%</span>
-                  <span>{professionalWorkspace.assignments?.length || 0} {(professionalWorkspace.assignments?.length || 0) === 1 ? "locatie asociata" : "locatii asociate"}</span>
+                  <span>{professionalWorkspace.assignments?.length || 0} {(professionalWorkspace.assignments?.length || 0) === 1 ? "locație asociată" : "locații asociate"}</span>
                 </div>
               </div>
             </div>
@@ -143,8 +143,8 @@ export default function PersonalOverview({
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Building2 className="h-4 w-4" /></div>
             <div>
-              <h2 className="text-base font-bold">Organizatiile mele</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Organizatiile create, revendicate sau la care ai acces apar automat aici.</p>
+              <h2 className="text-base font-bold">Organizațiile mele</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Organizațiile create, revendicate sau la care ai acces apar automat aici. Cele încă în verificare au eticheta lor.</p>
             </div>
           </div>
 
@@ -160,13 +160,13 @@ export default function PersonalOverview({
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold">{organization.name}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                      <span className="rounded-full bg-secondary px-2 py-0.5 font-semibold">{ROLE_LABELS[organization.role] || "Acces organizatie"}</span>
+                      <span className="rounded-full bg-secondary px-2 py-0.5 font-semibold">{ROLE_LABELS[organization.role] || "Acces organizație"}</span>
                       <span className={`rounded-full px-2 py-0.5 font-semibold ${organization.status === "pending" ? "bg-amber-100 text-amber-900" : "bg-green-100 text-green-800"}`}>
                         {organization.statusLabel}
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>{organization.locationCount} {organization.locationCount === 1 ? "locatie" : "locatii"}</span>
+                      <span>{organization.locationCount} {organization.locationCount === 1 ? "locație" : "locații"}</span>
                       {organization.locality && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{organization.locality}</span>}
                       {organization.profileCompleteness !== null && <span>Profil {organization.profileCompleteness}%</span>}
                     </div>
@@ -181,7 +181,7 @@ export default function PersonalOverview({
                   })}
                   className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto"
                 >
-                  {organization.status === "pending" ? "Continua pregatirea" : "Deschide organizatia"} <ArrowRight className="h-4 w-4" />
+                  {organization.status === "pending" ? "Vezi solicitarea" : "Deschide organizația"} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             ))}
@@ -195,35 +195,48 @@ export default function PersonalOverview({
             <div className="flex min-w-0 items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><ClipboardList className="h-4 w-4" /></div>
               <div className="min-w-0">
-                <div className="text-sm font-bold">Ultima solicitare de furnizor</div>
+                <div className="text-sm font-bold">Ultima solicitare de organizație</div>
                 <div className="mt-1 text-xs text-muted-foreground">{CLAIM_STATUS_LABELS[latest.status] || latest.status}</div>
               </div>
             </div>
-            <button onClick={() => onNavigate("requests")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
-              Vezi solicitarile <ArrowRight className="h-4 w-4" />
+            <button type="button" onClick={() => onOpenOrganization?.({ mode: "applicant" })} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+              Vezi solicitările <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </section>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={`grid gap-4 md:grid-cols-2 ${professional ? "" : "lg:grid-cols-3"}`}>
         <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary"><Search className="h-4 w-4" /></div>
-          <h2 className="mt-4 text-base font-bold">Cauta o locatie</h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Gaseste optici, clinici si cabinete potrivite nevoii tale.</p>
+          <h2 className="mt-4 text-base font-bold">Caută o locație</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Găsește optici, clinici și cabinete potrivite nevoii tale.</p>
           <Link to="/cauta" className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
-            Incepe cautarea <ArrowRight className="h-4 w-4" />
+            Începe căutarea <ArrowRight className="h-4 w-4" />
           </Link>
         </section>
 
         <section className="rounded-[22px] border border-border bg-accent/40 p-4 shadow-sm sm:p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card"><Building2 className="h-4 w-4" /></div>
-          <h2 className="mt-4 text-base font-bold">Reprezinti o locatie?</h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Adauga sau revendica profilul unei optici, clinici ori al unui cabinet.</p>
+          <h2 className="mt-4 text-base font-bold">Reprezinți o locație?</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Adaugă sau revendică profilul unei optici, clinici ori al unui cabinet.</p>
           <Link to="/adauga-sau-revendica" className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background hover:opacity-90 sm:w-auto">
-            Adauga sau revendica <ArrowRight className="h-4 w-4" />
+            Adaugă sau revendică <ArrowRight className="h-4 w-4" />
           </Link>
         </section>
+
+        {/* 2026-10-03 (structura conturilor, pasul 1): profilul profesional se poate crea si din
+            cont, nu doar din pagina „Pentru specialiști”. */}
+        {!professional && (
+          <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary"><Stethoscope className="h-4 w-4" /></div>
+            <h2 className="mt-4 text-base font-bold">Ești specialist?</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Optometrist, oftalmolog sau optician: creează-ți profilul profesional. Rămâne privat până la verificare.</p>
+            <Link to="/profil-profesional/nou" className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+              Creează profilul profesional <ArrowRight className="h-4 w-4" />
+            </Link>
+          </section>
+        )}
       </div>
     </div>
   );
