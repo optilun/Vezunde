@@ -404,7 +404,7 @@ async function approveExistingResolution(svc: any, user: any, submission: any, p
     entity_type: 'ProviderLocation',
     entity_id: target.id,
     action_type: relation === 'other_organization' ? 'transfer_existing_location_to_organization' : 'associate_existing_location_to_organization',
-    changed_fields: ['organization_id', 'status', 'public_visibility_status', 'profile_control_status', 'memberships'],
+    changed_fields: ['organization_id', 'profile_control_status', 'claim_verification_status', 'verification_state', 'memberships'],
     previous,
     next: {
       ...updates,
