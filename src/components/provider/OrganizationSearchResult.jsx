@@ -15,7 +15,7 @@ const ORGANIZATION_TYPE_LABELS = {
 export default function OrganizationSearchResult({ organization, onClaimOrganization, onClaimLocation }) {
   const [expanded, setExpanded] = useState(false);
   const locationsId = useId();
-  const typeLabel = ORGANIZATION_TYPE_LABELS[organization.organization_type] || "Organizație";
+  const typeLabel = ORGANIZATION_TYPE_LABELS[organization.organization_type] || null;
 
   return (
     <div data-organization-result={organization.id} className="min-w-0 rounded-2xl border border-[#405AE9]/25 bg-[#F8FAFF] p-4 sm:rounded-xl">
@@ -24,7 +24,7 @@ export default function OrganizationSearchResult({ organization, onClaimOrganiza
           <Building2 className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <div className="text-xs text-muted-foreground">Organizație · {typeLabel}</div>
+          <div className="text-xs text-muted-foreground">Organizație{typeLabel ? ` · ${typeLabel}` : ""}</div>
           <div className="mt-0.5 break-words font-semibold leading-snug">{organization.name}</div>
           <div className="mt-1 text-sm leading-5 text-muted-foreground">
             {organization.location_count} locații{organization.cities?.length ? ` · ${organization.cities.join(", ")}` : ""}
