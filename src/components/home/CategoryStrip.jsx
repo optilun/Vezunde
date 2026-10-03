@@ -5,7 +5,7 @@ import { usePrefersReducedMotion } from "@/lib/motion";
 import { prefetchOnIntent } from "@/lib/routePrefetch";
 import {
   SPECIALIST_CARDS, DoctorTile, PinTile, NearbyTile, ConnectionPhoto, FiltersTile,
-  ConsultationPhoto, SnellenTile, EyeTile, StillLifePhoto, VisionNote,
+  ConsultationPhoto, ExaminationPhoto, SnellenTile, EyeTile, StillLifePhoto, VisionNote,
   IrisPhoto, ApertureTile, LightPhoto, InvestigationsNote,
   PortraitPhoto, GlassesTile, LensesNote, WorkshopPhoto, WrenchTile, RepairPhoto, RepairNote,
 } from "@/components/home/CategoryArtworks";
@@ -63,7 +63,7 @@ export const CATEGORY_SETS = [
     to: "/cerere?categorie=investigatii",
     description: "Investigații recomandate de medic: tomografie OCT, câmp vizual, fund de ochi.",
     tiles: [
-      { key: "oct", Component: ConsultationPhoto, basis: 24, h: 17.5 },
+      { key: "oct", Component: ExaminationPhoto, basis: 24, h: 17.5 },
       { key: "fundus", Component: IrisPhoto, basis: 14, h: 13.5 },
       { key: "field", Component: ApertureTile, basis: 9, h: 10.5 },
       { key: "thickness", Component: LightPhoto, basis: 10, h: 15, optional: true },
