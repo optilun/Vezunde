@@ -106,7 +106,7 @@ export default function ClaimScopeStep({
                     Am găsit {options.network_suggestions.length} {options.network_suggestions.length === 1 ? "locație" : "locații"} cu nume asemănător
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Dacă fac parte din aceeași rețea, le poți revendica împreună. VIASEE le va lega sub o organizație comună, după verificare.
+                    Dacă fac parte din aceeași rețea, le poți semnala acum. Echipa VIASEE le verifică și le asociază organizației tale; ele nu intră automat în această revendicare.
                   </p>
                 </div>
               </div>
@@ -139,7 +139,7 @@ export default function ClaimScopeStep({
                   className="mt-0.5 h-4 w-4 shrink-0 rounded border-border"
                 />
                 <span className="text-xs leading-relaxed">
-                  Da, fac parte din aceeași rețea — include-le în revendicare și creează organizația
+                  Da, fac parte din aceeași rețea — semnalează-le echipei VIASEE
                 </span>
               </label>
             </div>
