@@ -52,7 +52,7 @@ export default function WizClaimRelation({ data, update, next, loading = false }
       </label>
 
       <ContinueButton onClick={next} disabled={!valid} loading={loading}>Continuă</ContinueButton>
-      <p className="text-center text-xs text-muted-foreground">Dacă nu ești autentificat, îți vei crea contul VIASEE și vei reveni automat la pasul următor.</p>
+      <p className="text-center text-xs text-muted-foreground">Urmează datele private de verificare, apoi revizuirea solicitării.</p>
     </div>
   );
 }
