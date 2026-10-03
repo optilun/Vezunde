@@ -110,6 +110,6 @@ assert.match(labels, /PROVIDER_ROLE_LABELS as ROLE_LABELS/);
 assert.match(invitationUi, /providerRoleCoversOrganization\(invitation\?\.proposed_role\)/);
 assert.doesNotMatch(invitationUi, /Rolul de owner se aplică numai locațiilor enumerate/);
 assert.match(invitationUi, /organization_wide_access/);
-assert.match(invitationUi, /locațiilor actuale și viitoare/);
+assert.match(invitationUi, /locațiilor viitoare ale organizației/);
 
 console.log('Provider organization administrator access checks passed.');
