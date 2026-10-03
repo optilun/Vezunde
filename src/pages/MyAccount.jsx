@@ -280,7 +280,18 @@ export default function MyAccount() {
   const preferredMode = rememberedMode === "applicant" && !hasApplicantWorkspace ? null : rememberedMode;
   const fallbackMode = [requestedMode, preferredMode, "provider", "professional", ...(hasApplicantWorkspace ? ["applicant"] : []), "personal"]
     .find((mode) => availableModeKeys.has(mode)) || "personal";
-  const resolvedMode = activeMode && availableModeKeys.has(activeMode) ? activeMode : fallbackMode;
+  // Pe pagina unui modul de locație, fără un spațiu cerut explicit, rămânem în organizație chiar
+  // dacă în aceeași vizită s-a ales înainte alt spațiu.
+  const routeForcesProvider = Boolean(routeLocationModule) && !params.get("mode") && availableModeKeys.has("provider");
+  const resolvedMode = routeForcesProvider
+    ? "provider"
+    : (activeMode && availableModeKeys.has(activeMode) ? activeMode : fallbackMode);
+  // Schimbarea spațiului de pe pagina unui modul de locație duce înapoi la /contul-meu, ca să nu
+  // rămână adresa modulului sub alt spațiu.
+  const applyAccountParams = (next) => {
+    if (routeLocationModule) routerNavigate(`/contul-meu?${next.toString()}`, { replace: true });
+    else setParams(next, { replace: true });
+  };
   const requestedWorkspaceIssue = {
     provider: { workspace: providerWorkspace, error: workspaceErrors.provider, retrying: workspaceRefreshing.provider, retry: refreshProviderWorkspace, title: "Nu am putut încărca spațiul furnizorului" },
     professional: { workspace: professionalWorkspace, error: workspaceErrors.professional, retrying: workspaceRefreshing.professional, retry: refreshProfessionalWorkspace, title: "Nu am putut încărca profilul profesional" },
@@ -318,7 +329,7 @@ export default function MyAccount() {
       next.delete("ps");
       next.delete("s");
     }
-    setParams(next, { replace: true });
+    applyAccountParams(next);
     setActiveMode(mode);
     rememberAccountMode(user.id, mode);
   };
@@ -337,7 +348,7 @@ export default function MyAccount() {
     else next.delete("organization");
     if (locationId) next.set("location", locationId);
     else next.delete("location");
-    setParams(next, { replace: true });
+    applyAccountParams(next);
     setActiveMode("provider");
     rememberAccountMode(user.id, "provider");
   };
@@ -349,7 +360,7 @@ export default function MyAccount() {
     next.delete("ps");
     next.delete("organization");
     next.delete("location");
-    setParams(next, { replace: true });
+    applyAccountParams(next);
     setActiveMode("personal");
     rememberAccountMode(user.id, "personal");
   };
