@@ -19,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 const ProfessionalProfileEditor = lazy(() => import("./ProfessionalProfileEditor"));
+const ProfessionalAssociationRequests = lazy(() => import("./ProfessionalAssociationRequests"));
 import {
   PROFESSIONAL_REVIEW_STATUS_LABELS,
   PROFESSIONAL_TYPE_LABELS,
@@ -492,7 +493,7 @@ function Locations({ workspace, onRefresh }) {
         </div>
       )}
       <div className="space-y-3">
-        {assignments.length === 0 && <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">Nu există locații asociate.</div>}
+        {assignments.length === 0 && <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">Nu există locații asociate. Poți cere asocierea mai jos sau poți primi o invitație de la locație.</div>}
         {assignments.map((assignment) => {
           const status = consentPresentation(assignment);
           const isPending = assignment.visibility_consent_status === "pending";
@@ -553,6 +554,14 @@ function Locations({ workspace, onRefresh }) {
           );
         })}
       </div>
+      {/* 2026-10-03 (structura conturilor, pasul 2): cererea „Lucrez aici”. */}
+      <Suspense fallback={null}>
+        <ProfessionalAssociationRequests
+          requests={workspace.association_requests || []}
+          activeLocationIds={assignments.map((item) => item.location_id)}
+          onRefresh={onRefresh}
+        />
+      </Suspense>
     </div>
   );
 }
