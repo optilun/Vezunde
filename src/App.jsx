@@ -209,9 +209,6 @@ const AppRoutes = () => {
             path="/inscriere"
             element={<Navigate to="/adauga-sau-revendica" replace />}
           />
-          {/* Inscrierea/revendicarea cere cont de la primul pas (2026-08-18): orice tip de
-              cont are nevoie de autentificare, deci poarta sta la intrare, o singura data,
-              in loc de redirecturi la mijlocul formularului. */}
           <Route path="/confidentialitate" element={<Privacy />} />
           <Route path="/termeni" element={<Terms />} />
           <Route path="/cookies" element={<Cookies />} />
@@ -223,6 +220,8 @@ const AppRoutes = () => {
           <Route path="/dezabonare" element={<Unsubscribe />} />
         </Route>
 
+        {/* Inscrierea si revendicarea cer cont de la primul pas, iar layoutul ramane
+            separat de navigatia publica pentru completarea formularului. */}
         <Route element={<RequireAuth />}>
           <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
           <Route
