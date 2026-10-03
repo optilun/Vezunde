@@ -11,30 +11,25 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
+import {
+  PROVIDER_ACCESS_ROLES,
+  PROVIDER_ROLE_DESCRIPTIONS,
+  PROVIDER_ROLE_LABELS,
+  providerRoleCoversOrganization,
+} from "../../shared/providerRolePolicy.js";
 
-const ROLE_DETAILS = {
-  organization_owner: {
-    label: "Owner organizație",
-    description: "Vei avea control de owner numai asupra scope-ului indicat: toate locațiile sau locațiile selectate.",
-  },
-  organization_admin: {
-    label: "Administrator organizație",
-    description: "Vei putea gestiona activitatea tuturor locațiilor actuale și viitoare, fără drepturile sensibile rezervate ownerului.",
-  },
-  location_manager: {
-    label: "Manager locație",
-    description: "Vei putea gestiona conținutul și operațiunile locațiilor menționate în invitație.",
-  },
-  location_staff: {
-    label: "Membru locație",
-    description: "Vei avea acces operațional limitat la locațiile menționate în invitație.",
-  },
-};
+// 2026-10-03 (structura conturilor, pasul 3): etichetele și descrierile rolurilor vin din matricea
+// comună. Proprietarul și administratorul primesc mereu toată organizația, inclusiv locațiile
+// viitoare; managerul și membrul doar locațiile din invitație.
+const ROLE_DETAILS = Object.fromEntries(PROVIDER_ACCESS_ROLES.map((role) => [role, {
+  label: PROVIDER_ROLE_LABELS[role],
+  description: PROVIDER_ROLE_DESCRIPTIONS[role],
+}]));
 
 function invitationIsOrganizationWide(invitation) {
   return Boolean(
     invitation?.organization_wide_access
-    || invitation?.proposed_role === "organization_admin",
+    || providerRoleCoversOrganization(invitation?.proposed_role),
   );
 }
 
@@ -169,7 +164,7 @@ export default function AcceptProviderInvitation() {
               <section className="rounded-2xl border border-border p-4 sm:p-5">
                 <h2 className="text-sm font-bold">{organizationWide ? "Acces organizațional" : "Locații incluse"}</h2>
                 {organizationWide && <p className="mt-2 rounded-xl bg-secondary/35 p-3 text-xs leading-relaxed text-muted-foreground">Accesul se aplică tuturor locațiilor actuale și va fi acordat automat și locațiilor viitoare ale organizației.</p>}
-                {!organizationWide && invitation.proposed_role === "organization_owner" && <p className="mt-2 rounded-xl bg-secondary/35 p-3 text-xs leading-relaxed text-muted-foreground">Rolul de owner se aplică numai locațiilor enumerate mai jos și nu se extinde automat la locațiile viitoare.</p>}
+                
                 <div className="mt-3 space-y-2.5">{(invitation.locations || []).map((location) => <div key={location.id} className="flex items-start gap-3 rounded-xl bg-secondary/30 p-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><div className="min-w-0"><p className="text-sm font-semibold">{location.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{[location.city, location.county, location.address].filter(Boolean).join(" · ") || "Adresa nu este afișată"}</p></div></div>)}</div>
                 {formatDate(invitation.expires_at) && <p className="mt-3 text-[11px] text-muted-foreground">Invitația este valabilă până la {formatDate(invitation.expires_at)}.</p>}
               </section>
