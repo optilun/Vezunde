@@ -38,12 +38,15 @@ export default function SpecialistsHero() {
   const [results, setResults] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [searchRetry, setSearchRetry] = useState(0);
   const reqRef = useRef(0);
 
   useEffect(() => {
     const reqId = ++reqRef.current;
     setResults([]);
     setOrganizations([]);
+    setSearchError(false);
     if (audience !== "organization") {
       setResults([]);
       setLoading(false);
@@ -57,23 +60,26 @@ export default function SpecialistsHero() {
       return;
     }
 
+    setLoading(true);
     const t = setTimeout(async () => {
-      setLoading(true);
-      const res = await base44.functions
-        .invoke("getClaimableProviderLocations", { q })
-        .catch(() => ({ data: {} }));
-
-      if (reqId !== reqRef.current) return;
-      setLoading(false);
-      setResults(res.data?.locations || []);
-      setOrganizations(res.data?.organizations || []);
+      try {
+        const res = await base44.functions.invoke("getClaimableProviderLocations", { q });
+        if (res.data?.error) throw new Error(res.data.error);
+        if (reqId !== reqRef.current) return;
+        setResults(res.data?.locations || []);
+        setOrganizations(res.data?.organizations || []);
+      } catch {
+        if (reqId === reqRef.current) setSearchError(true);
+      } finally {
+        if (reqId === reqRef.current) setLoading(false);
+      }
     }, 300);
 
     return () => {
       clearTimeout(t);
       reqRef.current += 1;
     };
-  }, [audience, query]);
+  }, [audience, query, searchRetry]);
 
   const searched = audience === "organization" && query.trim().length >= 2;
   const standaloneLocations = standaloneClaimLocations(results, organizations);
@@ -157,11 +163,10 @@ export default function SpecialistsHero() {
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
-                    document
-                      .getElementById("hero-search-results")
-                      ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-                  }
+                  onClick={() => {
+                    if (searchError) setSearchRetry((current) => current + 1);
+                    document.getElementById("hero-search-results")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  }}
                   className="h-12 px-4 sm:px-6 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
                 >
                   Caută
@@ -225,7 +230,8 @@ export default function SpecialistsHero() {
                     );
                   })}
 
-                  {!loading && results.length === 0 && organizations.length === 0 && (
+                  {searchError && <p role="alert" className="text-sm text-muted-foreground">Căutarea nu este disponibilă momentan. Apasă „Caută” pentru a reîncerca.</p>}
+                  {!loading && !searchError && results.length === 0 && organizations.length === 0 && (
                     <p className="text-sm text-muted-foreground">Nicio locație găsită.</p>
                   )}
                 </div>
