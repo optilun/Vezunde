@@ -177,7 +177,7 @@ function ReviewCard({ item, busy, onDecision }) {
           <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-950">
             <input type="checkbox" checked={confirmTransfer} onChange={(event) => setConfirmTransfer(event.target.checked)} className="mt-0.5" />
             <span>
-              <b>Confirm transferul dintre organizatii.</b> Membershipurile vechii organizatii pentru aceasta locatie vor fi dezactivate, iar ownerii organizatiei destinatie vor primi acces.
+              <b>Confirm transferul dintre organizatii.</b> Membershipurile vechii organizatii pentru aceasta locatie vor fi dezactivate, iar ownerii cu acces la toata organizatia destinatie vor primi acces. Profilul devine revendicat: o verificare anterioara nu se pastreaza, iar starea de publicare ramane neschimbata.
             </span>
           </label>
         )}
