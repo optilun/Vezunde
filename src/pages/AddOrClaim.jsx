@@ -139,7 +139,7 @@ export default function AddOrClaim() {
   return (
     <div className="workspace-neutral">
       {stage === "confirm" && selected ? (
-        <WizardShell phases={PHASES} phaseStep={1} title="Locație selectată" subtitle="Confirmă că aceasta este locația de la care pornește solicitarea.">
+        <WizardShell split phases={PHASES} phaseStep={1} title="Locație selectată" subtitle="Confirmă că aceasta este locația de la care pornește solicitarea.">
           <SelectedLocationCard
             location={selected}
             onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
@@ -148,6 +148,7 @@ export default function AddOrClaim() {
         </WizardShell>
       ) : stage === "claim" && selected ? (
         <WizardShell
+          split
           phases={PHASES}
           phaseStep={STAGE_STEP[claimStep] || 2}
           title={STAGE_COPY[claimStep]?.title || STAGE_COPY.relation.title}
@@ -162,7 +163,7 @@ export default function AddOrClaim() {
           <ClaimForm location={selected} step={claimStep} preferredScope={preferredScope} onStepChange={setClaimStep} onDone={completeOnboardingRequest} />
         </WizardShell>
       ) : (
-        <WizardShell phases={PHASES} phaseStep={1} title="Găsește profilul locației tale" subtitle="Verificăm mai întâi dacă profilul există deja.">
+        <WizardShell split phases={PHASES} phaseStep={1} title="Găsește profilul locației tale" subtitle="Verificăm mai întâi dacă profilul există deja.">
           <ProviderSearch
             onClaim={(loc, options) => {
               clearResumeState();
