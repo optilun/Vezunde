@@ -16,6 +16,7 @@ import { base44 } from "@/api/base44Client";
 import { useEntitySeo } from "@/lib/useEntitySeo";
 import { isNotFoundError, withTransientRetry } from "@/lib/transientRetry";
 import ProfileTemporarilyUnavailable from "@/components/common/ProfileTemporarilyUnavailable";
+import SaveToAccountButton from "@/components/saved/SaveToAccountButton";
 import {
   SITE_URL,
   buildProfessionalProfileStructuredData,
