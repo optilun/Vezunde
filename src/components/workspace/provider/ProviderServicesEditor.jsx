@@ -64,6 +64,10 @@ export default function ProviderServicesEditor(props) {
       });
     }
   }
+  // 2026-10-04 (audit cont organizație, #18): spațiile bifate fără niciun serviciu se văd și în
+  // rezumat, nu doar deschizând fiecare spațiu. Rămân permise.
+  const unitItemCount = key => new Set((m.sectionsByUnit[key] || []).flatMap(section => section.items).filter(item => isSelected(m.selected, item)).map(item => item.id)).size;
+  const emptyUnits = m.visibleUnits.filter(key => unitItemCount(key) === 0 && !m.suggestions.some(item => item.functional_unit_key === key));
   const unitDone = key => (m.sectionsByUnit[key] || []).length > 0 && m.sectionsByUnit[key].every(section => reviewed[key + ":" + section.key] === fingerprints[key + ":" + section.key]);
   const steps = [
     { key: "configuration", title: "Spațiile locației", meta: m.activeUnits.length + " selectate", done: reviewed.configuration === fingerprints.configuration },
@@ -201,7 +205,7 @@ export default function ProviderServicesEditor(props) {
             {m.rawRemovalKeys.length > 0 && <p>{m.rawRemovalKeys.length} eliminări propuse din evidența anterioară.</p>}
             {serviceChanges.some(entry => entry.kind === "removed") && <p className="services-editor__notice">La trimiterea cererii, serviciile propuse spre eliminare sunt ascunse public până la soluționare.</p>}
           </section>}
-          <ReviewCard title="Spațiile locației" count={m.activeUnits.length + " selectate"} onEdit={() => go("configuration")}><p>{m.activeUnits.map(unitLabel).join(" · ") || "Nu ai selectat spații."}</p></ReviewCard>
+          <ReviewCard title="Spațiile locației" count={m.activeUnits.length + " selectate"} onEdit={() => go("configuration")}><p>{m.activeUnits.map(unitLabel).join(" · ") || "Nu ai selectat spații."}</p>{emptyUnits.length > 0 && <p className="services-editor__notice">Fără servicii selectate: {emptyUnits.map(unitLabel).join(" · ")}. Adaugă serviciile oferite acolo sau lasă-le așa dacă nu oferă servicii pacienților.</p>}</ReviewCard>
           {m.visibleUnits.map((key, index) => {
             const unitSections = m.sectionsByUnit[key] || [];
             const items = [...new Map(unitSections.flatMap(section => section.items).filter(item => isSelected(m.selected, item)).map(item => [item.id, item])).values()];
