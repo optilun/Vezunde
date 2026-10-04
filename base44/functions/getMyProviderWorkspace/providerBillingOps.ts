@@ -1,7 +1,125 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, resolveSubscriptionPeriod } from '../../shared/providerBillingPolicy.js';
-import { assertBillingCustomer, clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentIntentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
+import { assertBillingCustomer, clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentIntentSummary, validateBillingProfile,
+  assertOrganizationBillingCustomer, ensureOrganizationBillingAccount, findOrganizationBillingAccount, syncOrganizationCustomerSubscriptions, syncOrganizationSubscription } from './billingAccountHelpers.ts';
+import {
+  ENTERPRISE_MIN_LOCATIONS,
+  authorizeOrganizationBillingOwner,
+  billableLocationCount,
+  findOrganizationTieredPrice,
+  loadActiveManualProRows,
+  loadOpenLegacyLocationSubscriptions,
+  monthlyAmountForLocationCount,
+  planTierForLocationCount,
+  planTierByKey,
+  publicPlanTiers,
+  subscriptionQuantity,
+  syncOrganizationSubscriptionQuantity,
+} from '../../shared/providerOrganizationBilling.js';
+
+// Datele de facturare ale clientului Stripe, comune pentru organizatie si pentru locatiile vechi.
+async function customerView(stripe, customer, account) {
+  return { name: customer.name || '', email: customer.email || '', address: customer.address || {},
+    cui: customer.metadata?.cui || account.billing_cui || '', billing_type: customer.metadata?.billing_type || account.billing_type || 'company',
+    tax_ids: (await stripe.customers.listTaxIds(customer.id, { limit: 100 })).data.map(t => ({ type: t.type, value: t.value, status: t.verification?.status })) };
+}
+
+async function saveCustomerDetails(svc, stripe, account, customer, profile) {
+  const taxIds = await stripe.customers.listTaxIds(customer.id, { limit: 100 });
+  const conflictingVat = taxIds.data.some(tax => tax.type === 'eu_vat' &&
+    (profile.billing_type === 'individual' || (profile.billing_address.country === 'RO' && tax.value.replace(/[^0-9]/g, '') !== profile.billing_cui)));
+  if (conflictingVat) return Response.json({ error: 'Codul TVA salvat în Stripe nu corespunde noilor date. Actualizează-l din „Gestionează codul TVA”, apoi salvează datele firmei.' }, { status: 409 });
+  const preserved = (customer.invoice_settings?.custom_fields || []).filter(field => field.name !== 'CUI');
+  if (profile.billing_cui && preserved.length >= 4) return Response.json({ error: 'Datele facturii necesită verificare de către VIASEE.' }, { status: 409 });
+  await stripe.customers.update(account.stripe_customer_id, {
+    name: profile.billing_name, email: profile.billing_email, address: profile.billing_address,
+    metadata: { cui: profile.billing_cui, billing_type: profile.billing_type },
+    invoice_settings: { custom_fields: [...preserved, ...(profile.billing_cui ? [{ name: 'CUI', value: profile.billing_cui }] : [])] },
+  });
+  await svc.entities.ProviderBillingAccount.update(account.id, profile);
+  return Response.json({ ok: true });
+}
+
+function offerView(offer) {
+  return { id: offer.id, monthly_amount: Math.round(Number(offer.monthly_amount_ron) * 100), currency: 'ron', status: offer.status,
+    expires_at: offer.expires_at || null, note: offer.note || '', contract_file_name: offer.contract_file_name || 'Contract.pdf',
+    has_contract: Boolean(offer.contract_file_uri), contract_accepted_at: offer.contract_accepted_at || null, accepted_at: offer.accepted_at || null };
+}
+
+// 2026-10-04 (structura conturilor, pasul 4): abonamentul si facturarea pe organizatie.
+async function handleOrganization(svc, user, input, action) {
+  const authorized = await authorizeOrganizationBillingOwner(svc, user, { organizationId: clean(input.organization_id, 120), locationId: clean(input.location_id, 120) });
+  if (authorized.error) return Response.json({ error: authorized.error }, { status: authorized.status });
+  const organization = authorized.organization;
+  const secret = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!secret) return Response.json({ error: 'Facturarea nu este configurată complet.' }, { status: 503 });
+  const stripe = new Stripe(secret);
+  const tieredPrice = await findOrganizationTieredPrice(stripe);
+  if (!tieredPrice?.id) return Response.json({ error: 'Facturarea nu este configurată complet.' }, { status: 503 });
+
+  if (action === 'save_details') {
+    let profile;
+    try { profile = validateBillingProfile(input); }
+    catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
+    const account = await ensureOrganizationBillingAccount(svc, stripe, organization, user);
+    const customer = await stripe.customers.retrieve(account.stripe_customer_id);
+    if (customer.deleted) return Response.json({ error: 'Contul de facturare nu mai este disponibil. Contactează VIASEE.' }, { status: 409 });
+    assertOrganizationBillingCustomer(customer, organization.id);
+    return saveCustomerDetails(svc, stripe, account, customer, profile);
+  }
+  if (action !== 'get') return Response.json({ error: 'Acțiune necunoscută.' }, { status: 400 });
+
+  const activeCount = billableLocationCount(authorized.locations);
+  const tier = planTierForLocationCount(activeCount);
+  const pricing = {
+    scope: 'organization', currency: tieredPrice.currency || 'ron', interval: tieredPrice.recurring?.interval || 'month', active: tieredPrice.active !== false,
+    tiers: publicPlanTiers(tieredPrice), active_location_count: activeCount,
+    current_tier: tier ? { key: tier.key, label: tier.label, amount: tier.key === 'enterprise' ? null : monthlyAmountForLocationCount(tieredPrice, activeCount) } : null,
+    enterprise_required: activeCount >= ENTERPRISE_MIN_LOCATIONS, enterprise_min_locations: ENTERPRISE_MIN_LOCATIONS,
+    issuer_vat_registered: false, fiscal_mode: 'manual',
+  };
+  const [manualRows, legacy, offers] = await Promise.all([
+    loadActiveManualProRows(svc, organization.id, authorized.locations),
+    loadOpenLegacyLocationSubscriptions(svc, authorized.locations),
+    svc.entities.ProviderEnterpriseOffer.filter({ organization_id: organization.id }, '-created_date', 20).catch(() => []),
+  ]);
+  const now = Date.now();
+  const enterpriseOffers = offers.filter(offer => offer.status === 'accepted' || (offer.status === 'sent' && (!offer.expires_at || Date.parse(offer.expires_at) > now))).map(offerView);
+  const legacySubscriptions = legacy.map(({ row, location }) => ({ location_id: location.id, location_name: location.public_display_name || location.name || 'Locație',
+    status: row.status, current_period_end: row.current_period_end || null, cancel_at_period_end: row.cancel_at_period_end === true }));
+  const base = { scope: 'organization', organization: { id: organization.id, name: organization.public_display_name || organization.name || 'Organizație' },
+    pricing, manual: manualRows[0] || null, legacy_subscriptions: legacySubscriptions, enterprise_offers: enterpriseOffers };
+
+  const account = await findOrganizationBillingAccount(svc, organization.id);
+  if (!account) return Response.json({ ...base, subscription: null, customer: null, methods: [], invoices: [], has_more: false });
+  assertOrganizationBillingCustomer(await stripe.customers.retrieve(account.stripe_customer_id), organization.id);
+  let latest = await syncOrganizationCustomerSubscriptions(svc, stripe, account, tieredPrice.id);
+  // Numarul de locatii active se aduce la zi si cand proprietarul deschide facturarea, nu doar la
+  // resincronizarea programata (la 30 de minute).
+  if (latest && !latest.billing_requires_review) {
+    const quantity = await syncOrganizationSubscriptionQuantity(stripe, latest, activeCount);
+    if (quantity.changed) latest = await syncOrganizationSubscription(svc, quantity.subscription, { organizationId: organization.id, tieredPriceId: tieredPrice.id }) || latest;
+  }
+  const [customer, methods, invoices] = await Promise.all([
+    stripe.customers.retrieve(account.stripe_customer_id),
+    stripe.paymentMethods.list({ customer: account.stripe_customer_id, type: 'card', limit: 100 }),
+    stripe.invoices.list({ customer: account.stripe_customer_id, limit: 20, ...(input.cursor ? { starting_after: clean(input.cursor) } : {}) }),
+  ]);
+  if (customer.deleted) return Response.json({ error: 'Contul de facturare a fost șters. Contactează VIASEE.' }, { status: 409 });
+  const defaultId = idOf(latest?.default_payment_method) || idOf(customer.invoice_settings?.default_payment_method);
+  const planTier = latest?.metadata?.plan_tier === 'enterprise' ? planTierByKey('enterprise') : planTierForLocationCount(subscriptionQuantity(latest));
+  return Response.json({
+    ...base,
+    subscription: latest ? { id: latest.id, status: latest.billing_requires_review ? 'configuration_review' : latest.status, cancel_at_period_end: latest.cancel_at_period_end || Boolean(latest.cancel_at),
+      ...resolveSubscriptionPeriod(latest), trial_end: latest.trial_end, plan_tier: latest.metadata?.plan_tier === 'enterprise' ? 'enterprise' : (planTier?.key === 'enterprise' ? 'network' : planTier?.key || null),
+      billed_location_count: latest.metadata?.plan_tier === 'enterprise' ? null : subscriptionQuantity(latest),
+      amount: latest.metadata?.plan_tier === 'enterprise' ? Number(latest.items?.data?.[0]?.price?.unit_amount) || null : monthlyAmountForLocationCount(tieredPrice, subscriptionQuantity(latest)) } : null,
+    customer: await customerView(stripe, customer, account),
+    methods: methods.data.map(m => ({ id: m.id, brand: m.card?.brand, last4: m.card?.last4, exp_month: m.card?.exp_month, exp_year: m.card?.exp_year, is_default: m.id === defaultId })),
+    invoices: invoices.data.map(invoiceSummary), has_more: invoices.has_more, next_cursor: invoices.data.at(-1)?.id || null,
+  });
+}
 
 export async function handle(req: Request) {
   try {
@@ -11,6 +129,7 @@ export async function handle(req: Request) {
     const input = await req.json().catch(() => ({}));
     const svc = base44.asServiceRole;
     const action = clean(input.action) || 'get';
+    if (action !== 'admin_list' && clean(input.organization_id, 120)) return await handleOrganization(svc, user, input, action);
     const locationId = clean(input.location_id, 120);
     if (action === 'admin_list' && user.role !== 'admin') return Response.json({ error: 'Acces rezervat administratorului.' }, { status: 403 });
     let authorized;
