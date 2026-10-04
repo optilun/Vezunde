@@ -22,7 +22,7 @@ export default function ProviderAccessBand({ location, entitlement, counters, on
   const limited = status.capabilities.filter((item) => item.state === "limited" || item.state === "blocked");
   const tone = limited.length === 0 ? { border: "#ccd2ba", bg: "#dfe3d2" } : { border: "#dac69b", bg: "#eadcba" };
   const summary = limited.length === 0
-    ? "Toate functiile locatiei sunt active."
+    ? "Toate funcțiile locației sunt active."
     : `Limitate acum: ${limited.map((item) => item.label).join(" · ")}`;
 
   return (
