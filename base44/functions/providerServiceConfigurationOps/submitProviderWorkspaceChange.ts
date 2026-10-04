@@ -16,6 +16,7 @@ import { providerAccessRoleFromMembership } from '../../shared/providerRolePolic
 // Public changes go through ProviderWorkspaceSubmission. Program remains fast-path.
 
 import { locationPrecisionError } from '../../shared/locationMapPosition.js';
+import { resolveLocationLocality } from '../../shared/locationLocalityResolution.js';
 
 const PROVIDER_WORKSPACE_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_SECTIONS = ['public_profile', 'operating_hours', 'services'];
@@ -52,7 +53,7 @@ const SERVICE_IDS = {
 
 const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
-  location_details: ['address', 'public_display_name', 'public_phone', 'public_email', 'lat', 'lng', 'place_id', 'map_precision'],
+  location_details: ['address', 'city', 'county', 'locality_siruta_code', 'public_display_name', 'public_phone', 'public_email', 'lat', 'lng', 'place_id', 'map_precision'],
   operating_hours: ['opening_hours', 'saturday_hours', 'availability_status'],
   services: ['selected_ids', 'removal_ids', 'raw_removal_keys', 'suggestions', 'custom_requests', 'cas_service_keys'],
   team: ['members', 'removal_professional_ids', 'invitations', 'invite_flow', 'invitation_channel'],
@@ -110,7 +111,7 @@ function validateLocationDetails(payload) {
   const base = checkUnknown('location_details', payload);
   if (!base.valid) return base;
   const clean = {};
-  for (const key of ['address', 'public_display_name', 'public_phone', 'public_email', 'place_id']) {
+  for (const key of ['address', 'city', 'county', 'locality_siruta_code', 'public_display_name', 'public_phone', 'public_email', 'place_id']) {
     if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
     const value = cleanString(payload[key]);
     if (value.length > MAX_FIELD_LEN) return bad({ error: `${key} depaseste lungimea maxima` });
@@ -448,6 +449,11 @@ async function audit(svc, user, record) {
 }
 
 async function assertSubmittedReferences(svc, locationId, section, payload) {
+  if (section === 'location_details') {
+    const resolved = await resolveLocationLocality(svc, payload);
+    if (resolved.error) return bad({ error: resolved.error });
+    Object.assign(payload, resolved.value);
+  }
   if (section === 'services') {
     for (const rawKey of payload.raw_removal_keys || []) {
       const rows = await svc.entities.LocationService.filter({ location_id: locationId, service_key: rawKey });
