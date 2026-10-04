@@ -17,11 +17,9 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import {
-  buildGoogleMapsEmbedUrl,
-  buildGoogleMapsUrl,
-  hasMapLocation,
-} from "@/lib/maps";
+import { buildGoogleMapsDirectionsUrl } from "@/lib/maps";
+import LocationPinMap from "@/components/maps/LocationPinMap";
+import { locationCoordinates, locationPositionLabel } from "../../../../shared/locationMapPosition.js";
 import {
   deriveProviderLocationState,
   deriveSubmissionState,
@@ -55,7 +53,7 @@ function getCoordinateValidation(values = {}) {
 
   if ((rawLat && !rawLng) || (!rawLat && rawLng)) {
     issues.push(
-      "Completează și latitudinea, și longitudinea pentru a folosi pinul exact.",
+      "Completează și latitudinea, și longitudinea pentru poziția pe hartă.",
     );
   }
   if (rawLat && lat === "") issues.push("Latitudinea trebuie să fie un număr valid.");
@@ -67,6 +65,7 @@ function getCoordinateValidation(values = {}) {
     issues.push("Longitudinea trebuie să fie între -180 și 180.");
   }
 
+  if (lat === 0 && lng === 0) issues.push("Alege poziția reală a locației pe hartă.");
   return { issues, lat, lng };
 }
 
@@ -296,6 +295,7 @@ function defaultValues(location) {
     lat: location?.lat ?? "",
     lng: location?.lng ?? "",
     place_id: location?.place_id || "",
+    map_precision: location?.map_precision === "exact" ? "exact" : "approximate",
   };
 }
 
@@ -361,22 +361,17 @@ export default function ProviderLocations({
       lat: lat !== "" ? lat : null,
       lng: lng !== "" ? lng : null,
       place_id: values.place_id || "",
+      map_precision: values.map_precision,
     };
   }, [selectedLocation, values]);
 
-  const mapUrl = previewLocation ? buildGoogleMapsUrl(previewLocation) : "";
-  const embedUrl = previewLocation
-    ? buildGoogleMapsEmbedUrl(previewLocation)
-    : "";
-  const hasExactPin =
-    previewLocation?.lat !== null &&
-    previewLocation?.lat !== undefined &&
-    previewLocation?.lat !== "" &&
-    previewLocation?.lng !== null &&
-    previewLocation?.lng !== undefined &&
-    previewLocation?.lng !== "" &&
-    Number.isFinite(Number(previewLocation.lat)) &&
-    Number.isFinite(Number(previewLocation.lng));
+  const mapUrl = previewLocation ? buildGoogleMapsDirectionsUrl(previewLocation) : "";
+  const hasValidPin = Boolean(locationCoordinates(previewLocation));
+  const hasExactPin = hasValidPin && values.map_precision === "exact";
+  const pinLabel = locationPositionLabel(previewLocation);
+  const editPosition = ({ lat, lng }) => {
+    setValues((current) => ({ ...current, lat, lng, map_precision: "approximate" }));
+  };
   const locationCount = locations.length;
   const hasMultipleLocations = locationCount > 1;
   const selectedLocationName =
@@ -473,6 +468,7 @@ export default function ProviderLocations({
       lat: lat === "" ? "" : lat,
       lng: lng === "" ? "" : lng,
       place_id: values.place_id || "",
+      map_precision: values.map_precision,
     };
 
     if (
@@ -778,39 +774,19 @@ export default function ProviderLocations({
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold underline underline-offset-4"
                 >
-                  Deschide în Google Maps
+                  Traseu
                   <ExternalLink className="h-4 w-4" />
                 </a>
               )}
-              {hasExactPin && (
-                <span className="text-xs font-semibold text-green-700">
-                  Pin exact configurat
-                </span>
-              )}
+              <span className={`text-xs font-semibold ${hasExactPin ? "text-green-700" : "text-muted-foreground"}`}>
+                {hasExactPin && draft ? "Poziție confirmată în draft" : pinLabel}
+              </span>
             </div>
 
             {showPublicMap && (
               <div className="mt-5 overflow-hidden rounded-[16px] border border-foreground/15 bg-secondary/35">
                 <div className="h-64 sm:h-72">
-                  {hasMapLocation(previewLocation) && embedUrl ? (
-                    <iframe
-                      title={`Harta ${selectedLocationName}`}
-                      src={embedUrl}
-                      className="h-full w-full border-0"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                      <MapPin className="h-7 w-7 text-muted-foreground" />
-                      <p className="mt-2 text-sm font-medium">
-                        Harta nu poate fi afișată
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Completează adresa sau coordonatele locației.
-                      </p>
-                    </div>
-                  )}
+                  <LocationPinMap key={selectedLocation.id} location={previewLocation} />
                 </div>
               </div>
             )}
@@ -931,11 +907,12 @@ export default function ProviderLocations({
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="text-sm font-semibold text-foreground">
+                      <label htmlFor="location-display-name" className="text-sm font-semibold text-foreground">
                         Nume public locație
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
+                        id="location-display-name"
                         value={values.public_display_name}
                         disabled={pendingReview}
                         onChange={(event) =>
@@ -947,15 +924,16 @@ export default function ProviderLocations({
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-semibold text-foreground">
+                      <label htmlFor="location-address" className="text-sm font-semibold text-foreground">
                         Adresa pentru hartă
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
+                        id="location-address"
                         value={values.address}
                         disabled={pendingReview}
                         onChange={(event) =>
-                          setValues({ ...values, address: event.target.value })
+                          setValues({ ...values, address: event.target.value, map_precision: "approximate" })
                         }
                         placeholder="Strada, număr, localitate"
                       />
@@ -968,86 +946,64 @@ export default function ProviderLocations({
                     <div>
                       <h3 className="text-base font-bold">Poziție pe hartă</h3>
                       <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                        Coordonatele sunt optionale, dar ofera un pin mai precis.
+                        Apasă pe hartă sau trage pinul la intrarea locației.
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                        hasExactPin
-                          ? "border border-[#ccd2ba] bg-[#dfe3d2] text-[#1c1c1c]"
-                          : "bg-secondary text-muted-foreground"
-                      }`}
-                    >
-                      {hasExactPin ? "Pin exact activ" : "Opțional"}
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${hasExactPin ? "bg-[#dfe3d2] text-[#1c1c1c]" : "bg-secondary text-muted-foreground"}`}>
+                      {hasExactPin ? "Confirmată în formular" : pinLabel}
                     </span>
                   </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">
-                        Latitudine
-                      </label>
-                      <input
-                        className={`${inputCls} mt-1.5`}
-                        value={values.lat}
-                        disabled={pendingReview}
-                        onChange={(event) =>
-                          setValues({
-                            ...values,
-                            lat: cleanNumber(event.target.value),
-                          })
-                        }
-                        placeholder="45.793140"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">
-                        Longitudine
-                      </label>
-                      <input
-                        className={`${inputCls} mt-1.5`}
-                        value={values.lng}
-                        disabled={pendingReview}
-                        onChange={(event) =>
-                          setValues({
-                            ...values,
-                            lng: cleanNumber(event.target.value),
-                          })
-                        }
-                        placeholder="24.151920"
-                      />
-                    </div>
+                  <div className="mt-4 h-72 overflow-hidden rounded-2xl border border-border sm:h-80">
+                    <LocationPinMap location={previewLocation} onPositionChange={pendingReview ? undefined : editPosition} />
                   </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
+                      Verifică dacă pinul corespunde adresei. Poziția aprobată va apărea în Caută, rezultate și profil.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={pendingReview || !hasValidPin || hasCoordinateIssues || !values.address.trim() || hasExactPin}
+                      onClick={() => setValues((current) => ({ ...current, map_precision: "exact" }))}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {hasExactPin ? "Poziție confirmată" : "Confirmă poziția"}
+                    </button>
+                  </div>
+                  {hasExactPin && !pendingReview && <p className="mt-2 text-xs text-muted-foreground">Salvează draftul și trimite-l spre verificare pentru a publica poziția confirmată.</p>}
                   {hasCoordinateIssues && (
-                    <div className="mt-3 rounded-2xl border border-[#e1bda8] bg-[#efd5c5] px-3 py-2 text-xs leading-relaxed text-[#1c1c1c]">
+                    <p role="alert" className="mt-3 rounded-xl bg-[#efd5c5] px-3 py-2 text-xs leading-relaxed">
                       {coordinateValidation.issues[0]}
-                    </div>
+                    </p>
                   )}
                   <button
                     type="button"
+                    aria-expanded={showAdvancedMap}
                     onClick={() => setShowAdvancedMap((current) => !current)}
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4"
+                    className="mt-4 inline-flex min-h-10 items-center gap-1.5 text-xs font-bold underline underline-offset-4"
                   >
-                    Optiuni avansate
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform ${
-                        showAdvancedMap ? "rotate-180" : ""
-                      }`}
-                    />
+                    Coordonate și opțiuni avansate
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedMap ? "rotate-180" : ""}`} />
                   </button>
                   {showAdvancedMap && (
-                    <div className="mt-3 rounded-2xl border border-border bg-secondary/30 p-3">
-                      <label className="text-sm font-semibold text-foreground">
-                        Google Place ID, opțional
-                      </label>
-                      <input
-                        className={`${inputCls} mt-1.5`}
-                        value={values.place_id}
-                        disabled={pendingReview}
-                        onChange={(event) =>
-                          setValues({ ...values, place_id: event.target.value })
-                        }
-                        placeholder="optional"
-                      />
+                    <div className="mt-2 space-y-3 rounded-2xl border border-border bg-secondary/30 p-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="location-lat" className="text-xs font-semibold text-muted-foreground">Latitudine</label>
+                          <input id="location-lat" className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} inputMode="decimal"
+                            onChange={(event) => setValues({ ...values, lat: cleanNumber(event.target.value), map_precision: "approximate" })} placeholder="45.793140" />
+                        </div>
+                        <div>
+                          <label htmlFor="location-lng" className="text-xs font-semibold text-muted-foreground">Longitudine</label>
+                          <input id="location-lng" className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} inputMode="decimal"
+                            onChange={(event) => setValues({ ...values, lng: cleanNumber(event.target.value), map_precision: "approximate" })} placeholder="24.151920" />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="location-place-id" className="text-xs font-semibold text-muted-foreground">Google Place ID, opțional</label>
+                        <input id="location-place-id" className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview}
+                          onChange={(event) => setValues({ ...values, place_id: event.target.value })} />
+                      </div>
                     </div>
                   )}
                 </section>
@@ -1092,48 +1048,6 @@ export default function ProviderLocations({
                         }
                       />
                     </div>
-                  </div>
-                </section>
-
-                <section className="overflow-hidden rounded-[22px] border border-border bg-card">
-                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
-                    <div>
-                      <h3 className="text-base font-bold">Previzualizare hartă</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Se actualizează pe baza datelor introduse.
-                      </p>
-                    </div>
-                    {mapUrl && (
-                      <a
-                        href={mapUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-                      >
-                        Google Maps <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                  </div>
-                  <div className="h-64 bg-secondary/30">
-                    {hasMapLocation(previewLocation) && embedUrl ? (
-                      <iframe
-                        title={`Previzualizare hartă ${selectedLocationName}`}
-                        src={embedUrl}
-                        className="h-full w-full border-0"
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                      />
-                    ) : (
-                      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                        <MapPin className="h-7 w-7 text-muted-foreground" />
-                        <p className="mt-2 text-sm font-medium">
-                          Completează adresa sau coordonatele
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Previzualizarea va apărea aici.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </section>
 
