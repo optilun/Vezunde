@@ -45,7 +45,7 @@ const panel = await readFile(new URL('../src/components/workspace/provider/Provi
 const wrapper = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
 const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInboxLegacy.jsx', import.meta.url), 'utf8');
 
-assert.match(panel, /Nu modifica planul, eligibilitatea Top 3, acordul clientului sau starea profilului/);
+assert.match(panel, /Nu modifică planul, eligibilitatea Top 3, acordul clientului sau starea profilului/);
 assert.match(wrapper, /ProviderStatusCenter/);
 assert.match(wrapper, /ProviderLeadInboxLegacy/);
 assert.match(wrapper, /providerLeadInboxOps/);

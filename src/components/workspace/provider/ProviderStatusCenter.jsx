@@ -102,7 +102,7 @@ export default function ProviderStatusCenter({ location, entitlement, counters, 
             )}
 
             <p className="mt-5 text-[12px] leading-relaxed text-muted-foreground">
-              Statusul explica regulile existente. Nu modifica planul, eligibilitatea Top 3, acordul clientului sau starea profilului.
+              Statusul explică regulile existente. Nu modifică planul, eligibilitatea Top 3, acordul clientului sau starea profilului.
             </p>
           </div>
         )}
