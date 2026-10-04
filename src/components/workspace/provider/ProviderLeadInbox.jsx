@@ -69,6 +69,10 @@ export default function ProviderLeadInbox(props) {
     ? snapshot : { status: "loading", entitlement: null, counters: {} };
   const planReady = currentSnapshot.status === "ready";
   const planFailed = currentSnapshot.status === "error";
+  const retryPlan = () => {
+    setSnapshot((current) => ({ ...current, status: "loading" }));
+    setRefreshTick((tick) => tick + 1);
+  };
   const currentCompleteness = completeness?.selected_location_id === locationId ? completeness : null;
   const [tab, setTab] = useState(billingReturn || wantsAccountTab ? "account" : "leads");
   // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
@@ -169,7 +173,7 @@ export default function ProviderLeadInbox(props) {
                   onOpenAccount={() => setTab("account")}
                 />
               )}
-              {planFailed && <PlanUnknownNotice onRetry={() => setRefreshTick((tick) => tick + 1)} />}
+              {planFailed && <PlanUnknownNotice onRetry={retryPlan} />}
               <ProviderLeadInboxLegacy
                 key={locationId + ":" + (targetLead?.leadId || "")}
                 {...props}
@@ -190,7 +194,7 @@ export default function ProviderLeadInbox(props) {
               defaultOpen
             />
           )}
-          {planFailed && <PlanUnknownNotice onRetry={() => setRefreshTick((tick) => tick + 1)} />}
+          {planFailed && <PlanUnknownNotice onRetry={retryPlan} />}
           <ProviderBillingPanel
             organizationId={organizationId || location?.organization_id || ""}
             locationId={locationId}
