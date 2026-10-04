@@ -86,7 +86,6 @@ function normalizeField(section, key, value) {
     return normalizeText(value);
   }
   if (section === 'public_profile') {
-    if (key === 'map_precision') return value === 'exact' ? 'exact' : 'approximate';
     if (key === 'public_phone') return normalizePhone(value);
     if (key === 'public_email') return normalizeEmail(value);
     if (['website_url', 'facebook_url', 'instagram_url', 'linkedin_url'].includes(key)) return normalizeUrl(value);
