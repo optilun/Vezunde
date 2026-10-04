@@ -1,6 +1,9 @@
 const LOCATION_DETAIL_FIELDS = [
   'public_display_name',
   'address',
+  'city',
+  'county',
+  'locality_siruta_code',
   'public_phone',
   'public_email',
   'lat',
@@ -99,6 +102,9 @@ export function getCurrentSectionValues(section, entity = {}) {
     return {
       public_display_name: entity.public_display_name || entity.name || '',
       address: entity.address || '',
+      city: entity.locality_name || entity.city || '',
+      county: entity.county_name || entity.county || '',
+      locality_siruta_code: entity.locality_siruta_code || '',
       public_phone: entity.public_phone || entity.phone_public || '',
       public_email: entity.public_email || '',
       lat: entity.lat ?? null,
