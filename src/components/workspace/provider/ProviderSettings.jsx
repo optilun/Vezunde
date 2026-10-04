@@ -169,7 +169,7 @@ function ConfirmationModal({ action, location, isLastActiveLocation, submitting,
               <div className="rounded-xl bg-secondary/45 p-4 text-sm leading-relaxed text-muted-foreground">
                 {isRepublish
                   ? "Locația va reveni în căutare și pe profilul public numai după aprobarea administratorului."
-                  : "Locația nu va mai fi vizibilă public, dar rămâne în workspace și poate fi republicată ulterior. Datele nu sunt șterse."}
+                  : "Locația nu va mai fi vizibilă public, dar rămâne în contul organizației și poate fi republicată ulterior. Datele nu sunt șterse."}
               </div>
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
                 <input type="checkbox" checked={acknowledged} disabled={submitting} onChange={(event) => setAcknowledged(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border" />
@@ -398,7 +398,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         />
         <SettingsRow
           title="Acces și utilizatori"
-          description="Administrează ownerii, managerii și membrii care pot lucra în organizație."
+          description="Proprietari, administratori, manageri și membri: cine lucrează în organizație și în ce locații."
           action={<CompactButton onClick={() => onNavigate?.("access")}>Gestionează accesul <ExternalLink className="h-3.5 w-3.5" /></CompactButton>}
         />
       </SettingsSection>
@@ -416,9 +416,9 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         />
       </SettingsSection>
 
-      <SettingsSection title="Preferințe workspace" tone="amber" description="Preferințele sunt personale și sunt salvate numai pe acest dispozitiv.">
+      <SettingsSection title="Preferințe pe acest dispozitiv" tone="amber" description="Preferințele sunt personale și sunt salvate numai pe acest dispozitiv.">
         <SettingsRow
-          title="La deschiderea workspace-ului"
+          title="Când deschizi contul organizației"
           description="Alege dacă VIASEE deschide ultima locație folosită sau o locație fixă."
           action={(
             <div className="relative min-w-[230px]">
@@ -437,7 +437,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         {preferences.providerLocationMode === "fixed" && (
           <SettingsRow
             title="Locație fixă"
-            description="Această locație va fi deschisă prima dată când intri în workspace."
+            description="Această locație va fi deschisă prima dată când intri în contul organizației."
             action={(
               <div className="relative min-w-[230px]">
                 <select
@@ -491,7 +491,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         {!locationHidden && !locationClosed && (
           <SettingsRow
             title="Ascunde temporar locația"
-            description="Locația dispare din căutare și din profilul public, dar rămâne în workspace și poate fi republicată."
+            description="Locația dispare din căutare și din profilul public, dar rămâne în contul organizației și poate fi republicată."
             action={<CompactButton danger disabled={lifecycleActive || lifecycleLoading} onClick={() => setPendingAction("hide")}><EyeOff className="h-3.5 w-3.5" /> Ascunde locația</CompactButton>}
           />
         )}

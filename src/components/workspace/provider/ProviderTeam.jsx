@@ -389,7 +389,7 @@ export default function ProviderTeam({ locationId }) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-secondary/45 p-3">
-              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Asociați activ</div>
+              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Asociați activi</div>
               <div className="mt-1 text-xl font-extrabold">{activeAssignments.length}</div>
             </div>
             <div className="rounded-xl bg-secondary/45 p-3">

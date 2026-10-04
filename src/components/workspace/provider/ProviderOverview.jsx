@@ -418,8 +418,8 @@ export default function ProviderOverview({
     { key: "services", tone: TONES.green, value: contentSummary.approved_service_count || 0, label: "Servicii publicate", hint: acrossLocations, section: "locations" },
     { key: "hours", tone: TONES.amber, value: `${contentSummary.locations_with_opening_hours || 0}/${locationCount}`, label: "Program completat", section: "locations" },
     { key: "team", tone: TONES.lavender, value: contentSummary.approved_public_team_count || 0, label: "Specialiști publici", hint: acrossLocations, section: "locations" },
-    { key: "photos", tone: TONES.terracotta, value: `${contentSummary.locations_with_photo || 0}/${locationCount}`, label: "Fotografii", hint: `${contentSummary.approved_media_count || 0} imagini aprobate`, section: "locations" },
-    { key: "articles", tone: TONES.blue, value: contentSummary.approved_published_article_count || 0, label: "Articole", hint: acrossLocations, section: "locations" },
+    { key: "photos", tone: TONES.terracotta, value: `${contentSummary.locations_with_photo || 0}/${locationCount}`, label: "Fotografii", hint: approvedImagesLabel(contentSummary.approved_media_count), section: "locations" },
+    // 2026-10-04 (audit #10): pătratul „Articole” a ieșit; articolele nu există încă în meniu.
   ];
 
   return (
