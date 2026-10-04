@@ -19,7 +19,8 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { buildGoogleMapsDirectionsUrl } from "@/lib/maps";
 import LocationPinMap from "@/components/maps/LocationPinMap";
-import { locationCoordinates, locationPositionLabel, locationPrecisionError, locationMapApprovalFields } from "../../../../shared/locationMapPosition.js";
+import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import { locationCoordinates, locationPositionLabel, locationPrecisionError, locationMapApprovalFields, resetLocationAddressPosition, locationLocalityFields } from "../../../../shared/locationMapPosition.js";
 import {
   deriveProviderLocationState,
   deriveSubmissionState,
@@ -290,6 +291,9 @@ function defaultValues(location) {
   return {
     public_display_name: location?.public_display_name || location?.name || "",
     address: location?.address || "",
+    city: location?.locality_name || location?.city || "",
+    county: location?.county_name || location?.county || "",
+    locality_siruta_code: location?.locality_siruta_code || "",
     public_phone: location?.public_phone || location?.phone_public || "",
     public_email: location?.public_email || "",
     lat: location?.lat ?? "",
@@ -369,6 +373,11 @@ export default function ProviderLocations({
         selectedLocation.name,
       name: values.public_display_name || selectedLocation.name,
       address: values.address,
+      city: values.city,
+      locality_name: values.city,
+      county: values.county,
+      county_name: values.county,
+      locality_siruta_code: values.locality_siruta_code,
       public_phone: values.public_phone,
       phone_public: values.public_phone,
       public_email: values.public_email,
@@ -474,6 +483,7 @@ export default function ProviderLocations({
     const payload = {
       public_display_name: values.public_display_name || "",
       address: values.address || "",
+      ...(values.locality_siruta_code ? { city: values.city, county: values.county, locality_siruta_code: values.locality_siruta_code } : {}),
       public_phone: values.public_phone || "",
       public_email: values.public_email || "",
       lat: lat === "" ? "" : lat,
@@ -689,7 +699,7 @@ export default function ProviderLocations({
 
       {previewLocation && (
         <>
-          <section className="border-y border-foreground/15 py-6">
+          <section data-location-summary className="border-y border-foreground/15 py-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -711,10 +721,10 @@ export default function ProviderLocations({
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {selectedLocation.locality_name || selectedLocation.city ||
+                  {previewLocation.locality_name || previewLocation.city ||
                     "Localitate necompletată"}
-                  {selectedLocation.county_name || selectedLocation.county
-                    ? ` · ${selectedLocation.county_name || selectedLocation.county}`
+                  {previewLocation.county_name || previewLocation.county
+                    ? ` · ${previewLocation.county_name || previewLocation.county}`
                     : ""}
                 </p>
               </div>
@@ -799,7 +809,7 @@ export default function ProviderLocations({
             </div>
 
             {showPublicMap && (
-              <div className="mt-5 overflow-hidden rounded-[16px] border border-foreground/15 bg-secondary/35">
+              <div data-location-summary-map className="mt-5 overflow-hidden rounded-[16px] border border-foreground/15 bg-secondary/35">
                 <div className="h-64 sm:h-72">
                   <LocationPinMap key={selectedLocation.id} location={previewLocation} />
                 </div>
@@ -948,11 +958,25 @@ export default function ProviderLocations({
                         value={values.address}
                         disabled={pendingReview}
                         onChange={(event) =>
-                          setValues({ ...values, address: event.target.value, map_precision: "approximate" })
+                          setValues((current) => resetLocationAddressPosition(current, { address: event.target.value }))
                         }
-                        placeholder="Strada, număr, localitate"
+                        placeholder="Strada și numărul"
                       />
                     </div>
+                  </div>
+                  <div className="mt-4">
+                    <label htmlFor="location-locality" className="text-sm font-semibold text-foreground">Localitate și județ</label>
+                    {pendingReview ? <p className="mt-2 text-sm">{values.city} · {values.county}</p> : <LocalityAutocomplete
+                      inputId="location-locality"
+                      className="mt-1.5"
+                      value={values.city ? { display_label: `${values.city} · ${values.county}` } : null}
+                      onSelect={(geo) => setValues((current) => resetLocationAddressPosition(current, {
+                        city: locationLocalityFields(geo || {}).city,
+                        county: locationLocalityFields(geo || {}).county,
+                        locality_siruta_code: geo?.siruta_code || "",
+                      }))}
+                    />}
+                    <p className="mt-2 text-xs text-muted-foreground">Județul se completează din localitatea aleasă. După schimbarea adresei, alege din nou pinul.</p>
                   </div>
                 </section>
 
