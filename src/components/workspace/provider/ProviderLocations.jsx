@@ -19,7 +19,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { buildGoogleMapsDirectionsUrl } from "@/lib/maps";
 import LocationPinMap from "@/components/maps/LocationPinMap";
-import { locationCoordinates, locationPositionLabel } from "../../../../shared/locationMapPosition.js";
+import { locationCoordinates, locationPositionLabel, locationPrecisionError, locationMapApprovalFields } from "../../../../shared/locationMapPosition.js";
 import {
   deriveProviderLocationState,
   deriveSubmissionState,
@@ -299,6 +299,15 @@ function defaultValues(location) {
   };
 }
 
+function valuesFromDraft(location, draft) {
+  let payload = {};
+  try { payload = JSON.parse(draft?.payload_json || "{}"); } catch { /* Fall back to published values. */ }
+  const pinFields = locationPrecisionError(payload)
+    ? { map_precision: "approximate" }
+    : locationMapApprovalFields(payload, location || {});
+  return { ...defaultValues(location), ...payload, ...pinFields };
+}
+
 export default function ProviderLocations({
   workspace,
   selectedLocationId,
@@ -344,7 +353,7 @@ export default function ProviderLocations({
   const hasUnsavedChanges = Boolean(draft && !sameSubmissionPayload(
     "location_details",
     values,
-    { ...defaultValues(selectedLocation), ...(() => { try { return JSON.parse(draft.payload_json || "{}"); } catch { return {}; } })() },
+    valuesFromDraft(selectedLocation, draft),
   ));
   const hasCoordinateIssues = coordinateValidation.issues.length > 0;
 
@@ -390,9 +399,7 @@ export default function ProviderLocations({
   );
 
   const closeEditor = () => {
-    let saved = {};
-    try { saved = JSON.parse(draft?.payload_json || "{}"); } catch { /* Invalid drafts fall back to published data. */ }
-    setValues({ ...defaultValues(selectedLocation), ...saved });
+    setValues(valuesFromDraft(selectedLocation, draft));
     setEditOpen(false);
   };
 
@@ -422,16 +429,7 @@ export default function ProviderLocations({
     setDraft(own || null);
     setLatestLocationSubmission(locationSubmissions[0] || null);
 
-    if (own) {
-      try {
-        const payload = JSON.parse(own.payload_json || "{}");
-        setValues({ ...defaultValues(selectedLocation), ...payload });
-      } catch (_error) {
-        setValues(defaultValues(selectedLocation));
-      }
-    } else {
-      setValues(defaultValues(selectedLocation));
-    }
+    setValues(valuesFromDraft(selectedLocation, own));
   };
 
   useEffect(() => {
