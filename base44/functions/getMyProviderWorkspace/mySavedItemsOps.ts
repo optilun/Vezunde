@@ -43,7 +43,8 @@ function itemView(row, record) {
       name: clean(record.public_display_name || record.name || 'Locație', 180),
       provider_type: clean(record.provider_type, 80),
       provider_profile_type: clean(record.provider_profile_type, 80),
-      locality: clean(record.locality_name || record.city, 120),
+      // Ca pe pagina publica a locatiei (`city`); `locality_name` din SIRUTA poate avea alta scriere.
+      locality: clean(record.city || record.locality_name, 120),
       photo_url: httpUrl(record.photo_url),
       url: `/furnizor/${record.id}`,
     };
