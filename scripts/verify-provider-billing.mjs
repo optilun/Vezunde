@@ -315,8 +315,14 @@ assert.match(panelSource, /syncProviderStripeSubscription/);
 assert.match(panelSource, /billing.*success|success.*billing/s);
 
 const inboxSource = await source('../src/components/workspace/provider/ProviderLeadInbox.jsx');
-assert.match(inboxSource, /ProviderBillingPanel/);
+// 2026-10-04 (audit #7): facturarea are un singur loc, Setări → Abonament și facturare.
+// Cereri → „Plan și acces” arată doar starea și un link; o întoarcere veche din Stripe e trimisă în Setări.
+assert.doesNotMatch(inboxSource, /<ProviderBillingPanel/);
+assert.match(inboxSource, /Deschide abonamentul/);
+assert.match(inboxSource, /if \(billingReturn\) openBillingRef\.current\?\.\(\)/);
 assert.match(inboxSource, /refreshTick/);
+const settingsSource = await source('../src/components/workspace/provider/ProviderSettings.jsx');
+assert.match(settingsSource, /<ProviderBillingPanel organizationId=/);
 
 // --- Workflow-ul de resincronizare periodica ------------------------------------------------------
 const workflowSource = await source("../base44/workflows/Provider Stripe Subscription Reconciler.jsonc");

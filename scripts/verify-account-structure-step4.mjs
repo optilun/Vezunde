@@ -367,7 +367,7 @@ assert.match(panel, /if \(!activeCount\) return `Organizația nu are încă loca
 assert.match(admin, /UploadPrivateFile/);
 assert.match(admin, /admin_create/);
 assert.match(settings, /organizationId=\{selectedLocation\.organization_id/);
-assert.match(inbox, /organizationId=\{organizationId \|\| location\?\.organization_id/);
+assert.doesNotMatch(inbox, /<ProviderBillingPanel/, 'facturarea nu se mai dubleaza in Cereri (audit #7)');
 assert.match(entities, /"contract_file_uri"/);
 
 console.log('Account structure step 4: OK');
