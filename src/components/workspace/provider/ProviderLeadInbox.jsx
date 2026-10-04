@@ -156,7 +156,7 @@ export default function ProviderLeadInbox(props) {
         </div>
       ) : (
         <div className="space-y-5">
-          {canViewAll && <p className="rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6] px-4 py-3 text-sm text-muted-foreground">Contul și facturarea de mai jos se referă numai la locația selectată: <strong className="font-heading text-foreground">{location?.public_display_name || location?.name || "Locație"}</strong>.</p>}
+          {canViewAll && <p className="rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6] px-4 py-3 text-sm text-muted-foreground">Starea cererilor de mai jos este pentru locația selectată: <strong className="font-heading text-foreground">{location?.public_display_name || location?.name || "Locație"}</strong>. Abonamentul este pentru toată organizația.</p>}
           <ProviderStatusCenter
             location={location || {}}
             entitlement={currentSnapshot.entitlement}
@@ -164,6 +164,7 @@ export default function ProviderLeadInbox(props) {
             defaultOpen
           />
           <ProviderBillingPanel
+            organizationId={organizationId || location?.organization_id || ""}
             locationId={locationId}
             entitlement={currentSnapshot.entitlement}
             onSynced={() => {

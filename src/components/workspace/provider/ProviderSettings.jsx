@@ -369,7 +369,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
       <nav aria-label="Secțiuni setări" className="flex flex-wrap gap-2">
         {[["general", "General"], ["billing", "Abonament și facturare"]].map(([key, label]) => <button key={key} type="button" aria-current={(billingTab ? "billing" : "general") === key ? "page" : undefined} onClick={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", key); return next; })} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3559c7] focus-visible:ring-offset-2 ${(billingTab ? "billing" : "general") === key ? "border-[#20221c] bg-[#20221c] text-[#fdfbf6]" : "border-[#d8d2c5] bg-[#fdfbf6] hover:bg-[#eee9de]"}`}>{label}</button>)}
       </nav>
-      {billingTab ? <ProviderBillingPanel locationId={selectedLocation.id} onSynced={onBillingSynced} /> : <>
+      {billingTab ? <ProviderBillingPanel organizationId={selectedLocation.organization_id || ""} locationId={selectedLocation.id} onSynced={onBillingSynced} /> : <>
       <SettingsSection title="Organizație" tone="green">
         <SettingsRow
           title="Organizație"
