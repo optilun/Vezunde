@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { ownPracticePrefill } from "@/lib/ownPracticePrefill";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 const ProfessionalProfileEditor = lazy(() => import("./ProfessionalProfileEditor"));
 const ProfessionalAssociationRequests = lazy(() => import("./ProfessionalAssociationRequests"));
@@ -400,8 +401,9 @@ function Overview({ workspace, onNavigate, onRefresh }) {
 // 2026-10-04 (structura conturilor, pasul 5). Specialistul cu cabinet propriu își creează o
 // organizație de tip cabinet prin fluxul obișnuit de locație nouă (verificat de VIASEE). După
 // aprobare devine Proprietar și se afișează ca specialist din pagina „Specialiști” a locației.
-// Cererile pacienților ajung la cabinet (locație), nu la persoană.
-function OwnPracticeCard() {
+// Cererile pacienților ajung la cabinet (locație), nu la persoană. Formularul pornește cu numele,
+// tipul și contactul public din profil, ca sugestii pe care persoana le poate schimba.
+function OwnPracticeCard({ professional }) {
   return (
     <section className="rounded-3xl border border-border bg-accent/40 p-5 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -410,13 +412,13 @@ function OwnPracticeCard() {
           <div className="min-w-0">
             <h2 className="text-sm font-bold">Ai cabinet propriu?</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Adaugă-l ca locație nouă. După verificarea VIASEE devii proprietarul cabinetului și te poți afișa acolo ca specialist dintr-un clic, din pagina „Specialiști” a locației. Cererile pacienților ajung la cabinet.
+              Adaugă-l ca locație nouă; pornim formularul cu datele din profilul tău. După verificarea VIASEE devii proprietarul cabinetului și te poți afișa acolo ca specialist dintr-un clic, din pagina „Specialiști” a locației. Cererile pacienților ajung la cabinet.
             </p>
           </div>
         </div>
         <Link
           to="/adauga-sau-revendica"
-          state={{ startFlow: "new_location" }}
+          state={{ startFlow: "new_location", newLocationPrefill: ownPracticePrefill(professional) }}
           className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background hover:opacity-90 sm:w-auto"
         >
           Adaugă cabinetul <ArrowRight className="h-3.5 w-3.5" />
@@ -591,7 +593,7 @@ function Locations({ workspace, onRefresh }) {
           onRefresh={onRefresh}
         />
       </Suspense>
-      <OwnPracticeCard />
+      <OwnPracticeCard professional={workspace.professional} />
     </div>
   );
 }
