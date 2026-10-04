@@ -20,6 +20,7 @@ import {
   sha256Hex,
 } from '../base44/shared/patientRequestAccessGrant.js';
 import { PROVIDER_WORKSPACE_FUNCTION_ROUTES as FRONTEND_ROUTES } from '../shared/providerWorkspaceFunctionRouting.js';
+import { ownPracticePrefill } from '../src/lib/ownPracticePrefill.js';
 import { PROVIDER_WORKSPACE_FUNCTION_ROUTES as BACKEND_ROUTES } from '../base44/shared/providerWorkspaceFunctionRouting.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -281,7 +282,26 @@ assert.match(saved, /invoke\("mySavedItemsOps"/);
 assert.match(saveButton, /navigateToLogin\(window\.location\.href\)/, 'fara cont, salvarea trece prin autentificare');
 assert.match(providerProfile, /<SaveToAccountButton itemType="location" itemId=\{profile\.id\} \/>/);
 assert.match(professionalProfile, /<SaveToAccountButton itemType="professional"/);
-assert.match(professionalRoot, /state=\{\{ startFlow: "new_location" \}\}/, 'cabinetul propriu porneste fluxul de locatie noua');
+assert.match(professionalRoot, /state=\{\{ startFlow: "new_location", newLocationPrefill: ownPracticePrefill\(professional\) \}\}/, 'cabinetul propriu porneste fluxul de locatie noua, precompletat');
+
+// ---------- 5. cabinetul propriu: datele de pornire ----------
+assert.deepEqual(ownPracticePrefill({ public_display_name: 'Ana Pop', professional_type: 'optometrist', public_phone: ' 0700 000 000 ', public_email: 'ana@exemplu.test' }), {
+  organization_name: 'Cabinet optometric Ana Pop', name: 'Cabinet optometric Ana Pop',
+  provider_type: 'cabinet_optometric', provider_profile_type: 'independent_optometrist',
+  phone: '0700 000 000', public_email: 'ana@exemplu.test',
+});
+assert.equal(ownPracticePrefill({ full_name: 'Dan Ion', professional_type: 'ophthalmologist' }).provider_type, 'cabinet_oftalmologic');
+assert.equal(ownPracticePrefill({ full_name: 'Dan Ion', professional_type: 'optician' }).provider_type, 'optica_medicala');
+assert.deepEqual(ownPracticePrefill(null), { organization_name: '', name: '', provider_type: '', provider_profile_type: '', phone: '', public_email: '' }, 'fara profil, formularul ramane gol ca inainte');
+const [addOrClaim, wizard, orgBasics] = await Promise.all([
+  read('src/pages/AddOrClaim.jsx'),
+  read('src/components/provider/NewLocationWizard.jsx'),
+  read('src/components/provider/steps/WizOrgBasics.jsx'),
+]);
+assert.match(addOrClaim, /useState\(\(\) => navState\?\.newLocationPrefill \|\| null\)/);
+assert.match(wizard, /organization: \{ \.\.\.INITIAL\.organization, name: prefill\.organization_name \|\| "" \}/);
+assert.match(wizard, /provider_type: prefill\.provider_type \|\| ""/);
+for (const type of ['cabinet_oftalmologic', 'cabinet_optometric', 'optica_medicala']) assert.match(orgBasics, new RegExp(`${type}: "`), `tipul ${type} exista in formular`);
 assert.match(myAccount, /duplicateReviewRedirect/);
 assert.match(overview, /onNavigate\?\.\("notifications"\)/);
 assert.match(overview, /onNavigate\?\.\("saved"\)/);
