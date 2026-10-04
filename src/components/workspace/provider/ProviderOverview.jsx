@@ -75,6 +75,11 @@ const PROFILE_STATUS_LABELS = {
   draft: "Profil organizație nefinalizat",
 };
 
+function approvedImagesLabel(count) {
+  const value = Number(count) || 0;
+  return value === 1 ? "1 imagine aprobată" : `${value} imagini aprobate`;
+}
+
 function Eyebrow({ children }) {
   return <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">{children}</p>;
 }
