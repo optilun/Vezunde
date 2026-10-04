@@ -164,7 +164,7 @@ export default function ProviderWorkspaceRoot({
   const [accessMetaError, setAccessMetaError] = useState("");
   // Planul (Free/Pro) locatiei curente, doar pentru cardul de upgrade din sidebar - nu
   // decide nicio regula de acces, acelea raman calculate separat, unde erau. Se reincarca si
-  // dupa o sincronizare Stripe reusita din ProviderBillingPanel (vezi onEntitlementChanged).
+  // dupa o sincronizare Stripe reusita din ProviderBillingPanel (vezi onBillingSynced din Setari).
   const [entitlement, setEntitlement] = useState(null);
   const [entitlementRefreshTick, setEntitlementRefreshTick] = useState(0);
 
@@ -457,6 +457,13 @@ export default function ProviderWorkspaceRoot({
     if (key === "overview") void refreshOverviewInPlace();
     routerNavigate(providerSectionUrl(params, key));
   };
+  // 2026-10-04 (audit #7): „Plan și acces” din Cereri trimite aici; facturarea are un singur loc.
+  // Parametrii existenți (inclusiv o întoarcere veche din Stripe) sunt păstrați.
+  const openBillingSettings = () => {
+    const next = new URLSearchParams(params);
+    next.set("tab", "billing");
+    routerNavigate(providerSectionUrl(next, "settings"));
+  };
 
   const accessForLocation = (locationId) => {
     const targetContext = organizationContexts.find((context) => (
@@ -677,7 +684,7 @@ export default function ProviderWorkspaceRoot({
                 isOrganizationOwner={isOrganizationOwner}
                 ownerLocations={locations}
                 onSelectLocation={selectLocation}
-                onEntitlementChanged={() => setEntitlementRefreshTick((tick) => tick + 1)}
+                onOpenBilling={canManageSettings ? openBillingSettings : undefined}
               />
             )}
             {safeSection === "access" && canManageMembers && (
