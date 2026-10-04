@@ -389,6 +389,13 @@ export default function ProviderLocations({
     selectedLocation,
   );
 
+  const closeEditor = () => {
+    let saved = {};
+    try { saved = JSON.parse(draft?.payload_json || "{}"); } catch { /* Invalid drafts fall back to published data. */ }
+    setValues({ ...defaultValues(selectedLocation), ...saved });
+    setEditOpen(false);
+  };
+
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
     if (!canManageLocationProfile) {
@@ -440,7 +447,7 @@ export default function ProviderLocations({
     if (!editOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setEditOpen(false);
+      if (event.key === "Escape") closeEditor();
     };
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
@@ -448,7 +455,8 @@ export default function ProviderLocations({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editOpen]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- closeEditor reads the saved draft and selected location only
+  }, [editOpen, draft, selectedLocation]);
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -890,7 +898,7 @@ export default function ProviderLocations({
               </div>
               <button
                 type="button"
-                onClick={() => setEditOpen(false)}
+                onClick={closeEditor}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
                 aria-label="Închide"
               >
@@ -1077,7 +1085,7 @@ export default function ProviderLocations({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={() => setEditOpen(false)}
+                  onClick={closeEditor}
                   className="rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
                 >
                   Închide
