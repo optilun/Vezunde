@@ -1,6 +1,9 @@
 import { PROVIDER_WORKSPACE_FUNCTION_ROUTES } from '../../shared/providerWorkspaceFunctionRouting.js';
 import { handle as getMyAccountDeletionEligibilityHandle } from './getMyAccountDeletionEligibility.ts';
 import { handle as getMyPatientRequestsHandle } from './getMyPatientRequests.ts';
+import { handle as openMyPatientRequestHandle } from './openMyPatientRequest.ts';
+import { handle as myPatientNotificationsOpsHandle } from './myPatientNotificationsOps.ts';
+import { handle as mySavedItemsOpsHandle } from './mySavedItemsOps.ts';
 import { handle as getMyProviderMembersHandle } from './getMyProviderMembers.ts';
 import { handle as getMyProviderOnboardingWorkspaceHandle } from './getMyProviderOnboardingWorkspace.ts';
 import { handle as getProviderEntitlementHandle } from './getProviderEntitlement.ts';
@@ -24,6 +27,9 @@ type ProviderWorkspaceHandler = (req: Request) => Response | Promise<Response>;
 export const PROVIDER_WORKSPACE_FUNCTION_HANDLERS: Record<string, ProviderWorkspaceHandler> = Object.freeze({
   getMyAccountDeletionEligibility: getMyAccountDeletionEligibilityHandle,
   getMyPatientRequests: getMyPatientRequestsHandle,
+  openMyPatientRequest: openMyPatientRequestHandle,
+  myPatientNotificationsOps: myPatientNotificationsOpsHandle,
+  mySavedItemsOps: mySavedItemsOpsHandle,
   getMyProviderMembers: getMyProviderMembersHandle,
   getMyProviderOnboardingWorkspace: getMyProviderOnboardingWorkspaceHandle,
   getProviderEntitlement: getProviderEntitlementHandle,
