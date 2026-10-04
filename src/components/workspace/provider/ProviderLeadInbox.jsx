@@ -69,15 +69,15 @@ export default function ProviderLeadInbox(props) {
     ? snapshot : { status: "loading", entitlement: null, counters: {} };
   const planReady = currentSnapshot.status === "ready";
   const planFailed = currentSnapshot.status === "error";
-  const retryPlan = () => {
-    setSnapshot((current) => ({ ...current, status: "loading" }));
-    setRefreshTick((tick) => tick + 1);
-  };
   const currentCompleteness = completeness?.selected_location_id === locationId ? completeness : null;
   const [tab, setTab] = useState(billingReturn || wantsAccountTab ? "account" : "leads");
   // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
   // entitlement-ul si contoarele fara sa reincarcam toata pagina.
   const [refreshTick, setRefreshTick] = useState(0);
+  const retryPlan = () => {
+    setSnapshot((current) => ({ ...current, status: "loading" }));
+    setRefreshTick((tick) => tick + 1);
+  };
 
   useEffect(() => { setShowAllLocations(canViewAll); }, [organizationId, canViewAll]);
   useEffect(() => {
