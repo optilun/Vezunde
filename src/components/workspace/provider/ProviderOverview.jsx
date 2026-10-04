@@ -183,12 +183,13 @@ function CompletionTile({ tone, label, value, hint }) {
   return (
     <div style={{ borderColor: tone.border, backgroundColor: tone.bg }} className="relative overflow-hidden rounded-[1.4rem] border px-5 py-4">
       <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
-      <div className="relative z-10 flex items-baseline justify-between gap-3">
-        <p className="font-heading text-[15px] font-extrabold tracking-[-0.025em] text-[#1c1c1c]">{label}</p>
-        <p className="font-heading text-[1.9rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{value}%</p>
+      {/* 2026-10-04 (audit #12): pe plăci înguste procentul trece pe rândul următor, nu mai e tăiat. */}
+      <div className="relative z-10 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="min-w-0 font-heading text-[15px] font-extrabold tracking-[-0.025em] text-[#1c1c1c]">{label}</p>
+        <p className="shrink-0 font-heading text-[1.9rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{value === null ? "—" : `${value}%`}</p>
       </div>
       {hint && <p className="relative z-10 mt-1.5 text-[11.5px] leading-relaxed text-black/50">{hint}</p>}
-      <div className="relative z-10 mt-3"><ProgressBar value={value} /></div>
+      <div className="relative z-10 mt-3"><ProgressBar value={value || 0} /></div>
     </div>
   );
 }
@@ -399,7 +400,10 @@ export default function ProviderOverview({
   const fallbackLabels = fallbackFields.map((key) => FIELD_LABELS[key] || key);
   const fallbackLocationName = profileState.fallback_location_name || "locația principală";
   const verificationStatus = organizationSummary.verification_status || "unverified";
-  const verificationLabel = verificationStatus === "all_verified"
+  // 2026-10-04 (audit #6): fără locații active nu spunem „neverificate”.
+  const verificationLabel = activeLocationCount === 0
+    ? "Nicio locație activă"
+    : verificationStatus === "all_verified"
     ? `${verifiedLocationCount}/${activeLocationCount} ${activeLocationCount === 1 ? "locație verificată" : "locații verificate"}`
     : verificationStatus === "partially_verified"
       ? `${verifiedLocationCount}/${activeLocationCount} locații verificate`
@@ -537,11 +541,14 @@ export default function ProviderOverview({
               value={completion.percentage || 0}
               hint={projectedDiffers ? `${projectedCompletion.percentage}% după aprobare` : "Date generale de brand"}
             />
+            {/* 2026-10-04 (audit #5): fără locații active nu mai afișăm „0% · 0/0 complete”. */}
             <CompletionTile
               tone={TONES.blue}
               label="Locații"
-              value={locationCompletionSummary.average_percentage || 0}
-              hint={`${locationCompletionSummary.complete_count || 0}/${locationCompletionSummary.active_count || activeLocationCount} complete`}
+              value={Number(locationCompletionSummary.active_count || 0) > 0 ? (locationCompletionSummary.average_percentage || 0) : null}
+              hint={Number(locationCompletionSummary.active_count || 0) > 0
+                ? `${locationCompletionSummary.complete_count || 0}/${locationCompletionSummary.active_count} locații active complete`
+                : "Nicio locație activă"}
             />
           </div>
 
