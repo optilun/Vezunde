@@ -57,10 +57,36 @@ export function InvoiceTable({ invoices }) {
     </tr>)}</tbody>
   </table></div>;
 }
+// 2026-10-04 (structura conturilor, pasul 4): abonamentul se plătește pe organizație. Cu
+// organizationId, panoul arată pachetul după numărul de locații active, ofertele Enterprise și
+// abonamentele vechi pe locație. Fără organizationId rămâne comportamentul vechi, pe locație.
 export default function ProviderBillingPanel(props) {
-  return <BillingCenter key={props.locationId} {...props} />;
+  return <BillingCenter key={`${props.organizationId || ""}:${props.locationId || ""}`} {...props} />;
 }
-function BillingCenter({ locationId, onSynced }) {
+const locationsLabel = count => `${count} ${count === 1 ? "locație activă" : "locații active"}`;
+function PlanTiers({ pricing }) {
+  const tiers = pricing?.tiers || [];
+  if (!tiers.length) return null;
+  const current = pricing.current_tier?.key;
+  return <div className="mt-4 overflow-hidden rounded-2xl border border-[#d8d2c5]">
+    <table className="w-full text-left text-sm">
+      <caption className="sr-only">Pachetele VIASEE Pro după numărul de locații active</caption>
+      <tbody>
+        {tiers.map(tier => <tr key={tier.key} className={`border-b border-[#e7e1d4] last:border-0 ${current === tier.key ? "bg-[#e9f2e6] font-semibold" : ""}`}>
+          <th scope="row" className="px-3 py-2.5 font-medium">{tier.label}</th>
+          <td className="px-3 py-2.5 text-muted-foreground">{tier.min === tier.max ? `${tier.min} locație` : `${tier.min}–${tier.max} locații`}</td>
+          <td className="px-3 py-2.5 text-right">{money(tier.amount, pricing.currency)} / lună</td>
+        </tr>)}
+        <tr className={pricing.enterprise_required ? "bg-[#e9f2e6] font-semibold" : ""}>
+          <th scope="row" className="px-3 py-2.5 font-medium">Enterprise</th>
+          <td className="px-3 py-2.5 text-muted-foreground">peste {(pricing.enterprise_min_locations || 16) - 1} locații</td>
+          <td className="px-3 py-2.5 text-right">ofertă cu contract</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>;
+}
+function BillingCenter({ organizationId, locationId, onSynced }) {
   const [params, setParams] = useSearchParams();
   const billing = params.get("billing"), sessionId = params.get("session_id");
   const [data, setData] = useState(null), [profile, setProfile] = useState(profileFrom(null));
@@ -68,6 +94,7 @@ function BillingCenter({ locationId, onSynced }) {
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState("");
   const [loading, setLoading] = useState(true), [tick, setTick] = useState(0);
   const [cursors, setCursors] = useState([null]), [page, setPage] = useState(0);
+  const [acceptedOffers, setAcceptedOffers] = useState({});
   const lock = useRef(false), sequence = useRef(0), synced = useRef(onSynced);
   const profileInitialized = useRef(false);
   const mounted = useRef(false);
@@ -77,14 +104,17 @@ function BillingCenter({ locationId, onSynced }) {
   }, []);
   synced.current = onSynced;
   const cursor = cursors[page];
+  const scope = organizationId ? { organization_id: organizationId, location_id: locationId || undefined } : { location_id: locationId };
+  const scopeKey = `${organizationId || ""}:${locationId || ""}`;
   const load = useCallback(async () => {
     const request = ++sequence.current;
     setLoading(true); setError("");
+    const target = organizationId ? { organization_id: organizationId, location_id: locationId || undefined } : { location_id: locationId };
     try {
       if (billing === "success" || billing === "portal_return") {
-        await invoke("syncProviderStripeSubscription", { location_id: locationId, session_id: sessionId || undefined });
+        await invoke("syncProviderStripeSubscription", { ...target, session_id: sessionId || undefined });
       }
-      const result = await invoke("providerBillingOps", { location_id: locationId, cursor });
+      const result = await invoke("providerBillingOps", { ...target, cursor });
       if (request !== sequence.current) return;
       setData(result);
       // Invoice pagination and retries must not overwrite an unsaved billing form.
@@ -99,31 +129,50 @@ function BillingCenter({ locationId, onSynced }) {
       }
     } catch (err) { if (request === sequence.current) setError(err.message); }
     finally { if (request === sequence.current) setLoading(false); }
-  }, [billing, sessionId, locationId, cursor, setParams]);
+  }, [billing, sessionId, organizationId, locationId, cursor, setParams]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- la curatare se invalideaza cererea in curs, deci conteaza valoarea de acum a contorului
-  useEffect(() => { if (locationId) void load(); return () => { sequence.current++; }; }, [load, locationId, tick]);
-  async function run(action, flow) {
+  useEffect(() => { if (locationId || organizationId) void load(); return () => { sequence.current++; }; }, [load, scopeKey, tick]);
+  async function run(action, flow, extra = {}) {
     if (lock.current || !mounted.current) return;
-    lock.current = true; setBusy(action); setError(""); setNotice("");
+    lock.current = true; setBusy(extra.offer_id ? `offer:${extra.offer_id}` : action); setError(""); setNotice("");
     try {
       if (action === "save" || action === "checkout") {
-        await invoke("providerBillingOps", { action: "save_details", location_id: locationId, ...profile });
-        if (!mounted.current) return;
+        if (action === "save" || editingDetails || !data?.customer?.name) {
+          await invoke("providerBillingOps", { action: "save_details", ...scope, ...profile });
+          if (!mounted.current) return;
+        }
         if (action === "save") { setEditingDetails(false); setNotice("Datele au fost salvate pentru facturile viitoare."); setTick(t => t + 1); return; }
       }
       const name = action === "checkout" ? "createProviderCheckoutSession" : "createProviderBillingPortalSession";
-      const result = await invoke(name, { location_id: locationId, return_base_url: window.location.origin, flow });
-      // A location switch remounts this panel. Never redirect a departed location.
+      const result = await invoke(name, { ...scope, ...extra, return_base_url: window.location.origin, flow });
+      // A location or organization switch remounts this panel. Never redirect a departed one.
       if (mounted.current) window.location.assign(result.url);
     } catch (err) { if (mounted.current) setError(err.message); }
     finally { lock.current = false; if (mounted.current) setBusy(""); }
   }
-  if (!locationId) return <p className="text-sm text-muted-foreground">Alege o locație pentru facturare.</p>;
+  async function openContract(offerId) {
+    const opened = typeof window.open === "function" ? window.open("", "_blank") : null;
+    try {
+      const result = await invoke("providerEnterpriseOfferOps", { action: "contract_url", offer_id: offerId });
+      if (opened) opened.location.href = result.url; else window.location.assign(result.url);
+    } catch (err) { opened?.close?.(); if (mounted.current) setError(err.message); }
+  }
+  if (!locationId && !organizationId) return <p className="text-sm text-muted-foreground">Alege o organizație pentru facturare.</p>;
+  const organizationScope = data?.scope === "organization";
   const subscription = data?.subscription;
   const existing = subscription && !["canceled","incomplete_expired"].includes(subscription.status);
   const manual = !existing && data?.manual;
+  const legacy = data?.legacy_subscriptions || [];
+  const pricing = data?.pricing || {};
+  const activeCount = pricing.active_location_count || 0;
+  const enterpriseRequired = organizationScope && pricing.enterprise_required === true;
+  const openOffers = (data?.enterprise_offers || []).filter(offer => offer.status === "sent");
+  const canStartCheckout = !existing && !manual && !legacy.length && !enterpriseRequired;
   const problem = ["past_due","unpaid","incomplete","paused","configuration_review"].includes(subscription?.status);
   const address = profile.billing_address;
+  const tierLabel = subscription?.plan_tier === "enterprise" ? "Enterprise" : (pricing.tiers || []).find(tier => tier.key === subscription?.plan_tier)?.label;
+  const planTitle = subscription?.status === "configuration_review" ? "Abonament de verificat"
+    : existing ? `VIASEE Pro${tierLabel ? ` · ${tierLabel}` : ""}` : manual ? "VIASEE Pro" : legacy.length ? "VIASEE Pro · abonament pe locație" : "VIASEE Free";
   // Start a new edit from the latest server snapshot, including portal changes.
   // Repeated activation while already editing must preserve unsaved input.
   const beginEditing = () => {
@@ -132,19 +181,35 @@ function BillingCenter({ locationId, onSynced }) {
   };
   const update = (key, value) => setProfile(p => ({ ...p, [key]: value }));
   const updateAddress = (key, value) => setProfile(p => ({ ...p, billing_address: { ...p.billing_address, [key]: value } }));
+  const planDescription = () => {
+    if (manual) return "Acest acces nu este un abonament plătit prin Stripe.";
+    if (!organizationScope) return `Pro: ${money(pricing.amount, pricing.currency)} / ${pricing.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`;
+    if (existing && subscription.plan_tier === "enterprise") return `Ofertă Enterprise: ${money(subscription.amount, pricing.currency)} / lună, pentru toată organizația. Emitent neplătitor de TVA.`;
+    if (existing) return `${money(subscription.amount, pricing.currency)} / lună pentru ${locationsLabel(subscription.billed_location_count || activeCount)}. Când adaugi sau închizi o locație, pachetul se schimbă automat, iar diferența apare pe factura următoare. Emitent neplătitor de TVA.`;
+    if (enterpriseRequired) return `Organizația are ${locationsLabel(activeCount)}. Peste ${(pricing.enterprise_min_locations || 16) - 1} locații abonamentul se face printr-o ofertă Enterprise, cu contract.`;
+    return `Organizația are ${locationsLabel(activeCount)}: pachetul ${pricing.current_tier?.label || ""}, ${money(pricing.current_tier?.amount, pricing.currency)} / lună pentru toată organizația. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`;
+  };
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-semibold tracking-tight">Abonament și facturare</h2><p className="mt-1 text-sm text-muted-foreground">Plăți și documente pentru locația selectată.</p></div><button type="button" className={button} disabled={loading || Boolean(busy)} onClick={() => setTick(t => t + 1)}><RefreshCw className="h-4 w-4" />Actualizează</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-semibold tracking-tight">Abonament și facturare</h2><p className="mt-1 text-sm text-muted-foreground">{organizationScope ? `Un singur abonament pentru toată organizația ${data?.organization?.name || ""}.` : "Plăți și documente pentru locația selectată."}</p></div><button type="button" className={button} disabled={loading || Boolean(busy)} onClick={() => setTick(t => t + 1)}><RefreshCw className="h-4 w-4" />Actualizează</button></div>
     {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}<button type="button" className="ml-3 underline" disabled={loading} onClick={() => setTick(t => t + 1)}>Reîncearcă verificarea</button></div>}
     {notice && <p role="status" className="rounded-lg bg-secondary p-3 text-sm">{notice}</p>}
     {loading && <p role="status" className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Se verifică datele de facturare…</p>}
     {data && !loading && <>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Planul locației" icon={ShieldCheck} tone="green">
-          <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-2xl tracking-tight sm:text-3xl">{subscription?.status === "configuration_review" ? "Abonament de verificat" : existing || manual ? "VIASEE Pro" : "VIASEE Free"}</strong>{subscription && <BillingStatus status={subscription.status} />}{manual && <span className="text-xs text-muted-foreground">Acordat de VIASEE</span>}</div>
-          <p className="mt-2 text-sm text-muted-foreground">{manual ? "Acest acces nu este un abonament plătit prin Stripe." : `Pro: ${money(data.pricing?.amount, data.pricing?.currency)} / ${data.pricing?.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`}</p>
+        <Panel title={organizationScope ? "Planul organizației" : "Planul locației"} icon={ShieldCheck} tone="green">
+          <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-2xl tracking-tight sm:text-3xl">{planTitle}</strong>{subscription && <BillingStatus status={subscription.status} />}{manual && <span className="text-xs text-muted-foreground">Acordat de VIASEE</span>}</div>
+          <p className="mt-2 text-sm text-muted-foreground">{planDescription()}</p>
           {existing && <p className="mt-3 text-sm">{subscription.cancel_at_period_end ? "Acces până la " : "Sfârșitul perioadei curente: "}{date(subscription.end)}{subscription.cancel_at_period_end && ". Reînnoirea este oprită."}</p>}
           {problem && <p className="mt-3 text-sm text-red-800">{subscription?.status === "configuration_review" ? "Configurația abonamentului necesită verificarea VIASEE. Contactează echipa înainte de a încerca o altă plată." : "Abonamentul necesită atenție. Verifică factura restantă și metoda de plată."}</p>}
-          <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button> : !manual && <a className={SETTINGS_PRIMARY} href="#billing-details" onClick={beginEditing}>Activează Pro — verifică datele</a>}</div>
+          {organizationScope && !existing && !manual && <PlanTiers pricing={pricing} />}
+          {legacy.length > 0 && <div className="mt-4 rounded-2xl border border-[#d8d2c5] bg-[#f8f4ec] p-3 text-sm">
+            <p className="font-medium">Abonament plătit pe locație (vechiul mod de plată)</p>
+            <ul className="mt-2 space-y-2">{legacy.map(item => <li key={item.location_id} className="flex flex-wrap items-center justify-between gap-2"><span>{item.location_name}{item.current_period_end ? ` · ${item.cancel_at_period_end ? "acces până la" : "reînnoire pe"} ${date(item.current_period_end)}` : ""}</span><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void run("portal", undefined, { legacy_location_id: item.location_id })}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button></li>)}</ul>
+            <p className="mt-2 text-xs text-muted-foreground">Rămâne valabil cum este. Trecerea la plata pe organizație o facem împreună, fără să plătești de două ori.</p>
+          </div>}
+          <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button>
+            : enterpriseRequired && !openOffers.length ? <a className={SETTINGS_PRIMARY} href="/ajutor-si-suport">Cere ofertă Enterprise</a>
+            : canStartCheckout && <a className={SETTINGS_PRIMARY} href="#billing-details" onClick={beginEditing}>Activează Pro — verifică datele</a>}</div>
         </Panel>
         <Panel title="Metode de plată" icon={CreditCard}>
           {data.methods.length ? <ul className="space-y-3">{data.methods.map(card => <li key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#c6d3da] bg-[#dce5e9]/35 p-3"><div><p className="font-medium"><span className="uppercase">{card.brand}</span> •••• {card.last4}</p><p className="text-xs text-muted-foreground">Expiră {card.exp_month}/{card.exp_year}</p></div>{card.is_default && <span className="text-xs text-muted-foreground">Implicit pentru abonament</span>}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nu există un card salvat. Cardul este adăugat în pagina securizată Stripe.</p>}
@@ -152,6 +217,20 @@ function BillingCenter({ locationId, onSynced }) {
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Adăugarea, înlocuirea și eliminarea cardurilor se fac în Stripe. Pentru un abonament activ poate fi necesară o metodă de plată înlocuitoare.</p>
         </Panel>
       </div>
+      {openOffers.length > 0 && <Panel title="Ofertă VIASEE Enterprise" icon={FileText} tone="amber">
+        <div className="space-y-4">{openOffers.map(offer => <div key={offer.id} className="rounded-2xl border border-[#e3d3b0] bg-[#fdf8ec] p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2"><strong className="text-2xl tracking-tight">{money(offer.monthly_amount, offer.currency)} / lună</strong>{offer.expires_at && <span className="text-xs text-muted-foreground">Valabilă până la {date(offer.expires_at)}</span>}</div>
+          <p className="mt-1 text-sm text-muted-foreground">Pentru toată organizația, indiferent de numărul de locații. După ce accepți contractul, plătești o singură dată cu cardul; suma se încasează apoi automat în fiecare lună.</p>
+          {offer.note && <p className="mt-2 whitespace-pre-line text-sm">{offer.note}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button type="button" className={button} onClick={() => void openContract(offer.id)}><FileText className="h-4 w-4" />Citește contractul ({offer.contract_file_name})</button>
+          </div>
+          <label htmlFor={`offer-accept-${offer.id}`} className="mt-3 flex items-start gap-2 text-sm"><input id={`offer-accept-${offer.id}`} type="checkbox" className="mt-1" checked={acceptedOffers[offer.id] === true} onChange={event => setAcceptedOffers(current => ({ ...current, [offer.id]: event.target.checked }))} />Am citit și accept contractul.</label>
+          {!data.customer?.name && <p className="mt-2 text-xs text-muted-foreground">Completează întâi datele de facturare de mai jos.</p>}
+          <button type="button" className={`${SETTINGS_PRIMARY} mt-3`} disabled={Boolean(busy) || existing || acceptedOffers[offer.id] !== true || (!data.customer?.name && !editingDetails)} onClick={() => void run("checkout", undefined, { offer_id: offer.id, contract_accepted: true })}>{busy === `offer:${offer.id}` && <Loader2 className="h-4 w-4 animate-spin" />}Accept și plătesc cu cardul</button>
+          {existing && <p className="mt-2 text-xs text-muted-foreground">Organizația are deja un abonament. Contactează VIASEE pentru trecerea la oferta Enterprise.</p>}
+        </div>)}</div>
+      </Panel>}
       <div id="billing-details" className="scroll-mt-24"><Panel title="Date de facturare" icon={FileText} tone="lavender">
         {!editingDetails && data.customer ? <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 break-words text-sm"><p className="font-medium">{data.customer.name}</p><p className="mt-1 text-muted-foreground">{data.customer.cui ? "CUI " + data.customer.cui + " · " : ""}{data.customer.email}</p><p className="mt-1 text-muted-foreground">{[data.customer.address?.line1, data.customer.address?.city, data.customer.address?.country].filter(Boolean).join(", ")}</p></div>
@@ -168,7 +247,7 @@ function BillingCenter({ locationId, onSynced }) {
           {data.customer?.tax_ids?.length > 0 && <p className="text-xs text-muted-foreground">Coduri fiscale salvate pentru client: {data.customer.tax_ids.map(tax => tax.value).join(", ")}</p>}
           <p className="text-xs leading-relaxed text-muted-foreground">Modificările se aplică facturilor viitoare. Pentru corectarea unei facturi deja emise, contactează VIASEE.</p>
           <div className="flex flex-wrap gap-2"><button type="submit" className={button} disabled={Boolean(busy)}>{busy === "save" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează datele</button>
-            {!existing && !manual && <button type="button" className={SETTINGS_PRIMARY} disabled={Boolean(busy) || !data.pricing?.active} onClick={event => { if (event.currentTarget.form.reportValidity()) void run("checkout"); }}>{busy === "checkout" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează și continuă la plata Pro</button>}
+            {(organizationScope ? canStartCheckout : !existing && !manual) && <button type="button" className={SETTINGS_PRIMARY} disabled={Boolean(busy) || !data.pricing?.active} onClick={event => { if (event.currentTarget.form.reportValidity()) void run("checkout"); }}>{busy === "checkout" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează și continuă la plata Pro</button>}
             {data.customer?.name && <button type="button" className={button} disabled={Boolean(busy)} onClick={() => { setProfile(profileFrom(data.customer)); setEditingDetails(false); }}>Renunță la modificări</button>}
             {data.customer && profile.billing_type === "company" && <button type="button" className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează codul TVA</button>}
           </div>
