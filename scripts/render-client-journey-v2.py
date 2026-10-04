@@ -102,7 +102,7 @@ def paint_cursor(im,dest,u,click_at,origin=None):
     travel_start=click_at-.5
     if u<travel_start-.12 or u>click_at+.68:return
     progress=ease((u-travel_start)/.36)
-    origin=origin or (dest[0]+100,dest[1]+72)
+    origin=origin or (dest[0]-110,dest[1]-48)
     x=origin[0]+(dest[0]-origin[0])*progress
     y=origin[1]+(dest[1]-origin[1])*progress
     pressed=max(0,1-abs((u-click_at-.065)/.09))
@@ -310,7 +310,7 @@ def frame(t,mobile):
     sw,sh=panel.width/S*zoom,panel.height/S*zoom
     panel=panel.resize((round(sw*S),round(sh*S)),Image.Resampling.LANCZOS)
     px=(W-sw)/2+(1-intro)*33
-    py=(196 if mobile else 157)+(1-intro)*15
+    py=(196 if mobile else 129)+(1-intro)*15
     if mobile and index==6:py=203
     shad=panel_shadow(round(sw),round(sh))
     if intro<1:
