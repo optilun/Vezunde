@@ -13,7 +13,7 @@
 // Nimic nu a fost sters: ProviderStatusCenter si ProviderCompletenessPanel raman intregi,
 // se schimba doar locul in care traiesc. Regulile de acces (Pro, Top 3, acordul clientului)
 // nu sunt atinse.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderCompletenessPanel from "./ProviderCompletenessPanel";
@@ -103,11 +103,9 @@ export default function ProviderLeadInbox(props) {
     setRefreshTick((tick) => tick + 1);
   };
 
-  useEffect(() => {
-    if (billingReturn && onOpenBilling) onOpenBilling();
-    // Doar la deschidere: redirecționarea unei întoarceri vechi din Stripe.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const openBillingRef = useRef(onOpenBilling);
+  openBillingRef.current = onOpenBilling;
+  useEffect(() => { if (billingReturn) openBillingRef.current?.(); }, [billingReturn]);
   useEffect(() => { setShowAllLocations(canViewAll); }, [organizationId, canViewAll]);
   useEffect(() => {
     setTargetLead((current) => current?.locationId && current.locationId !== locationId ? null : current);
