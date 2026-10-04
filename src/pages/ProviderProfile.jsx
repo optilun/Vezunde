@@ -20,6 +20,7 @@ import { buildGoogleMapsDirectionsUrl, buildGoogleMapsEmbedUrl, buildGoogleMapsU
 import { CLIENT_NEED_BY_KEY, summarizePublicServices } from "@/lib/servicePresentation";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 import ProviderLocationHero from "@/components/provider/ProviderLocationHero";
+import SaveToAccountButton from "@/components/saved/SaveToAccountButton";
 import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
 
 const SOCIAL_LINKS = [
@@ -430,7 +431,11 @@ export default function ProviderProfile() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-10 pt-12">
-      <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="mb-5 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">{hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}</Link>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">{hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}</Link>
+        {/* 2026-10-04 (structura conturilor, pasul 5): „Salvate” din contul personal. */}
+        <SaveToAccountButton itemType="location" itemId={profile.id} />
+      </div>
       <ProviderLocationHero profile={profile} status={status} serviceCount={services.length} mapUrl={mapUrl} />
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
