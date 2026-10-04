@@ -1,4 +1,10 @@
 import { upsertProviderSubscriptionFromStripeSubscription } from '../../shared/providerBillingPolicy.js';
+import {
+  enterpriseUnitAmount,
+  isViaseeOrganizationSubscription,
+  suspendOrganizationSubscriptionRows,
+  upsertOrganizationSubscription,
+} from '../../shared/providerOrganizationBilling.js';
 
 export const clean = (value, max = 200) => String(value ?? '').trim().slice(0, max);
 export const idOf = (value) => typeof value === 'string' ? value : value?.id || '';
@@ -56,6 +62,75 @@ export async function syncCustomerSubscriptions(svc, stripe, account, priceId) {
   let latest = null;
   for await (const subscription of stripe.subscriptions.list({ customer: account.stripe_customer_id, status: 'all', limit: 100 })) {
     const synchronized = await syncVerifiedBillingSubscription(svc, subscription, priceId, account.location_id, account.organization_id);
+    if (!synchronized) continue;
+    const terminal = value => ['canceled', 'incomplete_expired'].includes(value?.status);
+    if (!latest || (terminal(latest) && !terminal(subscription)) ||
+      (terminal(latest) === terminal(subscription) && subscription.created > latest.created)) latest = synchronized;
+  }
+  return latest;
+}
+// ---------- 2026-10-04 (structura conturilor, pasul 4): facturarea pe organizatie ----------
+// Un client Stripe pe organizatie (metadata scope: organization). Clientii vechi, pe locatie, raman
+// pentru abonamentele vechi si sunt gestionati de functiile de mai sus.
+export function assertOrganizationBillingCustomer(customer, organizationId) {
+  if (!customer || customer.deleted || customer.metadata?.app !== 'viasee'
+    || customer.metadata?.scope !== 'organization' || customer.metadata?.organization_id !== organizationId) {
+    throw new Error('Contul Stripe nu corespunde organizației. Contactează VIASEE.');
+  }
+}
+export async function findOrganizationBillingAccount(svc, organizationId) {
+  if (!organizationId) return null;
+  const rows = await svc.entities.ProviderBillingAccount.filter({ organization_id: organizationId, account_scope: 'organization' }, 'created_date', 1);
+  return rows[0] || null;
+}
+export async function ensureOrganizationBillingAccount(svc, stripe, organization, user) {
+  const found = await findOrganizationBillingAccount(svc, organization.id);
+  if (found?.id) return found;
+  const safeId = clean(organization.id).replace(/[^a-zA-Z0-9_-]/g, '');
+  const matched = await stripe.customers.search({
+    query: "metadata['app']:'viasee' AND metadata['scope']:'organization' AND metadata['organization_id']:'" + safeId + "'", limit: 1,
+  });
+  const customerId = matched?.data?.[0]?.id || (await stripe.customers.create({
+    email: clean(user.email) || undefined,
+    name: clean(organization.legal_name || organization.public_display_name || organization.name) || undefined,
+    metadata: { app: 'viasee', scope: 'organization', organization_id: organization.id },
+  }, { idempotencyKey: 'viasee-org-customer-v1-' + organization.id })).id;
+  // Accesul Pro apare doar dupa un abonament Stripe real.
+  return svc.entities.ProviderBillingAccount.create({
+    organization_id: organization.id, account_scope: 'organization', stripe_customer_id: customerId,
+  });
+}
+// Sincronizeaza un abonament de organizatie. Unul cu pret, cantitate sau suma Enterprise schimbate in
+// afara aplicatiei isi pierde accesul pana la verificare, nu dispare in tacere.
+export async function syncOrganizationSubscription(svc, subscription, { organizationId, tieredPriceId }) {
+  if (!organizationId || subscription?.metadata?.app !== 'viasee' || subscription?.metadata?.scope !== 'organization'
+    || subscription.metadata.organization_id !== organizationId) return null;
+  let valid = isViaseeOrganizationSubscription(subscription, { organizationId, tieredPriceId });
+  let offer = null;
+  if (valid && subscription.metadata.plan_tier === 'enterprise') {
+    offer = await svc.entities.ProviderEnterpriseOffer.get(subscription.metadata.enterprise_offer_id).catch(() => null);
+    const price = subscription.items.data[0].price;
+    const amount = typeof price === 'object' ? Number(price.unit_amount) : NaN;
+    valid = Boolean(offer) && offer.organization_id === organizationId
+      && ['sent', 'accepted'].includes(offer.status)
+      && (!Number.isFinite(amount) || amount === enterpriseUnitAmount(offer));
+  }
+  if (!valid) {
+    await suspendOrganizationSubscriptionRows(svc, subscription.id, organizationId);
+    return { ...subscription, billing_requires_review: true };
+  }
+  await upsertOrganizationSubscription(svc, subscription, { organizationId });
+  if (offer && ['active', 'trialing'].includes(subscription.status) && offer.status !== 'accepted') {
+    await svc.entities.ProviderEnterpriseOffer.update(offer.id, {
+      status: 'accepted', accepted_at: new Date().toISOString(), stripe_subscription_id: subscription.id,
+    });
+  }
+  return subscription;
+}
+export async function syncOrganizationCustomerSubscriptions(svc, stripe, account, tieredPriceId) {
+  let latest = null;
+  for await (const subscription of stripe.subscriptions.list({ customer: account.stripe_customer_id, status: 'all', limit: 100 })) {
+    const synchronized = await syncOrganizationSubscription(svc, subscription, { organizationId: account.organization_id, tieredPriceId });
     if (!synchronized) continue;
     const terminal = value => ['canceled', 'incomplete_expired'].includes(value?.status);
     if (!latest || (terminal(latest) && !terminal(subscription)) ||
