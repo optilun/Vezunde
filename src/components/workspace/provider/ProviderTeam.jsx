@@ -63,6 +63,9 @@ export default function ProviderTeam({ locationId }) {
   const selfAssociated = Boolean(currentProfessional && assignments.some((item) => item.professional_id === currentProfessional.id && item.active_status === "activ"));
   const activeAssignments = useMemo(() => assignments.filter((item) => item.active_status === "activ"), [assignments]);
   const pendingInvitations = useMemo(() => invitations.filter((item) => item.status === "pending"), [invitations]);
+  // 2026-10-04 (audit #19): invitațiile încheiate (expirate, acceptate, revocate) stau într-un
+  // istoric pliat; cele expirate pot fi trimise din nou.
+  const pastInvitations = useMemo(() => invitations.filter((item) => item.status !== "pending"), [invitations]);
   const pendingVisibility = useMemo(() => assignments.filter((item) => item.active_status === "activ" && item.visibility_consent_status === "pending"), [assignments]);
 
   const load = async () => {
@@ -117,6 +120,26 @@ export default function ProviderTeam({ locationId }) {
     setForm({ email: "", professional_type: "optometrist" });
     setNewLink(response.data?.invitation_link || "");
     setMsg(response.data?.email_sent ? "Invitația a fost trimisă." : "Invitația a fost creată. Trimite specialistului linkul afișat mai jos.");
+    await load();
+  };
+
+  const resendInvitation = async (invitationId) => {
+    setSaving(true);
+    setMsg("");
+    setNewLink("");
+    setCopied(false);
+    const response = await base44.functions.invoke("professionalInvitationOps", {
+      action: "resend",
+      invitation_id: invitationId,
+      invitation_base_url: window.location.origin,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setSaving(false);
+    if (response.data?.error) {
+      setMsg(response.data.error);
+      return;
+    }
+    setNewLink(response.data?.invitation_link || "");
+    setMsg(response.data?.email_sent ? "Invitația a fost trimisă din nou." : "Invitația nouă a fost creată. Trimite specialistului linkul afișat mai jos.");
     await load();
   };
 
@@ -330,12 +353,12 @@ export default function ProviderTeam({ locationId }) {
               <h2 className="text-sm font-bold">Invitații profesionale</h2>
               <p className="mt-1 text-xs text-muted-foreground">Invitațiile expiră automat și pot fi revocate înainte de acceptare.</p>
             </div>
-            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{invitations.length} total</span>
+            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{pendingInvitations.length} în așteptare</span>
           </div>
 
-          {invitations.length === 0 ? <EmptyCard>Nu există invitații pentru această locație.</EmptyCard> : (
+          {invitations.length === 0 ? <EmptyCard>Nu există invitații pentru această locație.</EmptyCard> : pendingInvitations.length === 0 ? <EmptyCard>Nicio invitație în așteptare.</EmptyCard> : (
             <ul className="space-y-2">
-              {invitations.map((invitation) => (
+              {pendingInvitations.map((invitation) => (
                 <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 px-3 py-3 text-xs">
                   <div className="min-w-0">
                     <div className="font-bold">{roleLabel(invitation.professional_type)}</div>
@@ -353,6 +376,33 @@ export default function ProviderTeam({ locationId }) {
                 </li>
               ))}
             </ul>
+          )}
+
+          {pastInvitations.length > 0 && (
+            <details className="group mt-3 rounded-2xl border border-border/70 px-3 py-2">
+              <summary className="cursor-pointer list-none py-1 text-xs font-semibold text-muted-foreground hover:text-foreground">
+                Istoric invitații ({pastInvitations.length})
+              </summary>
+              <ul className="mt-2 space-y-2">
+                {pastInvitations.map((invitation) => (
+                  <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-secondary/40 px-3 py-2.5 text-xs">
+                    <div className="min-w-0">
+                      <div className="font-bold">{roleLabel(invitation.professional_type)}</div>
+                      <div className="break-all text-muted-foreground">{invitation.invited_email_masked}</div>
+                      {invitation.status === "expired" && invitation.expires_at && <div className="mt-0.5 text-[11px] text-muted-foreground">A expirat la {formatDate(invitation.expires_at)}</div>}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[invitation.status] || invitation.status}</span>
+                      {invitation.status === "expired" && (
+                        <button type="button" disabled={saving} onClick={() => resendInvitation(invitation.id)} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
+                          <Send className="h-3.5 w-3.5" /> Trimite din nou
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </section>
       </div>
