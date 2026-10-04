@@ -525,6 +525,10 @@ export default function ProviderLocations({
   };
 
   const submitDraft = async () => {
+    if (hasUnsavedChanges) {
+      setMessage("Salvează modificările în draft înainte de trimitere.");
+      return;
+    }
     if (!draft || !selectedLocation?.id) return;
     if (hasCoordinateIssues) {
       setMessage(coordinateValidation.issues[0]);
