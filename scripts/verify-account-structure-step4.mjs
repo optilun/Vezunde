@@ -363,7 +363,7 @@ assert.match(panel, /legacy_location_id/);
 assert.match(panel, /profileFrom\(result\.customer \|\| result\.customer_suggestion\)/, 'formularul se completeaza din datele vechi');
 assert.match(panel, /const legacyOnly = organizationScope && legacy\.length > 0 && !data\?\.customer/);
 assert.match(panel, /\(!organizationScope \|\| activeCount > 0\)/, 'fara locatii active nu se porneste plata');
-assert.doesNotMatch(panel, /pachetul \$\{pricing\.current_tier\?\.label \|\| ""\}, \$\{money\(pricing\.current_tier\?\.amount, pricing\.currency\)\} \/ lună pentru toată organizația\. Emitent[^`]*`;\n  \};/.source === '' ? /x^/ : /x^/);
+assert.match(panel, /if \(!activeCount\) return `Organizația nu are încă locații active/, 'fara locatii active textul nu ramane gol');
 assert.match(admin, /UploadPrivateFile/);
 assert.match(admin, /admin_create/);
 assert.match(settings, /organizationId=\{selectedLocation\.organization_id/);
