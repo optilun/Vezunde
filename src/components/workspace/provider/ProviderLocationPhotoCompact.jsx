@@ -363,7 +363,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
             <div className="flex flex-wrap gap-2 border-t border-border/70 pt-3">
               {stagedFile && (
                 <button type="button" disabled={processing} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40">
-                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Salveaza ca draft
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Salvează ca draft
                 </button>
               )}
               {editableDraft && !stagedFile && (

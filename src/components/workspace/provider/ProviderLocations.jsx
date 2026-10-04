@@ -658,7 +658,7 @@ export default function ProviderLocations({
             <div>
               <h2 className="text-base font-bold">Puncte de lucru</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {locationCount} locatii in aceasta organizatie
+                {locationCount} {locationCount === 1 ? "locație" : "locații"} în această organizație
               </p>
             </div>
           </div>

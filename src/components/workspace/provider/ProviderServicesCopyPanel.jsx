@@ -237,7 +237,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                   <div>
                     <div className="text-xs font-semibold text-muted-foreground">Configurație sursă aprobată</div>
                     <div className="mt-1 text-sm font-bold">{preview.source.name}</div>
-                    <p className="mt-2 text-xs text-muted-foreground">{preview.source.service_count} servicii canonice vor fi analizate pentru fiecare locatie tinta.</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{preview.source.service_count} servicii canonice vor fi analizate pentru fiecare locație țintă.</p>
                   </div>
                   {preview.source.has_unapproved_changes && (
                     <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900">Draftul sursei nu se copiază</span>

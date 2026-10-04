@@ -263,7 +263,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
               <div><label className="text-xs font-semibold text-muted-foreground">Telefon</label><input value={searchData.phone} onChange={(event) => setSearchData({ ...searchData, phone: event.target.value })} className={`${input} mt-1.5`} placeholder="Telefonul locației" /></div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" disabled={!canSearch || loading} onClick={search} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Verifica in director</button>
+              <button type="button" disabled={!canSearch || loading} onClick={search} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Verifică în director</button>
               <button type="button" disabled={loading} onClick={beginNew} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"><Plus className="h-4 w-4" /> Adaugă locație nouă</button>
             </div>
             {message && <p className="mt-4 text-xs text-destructive">{message}</p>}

@@ -156,14 +156,14 @@ export default function ProviderCompletenessPanel({ data }) {
           >
             <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
             <AlertTriangle className="relative z-10 mt-0.5 h-4 w-4 shrink-0 text-black/55" />
-            <p className="relative z-10 text-[13px] leading-relaxed text-black/65">Sunt {data.summary.required_missing_count} elemente necesare necompletate. Acest indicator explica lipsurile, dar nu modifica automat publicarea sau accesul locatiei.</p>
+            <p className="relative z-10 text-[13px] leading-relaxed text-black/65">Sunt {data.summary.required_missing_count} elemente necesare necompletate. Acest indicator explică lipsurile, dar nu modifică automat publicarea sau accesul locației.</p>
           </div>
         )}
 
         <LocationComparison locations={data.locations} selectedLocationId={locationId} />
 
         <details className="mt-5 rounded-[1.4rem] border border-[#e3ddd0] bg-white/60 p-4">
-          <summary className="cursor-pointer font-heading text-sm font-extrabold tracking-[-0.02em] text-foreground">Vezi ce lipseste la locatia selectata ({missing.length})</summary>
+          <summary className="cursor-pointer font-heading text-sm font-extrabold tracking-[-0.02em] text-foreground">Vezi ce lipsește la locația selectată ({missing.length})</summary>
           <div className="mt-3">
             {missing.length
               ? missing.map((item) => <Item key={item.key} item={item} locationId={locationId} />)

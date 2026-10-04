@@ -318,7 +318,7 @@ function InlineProfileEditor({
             <div className="flex min-w-0 items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-black/65" />
               <p className="text-sm leading-relaxed text-black/65">
-                Exista date in {fallbackLocationName} pentru:{" "}
+                Există date în {fallbackLocationName} pentru:{" "}
                 {availableFallbackFields
                   .map((key) => FIELD_LABELS[key])
                   .join(", ")}.
@@ -571,7 +571,7 @@ function OrganizationProfile({
               {displayName}
             </h1>
             <p className="mt-2 text-sm font-medium text-[#706c64]">
-              {locationCount} {locationCount === 1 ? "locatie" : "locatii"} in
+              {locationCount} {locationCount === 1 ? "locație" : "locații"} în
               VIASEE
             </p>
           </div>
