@@ -34,10 +34,20 @@
     "source_reference": { "type": "string" },
     "stripe_customer_id": { "type": "string" },
     "stripe_subscription_id": { "type": "string" },
-    "stripe_price_id": { "type": "string" }
+    "stripe_price_id": { "type": "string" },
+    "subscription_scope": {
+      "type": "string",
+      "enum": ["location", "organization"],
+      "default": "location"
+    },
+    "plan_tier": {
+      "type": "string",
+      "enum": ["legacy_location", "independent", "small_network", "network", "enterprise"]
+    },
+    "billed_location_count": { "type": "number" },
+    "enterprise_offer_id": { "type": "string" }
   },
   "required": [
-    "location_id",
     "plan_code",
     "status",
     "billing_mode",

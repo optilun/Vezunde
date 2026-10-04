@@ -5,6 +5,14 @@
     "location_id": {
       "type": "string"
     },
+    "account_scope": {
+      "type": "string",
+      "enum": [
+        "location",
+        "organization"
+      ],
+      "default": "location"
+    },
     "organization_id": {
       "type": "string"
     },
@@ -49,7 +57,6 @@
     }
   },
   "required": [
-    "location_id",
     "stripe_customer_id"
   ],
   "rls": {

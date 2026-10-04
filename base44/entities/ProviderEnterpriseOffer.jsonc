@@ -1,0 +1,32 @@
+{
+  "name": "ProviderEnterpriseOffer",
+  "type": "object",
+  "properties": {
+    "organization_id": { "type": "string" },
+    "monthly_amount_ron": { "type": "number" },
+    "currency": { "type": "string", "default": "ron" },
+    "contract_file_uri": { "type": "string" },
+    "contract_file_name": { "type": "string" },
+    "note": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["sent", "accepted", "canceled", "superseded", "expired"],
+      "default": "sent"
+    },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "created_by_user_id": { "type": "string" },
+    "contract_accepted_at": { "type": "string", "format": "date-time" },
+    "contract_accepted_by_user_id": { "type": "string" },
+    "accepted_at": { "type": "string", "format": "date-time" },
+    "stripe_subscription_id": { "type": "string" },
+    "canceled_at": { "type": "string", "format": "date-time" },
+    "canceled_by_user_id": { "type": "string" }
+  },
+  "required": ["organization_id", "monthly_amount_ron", "status", "contract_file_uri"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
