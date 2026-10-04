@@ -47,6 +47,23 @@ function offerView(offer) {
     has_contract: Boolean(offer.contract_file_uri), contract_accepted_at: offer.contract_accepted_at || null, accepted_at: offer.accepted_at || null };
 }
 
+// Datele de facturare de pe abonamentul vechi, pe locatie. Se arata doar pentru citire cat timp
+// organizatia nu are propriul client Stripe, ca proprietarul sa nu creada ca s-au pierdut.
+async function legacyCustomerSuggestion(svc, stripe, legacy) {
+  for (const { location } of legacy.slice(0, 3)) {
+    try {
+      const account = await findBillingAccount(svc, location.id);
+      if (!account?.stripe_customer_id) continue;
+      const customer = await stripe.customers.retrieve(account.stripe_customer_id);
+      assertBillingCustomer(customer, location.id);
+      if (!customer.name) continue;
+      return { name: customer.name, email: customer.email || '', address: customer.address || {},
+        cui: customer.metadata?.cui || account.billing_cui || '', billing_type: customer.metadata?.billing_type || account.billing_type || 'company' };
+    } catch (_error) { /* datele vechi sunt doar informative */ }
+  }
+  return null;
+}
+
 // 2026-10-04 (structura conturilor, pasul 4): abonamentul si facturarea pe organizatie.
 async function handleOrganization(svc, user, input, action) {
   const authorized = await authorizeOrganizationBillingOwner(svc, user, { organizationId: clean(input.organization_id, 120), locationId: clean(input.location_id, 120) });
@@ -92,7 +109,8 @@ async function handleOrganization(svc, user, input, action) {
     pricing, manual: manualRows[0] || null, legacy_subscriptions: legacySubscriptions, enterprise_offers: enterpriseOffers };
 
   const account = await findOrganizationBillingAccount(svc, organization.id);
-  if (!account) return Response.json({ ...base, subscription: null, customer: null, methods: [], invoices: [], has_more: false });
+  if (!account) return Response.json({ ...base, customer_suggestion: legacy.length ? await legacyCustomerSuggestion(svc, stripe, legacy) : null,
+    subscription: null, customer: null, methods: [], invoices: [], has_more: false });
   assertOrganizationBillingCustomer(await stripe.customers.retrieve(account.stripe_customer_id), organization.id);
   let latest = await syncOrganizationCustomerSubscriptions(svc, stripe, account, tieredPrice.id);
   // Numarul de locatii active se aduce la zi si cand proprietarul deschide facturarea, nu doar la
