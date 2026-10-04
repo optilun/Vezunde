@@ -46,9 +46,11 @@ export function hasMapLocation(location = {}) {
 }
 
 export function buildGoogleMapsDirectionsUrl(location = {}) {
-  const destination = location.map_precision === "exact" && hasCoordinates(location)
+  const exactPosition = location.map_precision === "exact" && hasCoordinates(location);
+  const destination = exactPosition
     ? buildCoordinateQuery(location) : buildAddressQuery(location) || buildCoordinateQuery(location);
   if (!destination) return "";
-  const placeId = location.place_id ? `&destination_place_id=${encodeURIComponent(location.place_id)}` : "";
+  // A legacy Place ID must not override a newly confirmed pin.
+  const placeId = !exactPosition && location.place_id ? `&destination_place_id=${encodeURIComponent(location.place_id)}` : "";
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}${placeId}`;
 }
