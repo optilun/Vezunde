@@ -610,7 +610,10 @@ export default function ProviderLocationsWithPhoto(props) {
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="mt-1.5 min-h-16 text-sm leading-relaxed text-muted-foreground">
-                  Adaugă fotografia principală a acestei locații.
+                  {/* 2026-10-04 (audit #11): când fotografia există, cardul nu mai cere „Adaugă”. */}
+                  {selectedLocation.photo_url
+                    ? "Schimbă fotografia principală a acestei locații."
+                    : "Adaugă fotografia principală a acestei locații."}
                 </p>
                 <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">
                   Configurează
