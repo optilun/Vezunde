@@ -38,6 +38,7 @@ const LOCATION_FIELDS = [
   ["lat", "Latitudine"],
   ["lng", "Longitudine"],
   ["place_id", "Google Place ID"],
+  ["map_precision", "Confirmarea poziției pe hartă"],
 ];
 
 const PUBLIC_PROFILE_FIELDS = [
@@ -61,6 +62,8 @@ function parsePayload(raw) {
 }
 
 function text(value) {
+  if (value === "exact") return "Poziție confirmată";
+  if (value === "approximate") return "Poziție de confirmat";
   if (value === null || value === undefined || value === "") return "-";
   if (Array.isArray(value)) return `${value.length} elemente`;
   if (typeof value === "object") return JSON.stringify(value);
