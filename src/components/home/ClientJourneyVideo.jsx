@@ -43,7 +43,7 @@ export default function ClientJourneyVideo() {
       <video
         ref={videoRef}
         className="block aspect-[3/4] w-full object-contain sm:aspect-video"
-        src={mobile ? "/videos/client-journey-mobile-v5.mp4" : "/videos/client-journey-v5.mp4"}
+        src={mobile ? "/videos/client-journey-mobile-v5.mp4" : "/videos/client-journey-v5.mp4?v=5.1"}
         poster={mobile ? "/videos/client-journey-mobile-v5-poster.jpg" : "/videos/client-journey-v5-poster.jpg"}
         aria-label="Demonstrație VIASEE cu locații fictive"
         aria-describedby="client-journey-transcript"
