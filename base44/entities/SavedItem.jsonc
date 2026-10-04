@@ -1,0 +1,63 @@
+{
+  "name": "SavedItem",
+  "type": "object",
+  "description": "Locatii si specialisti salvati de un cont, din paginile publice (structura conturilor, pasul 5). Accesul trece doar prin functia mySavedItemsOps.",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "location",
+        "professional"
+      ]
+    },
+    "item_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "removed"
+      ],
+      "default": "active"
+    },
+    "saved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "removed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_id",
+    "item_type",
+    "item_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
