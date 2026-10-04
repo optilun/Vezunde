@@ -1,179 +1,62 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Maximize, Pause, Play, RotateCcw } from "lucide-react";
 import { useInViewport, useMediaQuery, usePrefersReducedMotion } from "@/lib/motion";
-
-const CHAPTERS = [
-  { title: "Spui ce cauți", short: "Descrii", time: 0 },
-  { title: "Răspunzi pe scurt", short: "Răspunzi", time: 4 },
-  { title: "Compari opțiunile", short: "Compari", time: 16 },
-];
 
 export default function ClientJourneyVideo() {
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
   const userPaused = useRef(false);
   const manualPlayback = useRef(false);
-  const blobUrl = useRef(null);
-  const sourceRequest = useRef(null);
   const inView = useInViewport(wrapperRef, { threshold: 0.25 });
   const reducedMotion = usePrefersReducedMotion();
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [failed, setFailed] = useState(false);
   const mobile = useMediaQuery("(max-width: 639px)");
+  const [playing, setPlaying] = useState(false);
   const saveData = typeof navigator !== "undefined" && navigator.connection?.saveData;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (!inView || document.hidden || userPaused.current || ((reducedMotion || saveData) && !manualPlayback.current)) {
-      video.pause();
-      return;
-    }
-    video.play().catch(() => setPlaying(false));
+    const sync = () => {
+      if (!inView || document.hidden || userPaused.current || ((reducedMotion || saveData) && !manualPlayback.current)) video.pause();
+      else video.play().catch(() => setPlaying(false));
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
   }, [inView, reducedMotion, saveData, mobile]);
 
-  useEffect(() => {
-    const pauseWhenHidden = () => { if (document.hidden) videoRef.current?.pause(); };
-    document.addEventListener("visibilitychange", pauseWhenHidden);
-    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
-  }, []);
-
-  useEffect(() => () => {
-    sourceRequest.current?.abort();
-    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
-    blobUrl.current = null;
-  }, [mobile]);
-
-  const play = () => {
-    manualPlayback.current = true;
-    userPaused.current = false;
-    setFailed(false);
-    if (videoRef.current?.error) videoRef.current.load();
-    videoRef.current?.play().catch(() => setPlaying(false));
-  };
-
   const toggle = () => {
-    if (playing) {
-      userPaused.current = true;
-      videoRef.current?.pause();
-    } else play();
-  };
-
-  const goTo = async (time) => {
     const video = videoRef.current;
     if (!video) return;
-    try {
-      // Some static hosts stream MP4 without byte ranges. A local Blob makes
-      // chapter seeking reliable there, downloaded only after an explicit click.
-      if (time > 0 && !video.currentSrc.startsWith("blob:")) {
-        sourceRequest.current?.abort();
-        const controller = new AbortController();
-        sourceRequest.current = controller;
-        const response = await fetch(video.currentSrc || video.src, { signal: controller.signal });
-        if (!response.ok) throw new Error("Video unavailable");
-        const media = await response.blob();
-        if (controller.signal.aborted) return;
-        if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
-        blobUrl.current = URL.createObjectURL(media);
-        video.src = blobUrl.current;
-        video.load();
-      }
-      if (video.readyState < 1) {
-        await new Promise((resolve, reject) => {
-          const loaded = () => { cleanup(); resolve(); };
-          const failed = () => { cleanup(); reject(new Error("Video unavailable")); };
-          const cleanup = () => {
-            video.removeEventListener("loadedmetadata", loaded);
-            video.removeEventListener("error", failed);
-          };
-          video.addEventListener("loadedmetadata", loaded, { once: true });
-          video.addEventListener("error", failed, { once: true });
-          if (!video.currentSrc) video.load();
-        });
-      }
-      video.currentTime = time;
-      setCurrentTime(time);
-      play();
-    } catch (error) {
-      if (error.name !== "AbortError") setFailed(true);
+    if (video.paused) {
+      manualPlayback.current = true;
+      userPaused.current = false;
+      video.play().catch(() => setPlaying(false));
+    } else {
+      userPaused.current = true;
+      video.pause();
     }
   };
 
-  const fullscreen = () => {
-    const video = videoRef.current;
-    if (video?.webkitEnterFullscreen) video.webkitEnterFullscreen();
-    else video?.requestFullscreen?.().catch(() => {});
-  };
-
-  const activeChapter = currentTime >= 16 ? 2 : currentTime >= 4 ? 1 : 0;
-
   return (
-    <div ref={wrapperRef} className="mt-8 sm:mt-12">
-      <div className="relative isolate overflow-hidden rounded-2xl border border-black/10 bg-[#f5f2e9] shadow-[0_8px_28px_rgba(28,24,18,0.08)] sm:rounded-[1.5rem]">
-        <video
-          ref={videoRef}
-          className="block aspect-[3/4] w-full object-contain sm:aspect-video"
-          src={mobile ? "/videos/client-journey-mobile-v3.mp4" : "/videos/client-journey-v3.mp4"}
-          poster={mobile ? "/videos/client-journey-mobile-v3-poster.jpg" : "/videos/client-journey-v3-poster.jpg"}
-          aria-label="Demonstrație VIASEE: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, apoi compari rezultatele."
-          aria-describedby="client-journey-transcript"
-          muted
-          loop
-          playsInline
-          preload="none"
-          controls={failed}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-          onError={() => setFailed(true)}
-        >
-          <track kind="captions" src="/videos/client-journey-ro-v2.vtt" srcLang="ro" label="Română" />
-          Browserul tău nu poate reda video-ul. Descrie ce cauți, răspunde la întrebări și compară opțiunile din zona ta.
-        </video>
-        {!playing && !failed && (
-          <button
-            type="button"
-            onClick={play}
-            aria-label="Redă demonstrația pentru clienți"
-            className="absolute inset-0 grid place-items-center bg-black/10 outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white"
-          >
-            <span className="grid h-16 w-16 place-items-center rounded-full border border-white/40 bg-[#171717] text-white shadow-lg sm:h-20 sm:w-20">
-              <Play className="h-6 w-6 fill-current sm:h-7 sm:w-7" aria-hidden="true" />
-            </span>
-          </button>
-        )}
-        <div className="absolute bottom-3 right-3 flex gap-2 sm:bottom-4 sm:right-4">
-          <button type="button" onClick={toggle} aria-label={playing ? "Pune demonstrația pe pauză" : "Redă demonstrația"} className="grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-[#171717] text-white outline-none focus-visible:ring-2 focus-visible:ring-white">
-            {playing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
-          </button>
-          <button type="button" onClick={() => goTo(0)} aria-label="Reia demonstrația de la început" className="grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-[#171717] text-white outline-none focus-visible:ring-2 focus-visible:ring-white">
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button type="button" onClick={fullscreen} aria-label="Vezi demonstrația pe tot ecranul" className="grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-[#171717] text-white outline-none focus-visible:ring-2 focus-visible:ring-white">
-            <Maximize className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3" aria-label="Pașii demonstrației">
-        {CHAPTERS.map((chapter, index) => (
-          <button
-            key={chapter.title}
-            type="button"
-            onClick={() => goTo(chapter.time)}
-            aria-label={"Vezi pasul " + (index + 1) + ": " + chapter.title}
-            aria-pressed={activeChapter === index}
-            className={"flex min-h-14 items-center justify-center gap-2 rounded-xl border px-2 py-3 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#345bc8] motion-reduce:transition-none sm:justify-start sm:px-5 sm:text-base " + (activeChapter === index ? "border-[#345bc8]/30 bg-[#e9edf8] text-[#254bad]" : "border-black/10 bg-[#f7f5ef] text-foreground/70 hover:border-black/25")}
-          >
-            <span className="font-mono text-[10px] opacity-60 sm:text-xs">0{index + 1}</span>
-            <span className="sm:hidden">{chapter.short}</span>
-            <span className="hidden sm:inline">{chapter.title}</span>
-          </button>
-        ))}
-      </div>
-      {failed && <p role="status" className="mt-3 text-sm text-muted-foreground">Video-ul nu s-a încărcat. Îl poți reîncerca folosind butonul de redare.</p>}
-      <p id="client-journey-transcript" className="sr-only">În exemplu scrii „Vreau un control de vedere”, confirmi nevoia, alegi „Pentru mine” și localitatea Cluj-Napoca, răspunzi la întrebări, verifici rezumatul și compari locațiile găsite. În profil vezi adresa și datele de contact. Serviciile neconfirmate trebuie verificate direct cu locația.</p>
-      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Demonstrație cu locații fictive. Întrebările și rezultatele pot varia în funcție de căutarea ta.</p>
+    <div ref={wrapperRef} className="relative isolate overflow-hidden rounded-2xl bg-[#4C5AF4] sm:rounded-[1.5rem]"
+      style={{ backgroundImage: "url('/images/specialists/cobalt-woven-v2.webp')", backgroundSize: "720px auto" }}>
+      <video
+        ref={videoRef}
+        className="block aspect-[3/4] w-full object-contain sm:aspect-video"
+        src={mobile ? "/videos/client-journey-mobile-v4.mp4" : "/videos/client-journey-v4.mp4"}
+        poster={mobile ? "/videos/client-journey-mobile-v4-poster.jpg" : "/videos/client-journey-v4-poster.jpg"}
+        aria-label="Demonstrație VIASEE cu locații fictive"
+        aria-describedby="client-journey-transcript"
+        muted loop playsInline preload="none"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+      >
+        <track kind="captions" src="/videos/client-journey-ro-v2.vtt" srcLang="ro" label="Română" />
+      </video>
+      <button type="button" onClick={toggle}
+        aria-label={playing ? "Pune demonstrația pe pauză" : "Redă demonstrația"}
+        className="absolute inset-0 cursor-pointer bg-transparent outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white" />
+      <p id="client-journey-transcript" className="sr-only">Demonstrație cu locații fictive: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, verifici rezumatul și compari opțiunile. Lunear Optic Store și Lunear Studio sunt exemple demonstrative. Apasă pe video sau folosește Enter pentru redare și pauză.</p>
     </div>
   );
 }
