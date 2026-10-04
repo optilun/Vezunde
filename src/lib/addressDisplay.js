@@ -9,13 +9,21 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function isAllUpperCase(value) {
+  const raw = String(value || "");
+  return raw === raw.toLocaleUpperCase("ro-RO") && raw !== raw.toLocaleLowerCase("ro-RO");
+}
+
+function toTitleCase(value) {
+  return String(value || "")
+    .toLocaleLowerCase("ro-RO")
+    .replace(/(^|[\s-])(\p{L})/gu, (_match, separator, letter) => `${separator}${letter.toLocaleUpperCase("ro-RO")}`);
+}
+
 // Doar textul scris integral cu majuscule devine „Titlu”; restul rămâne cum l-a scris furnizorul.
 export function titleCaseAddress(value) {
   const raw = String(value || "").trim();
-  if (!raw || raw !== raw.toLocaleUpperCase("ro-RO") || raw === raw.toLocaleLowerCase("ro-RO")) return raw;
-  return raw
-    .toLocaleLowerCase("ro-RO")
-    .replace(/(^|[\s-])(\p{L})/gu, (_match, separator, letter) => `${separator}${letter.toLocaleUpperCase("ro-RO")}`);
+  return isAllUpperCase(raw) ? toTitleCase(raw) : raw;
 }
 
 export function formatStreetAddress(address, city) {
@@ -27,6 +35,8 @@ export function formatStreetAddress(address, city) {
     value = value.replace(cityPrefix, "");
   }
 
+  // Decidem înainte de curățare: „STR.” devine „Str.” și textul n-ar mai părea scris cu majuscule.
+  const upperCase = isAllUpperCase(value);
   value = value
     // Marcaje rămase fără valoare la final: „, ET.”, „AP.”, „SC.”, „BL.”.
     .replace(/(?:,\s*)?\b(?:ET|AP|SC|BL)\.?\s*$/i, "")
@@ -37,7 +47,7 @@ export function formatStreetAddress(address, city) {
     .replace(/,\s*$/, "")
     .trim();
 
-  return titleCaseAddress(value)
+  return (upperCase ? toTitleCase(value) : value)
     .replace(/\bNr\.\s*/g, "nr. ")
     .replace(/\bStr\.\s*/g, "Str. ")
     .trim();
