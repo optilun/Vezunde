@@ -245,7 +245,7 @@ def results_scene(im,u,m):
     else:
         p=ease((u-.28)/.38);q=ease((u-.5)/.4)
         second=result_card(284,207,True)
-        place(im,second,x+400+12*focus,y+160+14*focus,.94-.035*focus,q,rotation=-1.0*focus)
+        place(im,second,x+425+12*focus,y+160+14*focus,.94-.035*focus,q,rotation=-1.0*focus)
         primary=result_card(351,225,False,u>=3.9)
         ax=x+22+29*focus;ay=y+158-20*focus;scale=1+.09*focus
         place(im,primary,ax,ay+(1-p)*24,scale,p,rotation=1.1*focus)
@@ -320,4 +320,5 @@ if __name__=="__main__":
             name="client-journey-mobile-v5" if m else "client-journey-v5"
             for n,t in enumerate(STILLS):frame(t,m).save(OUT/(name+f"-frame-{n}.jpg"),quality=93,subsampling=0)
         print("V5 stills ready")
+    elif "--desktop" in sys.argv:render(False)
     else:render(False);render(True)
