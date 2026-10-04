@@ -77,7 +77,7 @@ def logo(im,x,y,w=110,white=False):
 
 @lru_cache(maxsize=30)
 def photo(name,w,h,r=12):
-    image=ImageOps.fit(Image.open(ROOT/"public/images/specialists"/name).convert("RGBA"),(round(w*S),round(h*S)),method=Image.Resampling.LANCZOS)
+    image=ImageOps.fit(Image.open(ROOT/"public/images/specialists"/name).convert("RGBA"),(round(w*S),round(h*S)),method=Image.Resampling.LANCZOS,centering=(.5,.22) if "optician-client" in name else (.5,.5))
     mask=Image.new("L",image.size);ImageDraw.Draw(mask).rounded_rectangle((0,0,*image.size),radius=round(r*S),fill=255)
     image.putalpha(mask);return image
 
@@ -141,9 +141,6 @@ def search_scene(im,u,m):
         v.paint_cursor(card,(w-44,h-43),u,3.45,origin=(w-158,h-104))
     x=(W-w)/2;y=(280 if m else 219)+(1-grow)*24
     place(im,card,x,y,alpha=ease(u/.2))
-    # Short closing push into the send action.
-    if u>4.2:
-        overlay=layer(W,H);overlay.alpha_composite(card,(round(x*S),round(y*S)))
     return im
 
 def confirm_scene(im,u,m):
@@ -152,18 +149,19 @@ def confirm_scene(im,u,m):
         heading(im,["Câteva răspunsuri.","Mai multă claritate."],W/2,55,33,True,u)
         x,y,w,h=40,233,460,338
     else:
-        heading(im,["Câteva răspunsuri.","Mai multă claritate."],56,95,36,False,u)
+        heading(im,["Răspunsuri scurte.","Mai multă claritate."],56,95,30,False,u)
         x,y,w,h=391,116,492,333
     card=window(w,h)
     txt(card,"Am înțeles că ai nevoie",24,80,24,800)
     txt(card,"de un control de vedere.",24,114,24,800)
-    card.alpha_composite(choice("Da, continuă",w-48,u>=1.55),(24*S,177*S))
     card.alpha_composite(choice("Aleg altă nevoie",w-48),(24*S,251*S))
     place(im,card,x+(1-p)*30,y+(1-p)*15,alpha=p)
     focus=ease((u-1.55)/.38)
+    selected=choice("Da, continuă",round(w-48+((430 if m else 370)-(w-48))*focus),u>=1.55,62+7*focus)
+    cx=x+24+((55 if m else 480)-(x+24))*focus
+    cy=y+177+((448 if m else 298)-(y+177))*focus
+    place(im,selected,cx,cy,1+.035*focus,p,shade=focus>0)
     if focus>0:
-        selected=choice("Da, continuă",430 if m else 370,True,69)
-        place(im,selected,55 if m else 480,448 if m else 298,1+.035*focus,focus)
         place(im,badge("Nevoia e confirmată"),155 if m else 306,565 if m else 408,alpha=ease((u-1.9)/.28))
     v.paint_cursor(im,(x+w-54,y+207),u,1.55,(x+w-155,y+138))
     return im
@@ -177,12 +175,13 @@ def person_scene(im,u,m):
     for n,value in enumerate(["Pentru mine","Pentru copilul meu","Pentru altcineva"]):
         yy=120+n*73 if m else 112+n*62
         row=choice(value,w-48,n==0 and u>=1.27,61 if m else 54)
-        card.alpha_composite(row,(24*S,yy*S))
+        if n>0:card.alpha_composite(row,(24*S,yy*S))
     place(im,card,x,y+(1-ease(u/.35))*20,alpha=ease(u/.35))
     focus=ease((u-1.27)/.35)
-    if focus:
-        front=choice("Pentru mine",384 if m else 348,True,70)
-        place(im,front,x+38 if m else x-24,y+110,1+.035*focus,focus)
+    front=choice("Pentru mine",round(w-48+((384 if m else 348)-(w-48))*focus),u>=1.27,(61 if m else 54)+9*focus)
+    fx=x+24+(14 if m else -48)*focus
+    fy=y+(120 if m else 112)-2*focus
+    place(im,front,fx,fy,1+.035*focus,ease(u/.35),shade=focus>0)
     v.paint_cursor(im,(x+w-54,y+(150 if m else 139)),u,1.27)
     return im
 
@@ -256,11 +255,11 @@ def results_scene(im,u,m):
 def profile_scene(im,u,m):
     W,H=im.width/S,im.height/S
     heading(im,["Un profil clar.","Următorul pas e al tău."] if m else ["Un profil clar. Următorul pas e al tău."],W/2,50,31 if m else 34,True,u)
-    w,h=(468,397) if m else (685,330);x=(W-w)/2;y=228 if m else 154
+    w,h=(468,437) if m else (685,330);x=(W-w)/2;y=214 if m else 154
     card=window(w,h)
-    pw,ph=(w-40,158) if m else (276,236)
+    pw,ph=(w-40,183) if m else (276,236)
     card.alpha_composite(photo("optician-client-editorial-v1.webp",pw,ph,12),(20*S,67*S))
-    tx,ty=(24,239) if m else (323,73)
+    tx,ty=(24,265) if m else (323,73)
     txt(card,"Lunear Optic Store",tx,ty,27 if m else 24,800)
     txt(card,"Optică medicală",tx,ty+42,17,600,MUTED)
     pin(card,tx+9,ty+91,BLUE,7);txt(card,"Cluj-Napoca",tx+30,ty+74,18,650)
@@ -273,7 +272,7 @@ def profile_scene(im,u,m):
     place(im,card,x,y+(1-ease(u/.4))*22,alpha=ease(u/.4))
     if u>.8:
         if m:
-            b=badge("Compari. Apoi alegi.",254);place(im,b,143,627,alpha=ease((u-.8)/.3))
+            b=badge("Compari. Apoi alegi.",254);place(im,b,143,649,alpha=ease((u-.8)/.3))
         else:
             b=layer(257,93);rr(b,(0,0,257,93),14,"#fffefa")
             circle(b,31,45,15,"#e6ebd9");check(b,31,45,"#536c3c",8)
