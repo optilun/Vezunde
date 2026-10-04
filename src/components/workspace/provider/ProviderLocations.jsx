@@ -858,7 +858,7 @@ export default function ProviderLocations({
                   icon={Users}
                   tone={CONFIGURE_TONES.specialisti}
                   title="Specialiști"
-                  text="Invită specialiștii asociați acestei locații."
+                  text="Specialiștii afișați, invitațiile și cererile „Lucrez aici”."
                   onClick={() =>
                     onOpenModule?.("specialisti", selectedLocation.id)
                   }

@@ -801,7 +801,7 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
         </div>
       ) : (
         <div className="mt-5 border-y border-dashed border-[#171717]/15 py-6 text-sm text-[#706c64]">
-          Organizația nu are încă locații disponibile în workspace.
+          Organizația nu are încă locații disponibile în cont.
         </div>
       )}
     </section>

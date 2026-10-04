@@ -132,7 +132,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
         <div className="border-t border-border/70 px-4 py-5 sm:px-5">
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold">Locația sursa</label>
+              <label className="text-xs font-semibold">Locația sursă</label>
               <select
                 value={sourceId}
                 onChange={(event) => {

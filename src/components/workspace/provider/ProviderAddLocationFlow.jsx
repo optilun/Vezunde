@@ -35,7 +35,7 @@ function CandidateCard({ item, loading, onOpenExisting, onRequestExisting, onCon
   const otherOrganization = item.relation === "other_organization" || (item.organization_id && !sameOrganization);
   const reasons = Array.isArray(item.reasons) ? item.reasons : [];
   const exactPhone = reasons.includes("telefon identic");
-  const exactAddress = reasons.includes("aceeași adresa") || reasons.includes("aceeași adresă");
+  const exactAddress = reasons.includes("aceeasi adresa") || reasons.includes("aceeași adresă");
   const strong = item.confidence === "high" || exactPhone || exactAddress || Number(item.score || 0) >= 72;
   const recommendationLabel = sameOrganization
     ? "Deja în organizația ta"
@@ -66,7 +66,7 @@ function CandidateCard({ item, loading, onOpenExisting, onRequestExisting, onCon
           )}
           {otherOrganization && (
             <p className="mt-3 text-xs leading-relaxed text-amber-900">
-              Poți solicita asocierea. Administratorul va verifică organizația actuală și va decide dacă profilul poate fi transferat.
+              Poți solicita asocierea. Administratorul va verifica organizația actuală și va decide dacă profilul poate fi transferat.
             </p>
           )}
         </div>
@@ -235,7 +235,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card"><Building2 className="h-4 w-4" /></div>
             <div>
-              <div className="text-sm font-bold">Organizatie: {organizationName || "Organizația ta"}</div>
+              <div className="text-sm font-bold">Organizație: {organizationName || "Organizația ta"}</div>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">O locație nouă sau un profil existent aprobat va fi asociat acestei organizații.</p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-heading text-lg font-bold">2. Recomandări VIASEE</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Afișăm maximum trei potriviri, ordonate după relevanta.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Afișăm maximum trei potriviri, ordonate după relevanță.</p>
               </div>
               <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{candidates.length} rezultate</span>
             </div>
@@ -282,9 +282,9 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             ) : searched && !loading ? (
               <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/25 p-5 text-center">
                 <MapPin className="mx-auto h-6 w-6 text-muted-foreground" />
-                <p className="mt-2 text-sm font-semibold">Nu am găsit o potrivire relevanta</p>
+                <p className="mt-2 text-sm font-semibold">Nu am găsit o potrivire relevantă</p>
                 <p className="mt-1 text-xs text-muted-foreground">Poți continua cu o locație nouă. Verificarea finală va fi făcută și de administrator.</p>
-                <button type="button" onClick={beginNew} className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Continua cu locația nouă</button>
+                <button type="button" onClick={beginNew} className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Continuă cu locația nouă</button>
               </div>
             ) : (
               <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/25 p-5 text-center">
@@ -362,7 +362,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Send className="h-4 w-4" /></div>
                 <div>
                   <h2 className="text-sm font-bold">3. Trimitere spre verificare</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locația nu devine publica imediat. Mai întâi este verificată de echipa VIASEE.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locația nu devine publică imediat. Mai întâi este verificată de echipa VIASEE.</p>
                 </div>
               </div>
               <div className="mt-4 space-y-2 text-xs text-muted-foreground">
