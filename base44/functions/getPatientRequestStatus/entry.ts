@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { findPatientRequestContactForToken } from '../../shared/patientRequestAccessGrant.js';
 import {
   PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
   sanitizePatientProviderResponse,
@@ -56,12 +57,6 @@ function retentionExpired(contact) {
   return Number.isFinite(retentionUntil) && retentionUntil <= Date.now();
 }
 
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(String(value || ''));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 async function resolveRequest(svc, requestId, publicReference) {
   if (requestId) return svc.entities.PatientRequest.get(requestId).catch(() => null);
   if (!publicReference) return null;
@@ -72,13 +67,8 @@ async function resolveRequest(svc, requestId, publicReference) {
 async function authorizeRequest(svc, requestId, publicReference, accessToken) {
   const request = await resolveRequest(svc, requestId, publicReference);
   if (!request) return { error: 'Cererea nu a fost gasita.', status: 404 };
-  const tokenHash = await sha256(accessToken);
-  const contacts = await svc.entities.PatientRequestContact.filter({
-    request_id: request.id,
-    access_token_hash: tokenHash,
-    status: 'active',
-  }, null, 2);
-  const contact = contacts[0];
+  // 2026-10-04: linkul din email sau accesul cerut din contul pacientului (pasul 5).
+  const contact = await findPatientRequestContactForToken(svc, request.id, accessToken, null);
   if (!contact || retentionExpired(contact)) return { error: 'Accesul la cerere nu este valid sau a expirat.', status: 403 };
   return { request, contact };
 }
