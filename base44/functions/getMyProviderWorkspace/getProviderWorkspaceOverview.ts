@@ -5,8 +5,8 @@ import {
   getManyByIds,
   loadLocationContentIndex,
   rowsFor,
-  countApprovedServiceKeys,
 } from '../../shared/providerWorkspaceBatchQueries.js';
+import { countApprovedServiceKeys, splitApprovedServiceCounts } from '../../shared/providerServiceCounts.js';
 // 2026-10-04 (audit cont organizatie, #5): completarea locatiilor se calculeaza cu aceeasi regula ca
 // in „Cereri → Cont” (getProviderProfileCompleteness), ca aceeasi locatie sa nu mai apara cu 100%,
 // 90% si 0% in locuri diferite.
@@ -109,9 +109,12 @@ function getLocationContentSummary(contentIndex, location, userId) {
   const approvedMediaReferences = new Set(media.map((asset) => clean(asset.storage_reference)).filter(Boolean));
   const primaryPhoto = clean(location.photo_url);
   if (primaryPhoto) approvedMediaReferences.add(primaryPhoto);
+  const serviceSplit = splitApprovedServiceCounts(services, specialties);
 
   return {
     approved_service_count: countApprovedServiceKeys(services, specialties),
+    approved_offer_service_count: serviceSplit.services,
+    approved_location_option_count: serviceSplit.location_options,
     pending_service_review_count: pendingCount('services'),
     approved_public_team_count: team.length,
     pending_team_review_count: pendingCount('team'),
@@ -130,6 +133,8 @@ function getAggregateContentSummary(contentIndex, locations, userId) {
   const summaries = locations.map((location) => getLocationContentSummary(contentIndex, location, userId));
   return summaries.reduce((total, summary) => ({
     approved_service_count: total.approved_service_count + summary.approved_service_count,
+    approved_offer_service_count: total.approved_offer_service_count + summary.approved_offer_service_count,
+    approved_location_option_count: total.approved_location_option_count + summary.approved_location_option_count,
     pending_service_review_count: total.pending_service_review_count + summary.pending_service_review_count,
     approved_public_team_count: total.approved_public_team_count + summary.approved_public_team_count,
     pending_team_review_count: total.pending_team_review_count + summary.pending_team_review_count,
@@ -143,6 +148,8 @@ function getAggregateContentSummary(contentIndex, locations, userId) {
     locations_with_photo: total.locations_with_photo + (summary.has_primary_photo ? 1 : 0),
   }), {
     approved_service_count: 0,
+    approved_offer_service_count: 0,
+    approved_location_option_count: 0,
     pending_service_review_count: 0,
     approved_public_team_count: 0,
     pending_team_review_count: 0,

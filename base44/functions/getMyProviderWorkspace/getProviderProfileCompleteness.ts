@@ -5,7 +5,8 @@ import {
   computeOrganizationCompleteness,
   summarizeProviderCompleteness,
 } from '../../shared/providerProfileCompleteness.js';
-import { loadLocationContentIndex, rowsFor, countApprovedServiceKeys } from '../../shared/providerWorkspaceBatchQueries.js';
+import { loadLocationContentIndex, rowsFor } from '../../shared/providerWorkspaceBatchQueries.js';
+import { countApprovedServiceKeys } from '../../shared/providerServiceCounts.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });

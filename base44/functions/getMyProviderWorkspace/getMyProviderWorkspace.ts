@@ -13,8 +13,8 @@ import {
   groupRowsBy,
   loadLocationContentIndex,
   rowsFor,
-  countApprovedServiceKeys,
 } from '../../shared/providerWorkspaceBatchQueries.js';
+import { countApprovedServiceKeys } from '../../shared/providerServiceCounts.js';
 
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
