@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { isLocationPubliclyVisible } from "@/lib/providerLocationVisibility";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 import { ProviderAccessStateProvider } from "./ProviderAccessContext";
 import { getProviderNav } from "@/lib/workspaceNav";

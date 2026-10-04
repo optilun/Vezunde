@@ -14,6 +14,8 @@ export default function ProviderAppShell({
   user,
   onLogout,
   publicProfileUrl = "",
+  // 2026-10-04 (audit #4): pentru o locație nepublică nu mai trimitem la „Furnizorul nu a fost găsit”.
+  publicProfileAvailable = true,
   title,
   subtitle = "",
   statusBadge = null,
@@ -143,7 +145,15 @@ export default function ProviderAppShell({
                   locationId={providerLocationId}
                 />
               )}
-              {publicProfileUrl && (
+              {publicProfileUrl && !publicProfileAvailable && (
+                <span
+                  title="Locația selectată nu are acum pagină publică: e închisă, ascunsă sau încă în verificare."
+                  className="inline-flex min-h-11 items-center px-2 text-xs text-muted-foreground sm:text-sm"
+                >
+                  Profil nepublicat
+                </span>
+              )}
+              {publicProfileUrl && publicProfileAvailable && (
                 <Link
                   to={publicProfileUrl}
                   className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:text-sm"
