@@ -31,6 +31,11 @@ const expectedLogicalNames = [
   // 2026-10-04 (structura conturilor, pasul 4): ofertele Enterprise.
   'providerEnterpriseOfferOps',
   'providerOrganizationLeadInboxOps',
+  // 2026-10-04 (structura conturilor, pasul 5): contul personal (cerere deschisa din cont,
+  // notificari, salvate).
+  'openMyPatientRequest',
+  'myPatientNotificationsOps',
+  'mySavedItemsOps',
 ].sort();
 const logicalNames = Object.keys(PROVIDER_WORKSPACE_FUNCTION_ROUTES).sort();
 
