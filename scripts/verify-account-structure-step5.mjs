@@ -93,7 +93,11 @@ function fakeDb(tables) {
   assert.equal(grants[0].token_hash, 'b'.repeat(64), 'cel nou primul');
   assert.equal(Date.parse(grants[0].expires_at) - now, ACCOUNT_ACCESS_GRANT_TTL_MS, '30 de zile');
 
-  const db = fakeDb({ PatientRequestContact: [structuredClone(contact), { id: 'c2', request_id: 'r2', status: 'active', access_token_hash: await sha256Hex('r2-token') }] });
+  // Cautarea in baza de date foloseste ora reala.
+  const live = structuredClone(contact);
+  live.account_access_grants[0].expires_at = new Date(Date.now() + 60000).toISOString();
+  live.account_access_grants[1].expires_at = new Date(Date.now() - 60000).toISOString();
+  const db = fakeDb({ PatientRequestContact: [live, { id: 'c2', request_id: 'r2', status: 'active', access_token_hash: await sha256Hex('r2-token') }] });
   const svc = { entities: db.entities };
   assert.equal((await findPatientRequestContactForToken(svc, 'r1', 'link-token'))?.id, 'c1');
   assert.equal((await findPatientRequestContactForToken(svc, 'r1', 'account-token'))?.id, 'c1');
