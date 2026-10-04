@@ -478,7 +478,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
           <section className="provider-hours-section">
             <div className="mb-3 flex items-center gap-2">
               <CalendarDays className="h-4 w-4" />
-              <h2 className="text-sm font-bold">Preview public</h2>
+              <h2 className="text-sm font-bold">Cum apare public</h2>
             </div>
             <div className="provider-hours-preview">
               <div>
