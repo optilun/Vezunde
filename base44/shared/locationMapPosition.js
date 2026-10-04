@@ -28,13 +28,47 @@ export function locationPrecisionError(payload = {}, clean = payload) {
 
 const normalizedAddress = value => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ro-RO");
 
+
+export function locationLocalityFields(geo = {}) {
+  return {
+    locality_siruta_code: String(geo.siruta_code || "").trim(),
+    city: String(geo.name || "").trim(),
+    locality_name: String(geo.name || "").trim(),
+    county: String(geo.county_name || "").trim(),
+    county_name: String(geo.county_name || "").trim(),
+    county_code: String(geo.county_code || "").trim(),
+    uat_code: String(geo.uat_code || "").trim(),
+    uat_name: String(geo.uat_name || "").trim(),
+  };
+}
+
+export function locationAddressChanged(payload = {}, current = {}) {
+  const fields = [["address", "address"], ["city", "locality_name"], ["county", "county_name"], ["locality_siruta_code", "locality_siruta_code"]];
+  return fields.some(([key, canonical]) => key in payload
+    && normalizedAddress(payload[key]) !== normalizedAddress(current[canonical] || current[key]));
+}
+
+// Street/locality edits discard the old pin and Google reference immediately in forms.
+export function resetLocationAddressPosition(current = {}, changes = {}) {
+  if (!locationAddressChanged(changes, current)) return { ...current, ...changes };
+  return { ...current, ...changes, lat: null, lng: null, place_id: "", map_precision: "approximate" };
+}
+
 export function locationMapApprovalFields(payload = {}, current = {}) {
   const merged = { ...current, ...payload };
   const before = locationCoordinates(current);
   const after = locationCoordinates(merged);
-  const changed = ("address" in payload && normalizedAddress(payload.address) !== normalizedAddress(current.address))
-    || (("lat" in payload || "lng" in payload) && (before?.lat !== after?.lat || before?.lng !== after?.lng));
-  if (!after || payload.map_precision === "approximate") return { map_precision: "approximate" };
-  if (payload.map_precision === "exact") return { map_precision: "exact" };
-  return changed ? { map_precision: "approximate" } : {};
+  const addressChanged = locationAddressChanged(payload, current);
+  const pointChanged = ("lat" in payload || "lng" in payload) && (before?.lat !== after?.lat || before?.lng !== after?.lng);
+  const reset = addressChanged ? {
+    place_id: "", geocode_source: "", geocoded_address: "", geocoded_at: null,
+    geocode_attempt_count: 0, geocode_attempt_signature: "", geocode_review_status: "none",
+  } : {};
+  // A legacy full payload often repeats old coordinates: these are not the new address.
+  if (addressChanged && payload.map_precision !== "exact" && !pointChanged) {
+    return { ...reset, lat: null, lng: null, map_precision: "approximate" };
+  }
+  if (!after || payload.map_precision === "approximate") return { ...reset, map_precision: "approximate" };
+  if (payload.map_precision === "exact") return { ...reset, map_precision: "exact" };
+  return { ...reset, ...(pointChanged ? { map_precision: "approximate" } : {}) };
 }
