@@ -122,7 +122,8 @@ def paint_cursor(im,dest,u,click_at,origin=None):
 def background(mobile):
     w,h=(540,720) if mobile else (960,540)
     im=Image.new("RGBA",(w*S,h*S),"#4650df")
-    d=ImageDraw.Draw(im)
+    texture=Image.new("RGBA",im.size)
+    d=ImageDraw.Draw(texture)
     # Fine woven/stipple surface at native resolution, with restrained contrast.
     random.seed(41)
     for y in range(0,h*S,5):
@@ -130,6 +131,7 @@ def background(mobile):
             k=random.randrange(3)
             color=[(255,255,255,13),(14,20,90,15),(255,255,255,6)][k]
             d.line((x,y,x+1,y+1),fill=color,width=1)
+    im=Image.alpha_composite(im,texture)
     overlay=Image.new("RGBA",im.size)
     # Optical rings form the artwork around the UI, never behind text.
     cx,cy=(35,460) if mobile else (85,340)
@@ -159,7 +161,7 @@ def map_art(im,x,y,w,h,p=1):
         [(x,y+h*.26),(x+w*.45,y+h*.31),(x+w*.8,y+h*.13)],
     ]:line(im,points,"#ffffff",9)
     line(im,[(x+20,y+h-20),(x+w*.35,y+h*.42),(x+w*.72,y+h*.5)],"#c8cda8",2)
-    circle(im,x+w*.51,y+h*.48,30*p,(68,84,232,28))
+    circle(im,x+w*.51,y+h*.48,30*p,"#dce0e9")
     circle(im,x+w*.51,y+h*.48,18*p,BLUE)
     pin(im,x+w*.51,y+h*.48-4,"white",6)
     for dx,dy in [(.22,.32),(.78,.66)]:
@@ -192,9 +194,9 @@ def scene(index,u,mobile):
         content="Vreau un control de vedere"
         typed=content[:round(len(content)*clamp((u-.45)/1.45))]
         tx,ty=48,box_y+26
-        if mobile and len(typed)>21:
-            txt(im,typed[:21],tx,ty,23,550);txt(im,typed[21:].lstrip(),tx,ty+34,23,550)
-            caret_x=tx+label(typed[21:].lstrip(),23,550).width/S;caret_y=ty+35
+        if mobile and len(typed)>20:
+            txt(im,typed[:20],tx,ty,23,550);txt(im,typed[20:].lstrip(),tx,ty+34,23,550)
+            caret_x=tx+label(typed[20:].lstrip(),23,550).width/S;caret_y=ty+35
         else:
             txt(im,typed,tx,ty,23,550);caret_x=tx+label(typed,23,550).width/S;caret_y=ty
         if u<2.3 and int(u*3)%2==0:line(im,[(caret_x+2,caret_y+6),(caret_x+2,caret_y+28)],BLUE,2)
@@ -255,7 +257,7 @@ def scene(index,u,mobile):
         names=[("Avantaj Optik","Str. Napoca nr. 7"),("Gama Optic","Cluj · Aushopping")]
         for n,(name,address) in enumerate(names):
             progress=ease((u-.2-n*.14)/.32)
-            yy=y+n*(114 if mobile else 94)+(1-progress)*20
+            yy=y+n*(114 if mobile else 83)+(1-progress)*20
             rh=99 if mobile else 81
             if progress<=0:continue
             selected=n==0 and u>=3.05
@@ -266,7 +268,7 @@ def scene(index,u,mobile):
             circle(im,28+cw-28,yy+rh-27,17,BLUE if selected else INK)
             arrow(im,28+cw-28,yy+rh-27,size=7)
         if not mobile:
-            map_art(im,416,166,316,172,ease((u-.4)/.55))
+            map_art(im,416,166,316,161,ease((u-.4)/.55))
         dest=(28+cw-28,y+(99 if mobile else 81)-27);click_at=3.05
     else:
         if mobile:
@@ -321,7 +323,7 @@ def frame(t,mobile):
     for n in range(3):
         length=54 if mobile else 105
         rr(im,(x0+n*(length+10),y,x0+n*(length+10)+length,y+3),1,"#f9f8f0" if n==chapter else "#8189eb")
-    if not mobile:txt(im,"DE LA O ÎNTREBARE, LA OPȚIUNILE TALE.",445,508,11,650,"#dfe2ff")
+    # Bottom-right area is reserved for accessible player controls.
     return im.convert("RGB")
 
 def render(mobile):
