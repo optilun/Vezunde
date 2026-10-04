@@ -87,6 +87,7 @@ export async function handle(req: Request) {
         name: locationLabel(item),
         locality: item.locality_name || item.city || '',
         profile_control_status: item.profile_control_status || item.verification_state || '',
+        active: item.active_status !== 'inactiva' && item.status !== 'suspendata',
         completion,
       };
     });
@@ -95,7 +96,8 @@ export async function handle(req: Request) {
     const organizationCompletion = computeOrganizationCompleteness(organization || {});
     const summary = summarizeProviderCompleteness({
       organizationCompletion,
-      locationCompletions: locationRows.map((item) => item.completion),
+      // 2026-10-04 (audit #5): media se face pe locatiile active, ca in Prezentare.
+      locationCompletions: locationRows.filter((item) => item.active).map((item) => item.completion),
     });
     return res({
       selected_location_id: location.id,
