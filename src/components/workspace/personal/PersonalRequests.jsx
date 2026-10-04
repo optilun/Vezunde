@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, ClipboardList, MapPin, MessageSquareText } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, CalendarDays, ClipboardList, Loader2, MapPin, MessageSquareText } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { INTENTS } from "@/lib/intentRegistry";
 import { readPatientRequestResumeAccess } from "@/lib/patientRequestPersistenceClient";
+import { openMyPatientRequest } from "@/lib/openMyPatientRequest";
 import { readableErrorMessage } from "@/lib/transientRetry";
 import { patientRequestLifecycle, patientRequestResponseLabel } from "@/lib/myPatientRequests";
 
@@ -20,12 +21,26 @@ function formatDate(value) {
 }
 
 function PatientRequestRow({ request }) {
+  const navigate = useNavigate();
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState("");
   const status = patientRequestLifecycle(request);
   const sentAt = formatDate(request.submitted_at || request.created_date);
   const place = request.location_scope === "national" ? "Toată țara" : (request.city || request.county || "");
-  // Pagina cererii se deschide cu linkul securizat. Daca acest browser il are salvat, ducem
-  // utilizatorul direct acolo; altfel spunem de unde il poate deschide.
+  // Daca acest browser are deja accesul cererii (din link sau dintr-o deschidere anterioara),
+  // mergem direct. Altfel, din 2026-10-04 (pasul 5), contul cere un acces nou, fara email.
   const canOpenHere = Boolean(request.public_reference && readPatientRequestResumeAccess(request.public_reference)?.access_token);
+  const openFromAccount = async () => {
+    if (opening) return;
+    setOpening(true);
+    setOpenError("");
+    try {
+      navigate(await openMyPatientRequest(request.id));
+    } catch (error) {
+      setOpenError(error.message);
+      setOpening(false);
+    }
+  };
   return (
     <article className="rounded-[20px] border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -49,10 +64,12 @@ function PatientRequestRow({ request }) {
             Deschide cererea <ArrowRight className="h-4 w-4" />
           </Link>
         ) : (
-          <p className="rounded-xl border border-border bg-secondary/35 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-            Pe acest dispozitiv, deschide cererea din emailul primit după trimitere. Linkul securizat al cererii nu este salvat în acest browser.
-          </p>
+          <button type="button" onClick={() => void openFromAccount()} disabled={opening} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary disabled:opacity-60 sm:w-auto">
+            {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Deschide cererea {opening ? null : <ArrowRight className="h-4 w-4" />}
+          </button>
         )}
+        {openError && <p role="alert" className="mt-2 text-xs text-red-800">{openError}</p>}
       </div>
     </article>
   );
