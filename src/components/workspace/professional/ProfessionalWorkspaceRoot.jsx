@@ -15,7 +15,7 @@ import {
   UserRound,
   XCircle,
 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 const ProfessionalProfileEditor = lazy(() => import("./ProfessionalProfileEditor"));
@@ -397,6 +397,35 @@ function Overview({ workspace, onNavigate, onRefresh }) {
   );
 }
 
+// 2026-10-04 (structura conturilor, pasul 5). Specialistul cu cabinet propriu își creează o
+// organizație de tip cabinet prin fluxul obișnuit de locație nouă (verificat de VIASEE). După
+// aprobare devine Proprietar și se afișează ca specialist din pagina „Specialiști” a locației.
+// Cererile pacienților ajung la cabinet (locație), nu la persoană.
+function OwnPracticeCard() {
+  return (
+    <section className="rounded-3xl border border-border bg-accent/40 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card"><Building2 className="h-4 w-4" /></div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold">Ai cabinet propriu?</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Adaugă-l ca locație nouă. După verificarea VIASEE devii proprietarul cabinetului și te poți afișa acolo ca specialist dintr-un clic, din pagina „Specialiști” a locației. Cererile pacienților ajung la cabinet.
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/adauga-sau-revendica"
+          state={{ startFlow: "new_location" }}
+          className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background hover:opacity-90 sm:w-auto"
+        >
+          Adaugă cabinetul <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function consentPresentation(assignment) {
   if (assignment.public_status === "public" && assignment.visibility_consent_status === "accepted") {
     return { label: "Public", className: "bg-green-100 text-green-800" };
@@ -562,6 +591,7 @@ function Locations({ workspace, onRefresh }) {
           onRefresh={onRefresh}
         />
       </Suspense>
+      <OwnPracticeCard />
     </div>
   );
 }
