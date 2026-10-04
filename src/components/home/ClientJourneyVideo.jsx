@@ -43,20 +43,20 @@ export default function ClientJourneyVideo() {
       <video
         ref={videoRef}
         className="block aspect-[3/4] w-full object-contain sm:aspect-video"
-        src={mobile ? "/videos/client-journey-mobile-v5.mp4" : "/videos/client-journey-v5.mp4?v=5.1"}
-        poster={mobile ? "/videos/client-journey-mobile-v5-poster.jpg" : "/videos/client-journey-v5-poster.jpg"}
+        src={mobile ? "/videos/client-journey-mobile-v6.mp4" : "/videos/client-journey-v6.mp4"}
+        poster={mobile ? "/videos/client-journey-mobile-v6-poster.jpg" : "/videos/client-journey-v6-poster.jpg"}
         aria-label="Demonstrație VIASEE cu locații fictive"
         aria-describedby="client-journey-transcript"
         muted loop playsInline preload="none"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
       >
-        <track kind="captions" src="/videos/client-journey-ro-v5.vtt" srcLang="ro" label="Română" />
+        <track kind="captions" src="/videos/client-journey-ro-v6.vtt" srcLang="ro" label="Română" />
       </video>
       <button type="button" onClick={toggle}
         aria-label={playing ? "Pune demonstrația pe pauză" : "Redă demonstrația"}
         className="absolute inset-0 cursor-pointer bg-transparent outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white" />
-      <p id="client-journey-transcript" className="sr-only">Demonstrație cu locații fictive: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, compari opțiunile și vezi detaliile profilului. Finalul afișează logoul VIASEE și mesajul: Spui ce ai nevoie. Vezi unde poți merge. Lunear Optic Store și Lunear Studio sunt exemple demonstrative. Apasă pe video sau folosește Enter pentru redare și pauză.</p>
+      <p id="client-journey-transcript" className="sr-only">Demonstrație cu locații fictive: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, compari opțiunile și vezi detaliile profilului. Finalul afișează logoul VIASEE și mesajul: Spui ce ai nevoie. Vezi unde poți merge. Lunera Optic este o optică demonstrativă, iar Clinica Soft este o clinică demonstrativă de oftalmologie. Apasă pe video sau folosește Enter pentru redare și pauză.</p>
     </div>
   );
 }
