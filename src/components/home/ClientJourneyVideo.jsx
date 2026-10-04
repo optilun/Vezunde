@@ -66,7 +66,7 @@ export default function ClientJourneyVideo() {
     try {
       // Some static hosts stream MP4 without byte ranges. A local Blob makes
       // chapter seeking reliable there, downloaded only after an explicit click.
-      if (time > 0 && (!video.seekable.length || video.seekable.end(video.seekable.length - 1) < time)) {
+      if (time > 0 && !video.currentSrc.startsWith("blob:")) {
         sourceRequest.current?.abort();
         const controller = new AbortController();
         sourceRequest.current = controller;
