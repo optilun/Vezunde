@@ -7,7 +7,7 @@ function operationId() {
 }
 
 function displayName(location) {
-  return location.public_display_name || location.name || "Locatie";
+  return location.public_display_name || location.name || "Locație";
 }
 
 function displayPlace(location) {
@@ -119,9 +119,9 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
             <Copy className="h-4 w-4" />
           </span>
           <span>
-            <strong className="block text-sm">Copiaza programul intre locatii</strong>
+            <strong className="block text-sm">Copiază programul între locații</strong>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              Selectezi explicit sursa si locatiile tinta. Nimic nu se copiaza automat.
+              Selectezi explicit sursa și locațiile țintă. Nimic nu se copiază automat.
             </span>
           </span>
         </span>
@@ -132,7 +132,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
         <div className="border-t border-border/70 px-4 py-5 sm:px-5">
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold">Locatia sursa</label>
+              <label className="text-xs font-semibold">Locația sursa</label>
               <select
                 value={sourceId}
                 onChange={(event) => {
@@ -152,7 +152,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
 
             <div>
               <div className="flex items-center justify-between gap-3">
-                <label className="text-xs font-semibold">Locatii tinta</label>
+                <label className="text-xs font-semibold">Locații țintă</label>
                 <span className="text-[11px] text-muted-foreground">{targetIds.length} selectate</span>
               </div>
               <div className="mt-2 grid gap-2">
@@ -206,7 +206,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
                         {target.locality && <div className="text-xs text-muted-foreground">{target.locality}</div>}
                       </div>
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">
-                        {target.has_existing_schedule ? "Program existent" : "Fara program"}
+                        {target.has_existing_schedule ? "Program existent" : "Fără program"}
                       </span>
                     </div>
                     {target.current_opening_hours && (
@@ -225,9 +225,9 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
                     className="mt-0.5 h-4 w-4"
                   />
                   <span>
-                    <strong className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Confirm inlocuirea</strong>
+                    <strong className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Confirm înlocuirea</strong>
                     <span className="mt-1 block text-xs leading-relaxed">
-                      Programul existent al locatiilor marcate va fi inlocuit. Serviciile, specialistii, datele de contact si publicarea nu sunt afectate.
+                      Programul existent al locațiilor marcate va fi înlocuit. Serviciile, specialiștii, datele de contact și publicarea nu sunt afectate.
                     </span>
                   </span>
                 </label>
@@ -241,7 +241,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Confirma si copiaza
+                  Confirmă și copiază
                 </button>
                 <button
                   type="button"
@@ -259,7 +259,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
 
           {result && (
             <div className="mt-5 rounded-2xl border border-border bg-background p-4">
-              <strong className="text-sm">Rezultatul operatiei</strong>
+              <strong className="text-sm">Rezultatul operației</strong>
               <div className="mt-3 grid gap-2">
                 {result.results.map((item) => (
                   <div key={item.location_id} className="flex items-start justify-between gap-3 text-sm">

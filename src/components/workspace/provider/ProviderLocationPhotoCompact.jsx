@@ -18,7 +18,7 @@ function readImage(file) {
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Imaginea nu poate fi citita."));
+      reject(new Error("Imaginea nu poate fi citită."));
     };
     image.src = url;
   });
@@ -28,7 +28,7 @@ function canvasToBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error("Fotografia nu a putut fi optimizata."));
+        reject(new Error("Fotografia nu a putut fi optimizată."));
         return;
       }
       resolve(blob);
@@ -59,7 +59,7 @@ async function optimizeLocationPhoto(file, locationId) {
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("Fotografia nu a putut fi procesata.");
+  if (!context) throw new Error("Fotografia nu a putut fi procesată.");
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
   context.drawImage(image, sx, sy, sw, sh, 0, 0, width, height);
@@ -81,7 +81,7 @@ async function optimizeLocationPhoto(file, locationId) {
     }
   }
 
-  throw new Error("Fotografia ramane prea mare dupa optimizare.");
+  throw new Error("Fotografia rămâne prea mare după optimizare.");
 }
 
 export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) {
@@ -165,7 +165,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setMessage("Fotografia trebuie sa aiba maximum 4 MB.");
+      setMessage("Fotografia trebuie să aibă maximum 4 MB.");
       return;
     }
 
@@ -177,9 +177,9 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       setStagedFile(optimizedFile);
       setStagedPreview(localPreviewUrl);
       setUploadedAsset(null);
-      setMessage("Verifica fotografia. Fisierul nu este trimis pana nu salvezi draftul.");
+      setMessage("Verifică fotografia. Fișierul nu este trimis până nu salvezi draftul.");
     } catch (error) {
-      setMessage(error.message || "Fotografia nu a putut fi pregatita.");
+      setMessage(error.message || "Fotografia nu a putut fi pregătită.");
     } finally {
       setProcessing(false);
     }
@@ -193,10 +193,10 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
     try {
       let asset = uploadedAsset;
       if (!asset?.url || !asset?.id) {
-        setMessage("Fotografia se incarca si se inregistreaza...");
+        setMessage("Fotografia se încarcă și se înregistrează...");
         const uploadResponse = await base44.integrations.Core.UploadFile({ file: stagedFile });
         const photoUrl = String(uploadResponse?.file_url || "").trim();
-        if (!photoUrl) throw new Error("Incarcarea fotografiei nu a returnat un URL valid.");
+        if (!photoUrl) throw new Error("Încărcarea fotografiei nu a returnat un URL valid.");
 
         const registerResponse = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
           action: "register_upload",
@@ -205,7 +205,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
         });
         if (registerResponse.data?.error) throw new Error(registerResponse.data.error);
         asset = { id: registerResponse.data?.asset?.id, url: photoUrl };
-        if (!asset.id) throw new Error("Fisierul incarcat nu a putut fi inregistrat.");
+        if (!asset.id) throw new Error("Fișierul încărcat nu a putut fi înregistrat.");
         setUploadedAsset(asset);
       }
 
@@ -233,7 +233,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       setSubmission(nextSubmission);
       setPreview(asset.url);
       clearStaged();
-      setMessage("Draftul fotografiei a fost salvat. Verifica imaginea si trimite-o separat spre aprobare.");
+      setMessage("Draftul fotografiei a fost salvat. Verifică imaginea și trimite-o separat spre aprobare.");
       onRefresh?.();
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Draftul fotografiei nu a putut fi salvat.");
@@ -260,11 +260,11 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
         submission_id: submission.id,
       }).catch(() => null);
 
-      setMessage("Fotografia locatiei a fost trimisa spre verificare.");
+      setMessage("Fotografia locației a fost trimisă spre verificare.");
       await load();
       onRefresh?.();
     } catch (error) {
-      setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisa.");
+      setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisă.");
     } finally {
       setProcessing(false);
     }
@@ -273,7 +273,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   const discardDraft = async () => {
     if (stagedFile || stagedPreview) {
       clearStaged();
-      setMessage("Fotografia selectata a fost eliminata. Niciun fisier nu a fost incarcat.");
+      setMessage("Fotografia selectată a fost eliminată. Niciun fișier nu a fost încărcat.");
       return;
     }
     if (!submission?.id || !editableDraft) return;
@@ -288,7 +288,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       if (response.data?.error) throw new Error(response.data.error);
       setSubmission(null);
       setPreview("");
-      setMessage("Draftul fotografiei a fost retras. Fisierul a fost adaugat in coada de curatare.");
+      setMessage("Draftul fotografiei a fost retras. Fișierul a fost adăugat în coada de curățare.");
       onRefresh?.();
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Draftul nu a putut fi retras.");
@@ -300,7 +300,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   if (loading) {
     return (
       <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca...
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...
       </div>
     );
   }
@@ -309,20 +309,20 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
     <div className="space-y-4">
       <div>
         <div className="mb-2">
-          <div className="text-sm font-bold">Fotografie principala a locatiei</div>
+          <div className="text-sm font-bold">Fotografie principală a locației</div>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Alege fotografia, verifica previzualizarea, salveaza draftul si trimite-l separat spre aprobare.
+            Alege fotografia, verifică previzualizarea, salvează draftul și trimite-l separat spre aprobare.
           </p>
         </div>
 
         <div className="overflow-hidden rounded-[22px] border border-border bg-card">
           <div className="aspect-[4/3] max-h-[420px] bg-secondary/35">
             {shownPhoto ? (
-              <img src={shownPhoto} alt="Fotografia locatiei" className="h-full w-full object-cover" />
+              <img src={shownPhoto} alt="Fotografia locației" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                 <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm font-semibold">Adauga fotografia locatiei</p>
+                <p className="mt-3 text-sm font-semibold">Adaugă fotografia locației</p>
                 <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
                   Poate fi o imagine a fatadei, interiorului sau spatiului principal.
                 </p>
@@ -335,14 +335,14 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       {pending ? (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          Fotografia locatiei este in verificare. Fotografia publica actuala ramane neschimbata pana la aprobare.
+          Fotografia locației este în verificare. Fotografia publica actuală rămâne neschimbata până la aprobare.
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto || editableDraft ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${processing ? "pointer-events-none opacity-50" : ""}`}>
               {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-              {stagedFile ? "Alege alta fotografie" : editableDraft ? "Schimba fotografia din draft" : currentPhoto ? "Schimba fotografia locatiei" : "Alege fotografia locatiei"}
+              {stagedFile ? "Alege altă fotografie" : editableDraft ? "Schimbă fotografia din draft" : currentPhoto ? "Schimbă fotografia locației" : "Alege fotografia locației"}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -354,9 +354,9 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
                 }}
               />
             </label>
-            {currentPhoto && !preview && !stagedPreview && <span className="text-xs text-muted-foreground">Fotografie aprobata si publicata</span>}
-            {editableDraft && !stagedFile && <span className="text-xs font-semibold text-amber-800">Draft nestrimis</span>}
-            {stagedFile && <span className="text-xs font-semibold text-blue-800">Previzualizare locala, neincarcata</span>}
+            {currentPhoto && !preview && !stagedPreview && <span className="text-xs text-muted-foreground">Fotografie aprobată și publicată</span>}
+            {editableDraft && !stagedFile && <span className="text-xs font-semibold text-amber-800">Draft netrimis</span>}
+            {stagedFile && <span className="text-xs font-semibold text-blue-800">Previzualizare locală, neîncărcată</span>}
           </div>
 
           {(stagedFile || editableDraft) && (
@@ -372,7 +372,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
                 </button>
               )}
               <button type="button" disabled={processing} onClick={discardDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-destructive hover:bg-red-50 disabled:opacity-40">
-                <Trash2 className="h-4 w-4" /> {stagedFile ? "Renunta la selectie" : "Retrage draftul"}
+                <Trash2 className="h-4 w-4" /> {stagedFile ? "Renunță la selecție" : "Retrage draftul"}
               </button>
             </div>
           )}

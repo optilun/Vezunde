@@ -7,7 +7,7 @@ function operationId() {
 }
 
 function displayName(location) {
-  return location.public_display_name || location.name || "Locatie";
+  return location.public_display_name || location.name || "Locație";
 }
 
 function displayPlace(location) {
@@ -135,9 +135,9 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
             <Copy className="h-4 w-4" />
           </span>
           <span>
-            <strong className="block text-sm">Copiaza serviciile intre locatii</strong>
+            <strong className="block text-sm">Copiază serviciile între locații</strong>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              Operatia creeaza drafturi. Serviciile nu sunt publicate automat.
+              Operația creează drafturi. Serviciile nu sunt publicate automat.
             </span>
           </span>
         </span>
@@ -149,7 +149,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
           <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold">Locatia sursa</label>
+                <label className="text-xs font-semibold">Locația sursa</label>
                 <select
                   value={sourceId}
                   onChange={(event) => {
@@ -175,28 +175,28 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                     onClick={() => { setMode("merge"); resetPreview(); }}
                     className={`rounded-2xl border px-4 py-3 text-left ${mode === "merge" ? "border-foreground bg-secondary/45" : "border-border bg-background"}`}
                   >
-                    <strong className="block text-sm">Adauga serviciile lipsa</strong>
-                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Pastreaza serviciile deja configurate la destinatie.</span>
+                    <strong className="block text-sm">Adaugă serviciile lipsa</strong>
+                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Păstrează serviciile deja configurate la destinație.</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => { setMode("replace"); resetPreview(); }}
                     className={`rounded-2xl border px-4 py-3 text-left ${mode === "replace" ? "border-foreground bg-secondary/45" : "border-border bg-background"}`}
                   >
-                    <strong className="block text-sm">Aliniaza cu sursa</strong>
-                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Propune eliminarea serviciilor canonice care nu exista la sursa.</span>
+                    <strong className="block text-sm">Aliniază cu sursa</strong>
+                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Propune eliminarea serviciilor canonice care nu există la sursa.</span>
                   </button>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border bg-secondary/25 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-                Specialistii, echipamentele, facilitatile, programul si datele de contact nu se copiaza. Cheile legacy sau necunoscute nu sunt eliminate automat.
+                Specialiștii, echipamentele, facilitățile, programul și datele de contact nu se copiază. Cheile legacy sau necunoscute nu sunt eliminate automat.
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between gap-3">
-                <label className="text-xs font-semibold">Locatii tinta</label>
+                <label className="text-xs font-semibold">Locații țintă</label>
                 <span className="text-[11px] text-muted-foreground">{targetIds.length} selectate</span>
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -235,12 +235,12 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
               <div className="rounded-2xl border border-border bg-background p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="text-xs font-semibold text-muted-foreground">Configuratie sursa aprobata</div>
+                    <div className="text-xs font-semibold text-muted-foreground">Configurație sursa aprobată</div>
                     <div className="mt-1 text-sm font-bold">{preview.source.name}</div>
                     <p className="mt-2 text-xs text-muted-foreground">{preview.source.service_count} servicii canonice vor fi analizate pentru fiecare locatie tinta.</p>
                   </div>
                   {preview.source.has_unapproved_changes && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900">Draftul sursei nu se copiaza</span>
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900">Draftul sursei nu se copiază</span>
                   )}
                 </div>
               </div>
@@ -254,21 +254,21 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                         {target.locality && <div className="truncate text-xs text-muted-foreground">{target.locality}</div>}
                       </div>
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">
-                        {target.blocked ? "Necesita rezolvare" : target.has_active_draft ? "Draft existent" : "Pregatita"}
+                        {target.blocked ? "Necesită rezolvare" : target.has_active_draft ? "Draft existent" : "Pregătită"}
                       </span>
                     </div>
                     {target.blocked ? (
                       <p className="mt-3 text-xs leading-relaxed text-amber-950">{target.blocked_reason}</p>
                     ) : (
                       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded-xl bg-secondary/45 px-2 py-2"><strong className="block text-base">{target.added_count}</strong><span className="text-[10px] text-muted-foreground">Adaugate</span></div>
+                        <div className="rounded-xl bg-secondary/45 px-2 py-2"><strong className="block text-base">{target.added_count}</strong><span className="text-[10px] text-muted-foreground">Adăugate</span></div>
                         <div className="rounded-xl bg-secondary/45 px-2 py-2"><strong className="block text-base">{target.removed_count}</strong><span className="text-[10px] text-muted-foreground">Eliminate</span></div>
                         <div className="rounded-xl bg-secondary/45 px-2 py-2"><strong className="block text-base">{target.skipped_services.length}</strong><span className="text-[10px] text-muted-foreground">Incompatibile</span></div>
                       </div>
                     )}
                     {target.skipped_services.length > 0 && (
                       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                        Nu se copiaza aici: {target.skipped_services.slice(0, 3).map((item) => item.label).join(", ")}{target.skipped_services.length > 3 ? ` si inca ${target.skipped_services.length - 3}` : ""}.
+                        Nu se copiaza aici: {target.skipped_services.slice(0, 3).map((item) => item.label).join(", ")}{target.skipped_services.length > 3 ? ` și încă ${target.skipped_services.length - 3}` : ""}.
                       </p>
                     )}
                   </div>
@@ -277,7 +277,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
 
               {blockedCount > 0 && actionableTargets.length > 0 && (
                 <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950">
-                  {blockedCount} {blockedCount === 1 ? "locatie va fi omisa" : "locatii vor fi omise"}. Drafturile pot fi create pentru celelalte locatii.
+                  {blockedCount} {blockedCount === 1 ? "locație va fi omisă" : "locații vor fi omise"}. Drafturile pot fi create pentru celelalte locatii.
                 </p>
               )}
 
@@ -290,8 +290,8 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                     className="mt-0.5 h-4 w-4"
                   />
                   <span>
-                    <strong className="flex items-center gap-2"><FileEdit className="h-4 w-4" /> Confirm inlocuirea drafturilor mele</strong>
-                    <span className="mt-1 block text-xs leading-relaxed">Drafturile existente indicate in preview vor fi inlocuite cu configuratia rezultata din aceasta operatiune.</span>
+                    <strong className="flex items-center gap-2"><FileEdit className="h-4 w-4" /> Confirm înlocuirea drafturilor mele</strong>
+                    <span className="mt-1 block text-xs leading-relaxed">Drafturile existente indicate în preview vor fi înlocuite cu configurația rezultată din această operațiune.</span>
                   </span>
                 </label>
               )}
@@ -306,7 +306,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                   />
                   <span>
                     <strong className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Confirm alinierea serviciilor</strong>
-                    <span className="mt-1 block text-xs leading-relaxed">Serviciile canonice absente la sursa vor fi marcate pentru eliminare in draft. Nimic nu dispare public pana la trimiterea si aprobarea draftului.</span>
+                    <span className="mt-1 block text-xs leading-relaxed">Serviciile canonice absente la sursa vor fi marcate pentru eliminare în draft. Nimic nu dispare public până la trimiterea și aprobarea draftului.</span>
                   </span>
                 </label>
               )}
@@ -319,7 +319,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Creeaza drafturile
+                  Creează drafturile
                 </button>
                 <button
                   type="button"
@@ -337,8 +337,8 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
 
           {result && (
             <div className="mt-5 rounded-2xl border border-border bg-background p-4">
-              <strong className="text-sm">Rezultatul operatiei</strong>
-              <p className="mt-1 text-xs text-muted-foreground">Drafturile create trebuie verificate si trimise separat spre aprobare.</p>
+              <strong className="text-sm">Rezultatul operației</strong>
+              <p className="mt-1 text-xs text-muted-foreground">Drafturile create trebuie verificate și trimise separat spre aprobare.</p>
               <div className="mt-3 grid gap-2">
                 {result.results.map((item) => (
                   <div key={item.location_id} className="flex items-start justify-between gap-3 text-sm">

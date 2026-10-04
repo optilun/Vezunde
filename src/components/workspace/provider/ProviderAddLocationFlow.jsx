@@ -35,16 +35,16 @@ function CandidateCard({ item, loading, onOpenExisting, onRequestExisting, onCon
   const otherOrganization = item.relation === "other_organization" || (item.organization_id && !sameOrganization);
   const reasons = Array.isArray(item.reasons) ? item.reasons : [];
   const exactPhone = reasons.includes("telefon identic");
-  const exactAddress = reasons.includes("aceeasi adresa") || reasons.includes("aceeași adresă");
+  const exactAddress = reasons.includes("aceeași adresa") || reasons.includes("aceeași adresă");
   const strong = item.confidence === "high" || exactPhone || exactAddress || Number(item.score || 0) >= 72;
   const recommendationLabel = sameOrganization
-    ? "Deja in organizatia ta"
+    ? "Deja în organizația ta"
     : otherOrganization
-      ? "Profil asociat altei organizatii"
+      ? "Profil asociat altei organizații"
       : exactPhone
         ? "Telefon confirmat"
         : strong
-          ? "Recomandare principala"
+          ? "Recomandare principală"
           : "Posibil profil existent";
 
   return (
@@ -57,7 +57,7 @@ function CandidateCard({ item, loading, onOpenExisting, onRequestExisting, onCon
               {recommendationLabel}
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{item.address || "Adresa necompletata"}{item.city ? ` · ${item.city}` : ""}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{item.address || "Adresa necompletată"}{item.city ? ` · ${item.city}` : ""}</p>
           {item.phone && <p className="mt-1 text-xs text-muted-foreground">{item.phone}</p>}
           {reasons.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -66,7 +66,7 @@ function CandidateCard({ item, loading, onOpenExisting, onRequestExisting, onCon
           )}
           {otherOrganization && (
             <p className="mt-3 text-xs leading-relaxed text-amber-900">
-              Poti solicita asocierea. Administratorul va verifica organizatia actuala si va decide daca profilul poate fi transferat.
+              Poți solicita asocierea. Administratorul va verifică organizația actuală și va decide dacă profilul poate fi transferat.
             </p>
           )}
         </div>
@@ -74,11 +74,11 @@ function CandidateCard({ item, loading, onOpenExisting, onRequestExisting, onCon
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {sameOrganization ? (
-          <button type="button" onClick={() => onOpenExisting(item.id)} className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background">Deschide locatia</button>
+          <button type="button" onClick={() => onOpenExisting(item.id)} className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background">Deschide locația</button>
         ) : (
           <>
             <button type="button" disabled={loading} onClick={() => onRequestExisting(item)} className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40">
-              {loading ? "Se pregateste..." : "Aceasta este locatia mea"}
+              {loading ? "Se pregătește..." : "Aceasta este locația mea"}
             </button>
             <button type="button" disabled={loading} onClick={onContinueNew} className="rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary disabled:opacity-40">Nu este aceasta</button>
           </>
@@ -168,7 +168,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
     }
     setSubmission(response.data?.submission || null);
     setStep("existing");
-    setMessage("Solicitarea a fost pregatita. Verifica profilul si trimite-l spre aprobare.");
+    setMessage("Solicitarea a fost pregătită. Verifică profilul și trimite-l spre aprobare.");
   };
 
   const beginNew = () => {
@@ -184,7 +184,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
   };
 
   const saveDraft = async () => {
-    if (!requiredComplete) { setMessage("Completeaza numele, adresa, localitatea si judetul."); return; }
+    if (!requiredComplete) { setMessage("Completează numele, adresa, localitatea și județul."); return; }
     setLoading(true);
     setMessage("");
     const response = await base44.functions.invoke("providerLocationExpansionOps", {
@@ -199,7 +199,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
     setLoading(false);
     if (response.data?.error) { setMessage(response.data.error); return; }
     setSubmission(response.data.submission);
-    setMessage("Draft salvat. Verifica datele si trimite cererea spre aprobare.");
+    setMessage("Draft salvat. Verifică datele și trimite cererea spre aprobare.");
   };
 
   const submitReview = async () => {
@@ -217,16 +217,16 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
     if (response.data?.error) { setMessage(response.data.error); return; }
     setSubmission({ ...submission, status: "pending_review" });
     setMessage(isExistingRequest
-      ? "Asocierea profilului existent a fost trimisa spre verificare."
-      : "Locatia a fost trimisa spre verificare. Nu va aparea public pana la aprobare.");
+      ? "Asocierea profilului existent a fost trimisă spre verificare."
+      : "Locația a fost trimisă spre verificare. Nu va apărea public până la aprobare.");
     onRefresh?.();
   };
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap gap-2">
-        <StepBadge number="1" label="Verifica locatia" active={step === "search"} complete={dataStepActive || reviewStepActive} />
-        <StepBadge number="2" label={isExistingRequest ? "Confirma profilul" : "Completeaza datele"} active={dataStepActive && !reviewStepActive} complete={reviewStepActive} />
+        <StepBadge number="1" label="Verifică locația" active={step === "search"} complete={dataStepActive || reviewStepActive} />
+        <StepBadge number="2" label={isExistingRequest ? "Confirmă profilul" : "Completează datele"} active={dataStepActive && !reviewStepActive} complete={reviewStepActive} />
         <StepBadge number="3" label="Trimite spre verificare" active={reviewStepActive} complete={false} />
       </div>
 
@@ -235,8 +235,8 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card"><Building2 className="h-4 w-4" /></div>
             <div>
-              <div className="text-sm font-bold">Organizatie: {organizationName || "Organizatia ta"}</div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">O locatie noua sau un profil existent aprobat va fi asociat acestei organizatii.</p>
+              <div className="text-sm font-bold">Organizatie: {organizationName || "Organizația ta"}</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">O locație nouă sau un profil existent aprobat va fi asociat acestei organizații.</p>
             </div>
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><ShieldCheck className="h-4 w-4" /></div>
             <div>
               <div className="text-sm font-bold">Control anti-duplicate</div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Profilurile existente sunt asociate sau transferate numai dupa verificarea administratorului.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Profilurile existente sunt asociate sau transferate numai după verificarea administratorului.</p>
             </div>
           </div>
         </div>
@@ -254,17 +254,17 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
       {step === "search" && (
         <div className="grid gap-4 xl:grid-cols-2">
           <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
-            <h2 className="font-heading text-lg font-bold">1. Cauta locatia in director</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Completeaza datele pe care le cunosti. Un semnal puternic, precum telefonul identic, poate identifica profilul existent.</p>
+            <h2 className="font-heading text-lg font-bold">1. Caută locația în director</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Completează datele pe care le cunoști. Un semnal puternic, precum telefonul identic, poate identifica profilul existent.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <div><label className="text-xs font-semibold text-muted-foreground">Numele locatiei</label><input value={searchData.name} onChange={(event) => setSearchData({ ...searchData, name: event.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Lunera Optic Giroc" /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Numele locației</label><input value={searchData.name} onChange={(event) => setSearchData({ ...searchData, name: event.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Lunera Optic Giroc" /></div>
               <div><label className="text-xs font-semibold text-muted-foreground">Localitate</label><input value={searchData.city} onChange={(event) => setSearchData({ ...searchData, city: event.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Giroc" /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Adresa</label><input value={searchData.address} onChange={(event) => setSearchData({ ...searchData, address: event.target.value })} className={`${input} mt-1.5`} placeholder="Strada si numar" /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Telefon</label><input value={searchData.phone} onChange={(event) => setSearchData({ ...searchData, phone: event.target.value })} className={`${input} mt-1.5`} placeholder="Telefonul locatiei" /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Adresa</label><input value={searchData.address} onChange={(event) => setSearchData({ ...searchData, address: event.target.value })} className={`${input} mt-1.5`} placeholder="Strada și număr" /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Telefon</label><input value={searchData.phone} onChange={(event) => setSearchData({ ...searchData, phone: event.target.value })} className={`${input} mt-1.5`} placeholder="Telefonul locației" /></div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" disabled={!canSearch || loading} onClick={search} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Verifica in director</button>
-              <button type="button" disabled={loading} onClick={beginNew} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"><Plus className="h-4 w-4" /> Adauga locatie noua</button>
+              <button type="button" disabled={loading} onClick={beginNew} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"><Plus className="h-4 w-4" /> Adaugă locație nouă</button>
             </div>
             {message && <p className="mt-4 text-xs text-destructive">{message}</p>}
           </section>
@@ -272,8 +272,8 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
           <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="font-heading text-lg font-bold">2. Recomandari VIASEE</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Afisam maximum trei potriviri, ordonate dupa relevanta.</p>
+                <h2 className="font-heading text-lg font-bold">2. Recomandări VIASEE</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Afișăm maximum trei potriviri, ordonate după relevanta.</p>
               </div>
               <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{candidates.length} rezultate</span>
             </div>
@@ -282,15 +282,15 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             ) : searched && !loading ? (
               <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/25 p-5 text-center">
                 <MapPin className="mx-auto h-6 w-6 text-muted-foreground" />
-                <p className="mt-2 text-sm font-semibold">Nu am gasit o potrivire relevanta</p>
-                <p className="mt-1 text-xs text-muted-foreground">Poti continua cu o locatie noua. Verificarea finala va fi facuta si de administrator.</p>
-                <button type="button" onClick={beginNew} className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Continua cu locatia noua</button>
+                <p className="mt-2 text-sm font-semibold">Nu am găsit o potrivire relevanta</p>
+                <p className="mt-1 text-xs text-muted-foreground">Poți continua cu o locație nouă. Verificarea finală va fi făcută și de administrator.</p>
+                <button type="button" onClick={beginNew} className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Continua cu locația nouă</button>
               </div>
             ) : (
               <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/25 p-5 text-center">
                 <Search className="mx-auto h-6 w-6 text-muted-foreground" />
-                <p className="mt-2 text-sm font-semibold">Completeaza datele din stanga</p>
-                <p className="mt-1 text-xs text-muted-foreground">Rezultatele posibile vor aparea aici.</p>
+                <p className="mt-2 text-sm font-semibold">Completează datele din stânga</p>
+                <p className="mt-1 text-xs text-muted-foreground">Rezultatele posibile vor apărea aici.</p>
               </div>
             )}
           </section>
@@ -303,15 +303,15 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-heading text-lg font-bold">Profil existent selectat</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Nu cream o locatie duplicata. Administratorul verifica asocierea si organizatia actuala.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Nu creăm o locație duplicată. Administratorul verifică asocierea și organizația actuală.</p>
               </div>
-              {!pending && <button type="button" onClick={() => { setSubmission(null); setStep("search"); }} className="inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-4"><ArrowLeft className="h-3.5 w-3.5" /> Inapoi</button>}
+              {!pending && <button type="button" onClick={() => { setSubmission(null); setStep("search"); }} className="inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-4"><ArrowLeft className="h-3.5 w-3.5" /> Înapoi</button>}
             </div>
             <div className="mt-5 rounded-2xl border border-border bg-secondary/25 p-4">
-              <div className="text-base font-bold">{selectedCandidate?.name || "Locatie existenta"}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{selectedCandidate?.address || "Adresa indisponibila"}{selectedCandidate?.city ? ` · ${selectedCandidate.city}` : ""}</div>
+              <div className="text-base font-bold">{selectedCandidate?.name || "Locație existentă"}</div>
+              <div className="mt-1 text-sm text-muted-foreground">{selectedCandidate?.address || "Adresa indisponibilă"}{selectedCandidate?.city ? ` · ${selectedCandidate.city}` : ""}</div>
               {selectedCandidate?.phone && <div className="mt-1 text-sm text-muted-foreground">{selectedCandidate.phone}</div>}
-              {selectedCandidate?.organization_name && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Organizatie actuala: <b>{selectedCandidate.organization_name}</b>. Un eventual transfer este decis numai de administrator.</div>}
+              {selectedCandidate?.organization_name && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Organizație actuală: <b>{selectedCandidate.organization_name}</b>. Un eventual transfer este decis numai de administrator.</div>}
             </div>
           </section>
           <div className="space-y-4">
@@ -320,12 +320,12 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Send className="h-4 w-4" /></div>
                 <div>
                   <h2 className="text-sm font-bold">Trimite asocierea spre verificare</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Administratorul poate asocia profilul, il poate transfera dupa verificare sau poate cere informatii suplimentare.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Administratorul poate asocia profilul, îl poate transfera după verificare sau poate cere informații suplimentare.</p>
                 </div>
               </div>
               {submission?.admin_note && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><b>Mesaj administrator:</b> {submission.admin_note}</div>}
-              {pending && <div className="mt-4 flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Cererea este in verificare.</div>}
-              {needsMoreInfo && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Completeaza sau retrimite solicitarea dupa clarificarea mesajului administratorului.</div>}
+              {pending && <div className="mt-4 flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Cererea este în verificare.</div>}
+              {needsMoreInfo && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Completează sau retrimite solicitarea după clarificarea mesajului administratorului.</div>}
               {message && <p className="mt-4 text-xs text-muted-foreground">{message}</p>}
             </section>
             <section className="sticky bottom-0 rounded-[24px] border border-border bg-background/95 p-4 shadow-lg backdrop-blur">
@@ -339,20 +339,20 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
           <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
-              <div><h2 className="font-heading text-lg font-bold">2. Datele locatiei noi</h2><p className="mt-1 text-xs text-muted-foreground">Completeaza doar datele punctului de lucru. Brandul, logo-ul si descrierea raman la nivelul organizatiei.</p></div>
-              {!submission && <button type="button" onClick={() => setStep("search")} className="inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-4"><ArrowLeft className="h-3.5 w-3.5" /> Inapoi</button>}
+              <div><h2 className="font-heading text-lg font-bold">2. Datele locației noi</h2><p className="mt-1 text-xs text-muted-foreground">Completează doar datele punctului de lucru. Brandul, logo-ul și descrierea rămân la nivelul organizației.</p></div>
+              {!submission && <button type="button" onClick={() => setStep("search")} className="inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-4"><ArrowLeft className="h-3.5 w-3.5" /> Înapoi</button>}
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div><label className="text-xs font-semibold text-muted-foreground">Nume public locatie *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_display_name} onChange={(event) => setForm({ ...form, public_display_name: event.target.value })} /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Nume public locație *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_display_name} onChange={(event) => setForm({ ...form, public_display_name: event.target.value })} /></div>
               <div><label className="text-xs font-semibold text-muted-foreground">Telefon public</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_phone} onChange={(event) => setForm({ ...form, public_phone: event.target.value })} /></div>
               <div className="md:col-span-2"><label className="text-xs font-semibold text-muted-foreground">Adresa completa *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></div>
               <div><label className="text-xs font-semibold text-muted-foreground">Localitate *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Judet *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.county} onChange={(event) => setForm({ ...form, county: event.target.value })} /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Județ *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.county} onChange={(event) => setForm({ ...form, county: event.target.value })} /></div>
               <div><label className="text-xs font-semibold text-muted-foreground">Email public</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_email} onChange={(event) => setForm({ ...form, public_email: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Cod SIRUTA, optional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.locality_siruta_code} onChange={(event) => setForm({ ...form, locality_siruta_code: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Latitudine, optional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.lat} onChange={(event) => setForm({ ...form, lat: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Longitudine, optional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.lng} onChange={(event) => setForm({ ...form, lng: event.target.value })} /></div>
-              <div className="md:col-span-2"><label className="text-xs font-semibold text-muted-foreground">Google Place ID, optional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.place_id} onChange={(event) => setForm({ ...form, place_id: event.target.value })} /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Cod SIRUTA, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.locality_siruta_code} onChange={(event) => setForm({ ...form, locality_siruta_code: event.target.value })} /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Latitudine, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.lat} onChange={(event) => setForm({ ...form, lat: event.target.value })} /></div>
+              <div><label className="text-xs font-semibold text-muted-foreground">Longitudine, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.lng} onChange={(event) => setForm({ ...form, lng: event.target.value })} /></div>
+              <div className="md:col-span-2"><label className="text-xs font-semibold text-muted-foreground">Google Place ID, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.place_id} onChange={(event) => setForm({ ...form, place_id: event.target.value })} /></div>
             </div>
           </section>
 
@@ -362,22 +362,22 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Send className="h-4 w-4" /></div>
                 <div>
                   <h2 className="text-sm font-bold">3. Trimitere spre verificare</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locatia nu devine publica imediat. Mai intai este verificata de echipa VIASEE.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locația nu devine publica imediat. Mai întâi este verificată de echipa VIASEE.</p>
                 </div>
               </div>
               <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Se verifica posibilele duplicate.</div>
-                <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Locatia ramane legata de organizatia actuala.</div>
-                <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Tipul organizatiei nu se schimba automat.</div>
+                <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Se verifică posibilele duplicate.</div>
+                <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Locația rămâne legată de organizația actuală.</div>
+                <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Tipul organizației nu se schimbă automat.</div>
               </div>
               {submission?.admin_note && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><b>Mesaj administrator:</b> {submission.admin_note}</div>}
-              {pending && <div className="mt-4 flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Cererea este in verificare. Locatia nu este inca publica.</div>}
+              {pending && <div className="mt-4 flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Cererea este în verificare. Locația nu este încă publica.</div>}
               {message && <p className="mt-4 text-xs text-muted-foreground">{message}</p>}
             </section>
 
             <section className="sticky bottom-0 rounded-[24px] border border-border bg-background/95 p-4 shadow-lg backdrop-blur">
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={pending || loading || !requiredComplete} onClick={saveDraft} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40">{loading ? "Se salveaza..." : "Salveaza draft"}</button>
+                <button type="button" disabled={pending || loading || !requiredComplete} onClick={saveDraft} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40">{loading ? "Se salvează..." : "Salvează draft"}</button>
                 {submission && submission.status !== "pending_review" && <button type="button" disabled={loading} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40">Trimite spre verificare</button>}
               </div>
             </section>

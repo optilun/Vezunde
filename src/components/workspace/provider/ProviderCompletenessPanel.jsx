@@ -21,10 +21,10 @@ function actionTarget(item, locationId) {
     return { label: "Deschide profilul", to: "/contul-meu?s=profile" };
   }
   if (!locationId) return null;
-  if (item.group === "services") return { label: "Configureaza serviciile", to: `/contul-meu/locatii/${locationId}/servicii` };
-  if (item.group === "program") return { label: "Completeaza programul", to: `/contul-meu/locatii/${locationId}/program` };
-  if (item.group === "specialists") return { label: "Gestioneaza specialistii", to: `/contul-meu/locatii/${locationId}/specialisti` };
-  return { label: "Deschide locatia", to: `/contul-meu?s=locations&location=${locationId}` };
+  if (item.group === "services") return { label: "Configurează serviciile", to: `/contul-meu/locatii/${locationId}/servicii` };
+  if (item.group === "program") return { label: "Completează programul", to: `/contul-meu/locatii/${locationId}/program` };
+  if (item.group === "specialists") return { label: "Gestionează specialiștii", to: `/contul-meu/locatii/${locationId}/specialisti` };
+  return { label: "Deschide locația", to: `/contul-meu?s=locations&location=${locationId}` };
 }
 
 function Item({ item, locationId }) {
@@ -41,7 +41,7 @@ function Item({ item, locationId }) {
       {!item.done && (
         <div className="flex shrink-0 items-center gap-2 pl-7 sm:pl-0">
           {item.impact === "required" && (
-            <span style={{ borderColor: "#dac69b", backgroundColor: "#eadcba" }} className="rounded-full border px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-black/65">Necesara</span>
+            <span style={{ borderColor: "#dac69b", backgroundColor: "#eadcba" }} className="rounded-full border px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-black/65">Necesară</span>
           )}
           {target && (
             <Link
@@ -77,9 +77,9 @@ function LocationComparison({ locations, selectedLocationId }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-heading text-sm font-extrabold tracking-[-0.02em] text-foreground">{location.name}</p>
-                  <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" />{location.locality || "Localitate necompletata"}</p>
+                  <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" />{location.locality || "Localitate necompletată"}</p>
                 </div>
-                {selected && <span className="rounded-full bg-[#171717] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white">Selectata</span>}
+                {selected && <span className="rounded-full bg-[#171717] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white">Selectată</span>}
               </div>
               <div className="mt-4 flex items-end justify-between gap-3">
                 <div>
@@ -114,9 +114,9 @@ export default function ProviderCompletenessPanel({ data }) {
               <ListChecks aria-hidden="true" className="h-3.5 w-3.5" /> Completarea profilului
             </p>
             <h2 className="mt-3 max-w-xl font-heading text-[1.8rem] font-extrabold leading-[1.04] tracking-[-0.04em] sm:text-[2.1rem]">
-              Cat de complet este profilul.
+              Cât de complet este profilul.
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">Acelasi set de reguli este folosit pentru organizatie, locatie, contact, program, servicii, specialisti, fotografie si verificare.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">Același set de reguli este folosit pentru organizație, locație, contact, program, servicii, specialiști, fotografie și verificare.</p>
           </div>
           <div
             style={{ borderColor: "#c6d3da", backgroundColor: "#dce5e9" }}
@@ -124,7 +124,7 @@ export default function ProviderCompletenessPanel({ data }) {
           >
             <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
             <div className="relative z-10 font-heading text-[2.4rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{data.summary.overall_percentage}%</div>
-            <div className="relative z-10 mt-2 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">completare generala</div>
+            <div className="relative z-10 mt-2 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">completare generală</div>
           </div>
         </div>
 
@@ -134,8 +134,8 @@ export default function ProviderCompletenessPanel({ data }) {
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {[
-            { label: "Organizatie", value: data.summary.organization_percentage, border: "#ccd2ba", bg: "#dfe3d2" },
-            { label: "Media locatiilor accesibile", value: data.summary.average_location_percentage, border: "#d4c6d8", bg: "#e8e0ea" },
+            { label: "Organizație", value: data.summary.organization_percentage, border: "#ccd2ba", bg: "#dfe3d2" },
+            { label: "Media locațiilor accesibile", value: data.summary.average_location_percentage, border: "#d4c6d8", bg: "#e8e0ea" },
           ].map((item) => (
             <div
               key={item.label}
@@ -167,7 +167,7 @@ export default function ProviderCompletenessPanel({ data }) {
           <div className="mt-3">
             {missing.length
               ? missing.map((item) => <Item key={item.key} item={item} locationId={locationId} />)
-              : <p className="text-sm text-muted-foreground">Nu lipseste niciun element din contractul curent.</p>}
+              : <p className="text-sm text-muted-foreground">Nu lipsește niciun element din contractul curent.</p>}
           </div>
         </details>
       </div>

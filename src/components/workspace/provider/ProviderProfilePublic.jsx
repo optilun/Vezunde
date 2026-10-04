@@ -41,8 +41,8 @@ const PROFILE_FIELDS = [
 ];
 
 const FIELD_LABELS = {
-  public_display_name: "Nume public organizatie",
-  public_description: "Descriere organizatie",
+  public_display_name: "Nume public organizație",
+  public_description: "Descriere organizație",
   public_phone: "Telefon general",
   public_email: "Email general",
   website_url: "Website",
@@ -106,7 +106,7 @@ function readImage(file) {
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Imaginea nu poate fi citita."));
+      reject(new Error("Imaginea nu poate fi citită."));
     };
     image.src = url;
   });
@@ -154,7 +154,7 @@ async function makeSafeLogoFile(file, organizationId) {
   }
   if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) {
     throw new Error(
-      "Logo-ul este prea mare dupa optimizare. Incearca o imagine mai simpla.",
+      "Logo-ul este prea mare după optimizare. Încearcă o imagine mai simplă.",
     );
   }
   return new File(
@@ -200,7 +200,7 @@ function BrandLogo({ name, photoUrl, pending, className = "" }) {
       )}
       {pending && (
         <div className="absolute inset-x-0 bottom-0 bg-amber-500/95 py-1 text-center text-[10px] font-bold text-white">
-          in verificare
+          în verificare
         </div>
       )}
     </div>
@@ -217,7 +217,7 @@ function EditableLogo({
   return (
     <label
       className="group relative block w-fit shrink-0 cursor-pointer"
-      title={logoPreview ? "Schimba logo-ul" : "Adauga logo"}
+      title={logoPreview ? "Schimbă logo-ul" : "Adaugă logo"}
     >
       <BrandLogo
         name={name}
@@ -306,8 +306,8 @@ function InlineProfileEditor({
             Editezi profilul public
           </h2>
           <p className="mt-1 text-sm leading-relaxed text-[#706c64]">
-            Completeaza datele generale ale organizatiei. Modificarile sunt
-            publicate dupa aprobare.
+            Completează datele generale ale organizației. Modificările sunt
+            publicate după aprobare.
           </p>
         </div>
       </div>
@@ -340,12 +340,12 @@ function InlineProfileEditor({
           <div>
             <div className="text-sm font-bold text-[#171717]">Identitate</div>
             <p className="mt-1 text-xs text-[#77736b]">
-              Numele si descrierea generala a organizatiei.
+              Numele și descrierea generală a organizației.
             </p>
           </div>
           <Field
-            label="Nume public organizatie"
-            hint="Numele locatiei poate fi diferit."
+            label="Nume public organizație"
+            hint="Numele locației poate fi diferit."
           >
             <input
               className={inputCls}
@@ -356,7 +356,7 @@ function InlineProfileEditor({
               }
             />
           </Field>
-          <Field label="Descriere organizatie">
+          <Field label="Descriere organizație">
             <textarea
               className={`${inputCls} min-h-44 resize-y`}
               value={values.public_description}
@@ -379,7 +379,7 @@ function InlineProfileEditor({
                 Contact public
               </div>
               <p className="mt-1 text-xs text-[#77736b]">
-                Date generale, separate de contactul fiecarei locatii.
+                Date generale, separate de contactul fiecărei locații.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -425,7 +425,7 @@ function InlineProfileEditor({
                 Canale online
               </div>
               <p className="mt-1 text-xs text-[#77736b]">
-                Linkurile oficiale afisate in profil.
+                Linkurile oficiale afișate în profil.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -532,7 +532,7 @@ function OrganizationProfile({
         />
         <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
           <span className="h-2 w-2 bg-[#345bc8]" />
-          {editing ? "Editare profil" : "Profil public organizatie"}
+          {editing ? "Editare profil" : "Profil public organizație"}
         </div>
         {draft && (
           <span className="absolute right-5 top-5 rounded-full border border-white/55 bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#5d5a54] backdrop-blur-sm sm:right-7 sm:top-6">
@@ -564,7 +564,7 @@ function OrganizationProfile({
                 }`}
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
-                {verified ? "Locatie verificata" : "Profil activ"}
+                {verified ? "Locație verificată" : "Profil activ"}
               </span>
             </div>
             <h1 className="mt-3 break-words font-heading text-[2rem] font-extrabold leading-[1.03] tracking-[-0.045em] text-[#171717] sm:text-[2.65rem]">
@@ -585,7 +585,7 @@ function OrganizationProfile({
                   disabled={saving}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-transparent px-5 text-sm font-semibold text-[#171717] hover:bg-white disabled:opacity-50"
                 >
-                  <X className="h-4 w-4" /> Renunta
+                  <X className="h-4 w-4" /> Renunță
                 </button>
                 <button
                   type="button"
@@ -598,7 +598,7 @@ function OrganizationProfile({
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Salveaza
+                  Salvează
                 </button>
               </>
             ) : (
@@ -609,7 +609,7 @@ function OrganizationProfile({
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#c6d3da] bg-[#dce5e9] px-5 text-sm font-semibold text-[#1c1c1c] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(34,30,24,0.08)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
               >
                 <Pencil className="h-4 w-4" />
-                {pendingReview ? "Profil in verificare" : "Editeaza profilul"}
+                {pendingReview ? "Profil în verificare" : "Editează profilul"}
               </button>
             )}
           </div>
@@ -620,7 +620,7 @@ function OrganizationProfile({
             <div>
               <p className="whitespace-pre-line text-[15px] leading-7 text-[#514e48]">
                 {values.public_description ||
-                  "Adauga o descriere generala pentru organizatie."}
+                  "Adaugă o descriere generală pentru organizație."}
               </p>
               {socialItems.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -656,7 +656,7 @@ function OrganizationProfile({
               />
               <ProfileInfo
                 icon={Store}
-                label="Organizatie"
+                label="Organizație"
                 value={displayName}
               />
             </div>
@@ -693,16 +693,16 @@ function locationAddress(location) {
   ]
     .map((value) => String(value || "").trim())
     .filter(Boolean);
-  return [...new Set(parts)].join(", ") || "Adresa nu este completata";
+  return [...new Set(parts)].join(", ") || "Adresa nu este completată";
 }
 
 function LocationRow({ location, selected, onManage }) {
   const name =
-    location?.public_display_name || location?.name || "Locatie fara nume";
+    location?.public_display_name || location?.name || "Locație fără nume";
   const typeLabel =
     PROVIDER_PROFILE_TYPES[location?.provider_profile_type] ||
     PROVIDER_TYPES[location?.provider_type] ||
-    "Locatie";
+    "Locație";
   const photo =
     location?.cover_photo_url ||
     location?.primary_photo_url ||
@@ -734,11 +734,11 @@ function LocationRow({ location, selected, onManage }) {
             </span>
             {verified && (
               <span className="inline-flex items-center gap-1 rounded-full border border-[#ccd2ba] bg-[#dfe3d2] px-2.5 py-0.5 text-xs font-bold text-[#1c1c1c]">
-                <ShieldCheck className="h-3 w-3" /> Verificata
+                <ShieldCheck className="h-3 w-3" /> Verificată
               </span>
             )}
             {selected && (
-              <span className="text-xs font-bold text-[#171717]">Selectata</span>
+              <span className="text-xs font-bold text-[#171717]">Selectată</span>
             )}
           </div>
           <h3 className="mt-1.5 break-words font-heading text-lg font-bold tracking-[-0.02em] text-[#171717]">
@@ -755,7 +755,7 @@ function LocationRow({ location, selected, onManage }) {
         onClick={() => onManage(location?.id)}
         className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#ccd2ba] bg-[#dfe3d2] px-5 text-sm font-semibold text-[#1c1c1c] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(34,30,24,0.08)] sm:w-auto motion-reduce:transform-none"
       >
-        Gestioneaza
+        Gestionează
         <ChevronRight className="h-4 w-4" />
       </button>
     </article>
@@ -768,14 +768,14 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
-            <Store className="h-4 w-4" /> Gestionare locatii
+            <Store className="h-4 w-4" /> Gestionare locații
           </div>
           <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-[-0.035em] text-[#171717]">
-            Locatiile organizatiei
+            Locațiile organizației
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-[#706c64]">
-            Adresa, programul, serviciile, echipa si fotografiile se gestioneaza
-            separat pentru fiecare locatie.
+            Adresa, programul, serviciile, echipa și fotografiile se gestionează
+            separat pentru fiecare locație.
           </p>
         </div>
         <button
@@ -783,7 +783,7 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
           onClick={onManageAll}
           className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#ccd2ba] bg-[#dfe3d2] px-5 text-sm font-semibold text-[#1c1c1c] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(34,30,24,0.08)] sm:w-auto motion-reduce:transform-none"
         >
-          Gestioneaza toate
+          Gestionează toate
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
@@ -801,7 +801,7 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
         </div>
       ) : (
         <div className="mt-5 border-y border-dashed border-[#171717]/15 py-6 text-sm text-[#706c64]">
-          Organizatia nu are inca locatii disponibile in workspace.
+          Organizația nu are încă locații disponibile în workspace.
         </div>
       )}
     </section>
@@ -857,7 +857,7 @@ export default function ProviderProfilePublic({
     organization.name ||
     location.organization_name ||
     location.name ||
-    "Organizatie";
+    "Organizație";
   const locationCount = locations.length;
   const profileTypeLabel =
     PROVIDER_PROFILE_TYPES[organization.organization_type] ||
@@ -875,7 +875,7 @@ export default function ProviderProfilePublic({
     profileState.fallback_location_name ||
     location.public_display_name ||
     location.name ||
-    "locatia principala";
+    "locația principală";
   const baseValues = useMemo(
     () => canonicalValues(organization),
     [organization],
@@ -978,7 +978,7 @@ export default function ProviderProfilePublic({
       }
       return next;
     });
-    setMessage("Datele au fost preluate in formular. Salveaza modificarile.");
+    setMessage("Datele au fost preluate în formular. Salvează modificările.");
   };
 
   const saveDraft = async () => {
@@ -1012,14 +1012,14 @@ export default function ProviderProfilePublic({
       return;
     }
     if (data.no_changes) {
-      setMessage(data.message || "Nu exista modificari noi de salvat.");
+      setMessage(data.message || "Nu există modificări noi de salvat.");
     } else if (data.duplicate || data.already_pending) {
-      setMessage(data.message || "Aceasta modificare este deja in verificare.");
+      setMessage(data.message || "Această modificare este deja în verificare.");
     } else if (data.resumed || data.unchanged) {
-      setMessage(data.message || "Draftul existent a fost incarcat.");
+      setMessage(data.message || "Draftul existent a fost încărcat.");
     } else {
       setMessage(
-        "Modificarile au fost salvate. Profilul afiseaza acum datele din draft.",
+        "Modificările au fost salvate. Profilul afișează acum datele din draft.",
       );
     }
     await loadDraft();
@@ -1049,11 +1049,11 @@ export default function ProviderProfilePublic({
       return;
     }
     if (data.no_changes) {
-      setMessage(data.message || "Nu exista modificari noi de trimis.");
+      setMessage(data.message || "Nu există modificări noi de trimis.");
     } else if (data.duplicate || data.already_pending) {
-      setMessage(data.message || "Aceasta modificare este deja in verificare.");
+      setMessage(data.message || "Această modificare este deja în verificare.");
     } else {
-      setMessage("Profilul organizatiei a fost trimis spre verificare.");
+      setMessage("Profilul organizației a fost trimis spre verificare.");
     }
     await loadDraft();
     await onRefresh?.();
@@ -1067,7 +1067,7 @@ export default function ProviderProfilePublic({
       return;
     }
     if (file.size > LOGO_MAX_BYTES) {
-      setLogoMessage("Logo-ul trebuie sa aiba maximum 4 MB.");
+      setLogoMessage("Logo-ul trebuie să aibă maximum 4 MB.");
       return;
     }
     setUploadingLogo(true);
@@ -1081,7 +1081,7 @@ export default function ProviderProfilePublic({
       });
       const logoUrl = String(uploadResponse?.file_url || "").trim();
       if (!logoUrl) {
-        throw new Error("Incarcarea logo-ului nu a returnat un URL valid.");
+        throw new Error("Încărcarea logo-ului nu a returnat un URL valid.");
       }
       const response = await base44.functions
         .invoke("submitProviderLogoForReview", {
@@ -1098,7 +1098,7 @@ export default function ProviderProfilePublic({
       await onRefresh?.();
     } catch (error) {
       setLogoPreview(pendingLogoUrl || canonicalLogo);
-      setLogoMessage(error.message || "Nu am putut incarca logo-ul.");
+      setLogoMessage(error.message || "Nu am putut încărca logo-ul.");
     } finally {
       if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
       setUploadingLogo(false);
@@ -1158,10 +1158,10 @@ export default function ProviderProfilePublic({
             </span>
             <div>
               <div className="font-semibold text-[#1c1c1c]">
-                Modificarile sunt salvate ca draft
+                Modificările sunt salvate ca draft
               </div>
               <p className="mt-1 text-sm leading-relaxed text-black/60">
-                Verifica profilul, apoi trimite modificarile pentru aprobare.
+                Verifică profilul, apoi trimite modificările pentru aprobare.
               </p>
             </div>
           </div>

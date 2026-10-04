@@ -8,12 +8,12 @@ const inputCls =
 
 const DAYS = [
   ["monday", "Luni"],
-  ["tuesday", "Marti"],
+  ["tuesday", "Marți"],
   ["wednesday", "Miercuri"],
   ["thursday", "Joi"],
   ["friday", "Vineri"],
-  ["saturday", "Sambata"],
-  ["sunday", "Duminica"],
+  ["saturday", "Sâmbătă"],
+  ["sunday", "Duminică"],
 ];
 
 const DEFAULT_WEEKLY = {
@@ -27,12 +27,12 @@ const DEFAULT_WEEKLY = {
 };
 
 const ACCESS_MODE_HELP = {
-  necunoscuta: "Informatia nu va fi afisata public.",
-  astazi: "Clientii si pacientii pot veni direct, fara programare prealabila.",
+  necunoscuta: "Informația nu va fi afișată public.",
+  astazi: "Clienții și pacienții pot veni direct, fără programare prealabilă.",
   urmatoarele_zile:
-    "Locatia accepta atat vizite fara programare, cat si vizite programate.",
+    "Locația acceptă atât vizite fără programare, cât și vizite programate.",
   saptamana_aceasta:
-    "Serviciile de optica sunt disponibile fara programare, iar consultatiile se fac cu programare.",
+    "Serviciile de optica sunt disponibile fără programare, iar consultațiile se fac cu programare.",
   doar_programare: "Toate vizitele se fac numai cu programare.",
 };
 
@@ -115,7 +115,7 @@ function TimeField({ value, disabled, onChange, placeholder = "09:00" }) {
 }
 
 function formatDay(day) {
-  if (!day?.open) return "Inchis";
+  if (!day?.open) return "Închis";
   if (!day.from || !day.to) return "Program necompletat";
   return `${normalizeTime(day.from)} - ${normalizeTime(day.to)}`;
 }
@@ -127,7 +127,7 @@ function formatWeeklyText(weekly) {
   const weekdayLabel = allSame
     ? `Luni-Vineri: ${weekdayText[0]}`
     : weekdayKeys.map((key, index) => `${DAYS[index][1]}: ${weekdayText[index]}`).join("; ");
-  return `${weekdayLabel}; Sambata: ${formatDay(weekly.saturday)}; Duminica: ${formatDay(weekly.sunday)}`;
+  return `${weekdayLabel}; Sâmbătă: ${formatDay(weekly.saturday)}; Duminică: ${formatDay(weekly.sunday)}`;
 }
 
 function formatSaturdayText(weekly) {
@@ -155,7 +155,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
             value={item.type || "closed"}
             onChange={(event) => onChange(index, { ...item, type: event.target.value })}
           >
-            <option value="closed">Inchis</option>
+            <option value="closed">Închis</option>
             <option value="custom">Program special</option>
           </select>
         </div>
@@ -169,7 +169,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
           />
         </div>
         <div>
-          <label className="text-[11px] font-semibold text-muted-foreground">Pana la</label>
+          <label className="text-[11px] font-semibold text-muted-foreground">Până la</label>
           <input
             type="date"
             className={`${inputCls} mt-1`}
@@ -189,7 +189,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
             </div>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-muted-foreground">Pana la</label>
+            <label className="text-[11px] font-semibold text-muted-foreground">Până la</label>
             <div className="mt-1">
               <TimeField
                 disabled={closed}
@@ -204,20 +204,20 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
           type="button"
           onClick={() => onRemove(index)}
           className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 hover:bg-secondary"
-          aria-label="Sterge exceptia"
+          aria-label="Șterge excepția"
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
       <div className="mt-3">
         <label className="text-[11px] font-semibold text-muted-foreground">
-          Mesaj public, optional
+          Mesaj public, opțional
         </label>
         <input
           className={`${inputCls} mt-1`}
           value={item.public_note || ""}
           onChange={(event) => onChange(index, { ...item, public_note: event.target.value })}
-          placeholder="Ex: Inchis de sarbatori / Program special de inventar"
+          placeholder="Ex: Închis de sărbători / Program special de inventar"
         />
       </div>
     </div>
@@ -348,7 +348,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
       weekly: normalizedWeekly,
       exceptions: normalizedExceptions,
     }));
-    setMsg("Programul si modul de acces au fost salvate.");
+    setMsg("Programul și modul de acces au fost salvate.");
     onRefresh?.();
   };
 
@@ -359,9 +359,9 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
           <section className="provider-hours-section">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-bold">Program saptamanal</h2>
+                <h2 className="text-sm font-bold">Program săptămânal</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Completeaza intervalul de lucru pentru fiecare zi. Formatul orei este
+                  Completează intervalul de lucru pentru fiecare zi. Formatul orei este
                   24h: 09:00, 18:00.
                 </p>
               </div>
@@ -378,14 +378,14 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
                   onClick={() => applyPreset("copy_monday")}
                   className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
                 >
-                  Copiaza luni
+                  Copiază luni
                 </button>
                 <button
                   type="button"
                   onClick={() => applyPreset("weekend_closed")}
                   className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
                 >
-                  Weekend inchis
+                  Weekend închis
                 </button>
               </div>
             </div>
@@ -416,7 +416,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
                       }
                     >
                       <option value="open">Deschis</option>
-                      <option value="closed">Inchis</option>
+                      <option value="closed">Închis</option>
                     </select>
                     <TimeField
                       disabled={!day.open}
@@ -440,8 +440,8 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
               <div>
                 <h2 className="text-sm font-bold">Program special</h2>
                 <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-                  Adauga perioade temporare pentru sarbatori, concedii, inventar sau
-                  evenimente. Dupa data de final, profilul revine automat la programul
+                  Adaugă perioade temporare pentru sărbători, concedii, inventar sau
+                  evenimente. După data de final, profilul revine automat la programul
                   saptamanal.
                 </p>
               </div>
@@ -450,14 +450,14 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
                 onClick={addException}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
               >
-                <Plus className="h-3.5 w-3.5" /> Adauga exceptie
+                <Plus className="h-3.5 w-3.5" /> Adaugă excepție
               </button>
             </div>
 
             <div>
               {state.exceptions.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
-                  Nu exista program special setat.
+                  Nu există program special setat.
                 </div>
               ) : (
                 state.exceptions.map((item, index) => (
@@ -483,24 +483,24 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
             <div className="provider-hours-preview">
               <div>
                 <div className="text-[11px] font-semibold text-muted-foreground">
-                  Program afisat
+                  Program afișat
                 </div>
                 <p className="mt-1 text-sm font-semibold leading-relaxed">{weeklyText}</p>
               </div>
               <div>
                 <div className="text-[11px] font-semibold text-muted-foreground">
-                  Urmatoarea exceptie
+                  Următoarea excepție
                 </div>
                 <p className="mt-1 text-sm font-semibold leading-relaxed">
                   {upcoming
                     ? `${upcoming.start_date} - ${upcoming.end_date}: ${
                         upcoming.type === "closed"
-                          ? "Inchis"
+                          ? "Închis"
                           : `${normalizeTime(upcoming.from) || "--:--"} - ${
                               normalizeTime(upcoming.to) || "--:--"
                             }`
                       }${upcoming.public_note ? ` · ${upcoming.public_note}` : ""}`
-                    : "Nu exista exceptii viitoare"}
+                    : "Nu există excepții viitoare"}
                 </p>
               </div>
             </div>
@@ -509,14 +509,14 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
           <section className="provider-hours-section provider-hours-section--divided">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-bold">Cum se acceseaza serviciile?</h2>
+                <h2 className="text-sm font-bold">Cum se accesează serviciile?</h2>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Indica daca vizitele se fac cu programare, fara programare sau in ambele
-                  moduri. Informatia se afiseaza public langa program.
+                  Indică dacă vizitele se fac cu programare, fără programare sau în ambele
+                  moduri. Informația se afișează public lângă program.
                 </p>
               </div>
               <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                Optional
+                Opțional
               </span>
             </div>
             <select
@@ -526,7 +526,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
                 setState({ ...state, availability_status: event.target.value })
               }
             >
-              <option value="necunoscuta">Nu afisa aceasta informatie</option>
+              <option value="necunoscuta">Nu afișa această informație</option>
               {Object.entries(AVAILABILITY_OPTIONS).map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}
@@ -548,7 +548,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
             onClick={save}
             className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
           >
-            <Save className="h-4 w-4" /> Salveaza programul
+            <Save className="h-4 w-4" /> Salvează programul
           </button>
           {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
         </div>

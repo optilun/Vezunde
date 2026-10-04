@@ -14,7 +14,7 @@ const GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')
 // Aceleasi tonuri ca placile de categorii si contoarele din inbox.
 const STATE_TONES = {
   active: { border: "#ccd2ba", bg: "#dfe3d2", label: "Activ" },
-  conditional: { border: "#c6d3da", bg: "#dce5e9", label: "Conditionat" },
+  conditional: { border: "#c6d3da", bg: "#dce5e9", label: "Condiționat" },
   limited: { border: "#dac69b", bg: "#eadcba", label: "Limitat" },
   blocked: { border: "#e1bda8", bg: "#efd5c5", label: "Blocat" },
 };
@@ -38,7 +38,7 @@ export default function ProviderStatusCenter({ location, entitlement, counters, 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="inline-flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">
-              <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" /> Status locatie
+              <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" /> Status locație
             </p>
             <h2 className="mt-3 max-w-xl font-heading text-[1.8rem] font-extrabold leading-[1.04] tracking-[-0.04em] sm:text-[2.1rem]">
               {status.overall_label}
@@ -94,7 +94,7 @@ export default function ProviderStatusCenter({ location, entitlement, counters, 
                 className="relative mt-4 overflow-hidden rounded-[1.4rem] border px-5 py-4"
               >
                 <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
-                <p className="relative z-10 font-heading text-[14px] font-extrabold tracking-[-0.02em] text-[#1c1c1c]">Ce limiteaza accesul acum</p>
+                <p className="relative z-10 font-heading text-[14px] font-extrabold tracking-[-0.02em] text-[#1c1c1c]">Ce limitează accesul acum</p>
                 <ul className="relative z-10 mt-2 space-y-1 text-[13px] leading-relaxed text-black/60">
                   {status.blockers.map((item) => <li key={item}>• {item}</li>)}
                 </ul>

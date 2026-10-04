@@ -24,7 +24,7 @@ function locationAddress(location) {
   ]
     .map((value) => String(value || "").trim())
     .filter(Boolean);
-  return [...new Set(parts)].join(", ") || "Adresa nu este completata";
+  return [...new Set(parts)].join(", ") || "Adresa nu este completată";
 }
 
 function locationTypeLabel(location) {
@@ -32,7 +32,7 @@ function locationTypeLabel(location) {
     PROVIDER_PROFILE_TYPES[location?.provider_profile_type] ||
       PROVIDER_PROFILE_TYPES[location?.organization_type] ||
       PROVIDER_TYPES[location?.provider_type] ||
-      "Locatie",
+      "Locație",
   );
 }
 
@@ -67,7 +67,7 @@ export default function ProviderLocationsWithPhoto(props) {
     (workspace.locations || [])[0] ||
     null;
   const selectedLocationName =
-    selectedLocation?.public_display_name || selectedLocation?.name || "Locatie";
+    selectedLocation?.public_display_name || selectedLocation?.name || "Locație";
   const organization =
     (workspace.organizations || []).find(
       (item) => item.id === selectedLocation?.organization_id,
@@ -108,7 +108,7 @@ export default function ProviderLocationsWithPhoto(props) {
         const typeLabel = locationTypeLabel(location);
         const verified = isVerifiedLocation(location);
         const name =
-          location.public_display_name || location.name || "Locatie fara nume";
+          location.public_display_name || location.name || "Locație fără nume";
         const address = locationAddress(location);
         const signature = JSON.stringify({
           id: location.id,
@@ -148,12 +148,12 @@ export default function ProviderLocationsWithPhoto(props) {
         );
         if (verified) {
           meta.appendChild(
-            textNode("span", "vezunde-location-card-verified", "✓ Verificata"),
+            textNode("span", "vezunde-location-card-verified", "✓ Verificată"),
           );
         }
         if (active) {
           meta.appendChild(
-            textNode("span", "vezunde-location-card-selected", "Selectata"),
+            textNode("span", "vezunde-location-card-selected", "Selectată"),
           );
         }
 
@@ -172,7 +172,7 @@ export default function ProviderLocationsWithPhoto(props) {
 
         const manage = document.createElement("div");
         manage.className = "vezunde-location-card-manage";
-        manage.appendChild(textNode("span", "", "Gestioneaza"));
+        manage.appendChild(textNode("span", "", "Gestionează"));
         manage.appendChild(
           textNode("span", "vezunde-location-card-arrow", "›"),
         );
@@ -185,7 +185,7 @@ export default function ProviderLocationsWithPhoto(props) {
     const layoutCompactMap = () => {
       const editButton = Array.from(root.querySelectorAll("button")).find(
         (button) =>
-          String(button.textContent || "").includes("Editeaza datele"),
+          String(button.textContent || "").includes("Editează datele"),
       );
       const summarySection = editButton?.closest("section");
       if (!summarySection) return;
@@ -210,7 +210,7 @@ export default function ProviderLocationsWithPhoto(props) {
         summarySection.querySelectorAll("button"),
       ).find((button) => {
         const text = String(button.textContent || "");
-        return text.includes("Vezi pe harta") || text.includes("Ascunde harta");
+        return text.includes("Vezi pe hartă") || text.includes("Ascunde harta");
       });
 
       if (mapToggle) {
@@ -219,7 +219,7 @@ export default function ProviderLocationsWithPhoto(props) {
           "vezunde-location-map-actions",
         );
         if (
-          String(mapToggle.textContent || "").includes("Vezi pe harta") &&
+          String(mapToggle.textContent || "").includes("Vezi pe hartă") &&
           mapToggle.dataset.autoOpened !== "true"
         ) {
           mapToggle.dataset.autoOpened = "true";
@@ -237,8 +237,8 @@ export default function ProviderLocationsWithPhoto(props) {
       const configureSection = sections.find((section) => {
         const content = section.textContent || "";
         return (
-          content.includes("Configureaza locatia") ||
-          content.includes("Configureaza locatia")
+          content.includes("Configurează locația") ||
+          content.includes("Configurează locația")
         );
       });
       const grid = configureSection?.querySelector(".grid.gap-3");
@@ -459,24 +459,24 @@ export default function ProviderLocationsWithPhoto(props) {
         }
         .vezunde-location-map > div { height: 190px !important; }
 
-        aside[aria-label="Editeaza datele locatiei"] {
+        aside[aria-label="Editează datele locației"] {
           max-width: 56rem !important;
           background: hsl(var(--background)) !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:first-child {
+        aside[aria-label="Editează datele locației"] > div:first-child {
           background: hsl(var(--background)) !important;
           padding: 1.15rem 1.5rem !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) {
           padding: 0 1.5rem 1.5rem !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 300px;
           column-gap: 1.5rem;
           align-items: start;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > section {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section {
           grid-column: 1;
           margin: 0 !important;
           border: 0 !important;
@@ -486,7 +486,7 @@ export default function ProviderLocationsWithPhoto(props) {
           padding: 1.25rem 0 !important;
           box-shadow: none !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > section:nth-of-type(4) {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) {
           grid-column: 2;
           align-self: start;
           position: sticky;
@@ -498,19 +498,19 @@ export default function ProviderLocationsWithPhoto(props) {
           background: hsl(var(--background)) !important;
           padding: 0 !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > section:nth-of-type(4) > div:first-child {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) > div:first-child {
           padding: 0.85rem 1rem !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > section:nth-of-type(4) > div:last-child {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) > div:last-child {
           height: 220px !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > div[class*="border-blue-200"],
-        aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > div[class*="border-amber-200"] {
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > div[class*="border-blue-200"],
+        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > div[class*="border-amber-200"] {
           grid-column: 1 / -1;
           margin: 1rem 0 0 !important;
           border-radius: 12px !important;
         }
-        aside[aria-label="Editeaza datele locatiei"] > div:last-child {
+        aside[aria-label="Editează datele locației"] > div:last-child {
           background: hsl(var(--background)) !important;
           padding: 0.85rem 1.5rem !important;
         }
@@ -546,20 +546,20 @@ export default function ProviderLocationsWithPhoto(props) {
         }
 
         @media (max-width: 899px) {
-          aside[aria-label="Editeaza datele locatiei"] {
+          aside[aria-label="Editează datele locației"] {
             max-width: none !important;
           }
-          aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) {
+          aside[aria-label="Editează datele locației"] > div:nth-child(2) {
             padding: 0 1rem 1.25rem !important;
           }
-          aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
+          aside[aria-label="Editează datele locației"] > div:nth-child(2) > div {
             display: block;
           }
-          aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > section:nth-of-type(4) {
+          aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) {
             position: static;
             margin-top: 1.25rem !important;
           }
-          aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div > section:nth-of-type(4) > div:last-child {
+          aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) > div:last-child {
             height: 190px !important;
           }
         }
@@ -574,10 +574,10 @@ export default function ProviderLocationsWithPhoto(props) {
           .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
           .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 0; }
           .vezunde-location-map > div { height: 180px !important; }
-          aside[aria-label="Editeaza datele locatiei"] > div:first-child {
+          aside[aria-label="Editează datele locației"] > div:first-child {
             padding: 1rem !important;
           }
-          aside[aria-label="Editeaza datele locatiei"] > div:last-child {
+          aside[aria-label="Editează datele locației"] > div:last-child {
             padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) !important;
           }
         }
@@ -606,14 +606,14 @@ export default function ProviderLocationsWithPhoto(props) {
               </div>
               <div className="flex h-full min-w-0 flex-col">
                 <div className="flex min-h-10 items-center justify-between gap-2">
-                  <div className="text-sm font-bold">Fotografie locatie</div>
+                  <div className="text-sm font-bold">Fotografie locație</div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="mt-1.5 min-h-16 text-sm leading-relaxed text-muted-foreground">
-                  Adauga fotografia principala a acestei locatii.
+                  Adaugă fotografia principală a acestei locații.
                 </p>
                 <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">
-                  Configureaza
+                  Configurează
                 </div>
               </div>
             </div>
@@ -638,14 +638,14 @@ export default function ProviderLocationsWithPhoto(props) {
                   {selectedLocationName}
                 </div>
                 <h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
-                  Fotografia locatiei
+                  Fotografia locației
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setPhotoOpen(false)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
-                aria-label="Inchide"
+                aria-label="Închide"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -666,14 +666,14 @@ export default function ProviderLocationsWithPhoto(props) {
                   {organizationName}
                 </div>
                 <h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
-                  Adauga o locatie noua
+                  Adaugă o locație nouă
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setAddLocationOpen(false)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
-                aria-label="Inchide"
+                aria-label="Închide"
               >
                 <X className="h-4 w-4" />
               </button>

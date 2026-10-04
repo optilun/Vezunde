@@ -54,16 +54,16 @@ function getCoordinateValidation(values = {}) {
 
   if ((rawLat && !rawLng) || (!rawLat && rawLng)) {
     issues.push(
-      "Completeaza si latitudinea, si longitudinea pentru a folosi pinul exact.",
+      "Completează și latitudinea, și longitudinea pentru a folosi pinul exact.",
     );
   }
-  if (rawLat && lat === "") issues.push("Latitudinea trebuie sa fie un numar valid.");
-  if (rawLng && lng === "") issues.push("Longitudinea trebuie sa fie un numar valid.");
+  if (rawLat && lat === "") issues.push("Latitudinea trebuie să fie un număr valid.");
+  if (rawLng && lng === "") issues.push("Longitudinea trebuie să fie un număr valid.");
   if (lat !== "" && (lat < -90 || lat > 90)) {
-    issues.push("Latitudinea trebuie sa fie intre -90 si 90.");
+    issues.push("Latitudinea trebuie să fie între -90 și 90.");
   }
   if (lng !== "" && (lng < -180 || lng > 180)) {
-    issues.push("Longitudinea trebuie sa fie intre -180 si 180.");
+    issues.push("Longitudinea trebuie să fie între -180 și 180.");
   }
 
   return { issues, lat, lng };
@@ -89,7 +89,7 @@ function deriveLocationDataStatus(
 
   if (latestSubmission?.status === "rejected") {
     return {
-      label: "Ultima modificare respinsa",
+      label: "Ultima modificare respinsă",
       className: "border border-[#e1bda8] bg-[#efd5c5] text-[#1c1c1c]",
       editable: false,
       pendingReview: false,
@@ -151,7 +151,7 @@ function LocationCard({ location, active, onSelect }) {
     ? Number(location.profile_completeness)
     : 0;
   const photo = locationPhoto(location);
-  const name = location.public_display_name || location.name || "Locatie";
+  const name = location.public_display_name || location.name || "Locație";
   const locality = location.locality_name || location.city || "Localitate lipsa";
 
   return (
@@ -186,7 +186,7 @@ function LocationCard({ location, active, onSelect }) {
         )}
         {active && (
           <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#345bc8] shadow-sm backdrop-blur-sm">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Selectata
+            <CheckCircle2 className="h-3.5 w-3.5" /> Selectată
           </span>
         )}
       </div>
@@ -215,7 +215,7 @@ function LocationCard({ location, active, onSelect }) {
 }
 
 function DetailLine({ icon: Icon, label, value, href }) {
-  const content = value || "Lipseste";
+  const content = value || "Lipsește";
   return (
     <div className="min-w-0 py-4">
       <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -278,7 +278,7 @@ function ConfigureCard({ icon: Icon, title, text, onClick, tone }) {
             {text}
           </p>
           <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">
-            Configureaza
+            Configurează
           </div>
         </div>
       </div>
@@ -379,7 +379,7 @@ export default function ProviderLocations({
   const locationCount = locations.length;
   const hasMultipleLocations = locationCount > 1;
   const selectedLocationName =
-    previewLocation?.public_display_name || previewLocation?.name || "Locatie";
+    previewLocation?.public_display_name || previewLocation?.name || "Locație";
   const selectedState = deriveProviderLocationState(selectedLocation || {});
   const locationDataState = deriveLocationDataStatus(
     draft,
@@ -482,7 +482,7 @@ export default function ProviderLocations({
       )
     ) {
       setSaving(false);
-      setMessage("Nu exista modificari noi de salvat.");
+      setMessage("Nu există modificări noi de salvat.");
       return;
     }
 
@@ -505,16 +505,16 @@ export default function ProviderLocations({
       return;
     }
     if (data.no_changes) {
-      setMessage(data.message || "Nu exista modificari noi de salvat.");
+      setMessage(data.message || "Nu există modificări noi de salvat.");
     } else if (data.duplicate || data.already_pending) {
       setMessage(
-        data.message || "Aceasta modificare este deja in verificare.",
+        data.message || "Această modificare este deja în verificare.",
       );
     } else if (data.resumed || data.unchanged) {
-      setMessage(data.message || "Draftul existent a fost incarcat.");
+      setMessage(data.message || "Draftul existent a fost încărcat.");
     } else {
       setMessage(
-        "Draft salvat. Trimite-l spre verificare cand este pregatit.",
+        "Draft salvat. Trimite-l spre verificare când este pregătit.",
       );
     }
 
@@ -560,7 +560,7 @@ export default function ProviderLocations({
         setMessage(closeResponse.data.error);
         return;
       }
-      setMessage("Nu exista modificari noi de trimis. Draftul a fost inchis.");
+      setMessage("Nu există modificări noi de trimis. Draftul a fost închis.");
       await loadDraft();
       await onRefresh?.();
       return;
@@ -586,13 +586,13 @@ export default function ProviderLocations({
       return;
     }
     if (data.no_changes) {
-      setMessage(data.message || "Nu exista modificari noi de trimis.");
+      setMessage(data.message || "Nu există modificări noi de trimis.");
     } else if (data.duplicate || data.already_pending) {
       setMessage(
-        data.message || "Aceasta modificare este deja in verificare.",
+        data.message || "Această modificare este deja în verificare.",
       );
     } else {
-      setMessage("Modificarile locatiei au fost trimise spre verificare.");
+      setMessage("Modificările locației au fost trimise spre verificare.");
     }
 
     await loadDraft();
@@ -604,17 +604,17 @@ export default function ProviderLocations({
       <div className="space-y-5">
         <header>
           <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.035em]">
-            Locatii
+            Locații
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Adauga primul punct de lucru al organizatiei.
+            Adaugă primul punct de lucru al organizației.
           </p>
         </header>
         <section className="border-y border-dashed border-foreground/20 py-10 text-center">
           <MapPin className="mx-auto h-7 w-7 text-muted-foreground" />
-          <h2 className="mt-3 text-lg font-bold">Nu exista locatii</h2>
+          <h2 className="mt-3 text-lg font-bold">Nu există locații</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Fiecare locatie va avea propriile servicii, program, specialisti si
+            Fiecare locație va avea propriile servicii, program, specialiști și
             fotografii.
           </p>
           {canAddLocations && (
@@ -622,7 +622,7 @@ export default function ProviderLocations({
               to="/adauga-sau-revendica"
               className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background"
             >
-              <Plus className="h-4 w-4" /> Adauga locatie
+              <Plus className="h-4 w-4" /> Adaugă locație
             </Link>
           )}
         </section>
@@ -635,11 +635,11 @@ export default function ProviderLocations({
       <header className="flex flex-col gap-4 border-b border-foreground/15 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-[2rem] font-extrabold leading-tight tracking-[-0.035em]">
-            Locatiile organizatiei
+            Locațiile organizației
           </h1>
           <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Selecteaza un punct de lucru si gestioneaza separat datele publice,
-            programul, serviciile, specialistii si fotografiile.
+            Selectează un punct de lucru și gestionează separat datele publice,
+            programul, serviciile, specialiștii și fotografiile.
           </p>
         </div>
         {canAddLocations && (
@@ -647,7 +647,7 @@ export default function ProviderLocations({
             to="/adauga-sau-revendica"
             className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background hover:opacity-90 sm:w-auto"
           >
-            <Plus className="h-4 w-4" /> Adauga locatie
+            <Plus className="h-4 w-4" /> Adaugă locație
           </Link>
         )}
       </header>
@@ -700,7 +700,7 @@ export default function ProviderLocations({
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {selectedLocation.locality_name || selectedLocation.city ||
-                    "Localitate necompletata"}
+                    "Localitate necompletată"}
                   {selectedLocation.county_name || selectedLocation.county
                     ? ` · ${selectedLocation.county_name || selectedLocation.county}`
                     : ""}
@@ -713,15 +713,15 @@ export default function ProviderLocations({
                   onClick={() => setEditOpen(true)}
                   className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-transparent px-5 text-sm font-semibold hover:bg-white/45 sm:w-auto"
                 >
-                  <Pencil className="h-4 w-4" /> Editeaza datele
+                  <Pencil className="h-4 w-4" /> Editează datele
                 </button>
               )}
             </div>
 
             {draft && (
               <div className="mt-5 border-y border-[#c6d3da] bg-[#dce5e9] px-4 py-3 text-sm text-[#1c1c1c]">
-                Datele de mai jos previzualizeaza modificarile din draft. Profilul
-                public ramane neschimbat pana la aprobare.
+                Datele de mai jos previzualizează modificările din draft. Profilul
+                public rămâne neschimbat până la aprobare.
               </div>
             )}
 
@@ -768,7 +768,7 @@ export default function ProviderLocations({
                 className="inline-flex min-h-10 items-center gap-2 rounded-full border border-foreground/20 px-4 text-sm font-semibold hover:bg-white/45"
               >
                 <MapPin className="h-4 w-4" />
-                {showPublicMap ? "Ascunde harta" : "Vezi pe harta"}
+                {showPublicMap ? "Ascunde harta" : "Vezi pe hartă"}
               </button>
               {mapUrl && (
                 <a
@@ -777,7 +777,7 @@ export default function ProviderLocations({
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold underline underline-offset-4"
                 >
-                  Deschide in Google Maps
+                  Deschide în Google Maps
                   <ExternalLink className="h-4 w-4" />
                 </a>
               )}
@@ -803,10 +803,10 @@ export default function ProviderLocations({
                     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                       <MapPin className="h-7 w-7 text-muted-foreground" />
                       <p className="mt-2 text-sm font-medium">
-                        Harta nu poate fi afisata
+                        Harta nu poate fi afișată
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Completeaza adresa sau coordonatele locatiei.
+                        Completează adresa sau coordonatele locației.
                       </p>
                     </div>
                   )}
@@ -818,7 +818,7 @@ export default function ProviderLocations({
           <section>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold">Configureaza locatia</h2>
+                <h2 className="text-lg font-bold">Configurează locația</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Module separate pentru {selectedLocationName}.
                 </p>
@@ -838,7 +838,7 @@ export default function ProviderLocations({
                   icon={Wrench}
                   tone={CONFIGURE_TONES.servicii}
                   title="Servicii"
-                  text="Alege serviciile disponibile in aceasta locatie."
+                  text="Alege serviciile disponibile în această locație."
                   onClick={() =>
                     onOpenModule?.("servicii", selectedLocation.id)
                   }
@@ -849,7 +849,7 @@ export default function ProviderLocations({
                   icon={Clock}
                   tone={CONFIGURE_TONES.program}
                   title="Program"
-                  text="Seteaza programul acestui punct de lucru."
+                  text="Setează programul acestui punct de lucru."
                   onClick={() => onOpenModule?.("program", selectedLocation.id)}
                 />
               )}
@@ -857,8 +857,8 @@ export default function ProviderLocations({
                 <ConfigureCard
                   icon={Users}
                   tone={CONFIGURE_TONES.specialisti}
-                  title="Specialisti"
-                  text="Invita specialistii asociati acestei locatii."
+                  title="Specialiști"
+                  text="Invită specialiștii asociați acestei locații."
                   onClick={() =>
                     onOpenModule?.("specialisti", selectedLocation.id)
                   }
@@ -880,7 +880,7 @@ export default function ProviderLocations({
             className="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col border-l border-border bg-background shadow-2xl"
             role="dialog"
             aria-modal="true"
-            aria-label="Editeaza datele locatiei"
+            aria-label="Editează datele locației"
           >
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4 sm:px-6">
               <div className="min-w-0">
@@ -889,7 +889,7 @@ export default function ProviderLocations({
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <h2 className="font-heading text-2xl font-extrabold tracking-tight">
-                    Editeaza datele locatiei
+                    Editează datele locației
                   </h2>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-bold ${locationDataState.className}`}
@@ -898,15 +898,15 @@ export default function ProviderLocations({
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Numele public, adresa, contactul si pozitia pe harta sunt
-                  publicate numai dupa verificarea VIASEE.
+                  Numele public, adresa, contactul și poziția pe hartă sunt
+                  publicate numai după verificarea VIASEE.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditOpen(false)}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
-                aria-label="Inchide"
+                aria-label="Închide"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -916,22 +916,22 @@ export default function ProviderLocations({
               <div className="space-y-5">
                 {pendingReview && (
                   <div className="rounded-2xl border border-[#c6d3da] bg-[#dce5e9] px-4 py-3 text-sm leading-relaxed text-[#1c1c1c]">
-                    Datele sunt deja in verificare. Poti consulta previzualizarea,
-                    dar nu le poti modifica pana la decizia VIASEE.
+                    Datele sunt deja în verificare. Poți consulta previzualizarea,
+                    dar nu le poți modifica până la decizia VIASEE.
                   </div>
                 )}
 
                 <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
                   <div className="mb-4">
-                    <h3 className="text-base font-bold">Identitatea locatiei</h3>
+                    <h3 className="text-base font-bold">Identitatea locației</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Numele public si adresa principala a punctului de lucru.
+                      Numele public și adresa principală a punctului de lucru.
                     </p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm font-semibold text-foreground">
-                        Nume public locatie
+                        Nume public locație
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
@@ -956,7 +956,7 @@ export default function ProviderLocations({
                         onChange={(event) =>
                           setValues({ ...values, address: event.target.value })
                         }
-                        placeholder="Strada, numar, localitate"
+                        placeholder="Strada, număr, localitate"
                       />
                     </div>
                   </div>
@@ -965,7 +965,7 @@ export default function ProviderLocations({
                 <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-base font-bold">Pozitie pe harta</h3>
+                      <h3 className="text-base font-bold">Poziție pe hartă</h3>
                       <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                         Coordonatele sunt optionale, dar ofera un pin mai precis.
                       </p>
@@ -977,7 +977,7 @@ export default function ProviderLocations({
                           : "bg-secondary text-muted-foreground"
                       }`}
                     >
-                      {hasExactPin ? "Pin exact activ" : "Optional"}
+                      {hasExactPin ? "Pin exact activ" : "Opțional"}
                     </span>
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1036,7 +1036,7 @@ export default function ProviderLocations({
                   {showAdvancedMap && (
                     <div className="mt-3 rounded-2xl border border-border bg-secondary/30 p-3">
                       <label className="text-sm font-semibold text-foreground">
-                        Google Place ID, optional
+                        Google Place ID, opțional
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
@@ -1055,13 +1055,13 @@ export default function ProviderLocations({
                   <div className="mb-4">
                     <h3 className="text-base font-bold">Contact public</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Datele prin care clientii pot contacta direct aceasta locatie.
+                      Datele prin care clienții pot contacta direct această locație.
                     </p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm font-semibold text-foreground">
-                        Telefon public locatie
+                        Telefon public locație
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
@@ -1077,7 +1077,7 @@ export default function ProviderLocations({
                     </div>
                     <div>
                       <label className="text-sm font-semibold text-foreground">
-                        Email public locatie
+                        Email public locație
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
@@ -1099,7 +1099,7 @@ export default function ProviderLocations({
                     <div>
                       <h3 className="text-base font-bold">Previzualizare harta</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Se actualizeaza pe baza datelor introduse.
+                        Se actualizează pe baza datelor introduse.
                       </p>
                     </div>
                     {mapUrl && (
@@ -1126,10 +1126,10 @@ export default function ProviderLocations({
                       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                         <MapPin className="h-7 w-7 text-muted-foreground" />
                         <p className="mt-2 text-sm font-medium">
-                          Completeaza adresa sau coordonatele
+                          Completează adresa sau coordonatele
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Previzualizarea va aparea aici.
+                          Previzualizarea va apărea aici.
                         </p>
                       </div>
                     )}
@@ -1137,7 +1137,7 @@ export default function ProviderLocations({
                 </section>
 
                 <div className="rounded-2xl border border-[#dac69b] bg-[#eadcba] px-4 py-3 text-sm leading-relaxed text-[#1c1c1c]">
-                  Schimbarile nu se publica direct. Dupa trimitere, apar in panoul
+                  Schimbările nu se publică direct. După trimitere, apar în panoul
                   de administrare pentru verificare.
                 </div>
               </div>
@@ -1155,7 +1155,7 @@ export default function ProviderLocations({
                   onClick={() => setEditOpen(false)}
                   className="rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
                 >
-                  Inchide
+                  Închide
                 </button>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -1164,7 +1164,7 @@ export default function ProviderLocations({
                     onClick={saveDraft}
                     className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
                   >
-                    <Save className="h-4 w-4" /> Salveaza draft
+                    <Save className="h-4 w-4" /> Salvează draft
                   </button>
                   {draftState?.editable && (
                     <button
