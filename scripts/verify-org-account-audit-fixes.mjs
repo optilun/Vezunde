@@ -15,7 +15,7 @@ import {
 import { buildProviderStatusCenter } from '../shared/providerStatusCenter.js';
 import { isLocationClosed, isLocationPubliclyVisible } from '../src/lib/providerLocationVisibility.js';
 import { formatLocationAddress, formatStreetAddress } from '../src/lib/addressDisplay.js';
-import { countApprovedServiceKeys } from '../base44/shared/providerWorkspaceBatchQueries.js';
+import { countApprovedServiceKeys, splitApprovedServiceCounts } from '../base44/shared/providerServiceCounts.js';
 
 const read = (file) => readFile(new URL(`../${file}`, import.meta.url), 'utf8');
 
@@ -149,6 +149,17 @@ const services = [{ id: 's1', service_key: 'consult' }, { id: 's2', service_key:
 const mirrored = [{ id: 'p1', specialization_key: 'oct' }, { id: 'p2', specialization_key: 'legacy_only' }];
 assert.equal(countApprovedServiceKeys(services, mirrored), 3, '#18: specializarea-oglindă nu se numără de două ori');
 assert.equal(countApprovedServiceKeys([], []), 0);
+// Cazul real din contul de test: 21 de servicii + 5 opțiuni ale locației = 26 de rânduri.
+const withOptions = [
+  ...['refraction', 'frames', 'eyeglasses'].map((key, index) => ({ id: `o${index}`, service_key: key })),
+  ...['home_visit_eye_care', 'workplace_vision_screening'].map((key, index) => ({ id: `g${index}`, service_key: key })),
+];
+assert.deepEqual(splitApprovedServiceCounts(withOptions, []), { services: 3, location_options: 2 }, '#18: opțiunile locației se numără separat, ca în modulul Servicii');
+const overviewSource = await read('base44/functions/getMyProviderWorkspace/getProviderWorkspaceOverview.ts');
+assert.match(overviewSource, /approved_offer_service_count: serviceSplit\.services,/);
+assert.match(overviewSource, /approved_location_option_count: total\.approved_location_option_count \+ summary\.approved_location_option_count,/);
+assert.match(src.overview, /value: contentSummary\.approved_offer_service_count \?\? contentSummary\.approved_service_count \?\? 0/);
+assert.match(src.overview, /`\+ \$\{value\} opțiuni ale locației`/);
 for (const file of ['getProviderWorkspaceOverview.ts', 'getMyProviderWorkspace.ts', 'getProviderProfileCompleteness.ts']) {
   const source = await read(`base44/functions/getMyProviderWorkspace/${file}`);
   assert.match(source, /approved_service_count: countApprovedServiceKeys\(services, specialties\)/, `${file}: același număr de servicii`);

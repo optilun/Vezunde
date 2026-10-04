@@ -75,6 +75,12 @@ const PROFILE_STATUS_LABELS = {
   draft: "Profil organizație nefinalizat",
 };
 
+function locationOptionsLabel(count) {
+  const value = Number(count || 0);
+  if (!value) return "";
+  return value === 1 ? "+ 1 opțiune a locației" : `+ ${value} opțiuni ale locației`;
+}
+
 function approvedImagesLabel(count) {
   const value = Number(count) || 0;
   return value === 1 ? "1 imagine aprobată" : `${value} imagini aprobate`;
@@ -425,7 +431,9 @@ export default function ProviderOverview({
 
   const publishedTiles = [
     { key: "locations", tone: TONES.blue, value: `${activeLocationCount}/${locationCount}`, label: "Locații active", section: "locations" },
-    { key: "services", tone: TONES.green, value: contentSummary.approved_service_count || 0, label: "Servicii publicate", hint: acrossLocations, section: "locations" },
+    // 2026-10-04 (audit #18): ca în modulul Servicii, opțiunile locației (domiciliu, sediul firmelor…)
+    // nu se adună la servicii; apar separat, în dreptul cifrei.
+    { key: "services", tone: TONES.green, value: contentSummary.approved_offer_service_count ?? contentSummary.approved_service_count ?? 0, label: "Servicii publicate", hint: [acrossLocations, locationOptionsLabel(contentSummary.approved_location_option_count)].filter(Boolean).join(" · "), section: "locations" },
     { key: "hours", tone: TONES.amber, value: `${contentSummary.locations_with_opening_hours || 0}/${locationCount}`, label: "Program completat", section: "locations" },
     { key: "team", tone: TONES.lavender, value: contentSummary.approved_public_team_count || 0, label: "Specialiști publici", hint: acrossLocations, section: "locations" },
     { key: "photos", tone: TONES.terracotta, value: `${contentSummary.locations_with_photo || 0}/${locationCount}`, label: "Fotografii", hint: approvedImagesLabel(contentSummary.approved_media_count), section: "locations" },
