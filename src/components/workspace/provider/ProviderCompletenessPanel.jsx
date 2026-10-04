@@ -62,7 +62,7 @@ function LocationComparison({ locations, selectedLocationId }) {
   if (!Array.isArray(locations) || locations.length < 2) return null;
   return (
     <details className="mt-5 rounded-[1.4rem] border border-[#e3ddd0] bg-white/60 p-4">
-      <summary className="cursor-pointer font-heading text-sm font-extrabold tracking-[-0.02em] text-foreground">Compara locatiile ({locations.length})</summary>
+      <summary className="cursor-pointer font-heading text-sm font-extrabold tracking-[-0.02em] text-foreground">Compară locațiile ({locations.length})</summary>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {locations.map((location) => {
           const percentage = Number(location.completion?.percentage || 0);
