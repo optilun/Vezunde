@@ -6,6 +6,10 @@ import {
   loadLocationContentIndex,
   rowsFor,
 } from '../../shared/providerWorkspaceBatchQueries.js';
+// 2026-10-04 (audit cont organizatie, #5): completarea locatiilor se calculeaza cu aceeasi regula ca
+// in „Cereri → Cont” (getProviderProfileCompleteness), ca aceeasi locatie sa nu mai apara cu 100%,
+// 90% si 0% in locuri diferite.
+import { computeLocationCompleteness as computeSharedLocationCompleteness } from '../../shared/providerProfileCompleteness.js';
 
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -72,16 +76,6 @@ function computeOrganizationCompleteness(organization) {
     { key: 'public_contact', label: 'Telefon sau email general', done: hasContact },
     { key: 'web_presence', label: 'Website sau retele sociale', done: hasWeb },
     { key: 'logo', label: 'Logo-ul organizatiei', done: !!clean(organization?.logo_url) },
-  ]);
-}
-
-function computeLocationCompleteness(location) {
-  return checklistResult([
-    { key: 'identity', label: 'Numele si tipul locatiei', done: !!(clean(location?.public_display_name || location?.name) && location?.provider_type && location?.provider_profile_type) },
-    { key: 'locality', label: 'Localitatea', done: !!clean(location?.locality_siruta_code) },
-    { key: 'address', label: 'Adresa', done: !!clean(location?.address) },
-    { key: 'public_contact', label: 'Telefon sau email public', done: !!(clean(location?.phone_public || location?.public_phone) || clean(location?.public_email)) },
-    { key: 'opening_hours', label: 'Programul de functionare', done: !!(clean(location?.opening_hours) || clean(location?.opening_hours_json)) },
   ]);
 }
 
@@ -162,8 +156,15 @@ function getAggregateContentSummary(contentIndex, locations, userId) {
   });
 }
 
-function safeLocationSummary(location) {
-  const completion = computeLocationCompleteness(location);
+function isActiveLocation(location) {
+  return location?.active_status !== 'inactiva' && location?.status !== 'suspendata';
+}
+
+function locationCompletion(contentIndex, location, userId) {
+  return computeSharedLocationCompleteness({ location, content: getLocationContentSummary(contentIndex, location, userId) });
+}
+
+function safeLocationSummary(location, completion) {
   return {
     id: location.id,
     organization_id: location.organization_id || null,
@@ -276,16 +277,17 @@ function buildOrganizationProfileState(organization, fallbackLocation, activeSub
   };
 }
 
-function buildLocationsCompletion(locations) {
+function buildLocationsCompletion(locations, contentIndex, userId) {
   const items = locations.map((location) => ({
     id: location.id,
     name: location.public_display_name || location.name || 'Locatie',
     locality_name: location.locality_name || location.city || '',
     active_status: location.active_status || 'activa',
     profile_control_status: location.profile_control_status || 'directory',
-    completion: computeLocationCompleteness(location),
+    status: location.status || 'draft',
+    completion: locationCompletion(contentIndex, location, userId),
   }));
-  const activeItems = items.filter((item) => item.active_status !== 'inactiva');
+  const activeItems = items.filter((item) => isActiveLocation(item));
   const average = activeItems.length
     ? Math.round(activeItems.reduce((sum, item) => sum + item.completion.percentage, 0) / activeItems.length)
     : 0;
@@ -465,7 +467,7 @@ export async function handle(req: Request) {
       status: organization?.status || 'activa',
     };
 
-    const activeLocations = uniqueLocations.filter((candidate) => candidate.active_status !== 'inactiva' && candidate.status !== 'suspendata');
+    const activeLocations = uniqueLocations.filter(isActiveLocation);
     const verifiedLocationCount = activeLocations.filter((candidate) => candidate.profile_control_status === 'verified').length;
     const verificationStatus = activeLocations.length > 0 && verifiedLocationCount === activeLocations.length
       ? 'all_verified'
@@ -474,7 +476,9 @@ export async function handle(req: Request) {
         : 'unverified';
     const fallbackLocation = activeLocations[0] || uniqueLocations[0] || location;
     const organizationProfileState = buildOrganizationProfileState(organization, fallbackLocation, activeOrganizationSubmission);
-    const locationsCompletion = buildLocationsCompletion(uniqueLocations);
+    const locationsCompletion = buildLocationsCompletion(uniqueLocations, contentIndex, user.id);
+    const completionById = new Map(locationsCompletion.items.map((item) => [item.id, item.completion]));
+    const completionFor = (candidate) => completionById.get(candidate.id) || locationCompletion(contentIndex, candidate, user.id);
     organizationPublic.profile_completeness = organizationProfileState.publishedCompletion.percentage;
 
     return Response.json({
@@ -507,8 +511,8 @@ export async function handle(req: Request) {
         profile_completeness: organizationProfileState.publishedCompletion.percentage,
       },
       location_completion_summary: locationsCompletion,
-      location: safeLocationSummary(location),
-      locations: uniqueLocations.map(safeLocationSummary),
+      location: safeLocationSummary(location, completionFor(location)),
+      locations: uniqueLocations.map((candidate) => safeLocationSummary(candidate, completionFor(candidate))),
       completion: organizationProfileState.publishedCompletion,
       content_summary: contentSummary,
       member_summary: memberSummary,
