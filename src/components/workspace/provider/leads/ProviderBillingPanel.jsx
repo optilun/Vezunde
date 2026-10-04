@@ -121,7 +121,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
       if (request !== sequence.current) return;
       setData(result);
       // Invoice pagination and retries must not overwrite an unsaved billing form.
-      if (!profileInitialized.current) { setProfile(profileFrom(result.customer)); setEditingDetails(!result.customer?.name); profileInitialized.current = true; }
+      if (!profileInitialized.current) { setProfile(profileFrom(result.customer || result.customer_suggestion)); setEditingDetails(!result.customer?.name); profileInitialized.current = true; }
       synced.current?.();
       if (billing === "success" || billing === "portal_return") {
         setNotice(billing === "success" ? "Starea abonamentului a fost verificată cu Stripe." : "Datele de plată au fost actualizate.");
@@ -181,7 +181,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
   // Start a new edit from the latest server snapshot, including portal changes.
   // Repeated activation while already editing must preserve unsaved input.
   const beginEditing = () => {
-    if (!editingDetails) setProfile(profileFrom(data?.customer));
+    if (!editingDetails) setProfile(profileFrom(data?.customer || data?.customer_suggestion));
     setEditingDetails(true);
   };
   const update = (key, value) => setProfile(p => ({ ...p, [key]: value }));
@@ -241,7 +241,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
       <div id="billing-details" className="scroll-mt-24"><Panel title="Date de facturare" icon={FileText} tone="lavender">
         {legacyOnly ? <div className="space-y-3">
           {data.customer_suggestion && <CustomerSummary customer={data.customer_suggestion} />}
-          <p className="text-xs leading-relaxed text-muted-foreground">{data.customer_suggestion ? "Acestea sunt datele de pe abonamentul plătit pe locație. " : ""}Le modifici din „Gestionează abonamentul”. La trecerea la plata pe organizație le preluăm, ca să nu le completezi din nou.</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{data.customer_suggestion ? "Acestea sunt datele de pe abonamentul plătit pe locație. " : ""}Le modifici din „Gestionează abonamentul”. La trecerea la plata pe organizație le vei găsi deja completate.</p>
         </div> : !editingDetails && data.customer ? <div className="flex flex-wrap items-start justify-between gap-3">
           <CustomerSummary customer={data.customer} />
           <button type="button" className={button} onClick={beginEditing}>Modifică datele</button>
@@ -254,6 +254,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
             <label className="text-sm">Adresă<input required autoComplete="street-address" className={field} value={address.line1} onChange={e => updateAddress("line1",e.target.value)} /></label>
             {[["city","Localitate",true],["state","Județ / Regiune",false],["postal_code","Cod poștal",false],["country","Țară (cod de două litere)",true]].map(([key,label,required]) => <label key={key} className="text-sm">{label}<input required={required} maxLength={key === "country" ? 2 : 150} className={field} value={address[key]} onChange={e => updateAddress(key,e.target.value)} /></label>)}
           </fieldset>
+          {!data.customer && data.customer_suggestion && <p className="text-xs text-muted-foreground">Am completat datele de pe abonamentul plătit pe locație. Verifică-le înainte să le salvezi pentru organizație.</p>}
           {data.customer?.tax_ids?.length > 0 && <p className="text-xs text-muted-foreground">Coduri fiscale salvate pentru client: {data.customer.tax_ids.map(tax => tax.value).join(", ")}</p>}
           <p className="text-xs leading-relaxed text-muted-foreground">Modificările se aplică facturilor viitoare. Pentru corectarea unei facturi deja emise, contactează VIASEE.</p>
           <div className="flex flex-wrap gap-2"><button type="submit" className={button} disabled={Boolean(busy)}>{busy === "save" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează datele</button>
