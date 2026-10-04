@@ -34,6 +34,12 @@ export function formatStreetAddress(address, city) {
     const cityPrefix = new RegExp(`^(?:sat(?:ul)?\\s+)?${escapeRegExp(city)}\\s*,\\s*`, "i");
     value = value.replace(cityPrefix, "");
   }
+  // Localitatea, codul poștal și țara de la final se afișează separat; altfel „Roman” apărea de două ori.
+  const citySuffix = city ? new RegExp(`,\\s*${escapeRegExp(city)}\\s*$`, "i") : null;
+  for (let pass = 0; pass < 2; pass += 1) {
+    value = value.replace(/,\s*Rom[aâ]nia\s*$/i, "").replace(/,\s*\d{6}\s*$/, "");
+    if (citySuffix) value = value.replace(citySuffix, "");
+  }
 
   // Decidem înainte de curățare: „STR.” devine „Str.” și textul n-ar mai părea scris cu majuscule.
   const upperCase = isAllUpperCase(value);
