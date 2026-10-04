@@ -6,6 +6,7 @@ const LOCATION_DETAIL_FIELDS = [
   'lat',
   'lng',
   'place_id',
+  'map_precision',
 ];
 
 const PUBLIC_PROFILE_FIELDS = [
@@ -79,11 +80,13 @@ function canonicalizeGeneric(value) {
 function normalizeField(section, key, value) {
   if (section === 'location_details') {
     if (key === 'lat' || key === 'lng') return normalizeCoordinate(value);
+    if (key === 'map_precision') return value === 'exact' ? 'exact' : 'approximate';
     if (key === 'public_phone') return normalizePhone(value);
     if (key === 'public_email') return normalizeEmail(value);
     return normalizeText(value);
   }
   if (section === 'public_profile') {
+    if (key === 'map_precision') return value === 'exact' ? 'exact' : 'approximate';
     if (key === 'public_phone') return normalizePhone(value);
     if (key === 'public_email') return normalizeEmail(value);
     if (['website_url', 'facebook_url', 'instagram_url', 'linkedin_url'].includes(key)) return normalizeUrl(value);
@@ -102,6 +105,7 @@ export function getCurrentSectionValues(section, entity = {}) {
       lat: entity.lat ?? null,
       lng: entity.lng ?? null,
       place_id: entity.place_id || '',
+      map_precision: entity.map_precision === 'exact' ? 'exact' : 'approximate',
     };
   }
   if (section === 'public_profile') {
