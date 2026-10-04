@@ -275,11 +275,8 @@ def profile_scene(im,u,m):
         if m:
             b=badge("Compari. Apoi alegi.",254);place(im,b,143,649,alpha=ease((u-.8)/.3))
         else:
-            b=layer(257,93);rr(b,(0,0,257,93),14,"#fffefa")
-            circle(b,31,45,15,"#e6ebd9");check(b,31,45,"#536c3c",8)
-            txt(b,"Detaliile, la îndemână.",58,20,15,800)
-            txt(b,"Tu alegi unde mergi.",58,50,14,550,MUTED)
-            place(im,b,651,390,alpha=ease((u-.8)/.3))
+            b=badge("Tu alegi unde mergi.",257)
+            place(im,b,676,464,alpha=ease((u-.8)/.3))
     return im
 
 def ending_scene(im,u,m):
