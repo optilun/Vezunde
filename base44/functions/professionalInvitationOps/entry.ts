@@ -272,9 +272,10 @@ async function createInvitation(base44, svc, user, payload, req) {
       delivery_status: deliveryUpdate.delivery_status,
       delivery_provider: deliveryUpdate.delivery_provider,
     },
-    note: delivery.sent
+    ...(payload.resent_from_invitation_id ? { previous: { resent_from_invitation_id: payload.resent_from_invitation_id } } : {}),
+    note: (payload.resent_from_invitation_id ? 'Retrimisa dupa expirarea invitatiei anterioare. ' : '') + (delivery.sent
       ? 'Invitatie profesionala creata si trimisa prin infrastructura Base44. Nu acorda acces operational la locatie.'
-      : 'Invitatie profesionala creata, dar trimiterea a esuat. Linkul trebuie transmis manual.',
+      : 'Invitatie profesionala creata, dar trimiterea a esuat. Linkul trebuie transmis manual.'),
   });
 
   return response({
@@ -318,6 +319,33 @@ async function revokeInvitation(svc, user, payload) {
   });
 
   return response({ success: true });
+}
+
+// 2026-10-04 (audit cont organizatie, #19): o invitatie expirata ramanea in lista fara nicio
+// actiune, iar emailul complet nu se vede in pagina (e mascat). `resend` creeaza o invitatie noua
+// pentru acelasi email, aceeasi profesie si aceeasi locatie, cu aceleasi verificari ca `create`
+// (acces la locatie, fara duplicat activ). Invitatia veche ramane in istoric, neschimbata.
+async function resendInvitation(base44, svc, user, payload, req) {
+  const invitationId = cleanString(payload.invitation_id);
+  if (!invitationId) return response({ error: 'invitation_id este obligatoriu' }, 400);
+
+  const invitation = await svc.entities.ProfessionalInvitation.get(invitationId).catch(() => null);
+  if (!invitation) return response({ error: 'Invitatia nu a fost gasita' }, 404);
+
+  const access = await getProviderAccess(svc, user, invitation.location_id);
+  if (access.error) return response({ error: access.error }, access.status);
+
+  const expired = invitation.status === 'expired'
+    || (invitation.status === 'pending' && new Date(invitation.expires_at).getTime() <= Date.now());
+  if (!expired) return response({ error: 'Doar invitatiile expirate pot fi trimise din nou' }, 400);
+
+  return await createInvitation(base44, svc, user, {
+    location_id: invitation.location_id,
+    invited_email: invitation.invited_email_normalized,
+    professional_type: invitation.professional_type,
+    invitation_base_url: payload.invitation_base_url,
+    resent_from_invitation_id: invitation.id,
+  }, req);
 }
 
 // 2026-10-01. Invitatiile de specialist se comportau altfel decat cele de membru: se puteau
@@ -603,6 +631,7 @@ Deno.serve(async (req) => {
     if (action === 'list') return await listInvitations(svc, user, payload);
     if (action === 'create') return await createInvitation(base44, svc, user, payload, req);
     if (action === 'revoke') return await revokeInvitation(svc, user, payload);
+    if (action === 'resend') return await resendInvitation(base44, svc, user, payload, req);
     if (action === 'accept') return await acceptInvitation(svc, user, payload, req);
     if (action === 'list_mine') return await listMyInvitations(svc, user);
     if (action === 'inspect') return await inspectInvitation(svc, user, payload, req);
