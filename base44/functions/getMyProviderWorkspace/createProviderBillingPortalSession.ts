@@ -8,7 +8,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, safeBillingReturnBaseUrl } from '../../shared/providerBillingPolicy.js';
 
-import { assertBillingCustomer, findBillingAccount } from './billingAccountHelpers.ts';
+import { assertBillingCustomer, findBillingAccount, assertOrganizationBillingCustomer, findOrganizationBillingAccount } from './billingAccountHelpers.ts';
+import { authorizeOrganizationBillingOwner } from '../../shared/providerOrganizationBilling.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -25,21 +26,44 @@ export async function handle(req: Request) {
     if (!user) return res({ error: 'Autentificare necesara.' }, 401);
     const svc = base44.asServiceRole;
     const input = await req.json().catch(() => ({}));
-    const locationId = clean(input.location_id, 120);
-    if (!locationId) return res({ error: 'location_id este obligatoriu.' }, 400);
+    const organizationId = clean(input.organization_id, 120);
+    let locationId = clean(input.location_id, 120);
+    if (!locationId && !organizationId) return res({ error: 'location_id este obligatoriu.' }, 400);
 
-    const authorized = await authorizeProviderBillingOwner(svc, user, locationId);
-    if (authorized.error) return res({ error: authorized.error }, authorized.status);
+    // 2026-10-04 (structura conturilor, pasul 4): cu organization_id se deschide contul de facturare
+    // al organizatiei. Daca organizatia nu are inca unul, dar are un abonament vechi pe o locatie
+    // (legacy_location_id), se deschide contul acelei locatii, ca abonamentul vechi sa poata fi gestionat.
+    let organizationAccount = null;
+    if (organizationId) {
+      const authorizedOrganization = await authorizeOrganizationBillingOwner(svc, user, { organizationId });
+      if (authorizedOrganization.error) return res({ error: authorizedOrganization.error }, authorizedOrganization.status);
+      organizationAccount = await findOrganizationBillingAccount(svc, organizationId);
+      const legacyLocationId = clean(input.legacy_location_id, 120);
+      if (!organizationAccount || legacyLocationId) {
+        if (!legacyLocationId || !authorizedOrganization.locations.some((location) => location.id === legacyLocationId)) {
+          if (!organizationAccount) return res({ error: 'Organizatia nu are inca un abonament Stripe.' }, 404);
+        } else {
+          organizationAccount = null;
+          locationId = legacyLocationId;
+        }
+      }
+    }
+
+    if (!organizationAccount) {
+      const authorized = await authorizeProviderBillingOwner(svc, user, locationId);
+      if (authorized.error) return res({ error: authorized.error }, authorized.status);
+    }
 
     const secretKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!secretKey) return res({ error: 'Facturarea Stripe nu este configurata complet.' }, 500);
 
-    const account = await findBillingAccount(svc, locationId);
+    const account = organizationAccount || await findBillingAccount(svc, locationId);
     const stripeCustomerId = account?.stripe_customer_id;
     if (!stripeCustomerId) return res({ error: 'Aceasta locatie nu are inca un abonament Stripe activ.' }, 404);
 
     const stripe = new Stripe(secretKey);
-    assertBillingCustomer(await stripe.customers.retrieve(stripeCustomerId), locationId);
+    if (organizationAccount) assertOrganizationBillingCustomer(await stripe.customers.retrieve(stripeCustomerId), organizationId);
+    else assertBillingCustomer(await stripe.customers.retrieve(stripeCustomerId), locationId);
     const baseUrl = safeBillingReturnBaseUrl(input.return_base_url);
     let configuration = Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID');
     if (!configuration) {
@@ -63,7 +87,9 @@ export async function handle(req: Request) {
     }
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${baseUrl}/contul-meu?s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
+      return_url: organizationId
+        ? `${baseUrl}/contul-meu?s=settings&tab=billing&organization=${encodeURIComponent(organizationId)}&billing=portal_return`
+        : `${baseUrl}/contul-meu?s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
       configuration,
       ...(input.flow === 'payment_method_update' ? { flow_data: { type: 'payment_method_update' } } : {}),
     });
