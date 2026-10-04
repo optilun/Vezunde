@@ -69,7 +69,7 @@ export default function LocationPinVectorCanvas({ location, onPositionChange, on
       element.className = "viasee-map-pill";
       element.style.width = "44px"; element.style.height = "44px";
       element.setAttribute("role", "img");
-      marker = new maplibregl.Marker({ element, draggable: editable, anchor: "center" }).addTo(map);
+      marker = new maplibregl.Marker({ element, draggable: editable, anchor: "center" }).setLngLat([position.lng, position.lat]).addTo(map);
       marker.on("dragend", () => {
         const next = marker.getLngLat();
         latest.current.onPositionChange?.({ lat: Number(next.lat.toFixed(6)), lng: Number(next.lng.toFixed(6)) });
