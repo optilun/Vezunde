@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const source = (await readFile(new URL("../src/lib/app-params.js", import.meta.url), "utf8"))
-  .replace(/import\.meta\.env\.VITE_[A-Z_]+/g, "undefined")
+  .replace(/import\.meta\.env\.VITE_[A-Z0-9_]+/g, "undefined")
   .replace("export const appParams", "globalThis.testAppParams");
 
 function run(search) {
