@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, ClipboardList, MapPin, Search, Stethoscope, UserRound } from "lucide-react";
+import { ArrowRight, Bell, Bookmark, Building2, ClipboardList, MapPin, Search, Stethoscope, UserRound } from "lucide-react";
 import { CLAIM_STATUS_LABELS, ROLE_LABELS } from "@/lib/workspaceStatusLabels";
 import {
   PROFESSIONAL_REVIEW_STATUS_LABELS,
@@ -92,7 +92,7 @@ export default function PersonalOverview({
       <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm sm:p-6">
         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Cont personal</div>
         <h1 className="mt-1.5 font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">Salut, {user.full_name || "acolo"}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Găsește locații, urmărește cererile tale și schimbă ușor între spațiile contului.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Găsește locații, urmărește cererile și notificările tale, păstrează profilurile salvate și schimbă ușor între spațiile contului.</p>
       </section>
 
       <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -104,9 +104,15 @@ export default function PersonalOverview({
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Cererile trimise ca pacient și răspunsurile primite de la optici și clinici.</p>
             </div>
           </div>
-          <button type="button" onClick={() => onNavigate?.("requests")} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
-            Vezi cererile <ArrowRight className="h-4 w-4" />
-          </button>
+          {/* 2026-10-04 (pasul 5): notificările tuturor cererilor, într-un singur loc. */}
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+            <button type="button" onClick={() => onNavigate?.("notifications")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+              <Bell className="h-4 w-4" /> Notificări
+            </button>
+            <button type="button" onClick={() => onNavigate?.("requests")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+              Vezi cererile <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </section>
 
@@ -220,9 +226,14 @@ export default function PersonalOverview({
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary"><Search className="h-4 w-4" /></div>
           <h2 className="mt-4 text-base font-bold">Caută o locație</h2>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Găsește optici, clinici și cabinete potrivite nevoii tale.</p>
-          <Link to="/cauta" className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
-            Începe căutarea <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Link to="/cauta" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+              Începe căutarea <ArrowRight className="h-4 w-4" />
+            </Link>
+            <button type="button" onClick={() => onNavigate?.("saved")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto">
+              <Bookmark className="h-4 w-4" /> Salvate
+            </button>
+          </div>
         </section>
 
         <section className="rounded-[22px] border border-border bg-accent/40 p-4 shadow-sm sm:p-5">
