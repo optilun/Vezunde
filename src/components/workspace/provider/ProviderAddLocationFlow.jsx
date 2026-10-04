@@ -371,7 +371,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
                 <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Tipul organizației nu se schimbă automat.</div>
               </div>
               {submission?.admin_note && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><b>Mesaj administrator:</b> {submission.admin_note}</div>}
-              {pending && <div className="mt-4 flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Cererea este în verificare. Locația nu este încă publica.</div>}
+              {pending && <div className="mt-4 flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Cererea este în verificare. Locația nu este încă publică.</div>}
               {message && <p className="mt-4 text-xs text-muted-foreground">{message}</p>}
             </section>
 
