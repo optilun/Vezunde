@@ -69,8 +69,14 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
     if (prefill) {
       return {
         ...INITIAL,
+        // 2026-10-04: cabinetul propriu al specialistului (structura conturilor, pasul 5) aduce si
+        // numele organizatiei, tipul si emailul public. Campurile lipsa raman goale, ca inainte.
+        organization: { ...INITIAL.organization, name: prefill.organization_name || "" },
         location: {
           ...INITIAL.location,
+          provider_type: prefill.provider_type || "",
+          provider_profile_type: prefill.provider_profile_type || "",
+          public_email: prefill.public_email || "",
           name: prefill.name || "",
           city: prefill.city || "",
           county: prefill.county || "",
