@@ -21,6 +21,7 @@ import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
+import { formatLocationAddress } from "@/lib/addressDisplay";
 
 const inputCls =
   "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow] focus:border-[#345bc8] focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
@@ -682,18 +683,7 @@ function OrganizationProfile({
 }
 
 function locationAddress(location) {
-  const parts = [
-    location?.address,
-    location?.address_line1,
-    location?.street_address,
-    location?.locality_name,
-    location?.city,
-    location?.county_name,
-    location?.county,
-  ]
-    .map((value) => String(value || "").trim())
-    .filter(Boolean);
-  return [...new Set(parts)].join(", ") || "Adresa nu este completată";
+  return formatLocationAddress(location, "Adresa nu este completată");
 }
 
 function LocationRow({ location, selected, onManage }) {

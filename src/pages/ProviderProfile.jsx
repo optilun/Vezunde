@@ -22,6 +22,7 @@ import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 import ProviderLocationHero from "@/components/provider/ProviderLocationHero";
 import SaveToAccountButton from "@/components/saved/SaveToAccountButton";
 import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
+import { formatStreetAddress } from "@/lib/addressDisplay";
 
 const SOCIAL_LINKS = [
   { key: "facebook", label: "Facebook", platform: "facebook" },
@@ -43,42 +44,7 @@ function compactUrl(url) {
   return String(url || "").replace(/^https?:\/\//i, "").replace(/\/$/, "");
 }
 
-function escapeRegExp(value) {
-  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function titleCaseAddress(value) {
-  const raw = String(value || "").trim();
-  if (!raw || raw !== raw.toLocaleUpperCase("ro-RO")) return raw;
-  return raw
-    .toLocaleLowerCase("ro-RO")
-    .replace(/(^|[\s-])(\p{L})/gu, (_match, separator, letter) => `${separator}${letter.toLocaleUpperCase("ro-RO")}`);
-}
-
-function formatStreetAddress(address, city) {
-  let value = String(address || "").trim().replace(/\s+/g, " ");
-  if (!value) return "";
-
-  if (city) {
-    const cityPrefix = new RegExp(`^(?:sat(?:ul)?\\s+)?${escapeRegExp(city)}\\s*,\\s*`, "i");
-    value = value.replace(cityPrefix, "");
-  }
-
-  value = value
-    .replace(/(?:,\s*)?ET\.?\s*$/i, "")
-    .replace(/\bSTR\.?\s*/gi, "Str. ")
-    .replace(/\bNR\.?\s*/gi, "nr. ")
-    .replace(/\s*,\s*/g, ", ")
-    .replace(/,\s*$/, "")
-    .trim();
-
-  value = titleCaseAddress(value)
-    .replace(/\bNr\.\s*/g, "nr. ")
-    .replace(/\bStr\.\s*/g, "Str. ");
-
-  return value;
-}
-
+// 2026-10-04: formatarea adresei s-a mutat în src/lib/addressDisplay.js (folosită și în contul organizației).
 function fullAddress(profile) {
   const parts = [formatStreetAddress(profile.address, profile.city), profile.city, profile.county].filter(Boolean);
   const unique = [];

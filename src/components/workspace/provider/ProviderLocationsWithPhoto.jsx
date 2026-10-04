@@ -5,6 +5,7 @@ import ProviderLocations, { CONFIGURE_TONES } from "./ProviderLocations";
 import ProviderLocationPhotoCompact from "./ProviderLocationPhotoCompact";
 import ProviderAddLocationFlow from "./ProviderAddLocationFlow";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
+import { formatLocationAddress } from "@/lib/addressDisplay";
 
 function plainLabel(value) {
   return String(value || "")
@@ -13,18 +14,7 @@ function plainLabel(value) {
 }
 
 function locationAddress(location) {
-  const parts = [
-    location?.address,
-    location?.address_line1,
-    location?.street_address,
-    location?.locality_name,
-    location?.city,
-    location?.county_name,
-    location?.county,
-  ]
-    .map((value) => String(value || "").trim())
-    .filter(Boolean);
-  return [...new Set(parts)].join(", ") || "Adresa nu este completată";
+  return formatLocationAddress(location, "Adresa nu este completată");
 }
 
 function locationTypeLabel(location) {
