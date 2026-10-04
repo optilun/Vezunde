@@ -5,12 +5,14 @@ const AccountSettings = lazy(() => import("@/components/workspace/account/Accoun
 import { PERSONAL_NAV } from "@/lib/workspaceNav";
 const PersonalOverview = lazy(() => import("./PersonalOverview"));
 const PersonalRequests = lazy(() => import("./PersonalRequests"));
+const PersonalNotifications = lazy(() => import("./PersonalNotifications"));
+const PersonalSaved = lazy(() => import("./PersonalSaved"));
 
 function WorkspaceSectionLoading() {
   return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground" role="status">Se încarcă secțiunea...</div>;
 }
 
-const PERSONAL_SECTIONS = new Set(["overview", "requests", "settings"]);
+const PERSONAL_SECTIONS = new Set(["overview", "requests", "notifications", "saved", "settings"]);
 
 export default function PersonalAccountWorkspace({
   user,
@@ -59,6 +61,8 @@ export default function PersonalAccountWorkspace({
         />
       )}
       {section === "requests" && <PersonalRequests />}
+      {section === "notifications" && <PersonalNotifications />}
+      {section === "saved" && <PersonalSaved />}
       {section === "settings" && (
         <AccountSettings
           user={user}
