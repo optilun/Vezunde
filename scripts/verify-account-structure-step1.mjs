@@ -138,7 +138,8 @@ assert.match(myAccount, /key: "create-professional"/);
 assert.match(myAccount, /key: "create-organization"/);
 assert.match(myAccount, /\.\.\.\(hasApplicantWorkspace \? \["applicant"\] : \[\]\), "personal"\]/, 'istoricul singur nu devine spatiul implicit');
 // Paginile modulelor unei locatii raman in spatiul organizatiei, oricare ar fi ultimul spatiu folosit.
-assert.match(myAccount, /const requestedMode = params\.get\("mode"\) \|\| \(routeLocationModule \? "provider" : null\);/);
+// 2026-10-04 (pasul 5): in fata sta redirectionarea solicitarilor trimise la verificarea de duplicat.
+assert.match(myAccount, /: \(params\.get\("mode"\) \|\| \(routeLocationModule \? "provider" : null\)\);/);
 assert.match(myAccount, /const routeForcesProvider = Boolean\(routeLocationModule\) && !params\.get\("mode"\)/);
 assert.match(myAccount, /rememberedMode === "applicant" && !hasApplicantWorkspace \? null : rememberedMode/, 'istoricul nu devine spatiul de pornire');
 assert.match(myAccount, /if \(routeLocationModule\) routerNavigate\(`\/contul-meu\?\$\{next\.toString\(\)\}`/, 'schimbarea spatiului paraseste pagina modulului');

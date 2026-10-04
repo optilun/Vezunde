@@ -94,7 +94,9 @@ const responseComponent = await readFile(new URL('../src/components/intake2/Pati
 const chatComponent = await readFile(new URL('../src/components/intake2/PatientRequestChat.jsx', import.meta.url), 'utf8');
 const submission = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
-assert.match(backend, /sha256\(accessToken\)/);
+// 2026-10-04 (structura conturilor, pasul 5): tokenul se verifica prin helperul comun, care
+// accepta linkul din email si accesul cerut din contul pacientului.
+assert.match(backend, /findPatientRequestContactForToken\(svc, /);
 assert.match(backend, /PatientRequestContact\.filter/);
 assert.match(backend, /createPatientVerificationCode/);
 assert.match(backend, /Core\.SendEmail/);

@@ -117,7 +117,9 @@ const providerInbox = await readFile(new URL('../src/components/workspace/provid
 
 assert.match(backend, /actor === 'patient'/);
 assert.match(backend, /actor === 'provider'/);
-assert.match(backend, /sha256\(accessToken\)/);
+// 2026-10-04 (structura conturilor, pasul 5): tokenul se verifica prin helperul comun, care
+// accepta linkul din email si accesul cerut din contul pacientului.
+assert.match(backend, /findPatientRequestContactForToken\(svc, /);
 const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
 assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
 assert.match(accessHelper, /ProviderMembership\.filter/);

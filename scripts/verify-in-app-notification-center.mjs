@@ -129,7 +129,9 @@ assert.match(providerLocationAccess, /ProviderMembership\.filter/);
 assert.match(providerBackend, /recipient_ref_id: userId/);
 assert.match(providerBackend, /notification\.location_id !== locationId/);
 assert.match(providerBackend, /ensureProviderInAppNotifications/);
-assert.match(patientBackend, /sha256\(accessToken\)/);
+// 2026-10-04 (structura conturilor, pasul 5): tokenul se verifica prin helperul comun, care
+// accepta linkul din email si accesul cerut din contul pacientului.
+assert.match(patientBackend, /findPatientRequestContactForToken\(svc, /);
 assert.match(patientBackend, /recipient_type: 'patient_request'/);
 assert.match(patientBackend, /notification\.request_id !== requestId/);
 assert.match(patientBackend, /ensurePatientInAppNotifications/);
