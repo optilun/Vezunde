@@ -4,9 +4,10 @@ Reuses V4 drawing primitives, brand fonts and the existing cobalt woven texture.
 """
 from pathlib import Path
 from functools import lru_cache
-import importlib.util, io, math, subprocess, sys
+import importlib.util, io, math, re, subprocess, sys
+import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw, ImageOps, ImageFilter
-import cairosvg, imageio_ffmpeg
+import imageio_ffmpeg
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location("motion_v4",ROOT/"scripts/render-client-journey-v4.py")
@@ -41,14 +42,29 @@ def place(im,card,x,y,scale=1,alpha=1,shade=True,rotation=0):
     if shade:im.alpha_composite(sh,(round((x-50)*S),round((y-50)*S)))
     im.alpha_composite(a,(round(x*S),round(y*S)))
 
+@lru_cache(maxsize=20)
+def raster_brand_svg(name,w):
+    # Brand SVGs contain only their traced M/L/Z paths; draw those exact polygons.
+    root=ET.parse(ROOT/"public/brand"/name).getroot()
+    _,_,vw,vh=map(float,root.attrib["viewBox"].split())
+    out=layer(w,w*vh/vw);draw=ImageDraw.Draw(out)
+    for path in root.findall("{http://www.w3.org/2000/svg}path"):
+        d=path.attrib["d"]
+        assert not re.search("[CQAHVSTcqahvst]",d), "Unexpected brand path command"
+        for subpath in re.findall(r"M([^M]+)",d):
+            nums=list(map(float,re.findall(r"-?\d+(?:\.\d+)?",subpath)))
+            points=[(nums[i]/vw*w*S,nums[i+1]/vw*w*S) for i in range(0,len(nums),2)]
+            draw.polygon(points,fill=INK)
+    return out
+
 @lru_cache(maxsize=15)
 def brand(w=220,white=False,symbol_only=False):
     # Rasterise the actual site vector assets, retaining their original geometry.
-    symbol=Image.open(io.BytesIO(cairosvg.svg2png(url=str(ROOT/"public/brand/viasee-symbol.svg"),output_width=round(w*.19*S)))).convert("RGBA")
+    symbol=raster_brand_svg("viasee-symbol.svg",w*.19)
     if symbol_only:
         result=symbol
     else:
-        word=Image.open(io.BytesIO(cairosvg.svg2png(url=str(ROOT/"public/brand/viasee-wordmark.svg"),output_width=round(w*.76*S)))).convert("RGBA")
+        word=raster_brand_svg("viasee-wordmark.svg",w*.76)
         result=layer(w,max(symbol.height,word.height)/S)
         result.alpha_composite(symbol,(0,0))
         result.alpha_composite(word,(round(w*.24*S),round((result.height-word.height)/2)))
