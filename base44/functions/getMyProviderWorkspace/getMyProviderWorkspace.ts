@@ -13,6 +13,7 @@ import {
   groupRowsBy,
   loadLocationContentIndex,
   rowsFor,
+  countApprovedServiceKeys,
 } from '../../shared/providerWorkspaceBatchQueries.js';
 
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
@@ -184,7 +185,7 @@ function getContentSummary(contentIndex, locationId, userId) {
   const articles = rowsFor(contentIndex.articles, locationId);
   const pendingCount = (section) => submissions.filter((submission) => submission.section === section).length;
   return {
-    approved_service_count: services.length + specialties.length,
+    approved_service_count: countApprovedServiceKeys(services, specialties),
     pending_service_review_count: pendingCount('services'),
     approved_public_team_count: team.length,
     pending_team_review_count: pendingCount('team'),

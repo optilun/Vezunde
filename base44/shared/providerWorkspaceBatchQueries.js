@@ -109,6 +109,17 @@ export function rowsFor(groups, key) {
   return groups?.get?.(clean(key)) || [];
 }
 
+// 2026-10-04 (audit cont organizație, #18): LocationSpecialization este oglinda serviciilor din
+// grupa „specialties” (vezi applyServices în directoryOps/adminServiceConfigurationReview.ts).
+// Adunate, aceleași servicii se numărau de două ori: „26 servicii publicate” în Prezentare, 21 în
+// modulul Servicii. Numărăm cheile unice; o specializare fără serviciu tot se numără.
+export function countApprovedServiceKeys(services = [], specialties = []) {
+  const keys = new Set();
+  for (const row of services || []) keys.add(clean(row?.service_key) || `service:${row?.id}`);
+  for (const row of specialties || []) keys.add(clean(row?.specialization_key) || `specialty:${row?.id}`);
+  return keys.size;
+}
+
 const CONTENT_SOURCES = Object.freeze({
   submissions: { entity: 'ProviderWorkspaceSubmission', query: { access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } }, sort: '-created_date' },
   services: { entity: 'LocationService', query: { is_active: true } },

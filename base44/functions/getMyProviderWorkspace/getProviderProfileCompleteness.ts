@@ -5,7 +5,7 @@ import {
   computeOrganizationCompleteness,
   summarizeProviderCompleteness,
 } from '../../shared/providerProfileCompleteness.js';
-import { loadLocationContentIndex, rowsFor } from '../../shared/providerWorkspaceBatchQueries.js';
+import { loadLocationContentIndex, rowsFor, countApprovedServiceKeys } from '../../shared/providerWorkspaceBatchQueries.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -39,7 +39,7 @@ function contentSummary(contentIndex, location) {
   const team = rowsFor(contentIndex.team, location.id);
   const media = rowsFor(contentIndex.media, location.id);
   return {
-    approved_service_count: services.length + specialties.length,
+    approved_service_count: countApprovedServiceKeys(services, specialties),
     approved_public_team_count: team.length,
     approved_media_count: media.length,
     has_primary_photo: Boolean(location.photo_url),

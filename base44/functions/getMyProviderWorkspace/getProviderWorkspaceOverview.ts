@@ -5,6 +5,7 @@ import {
   getManyByIds,
   loadLocationContentIndex,
   rowsFor,
+  countApprovedServiceKeys,
 } from '../../shared/providerWorkspaceBatchQueries.js';
 // 2026-10-04 (audit cont organizatie, #5): completarea locatiilor se calculeaza cu aceeasi regula ca
 // in „Cereri → Cont” (getProviderProfileCompleteness), ca aceeasi locatie sa nu mai apara cu 100%,
@@ -110,7 +111,7 @@ function getLocationContentSummary(contentIndex, location, userId) {
   if (primaryPhoto) approvedMediaReferences.add(primaryPhoto);
 
   return {
-    approved_service_count: services.length + specialties.length,
+    approved_service_count: countApprovedServiceKeys(services, specialties),
     pending_service_review_count: pendingCount('services'),
     approved_public_team_count: team.length,
     pending_team_review_count: pendingCount('team'),
