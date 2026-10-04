@@ -45,7 +45,7 @@ function clean(value, maxLength = 200) {
   return String(value ?? '').trim().slice(0, maxLength);
 }
 
-function isoFromUnixSeconds(value) {
+export function isoFromUnixSeconds(value) {
   const seconds = Number(value);
   return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000).toISOString() : null;
 }
@@ -64,13 +64,13 @@ export function resolveSubscriptionPeriod(subscription) {
   };
 }
 
-function resolveStripeCustomerId(subscription) {
+export function resolveStripeCustomerId(subscription) {
   const customer = subscription?.customer;
   if (typeof customer === 'string') return customer;
   return clean(customer?.id, 200) || null;
 }
 
-function resolveStripePriceId(subscription) {
+export function resolveStripePriceId(subscription) {
   const price = subscription?.items?.data?.[0]?.price;
   if (typeof price === 'string') return price;
   return clean(price?.id, 200) || null;
@@ -81,7 +81,7 @@ function resolveStripePriceId(subscription) {
 // timestamp viitor, de obicei sfarsitul perioadei curente) in loc de boolean-ul clasic
 // cancel_at_period_end - care ramane 'false'. Fara acest fallback, un abonament programat sa se
 // anuleze arata incorect ca "se reinnoieste automat".
-function resolveCancelAtPeriodEnd(subscription) {
+export function resolveCancelAtPeriodEnd(subscription) {
   if (subscription?.cancel_at_period_end === true) return true;
   return typeof subscription?.cancel_at === 'number' && subscription.cancel_at > 0;
 }
