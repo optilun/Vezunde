@@ -95,7 +95,9 @@ export default function AddOrClaim() {
   });
   const [selected, setSelected] = useState(initialSelectedLocation);
   const [selectedOrganization, setSelectedOrganization] = useState(navState?.selectedOrganization || null);
-  const [draft, setDraft] = useState(null);
+  // 2026-10-04 (structura conturilor, pasul 5): cabinetul propriu al specialistului vine cu
+  // datele din profilul profesional (sugestii editabile, nimic nu se trimite automat).
+  const [draft, setDraft] = useState(() => navState?.newLocationPrefill || null);
   // Aria propusa cand solicitarea porneste de la un card de organizatie (2026-08-18).
   const [preferredScope, setPreferredScope] = useState(navState?.preferredScope || "");
   const [claimStep, setClaimStep] = useState(() => resumedClaimLocation
