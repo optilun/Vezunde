@@ -92,7 +92,9 @@ assert.match(backend, /base44\.auth\.me\(\)/);
 const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocationAccess.js', import.meta.url), 'utf8');
 assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
 assert.match(accessHelper, /ProviderMembership\.filter/);
-assert.match(backend, /ProviderSubscription\.filter/);
+// 2026-10-04 (structura conturilor, pasul 4): planul se citeste cu loadProviderEntitlementRows
+// (randurile locatiei + abonamentul organizatiei ei).
+assert.match(backend, /loadProviderEntitlementRows\(svc, \{ locationId \}\)/);
 assert.match(backend, /hasProviderFeature\(entitlement, 'provider_leads\.respond'\)/);
 assert.match(backend, /acquireProviderLeadResponseLock/);
 assert.match(backend, /releaseProviderLeadResponseLock/);

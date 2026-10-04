@@ -75,9 +75,13 @@ const accessHelper = await readFile(new URL('../base44/shared/providerLeadLocati
 assert.match(backend, /await findProviderLeadLocationMembership\(svc, user, location\)/);
 assert.match(accessHelper, /ProviderMembership\.filter/);
 assert.match(accessHelper, /user_id: user\.id/);
-assert.match(backend, /location_id: locationId/);
 assert.match(accessHelper, /status: 'active'/);
-assert.match(backend, /ProviderSubscription\.filter/);
+// 2026-10-04 (structura conturilor, pasul 4): planul se citeste cu loadProviderEntitlementRows
+// (randurile locatiei + abonamentul organizatiei ei).
+assert.match(backend, /loadProviderEntitlementRows\(svc, \{ location: authorized\.location \}\)/);
+const entitlementRows = await readFile(new URL('../base44/shared/providerEntitlementRows.js', import.meta.url), 'utf8');
+assert.match(entitlementRows, /ProviderSubscription\.filter\(\{ location_id: resolvedLocationId \}/);
+assert.match(entitlementRows, /subscription_scope: 'organization'/);
 assert.match(backend, /resolveProviderEntitlement/);
 assert.doesNotMatch(backend, /input\.plan_code/);
 assert.doesNotMatch(backend, /ProviderSubscription\.(create|update|delete)/);
