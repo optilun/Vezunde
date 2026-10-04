@@ -149,6 +149,7 @@ export async function handle(req: Request) {
       const page = subscriptions ? await stripe.subscriptions.list({ ...params, status: 'all' }) : payments ? await stripe.paymentIntents.list({ ...params, expand: ['data.latest_charge'] }) : await stripe.invoices.list(params);
       const customers = new Map();
       const rows = [];
+      let organizationTieredPrice;
       for (const item of page.data) {
         const customerId = idOf(item.customer);
         if (!customerId) continue;
@@ -161,8 +162,9 @@ export async function handle(req: Request) {
           if (subscriptions && (item.metadata?.app !== 'viasee' || item.metadata?.organization_id !== customer.metadata.organization_id)) continue;
           const organization = await svc.entities.ProviderOrganization.get(customer.metadata.organization_id).catch(() => null);
           const quantity = item.items?.data?.[0]?.quantity || 1;
+          if (subscriptions && organizationTieredPrice === undefined) organizationTieredPrice = await findOrganizationTieredPrice(stripe).catch(() => null);
           rows.push({
-            ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.metadata?.plan_tier === 'enterprise' ? item.items.data[0]?.price?.unit_amount : null, quantity, plan_tier: item.metadata?.plan_tier || 'tiered', currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentIntentSummary(item) : invoiceSummary(item)),
+            ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.metadata?.plan_tier === 'enterprise' ? item.items.data[0]?.price?.unit_amount : monthlyAmountForLocationCount(organizationTieredPrice, quantity), quantity, plan_tier: item.metadata?.plan_tier || 'tiered', currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentIntentSummary(item) : invoiceSummary(item)),
             customer_id: customerId, organization_id: customer.metadata.organization_id,
             location_name: (organization?.public_display_name || organization?.name || customer.metadata.organization_id) + ' (organizație)',
             billing_name: (!payments && !subscriptions ? item.customer_name : customer.name) || customer.name,
