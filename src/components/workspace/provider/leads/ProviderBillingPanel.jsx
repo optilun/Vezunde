@@ -75,7 +75,7 @@ function PlanTiers({ pricing }) {
         {tiers.map(tier => <tr key={tier.key} className={`border-b border-[#e7e1d4] last:border-0 ${current === tier.key ? "bg-[#e9f2e6] font-semibold" : ""}`}>
           <th scope="row" className="px-3 py-2.5 font-medium">{tier.label}</th>
           <td className="px-3 py-2.5 text-muted-foreground">{tier.min === tier.max ? `${tier.min} locație` : `${tier.min}–${tier.max} locații`}</td>
-          <td className="px-3 py-2.5 text-right">{money(tier.amount, pricing.currency)} / lună</td>
+          <td className="whitespace-nowrap px-3 py-2.5 text-right">{money(tier.amount, pricing.currency)} / lună</td>
         </tr>)}
         <tr className={pricing.enterprise_required ? "bg-[#e9f2e6] font-semibold" : ""}>
           <th scope="row" className="px-3 py-2.5 font-medium">Enterprise</th>
@@ -85,6 +85,9 @@ function PlanTiers({ pricing }) {
       </tbody>
     </table>
   </div>;
+}
+function CustomerSummary({ customer }) {
+  return <div className="min-w-0 break-words text-sm"><p className="font-medium">{customer.name}</p><p className="mt-1 text-muted-foreground">{customer.cui ? "CUI " + customer.cui + " · " : ""}{customer.email}</p><p className="mt-1 text-muted-foreground">{[customer.address?.line1, customer.address?.city, customer.address?.country].filter(Boolean).join(", ")}</p></div>;
 }
 function BillingCenter({ organizationId, locationId, onSynced }) {
   const [params, setParams] = useSearchParams();
@@ -167,7 +170,9 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
   const activeCount = pricing.active_location_count || 0;
   const enterpriseRequired = organizationScope && pricing.enterprise_required === true;
   const openOffers = (data?.enterprise_offers || []).filter(offer => offer.status === "sent");
-  const canStartCheckout = !existing && !manual && !legacy.length && !enterpriseRequired;
+  const canStartCheckout = !existing && !manual && !legacy.length && !enterpriseRequired && (!organizationScope || activeCount > 0);
+  // Cât timp plata se face încă pe locație, cardul, datele și facturile rămân la abonamentul vechi.
+  const legacyOnly = organizationScope && legacy.length > 0 && !data?.customer;
   const problem = ["past_due","unpaid","incomplete","paused","configuration_review"].includes(subscription?.status);
   const address = profile.billing_address;
   const tierLabel = subscription?.plan_tier === "enterprise" ? "Enterprise" : (pricing.tiers || []).find(tier => tier.key === subscription?.plan_tier)?.label;
@@ -186,6 +191,8 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
     if (!organizationScope) return `Pro: ${money(pricing.amount, pricing.currency)} / ${pricing.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`;
     if (existing && subscription.plan_tier === "enterprise") return `Ofertă Enterprise: ${money(subscription.amount, pricing.currency)} / lună, pentru toată organizația. Emitent neplătitor de TVA.`;
     if (existing) return `${money(subscription.amount, pricing.currency)} / lună pentru ${locationsLabel(subscription.billed_location_count || activeCount)}. Când adaugi sau închizi o locație, pachetul se schimbă automat, iar diferența apare pe factura următoare. Emitent neplătitor de TVA.`;
+    if (legacy.length) return "Acum plătești separat pentru fiecare locație. Pachetele de mai jos se aplică după trecerea la plata pe organizație.";
+    if (!activeCount) return `Organizația nu are încă locații active. Pachetul se alege după numărul de locații active, de la ${money(pricing.tiers?.[0]?.amount, pricing.currency)} / lună.`;
     if (enterpriseRequired) return `Organizația are ${locationsLabel(activeCount)}. Peste ${(pricing.enterprise_min_locations || 16) - 1} locații abonamentul se face printr-o ofertă Enterprise, cu contract.`;
     return `Organizația are ${locationsLabel(activeCount)}: pachetul ${pricing.current_tier?.label || ""}, ${money(pricing.current_tier?.amount, pricing.currency)} / lună pentru toată organizația. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`;
   };
@@ -205,14 +212,14 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
           {legacy.length > 0 && <div className="mt-4 rounded-2xl border border-[#d8d2c5] bg-[#f8f4ec] p-3 text-sm">
             <p className="font-medium">Abonament plătit pe locație (vechiul mod de plată)</p>
             <ul className="mt-2 space-y-2">{legacy.map(item => <li key={item.location_id} className="flex flex-wrap items-center justify-between gap-2"><span>{item.location_name}{item.current_period_end ? ` · ${item.cancel_at_period_end ? "acces până la" : "reînnoire pe"} ${date(item.current_period_end)}` : ""}</span><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void run("portal", undefined, { legacy_location_id: item.location_id })}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button></li>)}</ul>
-            <p className="mt-2 text-xs text-muted-foreground">Rămâne valabil cum este. Trecerea la plata pe organizație o facem împreună, fără să plătești de două ori.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Rămâne valabil cum este. Cardul, datele de facturare și facturile lui le găsești în „Gestionează abonamentul”. Trecerea la plata pe organizație o facem împreună, fără să plătești de două ori.</p>
           </div>}
           <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button>
             : enterpriseRequired && !openOffers.length ? <a className={SETTINGS_PRIMARY} href="/ajutor-si-suport">Cere ofertă Enterprise</a>
             : canStartCheckout && <a className={SETTINGS_PRIMARY} href="#billing-details" onClick={beginEditing}>Activează Pro — verifică datele</a>}</div>
         </Panel>
         <Panel title="Metode de plată" icon={CreditCard}>
-          {data.methods.length ? <ul className="space-y-3">{data.methods.map(card => <li key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#c6d3da] bg-[#dce5e9]/35 p-3"><div><p className="font-medium"><span className="uppercase">{card.brand}</span> •••• {card.last4}</p><p className="text-xs text-muted-foreground">Expiră {card.exp_month}/{card.exp_year}</p></div>{card.is_default && <span className="text-xs text-muted-foreground">Implicit pentru abonament</span>}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nu există un card salvat. Cardul este adăugat în pagina securizată Stripe.</p>}
+          {data.methods.length ? <ul className="space-y-3">{data.methods.map(card => <li key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#c6d3da] bg-[#dce5e9]/35 p-3"><div><p className="font-medium"><span className="uppercase">{card.brand}</span> •••• {card.last4}</p><p className="text-xs text-muted-foreground">Expiră {card.exp_month}/{card.exp_year}</p></div>{card.is_default && <span className="text-xs text-muted-foreground">Implicit pentru abonament</span>}</li>)}</ul> : <p className="text-sm text-muted-foreground">{legacyOnly ? "Cardul folosit acum se schimbă din „Gestionează abonamentul”, la abonamentul plătit pe locație." : "Nu există un card salvat. Cardul este adăugat în pagina securizată Stripe."}</p>}
           {data.customer && <div className="mt-4 flex flex-wrap gap-2"><button className={button} disabled={Boolean(busy)} onClick={() => void run("portal", "payment_method_update")}>Adaugă / schimbă cardul</button><button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează cardurile</button></div>}
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Adăugarea, înlocuirea și eliminarea cardurilor se fac în Stripe. Pentru un abonament activ poate fi necesară o metodă de plată înlocuitoare.</p>
         </Panel>
@@ -232,8 +239,11 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
         </div>)}</div>
       </Panel>}
       <div id="billing-details" className="scroll-mt-24"><Panel title="Date de facturare" icon={FileText} tone="lavender">
-        {!editingDetails && data.customer ? <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 break-words text-sm"><p className="font-medium">{data.customer.name}</p><p className="mt-1 text-muted-foreground">{data.customer.cui ? "CUI " + data.customer.cui + " · " : ""}{data.customer.email}</p><p className="mt-1 text-muted-foreground">{[data.customer.address?.line1, data.customer.address?.city, data.customer.address?.country].filter(Boolean).join(", ")}</p></div>
+        {legacyOnly ? <div className="space-y-3">
+          {data.customer_suggestion && <CustomerSummary customer={data.customer_suggestion} />}
+          <p className="text-xs leading-relaxed text-muted-foreground">{data.customer_suggestion ? "Acestea sunt datele de pe abonamentul plătit pe locație. " : ""}Le modifici din „Gestionează abonamentul”. La trecerea la plata pe organizație le preluăm, ca să nu le completezi din nou.</p>
+        </div> : !editingDetails && data.customer ? <div className="flex flex-wrap items-start justify-between gap-3">
+          <CustomerSummary customer={data.customer} />
           <button type="button" className={button} onClick={beginEditing}>Modifică datele</button>
         </div> : <form onSubmit={event => { event.preventDefault(); void run("save"); }} className="space-y-4">
           <fieldset disabled={Boolean(busy)}><legend className="mb-2 text-sm font-medium">Facturez pe</legend><div className="flex gap-5">{[["company","Firmă"],["individual","Persoană fizică"]].map(([value,label]) => <label key={value} className="flex items-center gap-2 text-sm"><input type="radio" name="billing-type" value={value} checked={profile.billing_type === value} onChange={() => update("billing_type",value)} />{label}</label>)}</div></fieldset>
@@ -254,7 +264,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
         </form>}
       </Panel></div>
       <Panel title="Istoric plăți și documente Stripe" icon={FileText} tone="amber">
-        <p className="mb-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat. Mai jos găsești documentele Stripe asociate plăților.</p>
+        <p className="mb-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat. Mai jos găsești documentele Stripe asociate plăților.{legacyOnly ? " Documentele abonamentului plătit pe locație sunt în „Gestionează abonamentul”." : ""}</p>
         <InvoiceTable invoices={data.invoices} />
         {(page > 0 || data.has_more) && <div className="mt-4 flex items-center justify-between gap-2"><button className={button} disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Mai recente</button><span className="text-xs text-muted-foreground">Pagina {page + 1}</span><button className={button} disabled={!data.has_more || loading} onClick={() => { setCursors(c => [...c.slice(0,page + 1), data.next_cursor]); setPage(p => p + 1); }}>Mai vechi</button></div>}
       </Panel>
