@@ -153,9 +153,13 @@ export default function ProfessionalProfile() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-12 pt-8 sm:pt-12">
-      <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> {hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}
-      </Link>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> {hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}
+        </Link>
+        {/* 2026-10-04 (structura conturilor, pasul 5): „Salvate” din contul personal. */}
+        <SaveToAccountButton itemType="professional" itemId={profile.id || id} />
+      </div>
 
       <section className="mt-5 overflow-hidden rounded-[30px] border border-border bg-card shadow-sm">
         <div className="p-5 sm:p-8" style={{ background: "linear-gradient(135deg, #fffaf2 0%, #ffffff 55%, #f4f1ea 100%)" }}>
