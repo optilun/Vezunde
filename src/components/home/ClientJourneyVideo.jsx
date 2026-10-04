@@ -110,12 +110,12 @@ export default function ClientJourneyVideo() {
 
   return (
     <div ref={wrapperRef} className="mt-8 sm:mt-12">
-      <div className="relative isolate overflow-hidden rounded-2xl border border-black/10 bg-[#344ae7] shadow-[0_8px_28px_rgba(28,24,18,0.08)] sm:rounded-[1.5rem]">
+      <div className="relative isolate overflow-hidden rounded-2xl border border-black/10 bg-[#f5f2e9] shadow-[0_8px_28px_rgba(28,24,18,0.08)] sm:rounded-[1.5rem]">
         <video
           ref={videoRef}
           className="block aspect-[3/4] w-full object-contain sm:aspect-video"
-          src={mobile ? "/videos/client-journey-mobile-v2.mp4" : "/videos/client-journey-v2.mp4"}
-          poster={mobile ? "/videos/client-journey-mobile-v2-poster.jpg" : "/videos/client-journey-v2-poster.jpg"}
+          src={mobile ? "/videos/client-journey-mobile-v3.mp4" : "/videos/client-journey-v3.mp4"}
+          poster={mobile ? "/videos/client-journey-mobile-v3-poster.jpg" : "/videos/client-journey-v3-poster.jpg"}
           aria-label="Demonstrație VIASEE: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, apoi compari rezultatele."
           aria-describedby="client-journey-transcript"
           muted
@@ -173,7 +173,7 @@ export default function ClientJourneyVideo() {
       </div>
       {failed && <p role="status" className="mt-3 text-sm text-muted-foreground">Video-ul nu s-a încărcat. Îl poți reîncerca folosind butonul de redare.</p>}
       <p id="client-journey-transcript" className="sr-only">În exemplu scrii „Vreau un control de vedere”, confirmi nevoia, alegi „Pentru mine” și localitatea Cluj-Napoca, răspunzi la întrebări, verifici rezumatul și compari locațiile găsite. În profil vezi adresa și datele de contact. Serviciile neconfirmate trebuie verificate direct cu locația.</p>
-      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Demonstrație ilustrativă. Întrebările și rezultatele pot varia în funcție de căutarea ta.</p>
+      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Demonstrație cu locații fictive. Întrebările și rezultatele pot varia în funcție de căutarea ta.</p>
     </div>
   );
 }
