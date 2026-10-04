@@ -132,7 +132,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
 
       <div className="flex items-start gap-2.5 border-y border-border py-4 text-sm leading-relaxed text-muted-foreground">
         <LockKeyhole aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-        <p><strong className="font-heading font-bold text-foreground">Acces per locație.</strong> Planul Pro al unei locații nu schimbă ce poate vedea alta. Detaliile clientului și acțiunile se deschid numai în inboxul locației autorizate.</p>
+        <p><strong className="font-heading font-bold text-foreground">Acces per locație.</strong> Abonamentul Pro al organizației se aplică tuturor locațiilor ei. Detaliile clientului și acțiunile se deschid numai în inboxul locației care a primit cererea.</p>
       </div>
 
       <div className="overflow-hidden rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6]">
