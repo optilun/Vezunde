@@ -5,6 +5,7 @@ import {
   normalizeServiceKey,
 } from '../../shared/canonicalServiceRegistryExtended.js';
 import { hasPublishedSectionChanges } from '../../shared/providerWorkspaceSubmissionComparison.js';
+import { locationPrecisionError, locationMapApprovalFields } from '../../shared/locationMapPosition.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 // Admin review for ProviderWorkspaceSubmission.
@@ -32,6 +33,7 @@ const SECTION_APPLY = {
     lat: 'lat',
     lng: 'lng',
     place_id: 'place_id',
+    map_precision: 'map_precision',
   },
 };
 
@@ -102,7 +104,10 @@ function validateLocationDetails(payload) {
   }
   const hasLat = clean.lat !== undefined && clean.lat !== null;
   const hasLng = clean.lng !== undefined && clean.lng !== null;
-  if (hasLat !== hasLng) return bad({ error: 'Completeaza si latitudinea, si longitudinea pentru pin exact.' });
+  if (hasLat !== hasLng) return bad({ error: 'Completează și latitudinea, și longitudinea pentru poziția pe hartă.' });
+  const precisionError = locationPrecisionError(payload, clean);
+  if (precisionError) return bad({ error: precisionError });
+  if ('map_precision' in payload) clean.map_precision = payload.map_precision;
   return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
 }
 
@@ -362,6 +367,7 @@ async function applyProviderLocationFields(svc, user, submission, validation) {
   if (Object.keys(locUpdates).length === 0) return;
   const loc = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
   if (!loc) return;
+  if (submission.section === 'location_details') Object.assign(locUpdates, locationMapApprovalFields(validation.clean, loc));
   const previous = {};
   for (const key of Object.keys(locUpdates)) previous[key] = loc[key];
   await svc.entities.ProviderLocation.update(loc.id, locUpdates);
