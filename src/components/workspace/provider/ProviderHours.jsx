@@ -32,7 +32,7 @@ const ACCESS_MODE_HELP = {
   urmatoarele_zile:
     "Locația acceptă atât vizite fără programare, cât și vizite programate.",
   saptamana_aceasta:
-    "Serviciile de optica sunt disponibile fără programare, iar consultațiile se fac cu programare.",
+    "Serviciile de optică sunt disponibile fără programare, iar consultațiile se fac cu programare.",
   doar_programare: "Toate vizitele se fac numai cu programare.",
 };
 

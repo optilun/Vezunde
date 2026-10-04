@@ -327,7 +327,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
                   disabled={loading}
                   className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary"
                 >
-                  Modifica selectia
+                  Modifică selecția
                 </button>
               </div>
             </div>
