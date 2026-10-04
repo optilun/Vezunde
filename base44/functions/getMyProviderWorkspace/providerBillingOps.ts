@@ -47,10 +47,11 @@ function offerView(offer) {
     has_contract: Boolean(offer.contract_file_uri), contract_accepted_at: offer.contract_accepted_at || null, accepted_at: offer.accepted_at || null };
 }
 
-// Datele de facturare de pe abonamentul vechi, pe locatie. Se arata doar pentru citire cat timp
-// organizatia nu are propriul client Stripe, ca proprietarul sa nu creada ca s-au pierdut.
-async function legacyCustomerSuggestion(svc, stripe, legacy) {
-  for (const { location } of legacy.slice(0, 3)) {
+// Datele de facturare de pe abonamentul vechi, pe locatie. Cat timp organizatia nu are propriul
+// client Stripe, se arata doar pentru citire (abonament vechi activ) sau completeaza formularul
+// la trecerea pe organizatie. Nu se salveaza nimic fara confirmarea proprietarului.
+async function legacyCustomerSuggestion(svc, stripe, locations) {
+  for (const location of locations.slice(0, 3)) {
     try {
       const account = await findBillingAccount(svc, location.id);
       if (!account?.stripe_customer_id) continue;
@@ -109,7 +110,7 @@ async function handleOrganization(svc, user, input, action) {
     pricing, manual: manualRows[0] || null, legacy_subscriptions: legacySubscriptions, enterprise_offers: enterpriseOffers };
 
   const account = await findOrganizationBillingAccount(svc, organization.id);
-  if (!account) return Response.json({ ...base, customer_suggestion: legacy.length ? await legacyCustomerSuggestion(svc, stripe, legacy) : null,
+  if (!account) return Response.json({ ...base, customer_suggestion: await legacyCustomerSuggestion(svc, stripe, legacy.length ? legacy.map((item) => item.location) : authorized.locations),
     subscription: null, customer: null, methods: [], invoices: [], has_more: false });
   assertOrganizationBillingCustomer(await stripe.customers.retrieve(account.stripe_customer_id), organization.id);
   let latest = await syncOrganizationCustomerSubscriptions(svc, stripe, account, tieredPrice.id);
