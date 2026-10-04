@@ -24,7 +24,7 @@ import {
   deriveProviderLocationState,
   deriveSubmissionState,
 } from "@/lib/providerWorkspaceState";
-import { hasPublishedSectionChanges } from "../../../../shared/providerWorkspaceSubmissionComparison.js";
+import { hasPublishedSectionChanges, sameSubmissionPayload } from "../../../../shared/providerWorkspaceSubmissionComparison.js";
 import { formatStreetAddress } from "@/lib/addressDisplay";
 
 const inputCls =
@@ -341,6 +341,11 @@ export default function ProviderLocations({
   );
   const draftState = deriveSubmissionState(draft);
   const pendingReview = draftState?.pendingReview === true;
+  const hasUnsavedChanges = Boolean(draft && !sameSubmissionPayload(
+    "location_details",
+    values,
+    { ...defaultValues(selectedLocation), ...(() => { try { return JSON.parse(draft.payload_json || "{}"); } catch { return {}; } })() },
+  ));
   const hasCoordinateIssues = coordinateValidation.issues.length > 0;
 
   const previewLocation = useMemo(() => {
@@ -1064,6 +1069,7 @@ export default function ProviderLocations({
                   {message}
                 </p>
               )}
+              {draftState?.editable && hasUnsavedChanges && <p className="mb-3 text-xs text-muted-foreground">Salvează modificările în draft înainte de trimitere.</p>}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
                   type="button"
@@ -1084,7 +1090,7 @@ export default function ProviderLocations({
                   {draftState?.editable && (
                     <button
                       type="button"
-                      disabled={saving || hasCoordinateIssues}
+                      disabled={saving || hasCoordinateIssues || hasUnsavedChanges}
                       onClick={submitDraft}
                       className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
                     >
