@@ -189,7 +189,8 @@ async function listInvitations(svc, user, payload) {
   return response({ invitations: invitations.map(safeInvitation) });
 }
 
-async function createInvitation(base44, svc, user, payload, req) {
+// `resentFromInvitationId` vine doar din `resend` (server), nu din payload-ul clientului.
+async function createInvitation(base44, svc, user, payload, req, { resentFromInvitationId = '' } = {}) {
   const locationId = cleanString(payload.location_id);
   const invitedEmail = normalizeEmail(payload.invited_email || payload.email);
   const professionalType = cleanString(payload.professional_type);
@@ -272,8 +273,8 @@ async function createInvitation(base44, svc, user, payload, req) {
       delivery_status: deliveryUpdate.delivery_status,
       delivery_provider: deliveryUpdate.delivery_provider,
     },
-    ...(payload.resent_from_invitation_id ? { previous: { resent_from_invitation_id: payload.resent_from_invitation_id } } : {}),
-    note: (payload.resent_from_invitation_id ? 'Retrimisa dupa expirarea invitatiei anterioare. ' : '') + (delivery.sent
+    ...(resentFromInvitationId ? { previous: { resent_from_invitation_id: resentFromInvitationId } } : {}),
+    note: (resentFromInvitationId ? 'Retrimisa dupa expirarea invitatiei anterioare. ' : '') + (delivery.sent
       ? 'Invitatie profesionala creata si trimisa prin infrastructura Base44. Nu acorda acces operational la locatie.'
       : 'Invitatie profesionala creata, dar trimiterea a esuat. Linkul trebuie transmis manual.'),
   });
@@ -344,8 +345,7 @@ async function resendInvitation(base44, svc, user, payload, req) {
     invited_email: invitation.invited_email_normalized,
     professional_type: invitation.professional_type,
     invitation_base_url: payload.invitation_base_url,
-    resent_from_invitation_id: invitation.id,
-  }, req);
+  }, req, { resentFromInvitationId: invitation.id });
 }
 
 // 2026-10-01. Invitatiile de specialist se comportau altfel decat cele de membru: se puteau
