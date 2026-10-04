@@ -20,10 +20,10 @@ assert.doesNotMatch(backend, /opening_hours|public_phone|public_email|website_ur
 const panel = readFileSync(new URL('../src/components/workspace/provider/ProviderServicesCopyPanel.jsx', import.meta.url), 'utf8');
 assert.match(panel, /location\.manage_content/, 'UI must filter locations by content-management permission');
 assert.match(panel, /Vezi preview-ul/, 'UI must require preview before creating drafts');
-assert.match(panel, /Adauga serviciile lipsa/, 'UI must provide a non-destructive merge mode');
-assert.match(panel, /Aliniaza cu sursa/, 'UI must provide an explicit replace mode');
-assert.match(panel, /Creeaza drafturile/, 'UI must describe the non-publishing result');
-assert.match(panel, /Specialistii, echipamentele, facilitatile, programul si datele de contact nu se copiaza/, 'UI must state the copy boundary');
+assert.match(panel, /Adaugă serviciile lipsă/, 'UI must provide a non-destructive merge mode');
+assert.match(panel, /Aliniază cu sursa/, 'UI must provide an explicit replace mode');
+assert.match(panel, /Creează drafturile/, 'UI must describe the non-publishing result');
+assert.match(panel, /Specialiștii, echipamentele, facilitățile, programul și datele de contact nu se copiază/, 'UI must state the copy boundary');
 assert.match(panel, /w-full items-center justify-center/, 'primary action must remain usable on mobile');
 
 const modulePage = readFileSync(new URL('../src/components/workspace/provider/ProviderLocationModulePage.jsx', import.meta.url), 'utf8');

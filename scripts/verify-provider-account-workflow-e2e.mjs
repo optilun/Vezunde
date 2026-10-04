@@ -105,7 +105,7 @@ hasAll(overviewRoot, [
 
 const photoUi = await source('src/components/workspace/provider/ProviderLocationPhotoCompact.jsx');
 hasAll(photoUi, [
-  /Salveaza ca draft/,
+  /Salvează ca draft/,
   /Trimite spre verificare/,
   /providerPhotoUploadLifecycleOps/,
 ], 'flux fotografie');

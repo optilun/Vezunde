@@ -86,7 +86,7 @@ assert.doesNotMatch(copyBackend, /services|specialists|public_visibility_status\
 const copyPanel = readFileSync(new URL('../src/components/workspace/provider/ProviderHoursCopyPanel.jsx', import.meta.url), 'utf8');
 assert.match(copyPanel, /location\.manage_operational_status/, 'UI must filter locations by operational permission');
 assert.match(copyPanel, /Vezi preview-ul/, 'UI must require preview before copy');
-assert.match(copyPanel, /Confirm inlocuirea/, 'UI must show an explicit overwrite confirmation');
+assert.match(copyPanel, /Confirm înlocuirea/, 'UI must show an explicit overwrite confirmation');
 assert.match(copyPanel, /sm:w-auto/, 'primary action must remain usable on mobile');
 
 const comparisonBackend = readFileSync(new URL('../base44/functions/getMyProviderWorkspace/getProviderLocationComparison.ts', import.meta.url), 'utf8');
