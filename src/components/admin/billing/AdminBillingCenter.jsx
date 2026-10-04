@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { BillingStatus, BILLING_STATUSES, money } from "@/components/workspace/provider/leads/ProviderBillingPanel";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import AdminEnterpriseOffers from "./AdminEnterpriseOffers";
 
 const button = "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-50";
 export default function AdminBillingCenter() {
@@ -12,6 +13,8 @@ export default function AdminBillingCenter() {
   const [query, setQuery] = useState(""), [status, setStatus] = useState("");
   const lock = useRef(false);
   useEffect(() => {
+    // 2026-10-04 (pasul 4): „Oferte Enterprise” are propria listă, fără citiri Stripe.
+    if (view === "enterprise") { setLoading(false); return undefined; }
     let active = true; setLoading(true); setError("");
     base44.functions.invoke("providerBillingOps", { action: "admin_list", view, cursor }).then(response => {
       if (response.data?.error) throw new Error(response.data.error);
@@ -33,9 +36,10 @@ export default function AdminBillingCenter() {
   const filtered = rows.filter(row => (!status || row.status === status) && [row.location_name, row.billing_name, row.billing_cui, row.number, row.id].join(" ").toLocaleLowerCase("ro").includes(query.toLocaleLowerCase("ro")));
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex flex-wrap gap-2">{[["invoices","Documente Stripe"],["payments","Tranzacții"],["subscriptions","Abonamente"]].map(([key,label]) => <button key={key} type="button" aria-pressed={view === key} className={button + (view === key ? " !bg-foreground !text-background" : "")} onClick={() => { setView(key); setCursor(null); setHistory([]); setStatus(""); }}>{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{[["invoices","Documente Stripe"],["payments","Tranzacții"],["subscriptions","Abonamente"],["enterprise","Oferte Enterprise"]].map(([key,label]) => <button key={key} type="button" aria-pressed={view === key} className={button + (view === key ? " !bg-foreground !text-background" : "")} onClick={() => { setView(key); setCursor(null); setHistory([]); setStatus(""); }}>{label}</button>)}</div>
       <button className={button} disabled={syncing || loading} onClick={() => void synchronize()}>{syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Sincronizează abonamentele</button>
     </div>
+    {view === "enterprise" ? <AdminEnterpriseOffers /> : <>
     <p className="text-sm text-muted-foreground">Emitent neplătitor de TVA. Facturile fiscale se emit manual, separat de documentele Stripe. Documentele Stripe, tranzacțiile și abonamentele au stări distincte. Deschide o înregistrare în Stripe pentru administrare, rambursare sau corecție.</p>
     {notice && <p role="status" className="rounded-lg bg-secondary p-3 text-sm">{notice}</p>}
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}<button className="ml-3 underline" onClick={() => setTick(t => t + 1)}>Reîncearcă</button></p>}
@@ -56,5 +60,6 @@ export default function AdminBillingCenter() {
       </table>{!filtered.length && <p className="p-6 text-sm text-muted-foreground">Nu există înregistrări VIASEE care corespund filtrelor în această pagină. Poți continua cu pagina următoare.</p>}
     </div>}
     <div className="flex items-center justify-between gap-2"><button className={button} disabled={loading || !history.length} onClick={() => { setCursor(history.at(-1)); setHistory(h => h.slice(0,-1)); }}>Mai recente</button><span className="text-xs text-muted-foreground">Pagina {history.length + 1} · {filtered.length} înregistrări afișate</span><button className={button} disabled={loading || !next} onClick={() => { setHistory(h => [...h,cursor]); setCursor(next); }}>Mai vechi</button></div>
+    </>}
   </div>;
 }
