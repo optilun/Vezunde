@@ -125,7 +125,9 @@ const [personalRequests, personalWorkspace, personalOverview, claimHistory, appl
 
 assert.match(personalRequests, /invoke\("getMyPatientRequests"/, 'Cererile mele = cererile de pacient');
 assert.doesNotMatch(personalRequests, /ProviderClaimRequest/, 'revendicarile nu mai sunt in contul personal');
-assert.doesNotMatch(personalWorkspace, /PersonalSaved|"saved"/, 'ecranul gol „Locații salvate” a iesit din meniu');
+// 2026-10-04 (pasul 5): „Salvate” s-a intors in meniu, de data asta functional (vezi
+// verify-account-structure-step5.mjs); ecranul vechi „in pregatire” nu mai exista.
+assert.doesNotMatch(personalWorkspace, /Funcționalitate în pregătire|SavedLocations/, 'ecranul gol „Locații salvate” nu revine');
 assert.match(personalOverview, /\/profil-profesional\/nou/, 'profilul profesional se poate crea din cont');
 assert.match(personalOverview, /onOpenOrganization\?\.\(\{ mode: "applicant" \}\)/, 'ultima solicitare duce la Organizatii');
 assert.match(claimHistory, /ProviderClaimRequest\.filter\(\{ user_id: user\.id \}/);
