@@ -164,7 +164,7 @@ function locationCompletion(contentIndex, location, userId) {
   return computeSharedLocationCompleteness({ location, content: getLocationContentSummary(contentIndex, location, userId) });
 }
 
-function safeLocationSummary(location, completion) {
+function safeLocationSummary(location, completion = computeSharedLocationCompleteness({ location, content: {} })) {
   return {
     id: location.id,
     organization_id: location.organization_id || null,
