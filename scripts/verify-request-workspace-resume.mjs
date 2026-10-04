@@ -35,7 +35,10 @@ assert.match(resumePage, /<RequestWorkspace/);
 assert.doesNotMatch(resumePage, /base44\.entities\./);
 
 assert.match(statusBackend, /resolveRequest\(svc, requestId, publicReference\)/);
-assert.match(statusBackend, /access_token_hash: tokenHash/);
+// 2026-10-04 (structura conturilor, pasul 5): verificarea tokenului e comuna tuturor functiilor
+// cererii; hash-ul linkului din email ramane prima interogare.
+assert.match(statusBackend, /findPatientRequestContactForToken\(svc, request\.id, accessToken/);
+assert.match(await readFile(new URL('../base44/shared/patientRequestAccessGrant.js', import.meta.url), 'utf8'), /access_token_hash: tokenHash/);
 assert.match(statusBackend, /retentionExpired/);
 assert.match(statusBackend, /buildWorkspacePayload/);
 assert.match(statusBackend, /PatientRequestAnswer\.filter/);
