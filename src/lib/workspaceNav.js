@@ -1,11 +1,14 @@
-import { LayoutDashboard, FileText, Settings, Building2, Inbox, Users, History } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, Building2, Inbox, Users, History, Bell, Bookmark } from "lucide-react";
 
 // 2026-10-03 (structura conturilor, pasul 1). Contul personal este contul de pacient: cererile
 // trimise ca pacient. Revendicarile de organizatii stau in grupul Organizatii. „Locatii salvate”
 // a iesit din meniu pana exista cu adevarat (era doar un ecran „in pregatire”).
+// 2026-10-04 (pasul 5): „Notificări” si „Salvate” exista acum cu adevarat.
 export const PERSONAL_NAV = [
   { key: "overview", label: "Prezentare generală", shortLabel: "Acasă", icon: LayoutDashboard },
   { key: "requests", label: "Cererile mele", shortLabel: "Cereri", icon: FileText },
+  { key: "notifications", label: "Notificări", shortLabel: "Notificări", icon: Bell },
+  { key: "saved", label: "Salvate", shortLabel: "Salvate", icon: Bookmark },
   { key: "settings", label: "Setări", shortLabel: "Setări", icon: Settings },
 ];
 
