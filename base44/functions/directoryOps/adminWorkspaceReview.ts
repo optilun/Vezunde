@@ -6,6 +6,7 @@ import {
 } from '../../shared/canonicalServiceRegistryExtended.js';
 import { hasPublishedSectionChanges } from '../../shared/providerWorkspaceSubmissionComparison.js';
 import { locationPrecisionError, locationMapApprovalFields } from '../../shared/locationMapPosition.js';
+import { resolveLocationLocality } from '../../shared/locationLocalityResolution.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 // Admin review for ProviderWorkspaceSubmission.
@@ -27,6 +28,9 @@ const SECTION_APPLY = {
   },
   location_details: {
     address: 'address',
+    city: 'city',
+    county: 'county',
+    locality_siruta_code: 'locality_siruta_code',
     public_display_name: 'public_display_name',
     public_phone: 'public_phone',
     public_email: 'public_email',
@@ -87,7 +91,7 @@ function validateLocationDetails(payload) {
   const base = checkUnknown('location_details', payload);
   if (!base.valid) return base;
   const clean = {};
-  for (const key of ['address', 'public_display_name', 'public_phone', 'public_email', 'place_id']) {
+  for (const key of ['address', 'city', 'county', 'locality_siruta_code', 'public_display_name', 'public_phone', 'public_email', 'place_id']) {
     if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
     const value = cleanString(payload[key]);
     if (value.length > MAX_FIELD_LEN) return bad({ error: `${key} depaseste lungimea maxima` });
@@ -367,7 +371,9 @@ async function applyProviderLocationFields(svc, user, submission, validation) {
   if (Object.keys(locUpdates).length === 0) return;
   const loc = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
   if (!loc) return;
-  if (submission.section === 'location_details') Object.assign(locUpdates, locationMapApprovalFields(validation.clean, loc));
+  if (submission.section === 'location_details') {
+    Object.assign(locUpdates, validation.localityFields || {}, locationMapApprovalFields(validation.clean, loc));
+  }
   const previous = {};
   for (const key of Object.keys(locUpdates)) previous[key] = loc[key];
   await svc.entities.ProviderLocation.update(loc.id, locUpdates);
@@ -603,6 +609,10 @@ export async function handle(req: Request) {
       const validation = validatePayload(submission.section, parsedPayload);
       if (!validation.valid) return Response.json(validation.body, { status: validation.status });
       if (submission.section === 'location_details') {
+        const resolved = await resolveLocationLocality(svc, validation.clean);
+        if (resolved.error) return Response.json({ error: resolved.error }, { status: 400 });
+        Object.assign(validation.clean, resolved.value);
+        validation.localityFields = resolved.fields || {};
         const currentLocation = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
         if (currentLocation && !hasPublishedSectionChanges('location_details', validation.clean, currentLocation)) {
           return Response.json({
