@@ -154,7 +154,23 @@ export async function handle(req: Request) {
         if (!customerId) continue;
         if (!customers.has(customerId)) customers.set(customerId, await stripe.customers.retrieve(customerId));
         const customer = customers.get(customerId);
-        if (customer.deleted || customer.metadata?.app !== 'viasee' || !customer.metadata.location_id) continue;
+        // 2026-10-04 (pasul 4): clientii noi sunt pe organizatie (metadata scope: organization).
+        const organizationCustomer = customer.metadata?.scope === 'organization' && Boolean(customer.metadata?.organization_id);
+        if (customer.deleted || customer.metadata?.app !== 'viasee' || (!customer.metadata.location_id && !organizationCustomer)) continue;
+        if (organizationCustomer) {
+          if (subscriptions && (item.metadata?.app !== 'viasee' || item.metadata?.organization_id !== customer.metadata.organization_id)) continue;
+          const organization = await svc.entities.ProviderOrganization.get(customer.metadata.organization_id).catch(() => null);
+          const quantity = item.items?.data?.[0]?.quantity || 1;
+          rows.push({
+            ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.metadata?.plan_tier === 'enterprise' ? item.items.data[0]?.price?.unit_amount : null, quantity, plan_tier: item.metadata?.plan_tier || 'tiered', currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentIntentSummary(item) : invoiceSummary(item)),
+            customer_id: customerId, organization_id: customer.metadata.organization_id,
+            location_name: (organization?.public_display_name || organization?.name || customer.metadata.organization_id) + ' (organizație)',
+            billing_name: (!payments && !subscriptions ? item.customer_name : customer.name) || customer.name,
+            billing_cui: (!payments && !subscriptions ? item.custom_fields?.find(field => field.name === 'CUI')?.value : customer.metadata?.cui) || '',
+            dashboard_url: 'https://dashboard.stripe.com/' + (item.livemode ? '' : 'test/') + (subscriptions ? 'subscriptions/' + item.id : payments ? 'payments/' + item.id : 'invoices/' + item.id),
+          });
+          continue;
+        }
         const location = await svc.entities.ProviderLocation.get(customer.metadata.location_id).catch(() => null);
         if (subscriptions && (item.metadata?.app !== 'viasee' || item.metadata?.location_id !== customer.metadata.location_id)) continue;
         rows.push({
