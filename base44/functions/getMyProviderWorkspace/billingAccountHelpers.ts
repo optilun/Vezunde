@@ -111,8 +111,9 @@ export async function syncOrganizationSubscription(svc, subscription, { organiza
     offer = await svc.entities.ProviderEnterpriseOffer.get(subscription.metadata.enterprise_offer_id).catch(() => null);
     const price = subscription.items.data[0].price;
     const amount = typeof price === 'object' ? Number(price.unit_amount) : NaN;
+    // Statusul ofertei decide doar daca se poate porni o plata noua. O plata deja facuta pentru o
+    // oferta (chiar inlocuita intre timp) ramane valabila cat timp suma si organizatia se potrivesc.
     valid = Boolean(offer) && offer.organization_id === organizationId
-      && ['sent', 'accepted'].includes(offer.status)
       && (!Number.isFinite(amount) || amount === enterpriseUnitAmount(offer));
   }
   if (!valid) {
@@ -120,7 +121,7 @@ export async function syncOrganizationSubscription(svc, subscription, { organiza
     return { ...subscription, billing_requires_review: true };
   }
   await upsertOrganizationSubscription(svc, subscription, { organizationId });
-  if (offer && ['active', 'trialing'].includes(subscription.status) && offer.status !== 'accepted') {
+  if (offer && ['active', 'trialing'].includes(subscription.status) && offer.status === 'sent') {
     await svc.entities.ProviderEnterpriseOffer.update(offer.id, {
       status: 'accepted', accepted_at: new Date().toISOString(), stripe_subscription_id: subscription.id,
     });
