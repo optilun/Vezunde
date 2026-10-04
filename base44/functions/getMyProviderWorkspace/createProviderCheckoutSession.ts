@@ -119,6 +119,13 @@ async function legacyLocationCheckout(base44, user, input) {
   if (!locationId) return Response.json({ error: 'Alege locația.' }, { status: 400 });
   const authorized = await authorizeProviderBillingOwner(svc, user, locationId);
   if (authorized.error) return Response.json({ error: authorized.error }, { status: authorized.status });
+  // Nu se plateste a doua oara o locatie acoperita deja de abonamentul organizatiei.
+  const organizationRows = authorized.location.organization_id
+    ? await svc.entities.ProviderSubscription.filter({ organization_id: authorized.location.organization_id, subscription_scope: 'organization' }, '-created_date', 20)
+    : [];
+  if (organizationRows.some(row => ['active', 'trialing', 'grace_period', 'past_due', 'incomplete'].includes(row.status))) {
+    return Response.json({ error: 'Organizația are deja un abonament care include această locație.', code: 'organization_subscription_exists' }, { status: 409 });
+  }
   const secretKey = Deno.env.get('STRIPE_SECRET_KEY');
   const priceId = clean(Deno.env.get('STRIPE_PRICE_ID_PRO_MONTHLY'));
   if (!secretKey || !priceId) return Response.json({ error: 'Facturarea nu este configurată complet.' }, { status: 503 });
