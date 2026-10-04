@@ -737,8 +737,11 @@ function LocationRow({ location, selected, onManage }) {
                 <ShieldCheck className="h-3 w-3" /> Verificată
               </span>
             )}
+            {location?.active_status === "inactiva" && (
+              <span className="rounded-full border border-[#e1bda8] bg-[#efd5c5] px-2.5 py-0.5 text-xs font-bold text-[#1c1c1c]">Inactivă</span>
+            )}
             {selected && (
-              <span className="text-xs font-bold text-[#171717]">Selectată</span>
+              <span className="text-xs font-bold text-[#171717]">Locația selectată</span>
             )}
           </div>
           <h3 className="mt-1.5 break-words font-heading text-lg font-bold tracking-[-0.02em] text-[#171717]">

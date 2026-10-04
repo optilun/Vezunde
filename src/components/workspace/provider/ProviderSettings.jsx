@@ -504,6 +504,15 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
           />
         )}
 
+        {/* 2026-10-04 (audit #3): o locație închisă nu mai lasă caseta goală. */}
+        {locationClosed && (
+          <SettingsRow
+            title="Locația este închisă în VIASEE"
+            description="Nu apare în căutare și nu are pagină publică. Datele și istoricul ei rămân păstrate. Pentru redeschidere, scrie-ne și verificăm împreună datele locației."
+            action={<CompactButton onClick={() => { window.location.assign("/ajutor-si-suport"); }}><RotateCcw className="h-3.5 w-3.5" /> Cere redeschiderea</CompactButton>}
+          />
+        )}
+
         {!locationClosed && (
           <SettingsRow
             title="Închide locația în VIASEE"

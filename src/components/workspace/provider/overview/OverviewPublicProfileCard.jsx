@@ -31,7 +31,7 @@ export default function OverviewPublicProfileCard({ organizationName, organizati
           <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
             {published
               ? "Profilul este publicat și poate fi găsit de clienți în director."
-              : "Profilul nu este încă publicat, deci nu apare în căutări."}
+              : "Locația selectată nu are acum pagină publică (e închisă, ascunsă sau în verificare), deci nu apare în căutări."}
           </p>
         </div>
 

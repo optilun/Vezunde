@@ -371,6 +371,7 @@ export default function ProviderOverview({
   canManageLocations = false,
   canManageRequests = false,
   publicProfileUrl = "",
+  locationPublic,
 }) {
   const organization = overview.organization || {};
   const location = overview.location || {};

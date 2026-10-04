@@ -6,7 +6,16 @@ import { ArrowRight, Stethoscope } from "lucide-react";
 // locatie (aici). Afisarea publica se gestioneaza in continuare din pagina „Specialiști” a locatiei.
 export default function ProviderTeamSpecialistsLinks({ locations = [], canOpen = () => true, onOpenModule }) {
   const items = locations.filter((location) => location.active_status !== "inactiva" && canOpen(location.id));
-  if (items.length === 0) return null;
+  // 2026-10-04 (audit #17): partea a doua a „Echipă” nu mai dispare fără explicație.
+  if (items.length === 0) {
+    if (!locations.length) return null;
+    return (
+      <section className="rounded-[20px] border border-foreground/10 bg-card px-5 py-4 shadow-sm">
+        <div className="flex items-center gap-2"><Stethoscope className="h-5 w-5" /><h2 className="text-lg font-bold">Specialiști afișați public</h2></div>
+        <p className="mt-1 text-sm text-muted-foreground">Specialiștii apar public doar la locațiile active. Locațiile la care ai acces sunt închise sau nu îți permit să gestionezi specialiștii.</p>
+      </section>
+    );
+  }
   return (
     <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm">
       <div className="border-b border-border px-5 py-4">

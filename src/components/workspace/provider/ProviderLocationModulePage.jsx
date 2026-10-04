@@ -125,7 +125,8 @@ export default function ProviderLocationModulePage({
                 <MapPin aria-hidden="true" />
                 <span><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</span>
               </div>
-              {moduleKey === "program" && <span className="provider-location-module-hero__status">Se publică imediat</span>}
+              {/* 2026-10-04 (audit #15): pentru o locație închisă nu promitem publicarea. */}
+              {moduleKey === "program" && <span className="provider-location-module-hero__status">{location.active_status === "inactiva" ? "Locație închisă: nu apare public" : "Se publică imediat"}</span>}
             </div>
           </div>
         </header>

@@ -354,7 +354,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
                 }}
               />
             </label>
-            {currentPhoto && !preview && !stagedPreview && <span className="text-xs text-muted-foreground">Fotografie aprobată și publicată</span>}
+            {currentPhoto && !preview && !stagedPreview && <span className="text-xs text-muted-foreground">Fotografie aprobată</span>}
             {editableDraft && !stagedFile && <span className="text-xs font-semibold text-amber-800">Draft netrimis</span>}
             {stagedFile && <span className="text-xs font-semibold text-blue-800">Previzualizare locală, neîncărcată</span>}
           </div>
