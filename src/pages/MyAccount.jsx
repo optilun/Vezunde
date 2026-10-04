@@ -273,7 +273,13 @@ export default function MyAccount() {
   // 2026-10-03: paginile unei locații (/contul-meu/locatii/:id/:modul) sunt mereu în spațiul
   // organizației. Fără asta, ultimul spațiu ținut minte (de ex. „Solicitări de organizație” sau
   // profilul profesional) deschidea alt spațiu decât modulul cerut.
-  const requestedMode = params.get("mode") || (routeLocationModule ? "provider" : null);
+  // 2026-10-04 (pasul 5): o solicitare de organizație trimisă la verificarea de duplicat ajungea
+  // în vechiul „Solicitările mele” (azi cererile de pacient). O deschidem în „Solicitări de
+  // organizație”, unde e istoricul ei.
+  const duplicateReviewRedirect = params.get("onboarding") === "duplicate-review" && availableModeKeys.has("applicant");
+  const requestedMode = duplicateReviewRedirect
+    ? "applicant"
+    : (params.get("mode") || (routeLocationModule ? "provider" : null));
   const rememberedMode = preferences.startMode === "last" ? preferences.lastMode : preferences.startMode;
   // Istoricul solicitărilor nu devine spațiul de pornire; doar o solicitare activă poate fi.
   const preferredMode = rememberedMode === "applicant" && !hasApplicantWorkspace ? null : rememberedMode;
