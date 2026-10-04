@@ -500,7 +500,7 @@ export default function ProviderOverview({
           organizationType={organizationType}
           localityName={locationItems[0]?.locality_name || ""}
           publicProfileUrl={publicProfileUrl}
-          published={profileStatus === "approved"}
+          published={typeof locationPublic === "boolean" ? locationPublic : profileStatus === "approved"}
         />
       </div>
 

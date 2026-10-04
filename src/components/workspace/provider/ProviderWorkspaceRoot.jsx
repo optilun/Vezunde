@@ -532,6 +532,7 @@ export default function ProviderWorkspaceRoot({
     || overview?.location?.name
     || "Spațiu furnizor";
   const selectedLocation = locations.find((location) => location.id === selectedLocationId) || null;
+  const selectedLocationPublic = isLocationPubliclyVisible(selectedLocation);
 
   useEffect(() => {
     const previousSection = previousSectionRef.current;
@@ -578,6 +579,7 @@ export default function ProviderWorkspaceRoot({
       title={organizationName}
       subtitle="Spațiu furnizor"
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
+      publicProfileAvailable={selectedLocationPublic}
       modeSwitches={modeSwitches}
       wideContent={activeLocationModule === "servicii"}
       entitlement={entitlement?.location_id === selectedLocationId ? entitlement : null}
@@ -649,7 +651,8 @@ export default function ProviderWorkspaceRoot({
                 canManageOrganizationProfile={canManageOrganizationProfile}
                 canManageLocations={canManageAnyLocation}
                 canManageRequests={canManageRequests}
-                publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : ""}
+                publicProfileUrl={selectedLocationId && selectedLocationPublic ? `/furnizor/${selectedLocationId}` : ""}
+                locationPublic={selectedLocationPublic}
               />
             )}
             {safeSection === "profile" && (
