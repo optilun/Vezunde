@@ -15,6 +15,8 @@ import { providerAccessRoleFromMembership } from '../../shared/providerRolePolic
 // Provider Workspace draft/submit/withdraw.
 // Public changes go through ProviderWorkspaceSubmission. Program remains fast-path.
 
+import { locationPrecisionError } from '../../shared/locationMapPosition.js';
+
 const PROVIDER_WORKSPACE_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_SECTIONS = ['public_profile', 'operating_hours', 'services'];
 const WRITABLE_SECTIONS = [...new Set([...PROVIDER_WORKSPACE_SECTIONS, ...CLAIM_PREP_SECTIONS])];
@@ -50,7 +52,7 @@ const SERVICE_IDS = {
 
 const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
-  location_details: ['address', 'public_display_name', 'public_phone', 'public_email', 'lat', 'lng', 'place_id'],
+  location_details: ['address', 'public_display_name', 'public_phone', 'public_email', 'lat', 'lng', 'place_id', 'map_precision'],
   operating_hours: ['opening_hours', 'saturday_hours', 'availability_status'],
   services: ['selected_ids', 'removal_ids', 'raw_removal_keys', 'suggestions', 'custom_requests', 'cas_service_keys'],
   team: ['members', 'removal_professional_ids', 'invitations', 'invite_flow', 'invitation_channel'],
@@ -125,7 +127,10 @@ function validateLocationDetails(payload) {
   }
   const hasLat = clean.lat !== undefined && clean.lat !== null;
   const hasLng = clean.lng !== undefined && clean.lng !== null;
-  if (hasLat !== hasLng) return bad({ error: 'Completeaza si latitudinea, si longitudinea pentru pin exact.' });
+  if (hasLat !== hasLng) return bad({ error: 'Completează și latitudinea, și longitudinea pentru poziția pe hartă.' });
+  const precisionError = locationPrecisionError(payload, clean);
+  if (precisionError) return bad({ error: precisionError });
+  if ('map_precision' in payload) clean.map_precision = payload.map_precision;
   return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
 }
 
