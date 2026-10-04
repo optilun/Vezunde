@@ -13,6 +13,7 @@ import {
   isTransientInboxError,
 } from '../src/lib/providerInboxErrors.js';
 import { buildProviderStatusCenter } from '../shared/providerStatusCenter.js';
+import { isLocationClosed, isLocationPubliclyVisible } from '../src/lib/providerLocationVisibility.js';
 
 const read = (file) => readFile(new URL(`../${file}`, import.meta.url), 'utf8');
 
@@ -68,7 +69,7 @@ const expectText = {
   locations: ['Configurează locația', 'Editează datele', 'Specialiștii afișați, invitațiile și cererile „Lucrez aici”.'],
   hours: ['Program săptămânal', 'Sâmbătă', 'Închis', 'Salvează programul', 'Cum apare public'],
   photo: ['Fotografia locației', 'Schimbă fotografia locației'],
-  completeness: ['Media locațiilor accesibile', 'Compară locațiile ('],
+  completeness: ['Media locațiilor active', 'Nicio locație activă', 'Compară locațiile (', 'Inactivă'],
   settings: ['Proprietari, administratori, manageri și membri', 'Preferințe pe acest dispozitiv'],
 };
 for (const [key, texts] of Object.entries(expectText)) {
@@ -89,5 +90,38 @@ for (const coupled of [...src.withPhoto.matchAll(/\.includes\("([^"]+)"\)/g)].ma
 for (const label of [...src.withPhoto.matchAll(/aside\[aria-label="([^"]+)"\]/g)].map((match) => match[1])) {
   assert.ok(src.locations.includes(`aria-label="${label}"`), `aria-label „${label}” lipsește din ProviderLocations`);
 }
+
+// ---------- 6. etapa 2: cifre coerente ----------
+const [overviewBackend, completenessBackend, rootSrc, shellSrc, moduleSrc, teamLinks] = await Promise.all([
+  read('base44/functions/getMyProviderWorkspace/getProviderWorkspaceOverview.ts'),
+  read('base44/functions/getMyProviderWorkspace/getProviderProfileCompleteness.ts'),
+  read('src/components/workspace/provider/ProviderWorkspaceRoot.jsx'),
+  read('src/components/provider/shell/ProviderAppShell.jsx'),
+  read('src/components/workspace/provider/ProviderLocationModulePage.jsx'),
+  read('src/components/workspace/provider/ProviderTeamSpecialistsLinks.jsx'),
+]);
+assert.match(overviewBackend, /computeLocationCompleteness as computeSharedLocationCompleteness/, 'Prezentarea folosește aceeași regulă de completare');
+assert.doesNotMatch(overviewBackend, /^function computeLocationCompleteness\(/m, 'regula veche, cu 5 puncte, a ieșit');
+assert.match(overviewBackend, /content: getLocationContentSummary\(contentIndex, location, userId\)/);
+assert.match(completenessBackend, /locationCompletions: locationRows\.filter\(\(item\) => item\.active\)/, 'media pe locațiile active, ca în Prezentare');
+assert.match(src.overview, /activeLocationCount === 0\s*\?\s*"Nicio locație activă"/, 'fără locații active nu spunem „neverificate”');
+assert.match(src.overview, /: "Nicio locație activă"\}/);
+assert.match(src.overview, /flex flex-wrap items-baseline justify-between/, 'procentul nu mai e tăiat');
+
+// ---------- 7. etapa 2: locația închisă sau nepublică ----------
+assert.equal(isLocationPubliclyVisible({ id: 'L1', status: 'publicata', public_visibility_status: 'approved', active_status: 'activa' }), true);
+assert.equal(isLocationPubliclyVisible({ id: 'L1', status: 'in_verificare', public_visibility_status: 'archived', active_status: 'inactiva' }), false);
+assert.equal(isLocationPubliclyVisible({ id: 'L1', status: 'publicata', public_visibility_status: 'approved', profile_control_status: 'suspended' }), false);
+assert.equal(isLocationClosed({ active_status: 'inactiva' }), true);
+assert.match(shellSrc, /publicProfileUrl && publicProfileAvailable && \(/, 'linkul public doar pentru profil public');
+assert.match(shellSrc, /Profil nepublicat/);
+assert.match(rootSrc, /publicProfileAvailable=\{selectedLocationPublic\}/);
+assert.match(rootSrc, /publicProfileUrl=\{selectedLocationId && selectedLocationPublic \?/);
+assert.match(src.settings, /\{locationClosed && \(\s*<SettingsRow\s*title="Locația este închisă în VIASEE"/, 'zona de pericol nu mai e goală');
+assert.match(src.settings, /Cere redeschiderea/);
+assert.match(moduleSrc, /Locație închisă: nu apare public/);
+assert.match(src.photo, />Fotografie aprobată<\/span>/);
+assert.match(src.profile, /location\?\.active_status === "inactiva" && \(/);
+assert.match(teamLinks, /Specialiștii apar public doar la locațiile active/);
 
 console.log('Org account audit fixes: OK');
