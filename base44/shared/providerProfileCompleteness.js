@@ -36,11 +36,11 @@ export function computeOrganizationCompleteness(organization = {}) {
     || clean(organization.instagram_url)
     || clean(organization.linkedin_url));
   return checklistResult([
-    { key: 'organization_identity', group: 'organization', label: 'Numele public al organizatiei', done: clean(organization.public_display_name), impact: 'required', action: 'Completeaza profilul organizatiei.' },
-    { key: 'organization_description', group: 'organization', label: 'Descrierea organizatiei', done: clean(organization.public_description), action: 'Adauga o descriere publica.' },
-    { key: 'organization_contact', group: 'contact', label: 'Telefon sau email general', done: hasContact, impact: 'required', action: 'Adauga un canal public de contact.' },
-    { key: 'organization_web', group: 'contact', label: 'Website sau retele sociale', done: hasWeb, action: 'Adauga website-ul sau un profil social oficial.' },
-    { key: 'organization_logo', group: 'media', label: 'Logo-ul organizatiei', done: clean(organization.logo_url), action: 'Adauga logo-ul organizatiei.' },
+    { key: 'organization_identity', group: 'organization', label: 'Numele public al organizației', done: clean(organization.public_display_name), impact: 'required', action: 'Completează profilul organizației.' },
+    { key: 'organization_description', group: 'organization', label: 'Descrierea organizației', done: clean(organization.public_description), action: 'Adaugă o descriere publică.' },
+    { key: 'organization_contact', group: 'contact', label: 'Telefon sau email general', done: hasContact, impact: 'required', action: 'Adaugă un canal public de contact.' },
+    { key: 'organization_web', group: 'contact', label: 'Website sau rețele sociale', done: hasWeb, action: 'Adaugă website-ul sau un profil social oficial.' },
+    { key: 'organization_logo', group: 'media', label: 'Logo-ul organizației', done: clean(organization.logo_url), action: 'Adaugă logo-ul organizației.' },
   ]);
 }
 
@@ -53,16 +53,16 @@ export function computeLocationCompleteness({ location = {}, content = {} } = {}
   const controlled = ['claimed', 'verified'].includes(clean(location.profile_control_status));
   const verified = clean(location.profile_control_status) === 'verified' || clean(location.verification_state) === 'verified';
   return checklistResult([
-    { key: 'location_identity', group: 'location', label: 'Numele si tipul locatiei', done: clean(location.public_display_name || location.name) && location.provider_type && location.provider_profile_type, impact: 'required', action: 'Completeaza identitatea locatiei.' },
-    { key: 'location_locality', group: 'location', label: 'Localitatea', done: clean(location.locality_siruta_code || location.locality_name || location.city), impact: 'required', action: 'Selecteaza localitatea.' },
-    { key: 'location_address', group: 'location', label: 'Adresa', done: clean(location.address), impact: 'required', action: 'Completeaza adresa locatiei.' },
-    { key: 'location_contact', group: 'contact', label: 'Telefon sau email public', done: hasPublicContact, impact: 'required', action: 'Adauga un canal public de contact.' },
-    { key: 'location_hours', group: 'program', label: 'Programul de functionare', done: hasOpeningHours, action: 'Completeaza programul locatiei.' },
-    { key: 'location_services', group: 'services', label: 'Cel putin un serviciu public', done: hasServices, impact: 'required', action: 'Configureaza serviciile locatiei.' },
-    { key: 'location_team', group: 'specialists', label: 'Specialisti publici', done: hasTeam, action: 'Adauga specialistii care au acceptat afisarea.' },
-    { key: 'location_photo', group: 'media', label: 'Fotografie publica', done: hasPhoto, action: 'Adauga o fotografie a locatiei.' },
-    { key: 'location_claim', group: 'verification', label: 'Profil revendicat', done: controlled, action: 'Finalizeaza revendicarea profilului.' },
-    { key: 'location_verification', group: 'verification', label: 'Profil verificat', done: verified, action: 'Finalizeaza verificarea profilului.' },
+    { key: 'location_identity', group: 'location', label: 'Numele și tipul locației', done: clean(location.public_display_name || location.name) && location.provider_type && location.provider_profile_type, impact: 'required', action: 'Completează identitatea locației.' },
+    { key: 'location_locality', group: 'location', label: 'Localitatea', done: clean(location.locality_siruta_code || location.locality_name || location.city), impact: 'required', action: 'Selectează localitatea.' },
+    { key: 'location_address', group: 'location', label: 'Adresa', done: clean(location.address), impact: 'required', action: 'Completează adresa locației.' },
+    { key: 'location_contact', group: 'contact', label: 'Telefon sau email public', done: hasPublicContact, impact: 'required', action: 'Adaugă un canal public de contact.' },
+    { key: 'location_hours', group: 'program', label: 'Programul de funcționare', done: hasOpeningHours, action: 'Completează programul locației.' },
+    { key: 'location_services', group: 'services', label: 'Cel puțin un serviciu public', done: hasServices, impact: 'required', action: 'Configurează serviciile locației.' },
+    { key: 'location_team', group: 'specialists', label: 'Specialiști publici', done: hasTeam, action: 'Adaugă specialiștii care au acceptat afișarea.' },
+    { key: 'location_photo', group: 'media', label: 'Fotografie publică', done: hasPhoto, action: 'Adaugă o fotografie a locației.' },
+    { key: 'location_claim', group: 'verification', label: 'Profil revendicat', done: controlled, action: 'Finalizează revendicarea profilului.' },
+    { key: 'location_verification', group: 'verification', label: 'Profil verificat', done: verified, action: 'Finalizează verificarea profilului.' },
   ]);
 }
 

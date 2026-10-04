@@ -71,11 +71,11 @@ function computeOrganizationCompleteness(organization) {
     || clean(organization?.linkedin_url)
   );
   return checklistResult([
-    { key: 'identity', label: 'Numele public al organizatiei', done: !!clean(organization?.public_display_name) },
-    { key: 'description', label: 'Descrierea organizatiei', done: !!clean(organization?.public_description) },
+    { key: 'identity', label: 'Numele public al organizației', done: !!clean(organization?.public_display_name) },
+    { key: 'description', label: 'Descrierea organizației', done: !!clean(organization?.public_description) },
     { key: 'public_contact', label: 'Telefon sau email general', done: hasContact },
-    { key: 'web_presence', label: 'Website sau retele sociale', done: hasWeb },
-    { key: 'logo', label: 'Logo-ul organizatiei', done: !!clean(organization?.logo_url) },
+    { key: 'web_presence', label: 'Website sau rețele sociale', done: hasWeb },
+    { key: 'logo', label: 'Logo-ul organizației', done: !!clean(organization?.logo_url) },
   ]);
 }
 
