@@ -72,7 +72,7 @@ function ProviderChatSession({ leadId, locationId, enabled, responseType, termin
         error={error}
         lockedNote={notOpened
           ? (terminal
-            ? "Cererea este încheiată și nu a existat o conversație VIASEE pentru acest lead."
+            ? "Cererea este încheiată și nu a existat o conversație VIASEE pentru ea."
             : "Clientul nu a deschis încă această conversație. Locația nu poate iniția chatul unilateral.")
           : ""}
         canSend={!terminal && opened && Boolean(data?.chat?.can_send)}
@@ -80,7 +80,7 @@ function ProviderChatSession({ leadId, locationId, enabled, responseType, termin
         footerNote={terminal
           ? "Cererea este încheiată. Istoricul rămâne numai pentru consultare."
           : closed
-            ? "Conversația este închisă. Clientul o poate redeschide dacă leadul rămâne eligibil."
+            ? "Conversația este închisă. Clientul o poate redeschide dacă cererea rămâne eligibilă."
             : ""}
         onSend={send}
         onClose={close}

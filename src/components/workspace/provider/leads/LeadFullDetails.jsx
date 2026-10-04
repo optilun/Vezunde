@@ -17,8 +17,8 @@ export default function LeadFullDetails({ lead }) {
     return (
       <div className="rounded-xl border border-border bg-secondary/35 p-4 text-xs leading-relaxed text-muted-foreground">
         {lead.access_tier === "pro_full"
-          ? "Acest lead este în Top 3, dar detaliile complete necesită plan Pro activ și acordul actual al clientului."
-          : "Acest lead este disponibil ca rezumat anonim. Detaliile complete și chatul sunt rezervate locațiilor Pro din Top 3."}
+          ? "Această cerere este în Top 3, dar detaliile complete necesită plan Pro activ și acordul actual al clientului."
+          : "Această cerere este disponibilă ca rezumat anonim. Detaliile complete și chatul sunt rezervate locațiilor Pro din Top 3."}
       </div>
     );
   }
