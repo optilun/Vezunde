@@ -11,19 +11,19 @@ export function deriveProviderLocationState(location = {}) {
     suspended,
     verified,
     published,
-    activityLabel: suspended ? "Suspendata" : inactive ? "Inactiva" : "Activa",
+    activityLabel: suspended ? "Suspendată" : inactive ? "Inactivă" : "Activă",
     activityClassName: suspended || inactive ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800",
     controlLabel: PROFILE_CONTROL_LABELS[location.profile_control_status] || location.profile_control_status || "Neclasificat",
-    publicationLabel: published ? "Publicata" : "Nepublicata",
+    publicationLabel: published ? "Publicată" : "Nepublicată",
   };
 }
 
 export function deriveSubmissionState(submission) {
   if (!submission) return null;
   const labels = {
-    draft: "Draft in lucru",
-    pending_review: "In verificare",
-    needs_more_info: "Necesita completari",
+    draft: "Draft în lucru",
+    pending_review: "În verificare",
+    needs_more_info: "Necesită completări",
     approved: "Aprobat",
     rejected: "Respins",
     withdrawn: "Retras",
