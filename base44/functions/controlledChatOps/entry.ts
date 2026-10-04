@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
+import { loadProviderEntitlementRows } from '../../shared/providerEntitlementRows.js';
 import {
   CONTROLLED_CHAT_CONTRACT_VERSION,
   CONTROLLED_CHAT_MESSAGE_CONTRACT_VERSION,
@@ -59,7 +60,8 @@ async function findActiveResponse(svc, lead) {
 }
 
 async function resolveEntitlement(svc, locationId) {
-  const rows = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
+  // 2026-10-04 (pasul 4): planul locatiei include si abonamentul organizatiei ei.
+  const rows = await loadProviderEntitlementRows(svc, { locationId });
   return resolveProviderEntitlement(rows);
 }
 

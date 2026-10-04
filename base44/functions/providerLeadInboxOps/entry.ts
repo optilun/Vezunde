@@ -6,6 +6,7 @@ import {
   summarizeProviderLeadInbox,
 } from '../../shared/providerLeadInboxPolicy.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
+import { loadProviderEntitlementRows } from '../../shared/providerEntitlementRows.js';
 import { isProviderLeadInboxTarget } from '../../shared/providerLeadInboxTargetPolicy.js';
 import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import {
@@ -55,7 +56,8 @@ function safeLocation(location) {
 }
 
 async function entitlementForLocation(svc, locationId) {
-  const rows = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
+  // 2026-10-04 (pasul 4): planul locatiei include si abonamentul organizatiei ei.
+  const rows = await loadProviderEntitlementRows(svc, { locationId });
   return resolveProviderEntitlement(rows);
 }
 

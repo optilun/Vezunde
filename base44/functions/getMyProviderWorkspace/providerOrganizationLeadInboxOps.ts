@@ -4,6 +4,7 @@ import {
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
+import { loadProviderEntitlementRows } from '../../shared/providerEntitlementRows.js';
 import { projectOrganizationLeadExpirations } from '../../shared/providerOrganizationLeadLifecycle.js';
 import {
   PROVIDER_ORGANIZATION_LEAD_INBOX_CONTRACT_VERSION,
@@ -87,7 +88,8 @@ export async function handle(req: Request) {
     const locationData = await mapWithConcurrency(locations, 4, async (location) => {
       const [leads, subscriptions] = await Promise.all([
         readAll(svc.entities.ProviderLead, { location_id: location.id }),
-        readAll(svc.entities.ProviderSubscription, { location_id: location.id }),
+        // 2026-10-04 (pasul 4): planul locatiei include si abonamentul organizatiei ei.
+        loadProviderEntitlementRows(svc, { location }),
       ]);
       return { location, leads, entitlement: resolveProviderEntitlement(subscriptions) };
     });

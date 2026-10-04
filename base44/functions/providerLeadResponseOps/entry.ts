@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import { hasProviderFeature, resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
+import { loadProviderEntitlementRows } from '../../shared/providerEntitlementRows.js';
 import {
   PROVIDER_LEAD_RESPONSE_CONTRACT_VERSION,
   normalizeProviderLeadResponseType,
@@ -43,7 +44,8 @@ async function authorizeLocation(svc, user, locationId) {
 }
 
 async function requireResponseEntitlement(svc, locationId) {
-  const subscriptions = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
+  // 2026-10-04 (pasul 4): planul locatiei include si abonamentul organizatiei ei.
+  const subscriptions = await loadProviderEntitlementRows(svc, { locationId });
   const entitlement = resolveProviderEntitlement(subscriptions);
   if (!hasProviderFeature(entitlement, 'provider_leads.respond')) {
     return { error: 'Raspunsul la leaduri este disponibil in planul Pro.', status: 402, entitlement };
