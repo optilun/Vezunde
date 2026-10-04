@@ -14,6 +14,8 @@ import {
 } from '../src/lib/providerInboxErrors.js';
 import { buildProviderStatusCenter } from '../shared/providerStatusCenter.js';
 import { isLocationClosed, isLocationPubliclyVisible } from '../src/lib/providerLocationVisibility.js';
+import { formatLocationAddress, formatStreetAddress } from '../src/lib/addressDisplay.js';
+import { countApprovedServiceKeys } from '../base44/shared/providerWorkspaceBatchQueries.js';
 
 const read = (file) => readFile(new URL(`../${file}`, import.meta.url), 'utf8');
 
@@ -123,5 +125,36 @@ assert.match(moduleSrc, /Locație închisă: nu apare public/);
 assert.match(src.photo, />Fotografie aprobată<\/span>/);
 assert.match(src.profile, /location\?\.active_status === "inactiva" && \(/);
 assert.match(teamLinks, /Specialiștii apar public doar la locațiile active/);
+
+// ---------- 8. etapa 3: „Plan și acces”, adresa, numărul de servicii ----------
+assert.match(inbox, /\{ key: "account", label: "Plan și acces" \}/, '#7: sub-tabul are un nume care spune ce conține');
+assert.doesNotMatch(inbox, /<ProviderBillingPanel/, '#7: facturarea nu se mai dublează în Cereri');
+assert.match(inbox, /<BillingShortcut onOpenBilling=\{onOpenBilling\} \/>/);
+assert.match(inbox, /Abonamentul organizației îl administrează proprietarul contului\./, '#7: cine nu are Setări află cine administrează abonamentul');
+assert.match(rootSrc, /onOpenBilling=\{canManageSettings \? openBillingSettings : undefined\}/);
+assert.match(rootSrc, /next\.set\("tab", "billing"\);\s*routerNavigate\(providerSectionUrl\(next, "settings"\)\);/);
+
+assert.equal(formatStreetAddress('Strada Republicii 10'), 'Strada Republicii 10', '#16: „Strada” nu mai devine „Str. ada”');
+assert.equal(formatStreetAddress('STR. MIHAI VITEAZU NR. 5, ET.'), 'Str. Mihai Viteazu nr. 5', '#16: fără majuscule și fără „ET.” rămas gol');
+assert.equal(formatStreetAddress('Piata Bufet'), 'Piata Bufet', '#16: nu taie sfârșitul cuvintelor');
+assert.equal(formatStreetAddress('Bd. Unirii nr. 3, bl. A2, ap.'), 'Bd. Unirii nr. 3, bl. A2');
+assert.equal(formatStreetAddress('Cluj-Napoca, Strada Horea 4', 'Cluj-Napoca'), 'Strada Horea 4');
+assert.equal(formatLocationAddress({ address: 'STR. LUNGA NR. 7, ET.', city: 'BRAȘOV', county: 'Brașov' }), 'Str. Lunga nr. 7, Brașov');
+assert.equal(formatLocationAddress({}, 'Adresa nu este completată'), 'Adresa nu este completată');
+for (const file of ['src/pages/ProviderProfile.jsx', 'src/components/workspace/provider/ProviderLocationsWithPhoto.jsx', 'src/components/workspace/provider/ProviderProfilePublic.jsx']) {
+  assert.match(await read(file), /from "@\/lib\/addressDisplay"/, `${file}: aceeași regulă de afișare a adresei`);
+}
+
+const services = [{ id: 's1', service_key: 'consult' }, { id: 's2', service_key: 'oct' }];
+const mirrored = [{ id: 'p1', specialization_key: 'oct' }, { id: 'p2', specialization_key: 'legacy_only' }];
+assert.equal(countApprovedServiceKeys(services, mirrored), 3, '#18: specializarea-oglindă nu se numără de două ori');
+assert.equal(countApprovedServiceKeys([], []), 0);
+for (const file of ['getProviderWorkspaceOverview.ts', 'getMyProviderWorkspace.ts', 'getProviderProfileCompleteness.ts']) {
+  const source = await read(`base44/functions/getMyProviderWorkspace/${file}`);
+  assert.match(source, /approved_service_count: countApprovedServiceKeys\(services, specialties\)/, `${file}: același număr de servicii`);
+  assert.doesNotMatch(source, /services\.length \+ specialties\.length/);
+}
+const servicesEditor = await read('src/components/workspace/provider/ProviderServicesEditor.jsx');
+assert.match(servicesEditor, /Fără servicii selectate: \{emptyUnits\.map\(unitLabel\)\.join\(" · "\)\}/, '#18: spațiile fără servicii se văd în rezumat');
 
 console.log('Org account audit fixes: OK');
