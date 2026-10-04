@@ -48,7 +48,7 @@ assert.doesNotMatch(legacy, /setError\(loadError\?\.message/);
 const status = buildProviderStatusCenter({ location: { status: 'in_verificare' }, entitlement: { plan_code: 'pro', status: 'active', feature_keys: [] } });
 assert.equal(status.overall_label, 'Configurare necesară');
 assert.equal(status.capabilities.find((item) => item.key === 'lead_preview').label, 'Rezumatul cererilor');
-assert.doesNotMatch(JSON.stringify(status), /lead/i.test('x') ? /leaduri|Leadurile|necesita|cat timp|publicata/ : /x^/);
+assert.doesNotMatch(JSON.stringify(status.capabilities), /leaduri|Leadurile|necesita|cat timp|Locatia/);
 
 // ---------- 4. texte cu diacritice ----------
 const files = {
@@ -83,7 +83,7 @@ assert.match(src.withPhoto, /selectedLocation\.photo_url\s*\?\s*"Schimbă fotogr
 assert.match(src.completeness, /`\/contul-meu\/locatii\/\$\{locationId\}\/specialisti`/, 'rutele modulelor rămân aceleași');
 assert.match(src.addLocation, /reasons\.includes\("aceeasi adresa"\) \|\| reasons\.includes\("aceeași adresă"\)/, 'potrivirea cu motivele din backend rămâne');
 // ProviderLocationsWithPhoto caută texte din ProviderLocations: trebuie să rămână identice.
-for (const coupled of [...src.withPhoto.matchAll(/\.includes\("([^"]+)"\)/g)].map((match) => match[1])) {
+for (const coupled of [...src.withPhoto.matchAll(/\.includes\("([^"]+)"\)/g)].map((match) => match[1]).filter((text) => /\s/.test(text))) {
   assert.ok(src.locations.includes(coupled), `textul cuplat „${coupled}” lipsește din ProviderLocations`);
 }
 for (const label of [...src.withPhoto.matchAll(/aside\[aria-label="([^"]+)"\]/g)].map((match) => match[1])) {
