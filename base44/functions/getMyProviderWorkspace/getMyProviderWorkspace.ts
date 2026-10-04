@@ -119,6 +119,7 @@ function sanitizeLocation(location, organizationName) {
     lat: location.lat ?? null,
     lng: location.lng ?? null,
     place_id: location.place_id || '',
+    map_precision: location.map_precision === 'exact' ? 'exact' : 'approximate',
     phone_public: location.phone_public || location.public_phone || '',
     public_phone: location.public_phone || location.phone_public || '',
     public_email: location.public_email || '',
