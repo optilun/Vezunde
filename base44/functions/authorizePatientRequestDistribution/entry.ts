@@ -19,12 +19,6 @@ function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(String(value || ''));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 function expired(request) {
   const expiresAt = Date.parse(String(request?.expires_at || ''));
   return Number.isFinite(expiresAt) && expiresAt <= Date.now();

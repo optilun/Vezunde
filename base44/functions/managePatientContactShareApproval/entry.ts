@@ -24,12 +24,6 @@ function clean(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(String(value || ''));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 function requestAllowsPhoneApproval(request) {
   return persistedPatientRequestLifecycleState(request) === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE
     && !patientRequestHasExpired(request);
