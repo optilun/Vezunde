@@ -3,7 +3,15 @@
 // separately; return synchronization and scheduled reconciliation are recovery paths.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
-import { syncVerifiedBillingSubscription } from './billingAccountHelpers.ts';
+import { syncOrganizationSubscription, syncVerifiedBillingSubscription } from './billingAccountHelpers.ts';
+import { findOrganizationTieredPrice } from '../../shared/providerOrganizationBilling.js';
+
+// 2026-10-04 (structura conturilor, pasul 4): abonamentele noi sunt pe organizatie
+// (metadata scope: organization). Cele vechi, pe locatie, se sincronizeaza ca inainte.
+async function syncOrganizationEvent(svc, stripe, subscription) {
+  const tieredPrice = await findOrganizationTieredPrice(stripe);
+  return syncOrganizationSubscription(svc, subscription, { organizationId: subscription.metadata?.organization_id, tieredPriceId: tieredPrice?.id || '' });
+}
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -42,11 +50,16 @@ export async function handle(req: Request) {
       if (session.mode === 'subscription' && session.subscription) {
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        await syncVerifiedBillingSubscription(svc, subscription, priceId, session.client_reference_id, subscription.metadata?.organization_id);
+        if (subscription.metadata?.scope === 'organization') {
+          if (session.client_reference_id === subscription.metadata?.organization_id) await syncOrganizationEvent(svc, stripe, subscription);
+        } else {
+          await syncVerifiedBillingSubscription(svc, subscription, priceId, session.client_reference_id, subscription.metadata?.organization_id);
+        }
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = await stripe.subscriptions.retrieve(event.data.object.id);
-      await syncVerifiedBillingSubscription(svc, subscription, priceId, subscription.metadata?.location_id, subscription.metadata?.organization_id);
+      if (subscription.metadata?.scope === 'organization') await syncOrganizationEvent(svc, stripe, subscription);
+      else await syncVerifiedBillingSubscription(svc, subscription, priceId, subscription.metadata?.location_id, subscription.metadata?.organization_id);
     }
     // Orice alt tip de eveniment este ignorat explicit - endpoint-ul este inregistrat in Stripe
     // Dashboard doar pentru cele trei de mai sus, dar un handler robust nu trebuie sa esueze
