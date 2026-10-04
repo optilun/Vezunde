@@ -141,7 +141,8 @@ assert.equal(formatStreetAddress('Bd. Unirii nr. 3, bl. A2, ap.'), 'Bd. Unirii n
 assert.equal(formatStreetAddress('Cluj-Napoca, Strada Horea 4', 'Cluj-Napoca'), 'Strada Horea 4');
 assert.equal(formatLocationAddress({ address: 'STR. LUNGA NR. 7, ET.', city: 'BRAȘOV', county: 'Brașov' }), 'Str. Lunga nr. 7, Brașov');
 assert.equal(formatLocationAddress({}, 'Adresa nu este completată'), 'Adresa nu este completată');
-for (const file of ['src/pages/ProviderProfile.jsx', 'src/components/workspace/provider/ProviderLocationsWithPhoto.jsx', 'src/components/workspace/provider/ProviderProfilePublic.jsx']) {
+assert.equal(formatStreetAddress('SAT GIROC, STR. CUPIDON, NR.40, ET.', 'Giroc'), 'Str. Cupidon, nr. 40', '#16: adresa din contul de test');
+for (const file of ['src/pages/ProviderProfile.jsx', 'src/components/workspace/provider/ProviderLocationsWithPhoto.jsx', 'src/components/workspace/provider/ProviderProfilePublic.jsx', 'src/components/workspace/provider/ProviderLocations.jsx']) {
   assert.match(await read(file), /from "@\/lib\/addressDisplay"/, `${file}: aceeași regulă de afișare a adresei`);
 }
 

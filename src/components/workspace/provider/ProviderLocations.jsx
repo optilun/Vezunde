@@ -27,6 +27,7 @@ import {
   deriveSubmissionState,
 } from "@/lib/providerWorkspaceState";
 import { hasPublishedSectionChanges } from "../../../../shared/providerWorkspaceSubmissionComparison.js";
+import { formatStreetAddress } from "@/lib/addressDisplay";
 
 const inputCls =
   "w-full rounded-xl border border-foreground/15 bg-background px-4 py-3 text-[16px] outline-none transition-colors focus:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
@@ -730,7 +731,7 @@ export default function ProviderLocations({
                 <DetailLine
                   icon={MapPin}
                   label="Adresa"
-                  value={previewLocation.address}
+                  value={formatStreetAddress(previewLocation.address, previewLocation.locality_name || previewLocation.city)}
                 />
               </div>
               <div className="sm:px-5">
