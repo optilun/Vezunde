@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { findPatientRequestContactForToken } from '../../shared/patientRequestAccessGrant.js';
 import { findProviderLeadLocationMembership } from '../../shared/providerLeadLocationAccess.js';
 import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import { loadProviderEntitlementRows } from '../../shared/providerEntitlementRows.js';
@@ -68,13 +69,8 @@ async function resolveEntitlement(svc, locationId) {
 async function authorizePatientRequest(svc, requestId, accessToken) {
   const request = await svc.entities.PatientRequest.get(requestId).catch(() => null);
   if (!request) return { error: 'Cererea nu a fost gasita.', status: 404 };
-  const tokenHash = await sha256(accessToken);
-  const contacts = await svc.entities.PatientRequestContact.filter({
-    request_id: requestId,
-    access_token_hash: tokenHash,
-    status: 'active',
-  }, '-updated_date', 2);
-  const contact = contacts[0] || null;
+  // 2026-10-04: linkul din email sau accesul cerut din contul pacientului (pasul 5).
+  const contact = await findPatientRequestContactForToken(svc, requestId, accessToken, '-updated_date');
   if (!contact) return { error: 'Accesul la cerere nu este valid.', status: 403 };
   return { request, contact };
 }

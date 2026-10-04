@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { findPatientRequestContactForToken } from '../../shared/patientRequestAccessGrant.js';
 import {
   PATIENT_EMAIL_VERIFICATION_CODE_TTL_MS,
   PATIENT_EMAIL_VERIFICATION_CONTRACT_VERSION,
@@ -62,13 +63,8 @@ function safeEqual(left, right) {
 async function authorizeRequest(svc, requestId, accessToken) {
   const request = await svc.entities.PatientRequest.get(requestId).catch(() => null);
   if (!request) return { error: 'Cererea nu a fost gasita.', status: 404 };
-  const tokenHash = await sha256(accessToken);
-  const contacts = await svc.entities.PatientRequestContact.filter({
-    request_id: requestId,
-    access_token_hash: tokenHash,
-    status: 'active',
-  }, null, 2);
-  const contact = contacts[0];
+  // 2026-10-04: linkul din email sau accesul cerut din contul pacientului (pasul 5).
+  const contact = await findPatientRequestContactForToken(svc, requestId, accessToken, null);
   if (!contact) return { error: 'Accesul la cerere nu este valid.', status: 403 };
   return { request, contact };
 }
