@@ -258,12 +258,15 @@ function stripLineComments(text) {
 
 const checkoutSource = await source('../base44/functions/getMyProviderWorkspace/createProviderCheckoutSession.ts');
 assert.match(checkoutSource, /base44\.auth\.me\(\)/);
-assert.match(checkoutSource, /authorizeProviderBillingOwner/);
+// 2026-10-04 (structura conturilor, pasul 4): checkout-ul este pe organizatie, cu pretul pe trepte
+// gasit dupa lookup_key; codurile promotionale doar pentru pachete, nu pentru oferte Enterprise.
+assert.match(checkoutSource, /authorizeOrganizationBillingOwner/);
 assert.match(checkoutSource, /CHECKOUT_SESSION_ID/);
-assert.match(checkoutSource, /allow_promotion_codes:\s*true/);
+assert.match(checkoutSource, /allow_promotion_codes:\s*!offer/);
 assert.match(checkoutSource, /payment_method_collection:\s*'always'/);
 assert.match(checkoutSource, /mode:\s*'subscription'/);
-assert.match(checkoutSource, /STRIPE_PRICE_ID_PRO_MONTHLY/);
+assert.match(checkoutSource, /findOrganizationTieredPrice\(stripe\)/);
+assert.match(checkoutSource, /quantity: activeCount/);
 assert.doesNotMatch(checkoutSource, /input\.plan_code|input\.price/, 'Checkout-ul nu trebuie sa accepte planul/pretul din input-ul clientului');
 
 const portalSource = await source('../base44/functions/getMyProviderWorkspace/createProviderBillingPortalSession.ts');
