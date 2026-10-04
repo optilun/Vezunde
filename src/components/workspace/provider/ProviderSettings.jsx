@@ -338,7 +338,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Organizația, preferințele și plățile locației, într-un singur loc.
+            Organizația, preferințele și abonamentul, într-un singur loc.
           </p>
         </div>
 
