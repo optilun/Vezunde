@@ -3,7 +3,7 @@
 // Inainte, tot panoul de status statea deschis intre tine si lista de cereri, si repeta
 // feature-cu-feature exact ce spune deja LockedPreview langa fiecare sectiune blocata din
 // detaliul cererii. Acum ramane aici o singura linie - starea locatiei si ce e limitat -
-// iar explicatia completa traieste in tabul "Cont".
+// iar explicatia completa traieste in tabul "Plan și acces" (fost "Cont").
 //
 // Doar prezentare: starea vine din buildProviderStatusCenter, aceeasi functie ca inainte.
 // Nu se decide nimic despre plan, Top 3 sau acordul clientului.
@@ -51,7 +51,7 @@ export default function ProviderAccessBand({ location, entitlement, counters, on
         onClick={onOpenAccount}
         className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45"
       >
-        Vezi contul <ArrowRight className="h-3.5 w-3.5" />
+        Plan și acces <ArrowRight className="h-3.5 w-3.5" />
       </button>
     </div>
   );

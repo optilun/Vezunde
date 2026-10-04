@@ -1,4 +1,4 @@
-// Completarea profilului, mutata in tabul "Cont" (2026-08-22).
+// Completarea profilului, mutata in tabul "Plan și acces" din Cereri (2026-08-22, fost "Cont").
 //
 // Aceleasi date si aceleasi reguli ca inainte - se schimba doar limbajul vizual, ca sa fie
 // acelasi cu restul modulului: fundal crem cu textura, titluri font-heading, placi tonale

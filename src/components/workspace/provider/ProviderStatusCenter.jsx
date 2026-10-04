@@ -1,4 +1,4 @@
-// Statusul locatiei, mutat in tabul "Cont" (2026-08-22).
+// Statusul locatiei, mutat in tabul "Plan și acces" din Cereri (2026-08-22, fost "Cont").
 //
 // Continutul este acelasi: aceleasi capabilitati, aceleasi stari, aceiasi blocanti - vin
 // neschimbate din buildProviderStatusCenter. S-a schimbat doar limbajul vizual, ca sa fie
