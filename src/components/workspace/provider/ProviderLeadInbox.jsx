@@ -3,8 +3,12 @@
 // Inainte, cele trei bucati (status locatie, completarea profilului, inbox) stateau una
 // sub alta, fiecare cu propriul stil de card: cine intra sa vada "am o cerere noua?"
 // trebuia sa treaca prin doua panouri administrative. Acum ecranul are doua tab-uri, ca
-// in aplicatiile de conversatii: "Cereri" e vedeta si e implicit, iar "Cont" tine tot ce
-// tine de plan, acces si completarea profilului.
+// in aplicatiile de conversatii: "Cereri" e vedeta si e implicit, iar "Plan și acces" tine
+// starea planului, accesul la cereri si completarea profilului.
+//
+// 2026-10-04 (audit cont organizație, #7): tabul se numea „Cont” și repeta tot panoul de
+// facturare din Setări → Abonament și facturare. Acum arată doar starea și un link spre Setări;
+// plata, facturile și schimbarea planului rămân într-un singur loc.
 //
 // Nimic nu a fost sters: ProviderStatusCenter si ProviderCompletenessPanel raman intregi,
 // se schimba doar locul in care traiesc. Regulile de acces (Pro, Top 3, acordul clientului)
@@ -18,8 +22,7 @@ import ProviderLeadInboxLegacy from "./ProviderLeadInboxLegacy";
 import ProviderOrganizationLeadInbox from "./ProviderOrganizationLeadInbox";
 import { canShowOrganizationInbox } from "@/lib/providerOrganizationInboxView";
 import ProviderAccessBand from "./leads/ProviderAccessBand";
-import ProviderBillingPanel from "./leads/ProviderBillingPanel";
-import { RefreshCw } from "lucide-react";
+import { ArrowRight, CreditCard, RefreshCw } from "lucide-react";
 import { withTransientRetry } from "@/lib/transientRetry";
 import { INBOX_PLAN_UNKNOWN_MESSAGE, INBOX_RETRY_OPTIONS } from "@/lib/providerInboxErrors";
 
@@ -40,8 +43,32 @@ function PlanUnknownNotice({ onRetry }) {
 
 const TABS = [
   { key: "leads", label: "Cereri" },
-  { key: "account", label: "Cont" },
+  { key: "account", label: "Plan și acces" },
 ];
+
+// Abonamentul se gestionează doar în Setări. Cine nu are acces la Setări află cine îl administrează.
+function BillingShortcut({ onOpenBilling }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <CreditCard aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <p className="font-heading text-[13.5px] font-extrabold tracking-[-0.02em] text-foreground">Abonament și facturare</p>
+          <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+            {onOpenBilling
+              ? "Plata, facturile și schimbarea planului sunt în Setări → Abonament și facturare."
+              : "Abonamentul organizației îl administrează proprietarul contului."}
+          </p>
+        </div>
+      </div>
+      {onOpenBilling && (
+        <button type="button" onClick={onOpenBilling} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45">
+          Deschide abonamentul <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function responseData(response) {
   const data = response?.data || {};
@@ -50,17 +77,15 @@ function responseData(response) {
 }
 
 export default function ProviderLeadInbox(props) {
-  const { locationId, location, onEntitlementChanged, organizationId, isOrganizationOwner, ownerLocations = [], onSelectLocation } = props;
+  const { locationId, location, organizationId, isOrganizationOwner, ownerLocations = [], onSelectLocation, onOpenBilling } = props;
   const canViewAll = canShowOrganizationInbox({ isOrganizationOwner, organizationId, locations: ownerLocations });
   const [showAllLocations, setShowAllLocations] = useState(canViewAll);
   const [targetLead, setTargetLead] = useState(null);
   const [searchParams] = useSearchParams();
-  // O intoarcere din Stripe (Checkout sau Billing Portal) trebuie sa aterizeze direct in
-  // tab-ul "Cont", unde traieste ProviderBillingPanel - altfel providerul revine din plata
-  // exact in lista de cereri, fara sa vada confirmarea.
+  // Stripe se întoarce în Setări → Abonament și facturare (din 2026-09-14). Dacă un link vechi
+  // aduce totuși ?billing= aici, îl trimitem acolo, unde se face sincronizarea plății.
   const billingReturn = searchParams.get("billing");
-  // Cardul "Treci la Pro" din sidebar (ProviderSidebarContent) trimite direct aici cu
-  // ?tab=account, ca sa nu mai fie nevoie de un al doilea click pe tab-ul "Cont".
+  // Un link cu ?tab=account deschide direct „Plan și acces”.
   const wantsAccountTab = searchParams.get("tab") === "account";
   // status: loading | ready | error. Planul e folosit doar când e „ready”.
   const [snapshot, setSnapshot] = useState({ status: "loading", entitlement: null, counters: {} });
@@ -71,14 +96,18 @@ export default function ProviderLeadInbox(props) {
   const planFailed = currentSnapshot.status === "error";
   const currentCompleteness = completeness?.selected_location_id === locationId ? completeness : null;
   const [tab, setTab] = useState(billingReturn || wantsAccountTab ? "account" : "leads");
-  // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
-  // entitlement-ul si contoarele fara sa reincarcam toata pagina.
+  // Incrementat la „Reîncearcă”, ca sa reincarcam planul si contoarele fara toata pagina.
   const [refreshTick, setRefreshTick] = useState(0);
   const retryPlan = () => {
     setSnapshot((current) => ({ ...current, status: "loading" }));
     setRefreshTick((tick) => tick + 1);
   };
 
+  useEffect(() => {
+    if (billingReturn && onOpenBilling) onOpenBilling();
+    // Doar la deschidere: redirecționarea unei întoarceri vechi din Stripe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { setShowAllLocations(canViewAll); }, [organizationId, canViewAll]);
   useEffect(() => {
     setTargetLead((current) => current?.locationId && current.locationId !== locationId ? null : current);
@@ -195,17 +224,7 @@ export default function ProviderLeadInbox(props) {
             />
           )}
           {planFailed && <PlanUnknownNotice onRetry={retryPlan} />}
-          <ProviderBillingPanel
-            organizationId={organizationId || location?.organization_id || ""}
-            locationId={locationId}
-            entitlement={currentSnapshot.entitlement}
-            onSynced={() => {
-              setRefreshTick((tick) => tick + 1);
-              // Anunta ProviderWorkspaceRoot sa reincarce si el planul, ca sa se actualizeze
-              // cardul de upgrade din sidebar dupa un checkout/anulare reusit.
-              onEntitlementChanged?.();
-            }}
-          />
+          <BillingShortcut onOpenBilling={onOpenBilling} />
           <ProviderCompletenessPanel data={currentCompleteness} />
         </div>
       )}
