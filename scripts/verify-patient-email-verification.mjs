@@ -97,7 +97,8 @@ const submission = await readFile(new URL('../src/components/intake2/PatientRequ
 // 2026-10-04 (structura conturilor, pasul 5): tokenul se verifica prin helperul comun, care
 // accepta linkul din email si accesul cerut din contul pacientului.
 assert.match(backend, /findPatientRequestContactForToken\(svc, /);
-assert.match(backend, /PatientRequestContact\.filter/);
+// 2026-10-04 (pasul 5): citirea contactului dupa token sta in helperul comun.
+assert.match(await readFile(new URL('../base44/shared/patientRequestAccessGrant.js', import.meta.url), 'utf8'), /PatientRequestContact\.filter/);
 assert.match(backend, /createPatientVerificationCode/);
 assert.match(backend, /Core\.SendEmail/);
 assert.match(backend, /contact_email_verified: true/);
