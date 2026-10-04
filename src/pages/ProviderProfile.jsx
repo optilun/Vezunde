@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { loadPublicProviderProfile } from "@/lib/publicProfilePrefetch";
@@ -16,7 +16,8 @@ import {
 import { PROFESSIONAL_TYPES } from "@/lib/vezunde";
 // 2026-09-03: etichetele specializarilor vin din shared, nu dintr-o a saptea copie locala.
 import { professionalSpecializationLabel } from "../../shared/professionalIdentity.js";
-import { buildGoogleMapsDirectionsUrl, buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
+import { buildGoogleMapsDirectionsUrl } from "@/lib/maps";
+import LocationPinMap from "@/components/maps/LocationPinMap";
 import { CLIENT_NEED_BY_KEY, summarizePublicServices } from "@/lib/servicePresentation";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 import ProviderLocationHero from "@/components/provider/ProviderLocationHero";
@@ -285,36 +286,6 @@ function TeamCard({ team }) {
   );
 }
 
-// 2026-09-24. Harta Google (iframe) aduce ~430 KB de cod. `loading="lazy"` nu ajuta pe telefon: harta
-// e destul de aproape de ecran ca browserul sa o incarce oricum. Acum iframe-ul se creeaza cand
-// cardul hartii ajunge la ~400 px de ecran (pe desktop, unde se vede de la inceput, imediat) sau la
-// apasarea butonului. Pana atunci ramane fundalul cardului.
-function DeferredMapEmbed({ src, title }) {
-  const holder = useRef(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    if (visible) return undefined;
-    const node = holder.current;
-    if (!node || typeof IntersectionObserver === "undefined") { setVisible(true); return undefined; }
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: "400px 0px" });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [visible]);
-  return (
-    <div ref={holder} className="h-full w-full">
-      {visible ? (
-        <iframe title={title} src={src} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-      ) : (
-        <button type="button" onClick={() => setVisible(true)} className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/40">
-          Afișează harta
-        </button>
-      )}
-    </div>
-  );
-}
-
 export default function ProviderProfile() {
   const route = useLocation();
   const resultsReturn = route.state?.resultsReturn;
@@ -382,8 +353,6 @@ export default function ProviderProfile() {
   if (!profile) return <div className="mx-auto max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost găsit.</div>;
 
   const status = profile.profile_control_status;
-  const mapUrl = buildGoogleMapsUrl(profile);
-  const embedUrl = buildGoogleMapsEmbedUrl(profile);
   const directionsUrl = buildGoogleMapsDirectionsUrl(profile);
   const websiteLabel = profile.website ? compactUrl(profile.website) : "";
   const socialLinks = SOCIAL_LINKS.filter((item) => profile[item.key]);
@@ -402,7 +371,7 @@ export default function ProviderProfile() {
         {/* 2026-10-04 (structura conturilor, pasul 5): „Salvate” din contul personal. */}
         <SaveToAccountButton itemType="location" itemId={profile.id} />
       </div>
-      <ProviderLocationHero profile={profile} status={status} serviceCount={services.length} mapUrl={mapUrl} />
+      <ProviderLocationHero profile={profile} status={status} serviceCount={services.length} mapUrl={directionsUrl} />
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <div className="min-w-0 space-y-5">
@@ -517,19 +486,15 @@ export default function ProviderProfile() {
                 <div>
                   <h2 className="font-heading text-sm font-bold">Locație și traseu</h2>
                   {addressLabel ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{addressLabel}</p> : <p className="mt-2 text-sm text-muted-foreground">Adresa completă nu este publicată.</p>}
-                  {profile.map_precision === "approximate" && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Poziție aproximativă, calculată din adresă.</p>}
+                  {profile.map_precision === "approximate" && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Poziție aproximativă. Verifică adresa înainte de deplasare.</p>}
                   {profile.map_precision === "exact" && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Poziție confirmată pe hartă.</p>}
                 </div>
                 {directionsUrl && <a href={directionsUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary">Traseu <ExternalLink className="h-3 w-3" /></a>}
               </div>
             </div>
-            {hasMapLocation(profile) && embedUrl ? (
-              <div className="h-60 border-t border-border bg-secondary">
-                <DeferredMapEmbed title={`Harta ${profile.name}`} src={embedUrl} />
-              </div>
-            ) : (
-              <div className="border-t border-border bg-secondary/40 p-5 text-sm text-muted-foreground">Harta va fi afișată după publicarea adresei sau a pinului verificat.</div>
-            )}
+            <div className="h-60 border-t border-border bg-secondary">
+              <LocationPinMap location={profile} />
+            </div>
           </div>
         </aside>
       </div>
