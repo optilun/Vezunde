@@ -130,7 +130,7 @@ def background(mobile):
 @lru_cache(maxsize=12)
 def panel_shadow(w,h):
     im=Image.new("RGBA",((w+100)*S,(h+100)*S))
-    rr(im,(48,54,w+52,h+58),24,(12,19,72,75))
+    rr(im,(48,54,w+52,h+58),24,(32,29,23,38))
     return im.filter(ImageFilter.GaussianBlur(16*S))
 
 def map_art(im,x,y,w,h,p=1):
@@ -240,7 +240,7 @@ def scene(index,u,mobile):
             progress=ease((u-.2-n*.14)/.32)
             focus=ease((u-2.7)/.3)
             inset=(0 if n==0 else 12+13*focus)
-            cardw=cw-inset*2
+            cardw=cw-inset*2+(8*focus if n==0 else 0)
             xx=28+inset
             yy=y+n*(122 if mobile else 91)+(1-progress)*20
             rh=(107 if mobile else 88) if n==0 else (86 if mobile else 69)
@@ -286,7 +286,7 @@ def frame(t,mobile):
     title_size=32 if mobile else 38
     if mobile and index==6:
         txt(im,"Vezi detaliile.",30,65,34,800,INK)
-        txt(im,"Tu alegi.",30,110,34,800,"white")
+        txt(im,"Tu alegi.",30,110,34,800,INK)
     else:
         txt(im,title,30 if mobile else 62,68 if mobile else 53,title_size,800,INK)
     panel=scene(index,u,mobile)
