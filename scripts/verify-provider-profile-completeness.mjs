@@ -72,7 +72,7 @@ assert.match(endpoint, /locations: locationRows/);
 assert.match(panel, /nu modifică automat publicarea sau accesul locației/i);
 assert.match(panel, /Completarea profilului/);
 assert.match(panel, /Compară locațiile|Compara locatiile/);
-assert.match(panel, /Media locațiilor accesibile/);
+assert.match(panel, /Media locațiilor active/);
 assert.match(panel, /selected_location_id/);
 assert.match(inbox, /getProviderProfileCompleteness/);
 assert.match(inbox, /ProviderCompletenessPanel/);

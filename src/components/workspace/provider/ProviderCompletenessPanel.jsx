@@ -79,7 +79,10 @@ function LocationComparison({ locations, selectedLocationId }) {
                   <p className="truncate font-heading text-sm font-extrabold tracking-[-0.02em] text-foreground">{location.name}</p>
                   <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" />{location.locality || "Localitate necompletată"}</p>
                 </div>
-                {selected && <span className="rounded-full bg-[#171717] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white">Selectată</span>}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {selected && <span className="rounded-full bg-[#171717] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white">Selectată</span>}
+                  {location.active === false && <span className="rounded-full border border-[#e1bda8] bg-[#efd5c5] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-black/65">Inactivă</span>}
+                </div>
               </div>
               <div className="mt-4 flex items-end justify-between gap-3">
                 <div>
@@ -134,8 +137,11 @@ export default function ProviderCompletenessPanel({ data }) {
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {[
-            { label: "Organizație", value: data.summary.organization_percentage, border: "#ccd2ba", bg: "#dfe3d2" },
-            { label: "Media locațiilor accesibile", value: data.summary.average_location_percentage, border: "#d4c6d8", bg: "#e8e0ea" },
+            { label: "Organizație", value: `${data.summary.organization_percentage}%`, border: "#ccd2ba", bg: "#dfe3d2" },
+            // 2026-10-04 (audit #5): media se face pe locațiile active, ca în Prezentare.
+            Number(data.summary.active_location_count || 0) > 0
+              ? { label: "Media locațiilor active", value: `${data.summary.average_location_percentage}%`, border: "#d4c6d8", bg: "#e8e0ea" }
+              : { label: "Nicio locație activă", value: "—", border: "#d4c6d8", bg: "#e8e0ea" },
           ].map((item) => (
             <div
               key={item.label}
@@ -143,7 +149,7 @@ export default function ProviderCompletenessPanel({ data }) {
               className="relative overflow-hidden rounded-[1.4rem] border px-5 py-4"
             >
               <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
-              <p className="relative z-10 font-heading text-[2rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{item.value}%</p>
+              <p className="relative z-10 font-heading text-[2rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{item.value}</p>
               <p className="relative z-10 mt-2 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">{item.label}</p>
             </div>
           ))}
