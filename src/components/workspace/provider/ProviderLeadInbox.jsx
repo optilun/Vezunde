@@ -19,8 +19,24 @@ import ProviderOrganizationLeadInbox from "./ProviderOrganizationLeadInbox";
 import { canShowOrganizationInbox } from "@/lib/providerOrganizationInboxView";
 import ProviderAccessBand from "./leads/ProviderAccessBand";
 import ProviderBillingPanel from "./leads/ProviderBillingPanel";
+import { RefreshCw } from "lucide-react";
+import { withTransientRetry } from "@/lib/transientRetry";
+import { INBOX_PLAN_UNKNOWN_MESSAGE, INBOX_RETRY_OPTIONS } from "@/lib/providerInboxErrors";
 
 const FREE_ENTITLEMENT = { plan_code: "free", status: "free", feature_keys: [] };
+
+// 2026-10-04 (audit cont organizație, #1): când planul nu a putut fi verificat, spunem asta și
+// oferim reîncercarea, în loc să afișăm „Plan Free” și limitări care nu există.
+function PlanUnknownNotice({ onRetry }) {
+  return (
+    <div role="status" className="flex flex-col gap-3 rounded-[1.2rem] border border-[#dac69b] bg-[#fbf3df] px-4 py-3 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between">
+      <span>{INBOX_PLAN_UNKNOWN_MESSAGE}</span>
+      <button type="button" onClick={onRetry} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/80 px-4 font-heading text-[12px] font-bold hover:border-foreground/45">
+        <RefreshCw className="h-3.5 w-3.5" /> Reîncearcă
+      </button>
+    </div>
+  );
+}
 
 const TABS = [
   { key: "leads", label: "Cereri" },
@@ -46,10 +62,13 @@ export default function ProviderLeadInbox(props) {
   // Cardul "Treci la Pro" din sidebar (ProviderSidebarContent) trimite direct aici cu
   // ?tab=account, ca sa nu mai fie nevoie de un al doilea click pe tab-ul "Cont".
   const wantsAccountTab = searchParams.get("tab") === "account";
-  const [snapshot, setSnapshot] = useState({ entitlement: FREE_ENTITLEMENT, counters: {} });
+  // status: loading | ready | error. Planul e folosit doar când e „ready”.
+  const [snapshot, setSnapshot] = useState({ status: "loading", entitlement: null, counters: {} });
   const [completeness, setCompleteness] = useState(null);
   const currentSnapshot = snapshot.locationId === locationId
-    ? snapshot : { entitlement: FREE_ENTITLEMENT, counters: {} };
+    ? snapshot : { status: "loading", entitlement: null, counters: {} };
+  const planReady = currentSnapshot.status === "ready";
+  const planFailed = currentSnapshot.status === "error";
   const currentCompleteness = completeness?.selected_location_id === locationId ? completeness : null;
   const [tab, setTab] = useState(billingReturn || wantsAccountTab ? "account" : "leads");
   // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
@@ -81,22 +100,25 @@ export default function ProviderLeadInbox(props) {
   useEffect(() => {
     if (!locationId) return;
     let active = true;
-    Promise.all([
-      base44.functions.invoke("providerLeadInboxOps", {
-        action: "list",
-        location_id: locationId,
-        scope: "active",
-        status: "",
-        limit: 1,
-      }).then(responseData),
-      base44.functions.invoke("getProviderProfileCompleteness", {
-        location_id: locationId,
-      }).then(responseData),
-    ]).then(([inboxData, completenessData]) => {
-      if (!active) return;
-      setSnapshot({ locationId, entitlement: inboxData.entitlement || FREE_ENTITLEMENT, counters: inboxData.counters || {} });
-      setCompleteness(completenessData);
-    }).catch(() => null);
+    withTransientRetry(() => base44.functions.invoke("providerLeadInboxOps", {
+      action: "list",
+      location_id: locationId,
+      scope: "active",
+      status: "",
+      limit: 1,
+    }).then(responseData), INBOX_RETRY_OPTIONS)
+      .then((inboxData) => {
+        if (active) setSnapshot({ locationId, status: "ready", entitlement: inboxData.entitlement || FREE_ENTITLEMENT, counters: inboxData.counters || {} });
+      })
+      .catch(() => {
+        if (active) setSnapshot({ locationId, status: "error", entitlement: null, counters: {} });
+      });
+    // Completarea profilului e separată: dacă ea nu se încarcă, planul tot se afișează.
+    withTransientRetry(() => base44.functions.invoke("getProviderProfileCompleteness", {
+      location_id: locationId,
+    }).then(responseData), INBOX_RETRY_OPTIONS)
+      .then((completenessData) => { if (active) setCompleteness(completenessData); })
+      .catch(() => null);
     return () => { active = false; };
   }, [locationId, refreshTick]);
 
@@ -139,12 +161,15 @@ export default function ProviderLeadInbox(props) {
             <ProviderOrganizationLeadInbox organizationId={organizationId} onOpenLead={openLeadAtLocation} />
           ) : (
             <>
-              <ProviderAccessBand
-                location={location || {}}
-                entitlement={currentSnapshot.entitlement}
-                counters={currentSnapshot.counters}
-                onOpenAccount={() => setTab("account")}
-              />
+              {planReady && (
+                <ProviderAccessBand
+                  location={location || {}}
+                  entitlement={currentSnapshot.entitlement}
+                  counters={currentSnapshot.counters}
+                  onOpenAccount={() => setTab("account")}
+                />
+              )}
+              {planFailed && <PlanUnknownNotice onRetry={() => setRefreshTick((tick) => tick + 1)} />}
               <ProviderLeadInboxLegacy
                 key={locationId + ":" + (targetLead?.leadId || "")}
                 {...props}
@@ -157,12 +182,15 @@ export default function ProviderLeadInbox(props) {
       ) : (
         <div className="space-y-5">
           {canViewAll && <p className="rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6] px-4 py-3 text-sm text-muted-foreground">Starea cererilor de mai jos este pentru locația selectată: <strong className="font-heading text-foreground">{location?.public_display_name || location?.name || "Locație"}</strong>. Abonamentul este pentru toată organizația.</p>}
-          <ProviderStatusCenter
-            location={location || {}}
-            entitlement={currentSnapshot.entitlement}
-            counters={currentSnapshot.counters}
-            defaultOpen
-          />
+          {planReady && (
+            <ProviderStatusCenter
+              location={location || {}}
+              entitlement={currentSnapshot.entitlement}
+              counters={currentSnapshot.counters}
+              defaultOpen
+            />
+          )}
+          {planFailed && <PlanUnknownNotice onRetry={() => setRefreshTick((tick) => tick + 1)} />}
           <ProviderBillingPanel
             organizationId={organizationId || location?.organization_id || ""}
             locationId={locationId}
