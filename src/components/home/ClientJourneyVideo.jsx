@@ -13,6 +13,8 @@ export default function ClientJourneyVideo() {
   const videoRef = useRef(null);
   const userPaused = useRef(false);
   const manualPlayback = useRef(false);
+  const blobUrl = useRef(null);
+  const sourceRequest = useRef(null);
   const inView = useInViewport(wrapperRef, { threshold: 0.25 });
   const reducedMotion = usePrefersReducedMotion();
   const [playing, setPlaying] = useState(false);
@@ -37,6 +39,12 @@ export default function ClientJourneyVideo() {
     return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
   }, []);
 
+  useEffect(() => () => {
+    sourceRequest.current?.abort();
+    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+    blobUrl.current = null;
+  }, [mobile]);
+
   const play = () => {
     manualPlayback.current = true;
     userPaused.current = false;
@@ -52,14 +60,43 @@ export default function ClientJourneyVideo() {
     } else play();
   };
 
-  const goTo = (time) => {
+  const goTo = async (time) => {
     const video = videoRef.current;
     if (!video) return;
-    const seek = () => { video.currentTime = time; setCurrentTime(time); play(); };
-    if (video.readyState >= 1) seek();
-    else {
-      video.addEventListener("loadedmetadata", seek, { once: true });
-      video.load();
+    try {
+      // Some static hosts stream MP4 without byte ranges. A local Blob makes
+      // chapter seeking reliable there, downloaded only after an explicit click.
+      if (time > 0 && (!video.seekable.length || video.seekable.end(video.seekable.length - 1) < time)) {
+        sourceRequest.current?.abort();
+        const controller = new AbortController();
+        sourceRequest.current = controller;
+        const response = await fetch(video.currentSrc || video.src, { signal: controller.signal });
+        if (!response.ok) throw new Error("Video unavailable");
+        const media = await response.blob();
+        if (controller.signal.aborted) return;
+        if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+        blobUrl.current = URL.createObjectURL(media);
+        video.src = blobUrl.current;
+        video.load();
+      }
+      if (video.readyState < 1) {
+        await new Promise((resolve, reject) => {
+          const loaded = () => { cleanup(); resolve(); };
+          const failed = () => { cleanup(); reject(new Error("Video unavailable")); };
+          const cleanup = () => {
+            video.removeEventListener("loadedmetadata", loaded);
+            video.removeEventListener("error", failed);
+          };
+          video.addEventListener("loadedmetadata", loaded, { once: true });
+          video.addEventListener("error", failed, { once: true });
+          if (!video.currentSrc) video.load();
+        });
+      }
+      video.currentTime = time;
+      setCurrentTime(time);
+      play();
+    } catch (error) {
+      if (error.name !== "AbortError") setFailed(true);
     }
   };
 
