@@ -29,7 +29,7 @@ export default function ClientJourneyVideo() {
       return;
     }
     video.play().catch(() => setPlaying(false));
-  }, [inView, reducedMotion, saveData]);
+  }, [inView, reducedMotion, saveData, mobile]);
 
   useEffect(() => {
     const pauseWhenHidden = () => { if (document.hidden) videoRef.current?.pause(); };
@@ -40,6 +40,8 @@ export default function ClientJourneyVideo() {
   const play = () => {
     manualPlayback.current = true;
     userPaused.current = false;
+    setFailed(false);
+    if (videoRef.current?.error) videoRef.current.load();
     videoRef.current?.play().catch(() => setPlaying(false));
   };
 
@@ -78,6 +80,7 @@ export default function ClientJourneyVideo() {
           src={mobile ? "/videos/client-journey-mobile-v1.mp4" : "/videos/client-journey-v1.mp4"}
           poster={mobile ? "/videos/client-journey-mobile-poster-v1.jpg" : "/videos/client-journey-poster-v1.jpg"}
           aria-label="Demonstrație VIASEE: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, apoi compari rezultatele."
+          aria-describedby="client-journey-transcript"
           muted
           loop
           playsInline
@@ -88,7 +91,7 @@ export default function ClientJourneyVideo() {
           onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
           onError={() => setFailed(true)}
         >
-          <track kind="captions" src="/videos/client-journey-ro-v1.vtt" srcLang="ro" label="Română" default />
+          <track kind="captions" src="/videos/client-journey-ro-v1.vtt" srcLang="ro" label="Română" />
           Browserul tău nu poate reda video-ul. Descrie ce cauți, răspunde la întrebări și compară opțiunile din zona ta.
         </video>
         {!playing && !failed && (
@@ -132,6 +135,7 @@ export default function ClientJourneyVideo() {
         ))}
       </div>
       {failed && <p role="status" className="mt-3 text-sm text-muted-foreground">Video-ul nu s-a încărcat. Îl poți reîncerca folosind butonul de redare.</p>}
+      <p id="client-journey-transcript" className="sr-only">În exemplu scrii „Vreau un control de vedere”, confirmi nevoia, alegi „Pentru mine” și localitatea Cluj-Napoca, răspunzi la întrebări, verifici rezumatul și compari locațiile găsite. În profil vezi adresa și datele de contact. Serviciile neconfirmate trebuie verificate direct cu locația.</p>
       <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Exemplu de căutare pentru un control de vedere. Întrebările și rezultatele pot varia.</p>
     </div>
   );
