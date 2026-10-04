@@ -16,6 +16,7 @@ import { handle as stripeBillingWebhookHandle } from './stripeBillingWebhook.ts'
 import { handle as getMyProviderWorkspaceHandle } from './getMyProviderWorkspace.ts';
 
 import { handle as providerBillingOpsHandle } from './providerBillingOps.ts';
+import { handle as providerEnterpriseOfferOpsHandle } from './providerEnterpriseOfferOps.ts';
 import { handle as providerOrganizationLeadInboxOpsHandle } from './providerOrganizationLeadInboxOps.ts';
 
 type ProviderWorkspaceHandler = (req: Request) => Response | Promise<Response>;
@@ -31,6 +32,7 @@ export const PROVIDER_WORKSPACE_FUNCTION_HANDLERS: Record<string, ProviderWorksp
   getProviderProfileCompleteness: getProviderProfileCompletenessHandle,
   getProviderWorkspaceOverview: getProviderWorkspaceOverviewHandle,
   providerBillingOps: providerBillingOpsHandle,
+  providerEnterpriseOfferOps: providerEnterpriseOfferOpsHandle,
   providerOrganizationLeadInboxOps: providerOrganizationLeadInboxOpsHandle,
   createProviderCheckoutSession: createProviderCheckoutSessionHandle,
   createProviderBillingPortalSession: createProviderBillingPortalSessionHandle,
