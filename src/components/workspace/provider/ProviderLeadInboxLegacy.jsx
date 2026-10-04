@@ -12,6 +12,8 @@ import LeadDetailPanel from "./leads/LeadDetailPanel";
 import ProviderUpgradeSpotlight from "./leads/ProviderUpgradeSpotlight";
 import { openUpgradeSpotlight, setUpgradeSpotlightAvailable } from "@/lib/providerUpgradeSpotlight";
 import { mergeFocusedLead } from "@/lib/providerOrganizationInboxView";
+import { withTransientRetry } from "@/lib/transientRetry";
+import { INBOX_RETRY_OPTIONS, inboxErrorMessage } from "@/lib/providerInboxErrors";
 
 const FILTERS = [
   { key: "all", label: "Active", scope: "active", status: "" },
@@ -39,7 +41,9 @@ function responseData(response) {
 
 export default function ProviderLeadInbox({ locationId, location, targetLeadId = "", targetHistory = false }) {
   const [data, setData] = useState(null);
-  const [entitlement, setEntitlement] = useState(FREE_ENTITLEMENT);
+  // 2026-10-04: planul ramane necunoscut (null) pana raspunde serverul. Inainte pornea ca „Free”,
+  // deci la o eroare temporara un client Pro vedea „Plan Free”.
+  const [entitlement, setEntitlement] = useState(null);
   const [responsesByLead, setResponsesByLead] = useState({});
   const [filter, setFilter] = useState(targetHistory ? "history" : "all");
   const [selectedLeadId, setSelectedLeadId] = useState("");
@@ -61,26 +65,27 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
     setError("");
     try {
       const selectedFilter = FILTERS.find((item) => item.key === filter) || FILTERS[0];
-      const inboxData = responseData(await base44.functions.invoke("providerLeadInboxOps", {
+      // Lista se reincearca doar la erori trecatoare (limita de trafic, 5xx).
+      const inboxData = responseData(await withTransientRetry(() => base44.functions.invoke("providerLeadInboxOps", {
         action: "list",
         location_id: locationId,
         scope: selectedFilter.scope,
         status: selectedFilter.status,
         lead_id: targetLeadRef.current || undefined,
         limit: 100,
-      }));
+      }), INBOX_RETRY_OPTIONS));
       setData(inboxData);
       const resolvedEntitlement = inboxData.entitlement || FREE_ENTITLEMENT;
       setEntitlement(resolvedEntitlement);
 
       if (resolvedEntitlement.plan_code === "pro" && resolvedEntitlement.feature_keys?.includes("provider_leads.respond")) {
-        const responseRows = responseData(await base44.functions.invoke("providerLeadResponseOps", { action: "list", location_id: locationId })).responses || [];
+        const responseRows = responseData(await withTransientRetry(() => base44.functions.invoke("providerLeadResponseOps", { action: "list", location_id: locationId }), INBOX_RETRY_OPTIONS)).responses || [];
         setResponsesByLead(Object.fromEntries(responseRows.map((row) => [row.lead_id, row])));
       } else {
         setResponsesByLead({});
       }
     } catch (loadError) {
-      setError(loadError?.message || "Leadurile nu au putut fi încărcate.");
+      setError(inboxErrorMessage(loadError));
     } finally {
       setLoading(false);
     }
@@ -131,7 +136,7 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
       await base44.functions.invoke("providerLeadInboxOps", { action: "mark_viewed", location_id: locationId, lead_id: leadId }).then(responseData);
       await load();
     } catch (markError) {
-      setError(markError?.message || "Leadul nu a putut fi actualizat.");
+      setError(inboxErrorMessage(markError, "Cererea nu a putut fi actualizată. Încearcă din nou."));
     } finally {
       setMarkingId("");
     }
@@ -144,7 +149,7 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
       await base44.functions.invoke("providerLeadResponseOps", { action: "submit", location_id: locationId, lead_id: leadId, response_type: responseType }).then(responseData);
       await load();
     } catch (responseError) {
-      setError(responseError?.message || "Răspunsul nu a putut fi salvat.");
+      setError(inboxErrorMessage(responseError, "Răspunsul nu a putut fi salvat. Încearcă din nou."));
     } finally {
       setRespondingId("");
     }
@@ -154,7 +159,7 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
   const historySelected = filter === "history";
   // Blocul de upgrade apare numai cat timp locatia nu are inca plan Pro activ. Asteptam
   // raspunsul backendului: altfel, cu planul implicit Free, ar clipi si pentru locatiile Pro.
-  const showUpgradeCard = Boolean(data) && entitlement?.plan_code !== "pro";
+  const showUpgradeCard = Boolean(data) && Boolean(entitlement) && entitlement.plan_code !== "pro";
 
   // Se deschide singur la fiecare intrare in modul si la fiecare reincarcare. Cand pleci din
   // modul il scoatem din bara de sus, ca butonul "Upgrade" sa nu ramana pe alte sectiuni.
@@ -256,7 +261,7 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className={`rounded-full px-3.5 py-1.5 font-heading text-[12px] font-bold tracking-[-0.015em] ${entitlement?.plan_code === "pro" ? "bg-[#171717] text-white" : "border border-foreground/15 bg-white/70 text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span>
+            {entitlement && <span className={`rounded-full px-3.5 py-1.5 font-heading text-[12px] font-bold tracking-[-0.015em] ${entitlement.plan_code === "pro" ? "bg-[#171717] text-white" : "border border-foreground/15 bg-white/70 text-foreground"}`}>Plan {entitlement.plan_code === "pro" ? "Pro" : "Free"}</span>}
             <ProviderNotificationCenter locationId={locationId} onOpenTarget={openNotificationTarget} />
             <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45 disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
           </div>
@@ -288,7 +293,14 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
         <p><strong className="font-heading font-bold text-foreground">Acces controlat.</strong> Free vede rezumatul anonim. Pro primește detaliile și chatul numai în Top 3. După încheiere, datele private și acțiunile sunt retrase.</p>
       </div>
 
-      {error && <p role="alert" className="rounded-[1.4rem] border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+      {error && (
+        <div role="alert" className="flex flex-col gap-3 rounded-[1.4rem] border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-destructive/30 bg-white/80 px-4 font-heading text-[12px] font-bold text-destructive hover:bg-white disabled:opacity-60">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Reîncearcă
+          </button>
+        </div>
+      )}
       {targetMissing && !loading && !error && <p role="status" className="rounded-[1.4rem] border border-[#dac69b] bg-[#eadcba] p-4 text-sm text-foreground">Cererea aleasă nu a putut fi deschisă în acest filtru. Alege o cerere din listă sau actualizează pagina.</p>}
 
       {/* Pe telefon lista si detaliul nu incap alaturi, deci lista e "acasa" si intri in
