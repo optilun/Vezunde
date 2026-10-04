@@ -4,8 +4,8 @@ import { useInViewport, useMediaQuery, usePrefersReducedMotion } from "@/lib/mot
 
 const CHAPTERS = [
   { title: "Spui ce cauți", short: "Descrii", time: 0 },
-  { title: "Răspunzi pe scurt", short: "Răspunzi", time: 6 },
-  { title: "Compari opțiunile", short: "Compari", time: 24 },
+  { title: "Răspunzi pe scurt", short: "Răspunzi", time: 4 },
+  { title: "Compari opțiunile", short: "Compari", time: 16 },
 ];
 
 export default function ClientJourneyVideo() {
@@ -106,16 +106,16 @@ export default function ClientJourneyVideo() {
     else video?.requestFullscreen?.().catch(() => {});
   };
 
-  const activeChapter = currentTime >= 24 ? 2 : currentTime >= 6 ? 1 : 0;
+  const activeChapter = currentTime >= 16 ? 2 : currentTime >= 4 ? 1 : 0;
 
   return (
     <div ref={wrapperRef} className="mt-8 sm:mt-12">
       <div className="relative isolate overflow-hidden rounded-2xl border border-black/10 bg-[#344ae7] shadow-[0_8px_28px_rgba(28,24,18,0.08)] sm:rounded-[1.5rem]">
         <video
           ref={videoRef}
-          className="block aspect-[3/4] w-full object-contain sm:aspect-[8/5]"
-          src={mobile ? "/videos/client-journey-mobile-v1.mp4" : "/videos/client-journey-v1.mp4"}
-          poster={mobile ? "/videos/client-journey-mobile-poster-v1.jpg" : "/videos/client-journey-poster-v1.jpg"}
+          className="block aspect-[3/4] w-full object-contain sm:aspect-video"
+          src={mobile ? "/videos/client-journey-mobile-v2.mp4" : "/videos/client-journey-v2.mp4"}
+          poster={mobile ? "/videos/client-journey-mobile-v2-poster.jpg" : "/videos/client-journey-v2-poster.jpg"}
           aria-label="Demonstrație VIASEE: descrii ce cauți, confirmi nevoia, alegi persoana și localitatea, apoi compari rezultatele."
           aria-describedby="client-journey-transcript"
           muted
@@ -128,7 +128,7 @@ export default function ClientJourneyVideo() {
           onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
           onError={() => setFailed(true)}
         >
-          <track kind="captions" src="/videos/client-journey-ro-v1.vtt" srcLang="ro" label="Română" />
+          <track kind="captions" src="/videos/client-journey-ro-v2.vtt" srcLang="ro" label="Română" />
           Browserul tău nu poate reda video-ul. Descrie ce cauți, răspunde la întrebări și compară opțiunile din zona ta.
         </video>
         {!playing && !failed && (
@@ -173,7 +173,7 @@ export default function ClientJourneyVideo() {
       </div>
       {failed && <p role="status" className="mt-3 text-sm text-muted-foreground">Video-ul nu s-a încărcat. Îl poți reîncerca folosind butonul de redare.</p>}
       <p id="client-journey-transcript" className="sr-only">În exemplu scrii „Vreau un control de vedere”, confirmi nevoia, alegi „Pentru mine” și localitatea Cluj-Napoca, răspunzi la întrebări, verifici rezumatul și compari locațiile găsite. În profil vezi adresa și datele de contact. Serviciile neconfirmate trebuie verificate direct cu locația.</p>
-      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Exemplu de căutare pentru un control de vedere. Întrebările și rezultatele pot varia.</p>
+      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Demonstrație ilustrativă. Întrebările și rezultatele pot varia în funcție de căutarea ta.</p>
     </div>
   );
 }
