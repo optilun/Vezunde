@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff, Clock3, Stethoscope, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -54,6 +54,9 @@ export default function ProviderTeam({ locationId }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [currentProfessional, setCurrentProfessional] = useState(null);
+  // Rezultatul unei invitații apare în cardul „Invită un specialist”; pe ecrane înguste cardul e
+  // deasupra listei, așa că după „Trimite din nou” îl aducem în vizor.
+  const inviteResultRef = useRef(null);
 
   // 2026-10-03 (structura conturilor, pasul 2): cererile „Lucrez aici” trimise de specialisti apar
   // separat, cu Aprobă / Refuză. Cererile refuzate sau anulate nu mai apar in lista.
@@ -139,8 +142,9 @@ export default function ProviderTeam({ locationId }) {
       return;
     }
     setNewLink(response.data?.invitation_link || "");
-    setMsg(response.data?.email_sent ? "Invitația a fost trimisă din nou." : "Invitația nouă a fost creată. Trimite specialistului linkul afișat mai jos.");
+    setMsg(response.data?.email_sent ? "Invitația a fost trimisă din nou." : "Invitația nouă a fost creată. Trimite specialistului linkul afișat mai sus.");
     await load();
+    requestAnimationFrame(() => inviteResultRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   };
 
   const revokeInvitation = async (invitationId) => {
@@ -481,6 +485,7 @@ export default function ProviderTeam({ locationId }) {
             <Send className="h-4 w-4" /> Creează invitația
           </button>
 
+          <div ref={inviteResultRef} />
           {newLink && (
             <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3">
               <div className="text-xs font-bold text-green-900">Linkul este afișat o singură dată</div>
