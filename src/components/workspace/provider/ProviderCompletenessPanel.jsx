@@ -84,7 +84,7 @@ function LocationComparison({ locations, selectedLocationId }) {
               <div className="mt-4 flex items-end justify-between gap-3">
                 <div>
                   <div className="font-heading text-2xl font-extrabold tracking-[-0.045em] text-foreground">{percentage}%</div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">{missing ? `${missing} elemente lipsa` : "Profil complet"}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{missing ? `${missing} elemente lipsă` : "Profil complet"}</div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>

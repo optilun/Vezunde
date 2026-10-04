@@ -189,7 +189,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
           {preview && (
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl border border-border bg-background p-4">
-                <div className="text-xs font-semibold text-muted-foreground">Program sursa</div>
+                <div className="text-xs font-semibold text-muted-foreground">Program sursă</div>
                 <div className="mt-1 text-sm font-bold">{preview.source.name}</div>
                 <p className="mt-2 text-sm leading-relaxed">{preview.source.opening_hours}</p>
                 <p className="mt-2 text-xs text-muted-foreground">

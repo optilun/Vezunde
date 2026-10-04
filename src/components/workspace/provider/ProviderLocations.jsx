@@ -152,7 +152,7 @@ function LocationCard({ location, active, onSelect }) {
     : 0;
   const photo = locationPhoto(location);
   const name = location.public_display_name || location.name || "Locație";
-  const locality = location.locality_name || location.city || "Localitate lipsa";
+  const locality = location.locality_name || location.city || "Localitate lipsă";
 
   return (
     <button
@@ -947,7 +947,7 @@ export default function ProviderLocations({
                     </div>
                     <div>
                       <label className="text-sm font-semibold text-foreground">
-                        Adresa pentru harta
+                        Adresa pentru hartă
                       </label>
                       <input
                         className={`${inputCls} mt-1.5`}
@@ -1097,7 +1097,7 @@ export default function ProviderLocations({
                 <section className="overflow-hidden rounded-[22px] border border-border bg-card">
                   <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
                     <div>
-                      <h3 className="text-base font-bold">Previzualizare harta</h3>
+                      <h3 className="text-base font-bold">Previzualizare hartă</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Se actualizează pe baza datelor introduse.
                       </p>
@@ -1116,7 +1116,7 @@ export default function ProviderLocations({
                   <div className="h-64 bg-secondary/30">
                     {hasMapLocation(previewLocation) && embedUrl ? (
                       <iframe
-                        title={`Previzualizare harta ${selectedLocationName}`}
+                        title={`Previzualizare hartă ${selectedLocationName}`}
                         src={embedUrl}
                         className="h-full w-full border-0"
                         loading="lazy"
