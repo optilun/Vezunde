@@ -3,6 +3,7 @@
 // ProviderServicesWorkspaceOperational.jsx. Comportamentul si payloadul trimis la
 // salvare NU se schimba - doar locul in care traieste logica.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDraftAutosave } from "./useDraftAutosave";
 import { base44 } from "@/api/base44Client";
 import { getServiceGroupLayout } from "@/lib/canonicalServiceCatalog";
 import { PROVIDER_SERVICE_SECTIONS } from "@/lib/providerServiceWorkspaceSections";
@@ -56,6 +57,8 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   const [remoteCatalog, setRemoteCatalog] = useState(null);
   const [persistenceMode, setPersistenceMode] = useState("v2");
   const [draft, setDraft] = useState(null);
+  const draftRef = useRef(null);
+  draftRef.current = draft;
   const [approvedSelected, setApprovedSelected] = useState({});
   const [selected, setSelected] = useState({});
   const [approvedUnits, setApprovedUnits] = useState([]);
@@ -78,6 +81,8 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const [committing, setCommitting] = useState(false);
+  const confirmedSignatureRef = useRef(null);
   const [baselineSignature, setBaselineSignature] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -188,6 +193,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     // eslint-disable-next-line react-hooks/exhaustive-deps -- buildPayload se reface la fiecare randare; lista contine exact datele pe care le citeste
     [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, casServiceKeys, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
   );
+  if (baselineSignature !== null && !savingRef.current) confirmedSignatureRef.current = baselineSignature;
   const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
 
   const draftPrerequisites = useMemo(() => {
@@ -787,9 +793,9 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     setRawRemovalKeys((current) => current.includes(rawKey) ? current.filter((key) => key !== rawKey) : [...current, rawKey]);
   };
 
-  const save = async () => {
+  const persistDraft = async () => {
     if (!editable || savingRef.current) return false;
-    if (!dirty) return true;
+    const currentDraft = draftRef.current;
     savingRef.current = true;
     setSaving(true);
     setMessage("");
@@ -802,15 +808,15 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
         // lucru. Conditia veche trimitea create_draft in verificare - care de la corectia
         // din aceeasi zi raspunde 409, pe buna dreptate. (Fluxul compatibil de mai jos
         // ramane pe conditia veche: acolo update_draft chiar refuza pending_review.)
-        action: draft ? "update_draft" : "create_draft",
-        submission_id: draft?.id,
+        action: currentDraft ? "update_draft" : "create_draft",
+        submission_id: currentDraft?.id,
         location_id: locationId,
         section: "services",
         payload,
       }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }))
       : await base44.functions.invoke("submitProviderWorkspaceChange", {
-        action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
-        submission_id: draft?.id,
+        action: currentDraft && currentDraft.status !== "pending_review" ? "update_draft" : "create_draft",
+        submission_id: currentDraft?.id,
         location_id: locationId,
         section: "services",
         payload: {
@@ -828,19 +834,31 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       return false;
     }
     const savedDraft = response.data?.submission;
-    if (!savedDraft?.id && !draft?.id) {
+    if (!savedDraft?.id && !currentDraft?.id) {
       setError("Nu am primit confirmarea salvării. Selecțiile sunt păstrate; încearcă din nou.");
       return false;
     }
-    setDraft(savedDraft || { ...draft, payload_json: JSON.stringify(payload) });
+    draftRef.current = savedDraft || { ...currentDraft, payload_json: JSON.stringify(payload) };
+    setDraft(draftRef.current);
+    confirmedSignatureRef.current = savedSignature;
     setBaselineSignature(savedSignature);
     setMessage("Modificările au fost salvate.");
     return true;
   };
 
+  const save = useDraftAutosave({
+    scope: locationId,
+    enabled: !loading && Boolean(config) && editable && !committing && baselineSignature !== null,
+    baseline: baselineSignature, signature: currentSignature, dirty,
+    persist: persistDraft,
+  });
+
   const submit = async () => {
-    if (!draft || !editable || pendingReview || savingRef.current) return false;
-    if (dirty) {
+    if (!editable || pendingReview || savingRef.current || committing) return false;
+    if (await save() !== true) return false;
+    const currentDraft = draftRef.current;
+    if (!currentDraft) return false;
+    if (currentSignature !== confirmedSignatureRef.current) {
       setError("Salvează modificările înainte de trimitere.");
       return;
     }
@@ -848,23 +866,30 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       setError(readiness.blockers[0]?.message || "Configurația nu este pregătită pentru trimitere.");
       return;
     }
+    savingRef.current = true;
+    setCommitting(true);
     setSaving(true);
     setMessage("");
     setError("");
     const response = persistenceMode === "v2"
-      ? await base44.functions.invoke("providerServiceConfigurationOps", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }))
+      ? await base44.functions.invoke("providerServiceConfigurationOps", { action: "submit", submission_id: currentDraft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }))
       : await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
-    setSaving(false);
-    if (response.data?.error) { setError(response.data.error); return; }
+    if (response.data?.error) {
+      savingRef.current = false; setSaving(false); setCommitting(false);
+      setError(response.data.error); return false;
+    }
     await load();
+    savingRef.current = false; setSaving(false); setCommitting(false);
     setMessage("Modificările au fost trimise spre aprobare.");
     return true;
   };
 
   const withdraw = async () => {
-    if (!draft || !pendingReview || persistenceMode !== "v2") return;
+    if (!draft || !pendingReview || persistenceMode !== "v2" || savingRef.current || committing) return;
     const confirmed = window.confirm("Retragi modificările din procesul de aprobare? Configurația aprobată rămâne neschimbată.");
-    if (!confirmed) return;
+    if (!confirmed || await save() !== true) return;
+    savingRef.current = true;
+    setCommitting(true);
     setSaving(true);
     setMessage("");
     setError("");
@@ -891,6 +916,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     persistenceMode,
     loading,
     saving,
+    committing,
     message,
     error,
     conflicts,
