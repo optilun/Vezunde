@@ -103,6 +103,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const legacyMigrationAttempted = useRef(false);
+  const processingRef = useRef(false);
 
   const clearStaged = () => {
     if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
@@ -181,6 +182,8 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
       return;
     }
 
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     try {
       const optimizedFile = await optimizeLocationPhoto(file, locationId);
@@ -194,12 +197,15 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
     } catch (error) {
       setMessage(error.message || "Fotografia nu a putut fi pregătită.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
 
   const saveDraft = async () => {
     if (!stagedFile && !uploadedAsset?.url) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     setMessage("");
 
@@ -252,12 +258,15 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Draftul fotografiei nu a putut fi salvat.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
 
   const submitReview = async () => {
     if (!submission?.id || !editableDraft) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     setMessage("");
     try {
@@ -280,6 +289,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisă.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
@@ -292,6 +302,8 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
       return;
     }
     if (!submission?.id || !editableDraft) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     setMessage("");
     try {
@@ -309,6 +321,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Draftul nu a putut fi retras.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
