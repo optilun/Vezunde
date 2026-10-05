@@ -4866,7 +4866,14 @@ button.provider-services-three__stat.is-active {
     flex-basis: 100%;
   }
   .services-editor__actions small {
-    font-size: 10px;
+    display: none;
+  }
+  .services-editor__actions > div {
+    flex-basis: 100%;
+  }
+  .services-editor__actions strong {
+    font-size: 11px;
+    line-height: 1.4;
   }
   .services-editor__actions button {
     padding: 10px 12px;
