@@ -33775,18 +33775,23 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
     setMessage("");
     try {
       let asset = uploadedAsset;
-      if (!asset?.url || !asset?.id) {
-        setMessage("Fotografia se \xEEncarc\u0103 \u0219i se \xEEnregistreaz\u0103...");
+      if (!asset?.url) {
+        setMessage("Fotografia se \xEEncarc\u0103...");
         const uploadResponse = await base44.integrations.Core.UploadFile({ file: stagedFile });
         const photoUrl = String(uploadResponse?.file_url || "").trim();
         if (!photoUrl) throw new Error("\xCEnc\u0103rcarea fotografiei nu a returnat un URL valid.");
+        asset = { url: photoUrl };
+        setUploadedAsset(asset);
+      }
+      if (!asset.id) {
+        setMessage("Fi\u0219ierul se \xEEnregistreaz\u0103...");
         const registerResponse = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
           action: "register_upload",
           location_id: locationId,
-          storage_reference: photoUrl
+          storage_reference: asset.url
         });
         if (registerResponse.data?.error) throw new Error(registerResponse.data.error);
-        asset = { id: registerResponse.data?.asset?.id, url: photoUrl };
+        asset = { id: registerResponse.data?.asset?.id, url: asset.url };
         if (!asset.id) throw new Error("Fi\u0219ierul \xEEnc\u0103rcat nu a putut fi \xEEnregistrat.");
         setUploadedAsset(asset);
       }
@@ -33852,9 +33857,10 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
   };
   const discardDraft = async () => {
     if (stagedFile || stagedPreview) {
+      const wasUploaded = Boolean(uploadedAsset?.url);
       clearStaged();
       setStep(editableDraft ? "review" : "choose");
-      setMessage("Fotografia selectat\u0103 a fost eliminat\u0103. Niciun fi\u0219ier nu a fost \xEEnc\u0103rcat.");
+      setMessage(wasUploaded ? "Selec\u021Bia a fost anulat\u0103. \xCEnc\u0103rcarea anterioar\u0103 nu a fost trimis\u0103 spre verificare." : "Fotografia selectat\u0103 a fost eliminat\u0103. Niciun fi\u0219ier nu a fost \xEEnc\u0103rcat.");
       return;
     }
     if (!submission?.id || !editableDraft) return;
