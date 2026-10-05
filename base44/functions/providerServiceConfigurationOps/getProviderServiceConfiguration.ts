@@ -71,15 +71,14 @@ export async function handle(req: Request) {
     if (!locationId) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
     const svc = base44.asServiceRole;
-    const memberships = await svc.entities.ProviderMembership.filter({
-      user_id: user.id,
-      location_id: locationId,
-      status: 'active',
-    });
+    // Accesul si locatia se citesc in paralel; locatia se foloseste doar dupa verificarea accesului.
+    const [memberships, location] = await Promise.all([
+      svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: locationId, status: 'active' }),
+      svc.entities.ProviderLocation.get(locationId).catch(() => null),
+    ]);
     const membership = memberships.find((item) => MEMBER_ROLES.includes(normalizeRole(item.role)));
     if (!membership) return Response.json({ error: 'Nu ai acces la această locație' }, { status: 403 });
 
-    const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
     if (!location) return Response.json({ error: 'Locația nu a fost găsită' }, { status: 404 });
     if (location.profile_control_status === 'suspended') return Response.json({ error: 'Profilul este suspendat' }, { status: 403 });
 
@@ -98,9 +97,9 @@ export async function handle(req: Request) {
     ]);
 
     const professionalIds = [...new Set(assignments.map((item) => item.professional_id).filter(Boolean))];
-    const professionals = (await Promise.all(
-      professionalIds.map((id) => svc.entities.ProfessionalProfile.get(id).catch(() => null)),
-    )).filter(Boolean);
+    // O singura citire pentru toti specialistii, nu cate una pe fiecare.
+    const professionals = professionalIds.length === 0 ? [] : await svc.entities.ProfessionalProfile
+      .filter({ id: { $in: professionalIds } }, null, professionalIds.length).catch(() => []);
     const professionalById = Object.fromEntries(professionals.map((profile) => [profile.id, profile]));
     const approvedSubmission = approvedSubmissions[0] || null;
     const approvedPayload = parsePayload(approvedSubmission?.payload_json);
