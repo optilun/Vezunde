@@ -10,6 +10,8 @@ import {
   proposedLocationSnapshot,
 } from '../../shared/newLocationProposal.js';
 
+import { locationPrecisionError, locationCoordinates } from '../../shared/locationMapPosition.js';
+
 const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
 // 2026-10-01. O locatie noua se propune doar in numele unei organizatii (asa trimite si
@@ -161,6 +163,9 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Numele organizatiei este obligatoriu' }, { status: 400 });
       }
 
+      const precisionError = locationPrecisionError(l);
+      if (precisionError) return Response.json({ error: precisionError }, { status: 400 });
+      if ((l.lat != null || l.lng != null) && !locationCoordinates(l)) return Response.json({ error: 'Coordonatele locației sunt invalide' }, { status: 400 });
       const sirutaCode = String(l.locality_siruta_code || '').trim();
       if (!sirutaCode) {
         return Response.json({ error: 'Selectarea localitatii din lista oficiala este obligatorie' }, { status: 400 });
