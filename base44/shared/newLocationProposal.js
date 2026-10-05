@@ -32,8 +32,8 @@ export function proposedLocationSnapshot(location = {}, geo = {}) {
   };
   snapshot.map_precision = location.map_precision === 'exact' && locationCoordinates(location) ? 'exact' : 'approximate';
   if (clean(location.place_id)) snapshot.place_id = clean(location.place_id);
-  if (typeof location.lat === 'number') snapshot.lat = location.lat;
-  if (typeof location.lng === 'number') snapshot.lng = location.lng;
+  const point = locationCoordinates(location);
+  if (point) Object.assign(snapshot, point);
   return snapshot;
 }
 
