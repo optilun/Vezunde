@@ -5,12 +5,15 @@ import useAdminAnalytics from "./useAdminAnalytics";
 import RequestsAnalyticsCard from "./RequestsAnalyticsCard";
 import StatRow from "./StatRow";
 import CountyCoverageCard from "./CountyCoverageCard";
+import SearchInsightsCards from "./SearchInsightsCards";
+import useSearchAnalytics from "./useSearchAnalytics";
 
 const PERIODS = [7, 30, 90];
 
 export default function AdminAnalytics({ onNavigate }) {
   const [days, setDays] = useState(30);
   const data = useAdminAnalytics(days);
+  const search = useSearchAnalytics(days);
 
   return (
     <div>
@@ -50,7 +53,8 @@ export default function AdminAnalytics({ onNavigate }) {
               <StatRow label="Servicii neconfirmate" value={data.unconfirmedServices} onClick={() => onNavigate("servicii")} />
             </AdminCard>
           </div>
-          <CountyCoverageCard />
+          <SearchInsightsCards data={search.data} days={days} />
+          <CountyCoverageCard rows={search.data?.counties} failed={search.failed} days={days} />
         </div>
       )}
     </div>

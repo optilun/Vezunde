@@ -4,6 +4,7 @@ import { getCanonicalServiceDefinition } from "@/lib/canonicalServiceCatalog";
 import { filterTextServiceKeysForConfirmedNeed } from "../../shared/confirmedNeedServiceKeys.js";
 import { isPatientOperationTimeout, withPatientOperationTimeout } from "./patientOperationControl.js";
 import { planPatientShadowInterpretation } from "./patientShadowInterpretation.js";
+import recordSearchEvent from "./recordSearchEvent.js";
 
 const CONFIRMATION_REUSE_TTL_MS = 2 * 60 * 1000;
 const completedConfirmationBySignature = new Map();
@@ -394,6 +395,7 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
       }
       return semanticResponse;
     });
+    recordSearchEvent(payload, serviceKeys, response?.data || {});
     return {
       data: normalizeRecommendationResponse(response?.data || {}),
       usedSemanticFallback: false,
@@ -410,6 +412,7 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
       operation: "patient_provider_matching_deterministic",
       requestId: options.requestId || null,
     });
+    recordSearchEvent(payload, serviceKeys, response?.data || {});
     return {
       data: normalizeRecommendationResponse({
         ...(response?.data || {}),

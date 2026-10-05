@@ -1,0 +1,63 @@
+{
+  "name": "PatientSearchEvent",
+  "type": "object",
+  "properties": {
+    "service_key": {
+      "type": "string"
+    },
+    "need_category": {
+      "type": "string"
+    },
+    "county_name": {
+      "type": "string"
+    },
+    "locality_name": {
+      "type": "string"
+    },
+    "result_count": {
+      "type": "number",
+      "default": 0
+    },
+    "zero_results": {
+      "type": "boolean",
+      "default": false
+    },
+    "entry_point": {
+      "type": "string",
+      "enum": [
+        "formular",
+        "harta",
+        "ghid"
+      ],
+      "default": "formular"
+    },
+    "session_hash": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_hash"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
