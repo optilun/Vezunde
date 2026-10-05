@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Building2, CheckCircle2, Loader2, MapPin, Plus, Search, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import LocationPositionField from "@/components/provider/LocationPositionField";
+import { resetLocationAddressPosition } from "../../../../shared/locationMapPosition.js";
+import { sameSubmissionPayload } from "../../../../shared/providerWorkspaceSubmissionComparison.js";
 
 const input = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50";
 
@@ -15,6 +19,7 @@ const EMPTY = {
   lat: "",
   lng: "",
   place_id: "",
+  map_precision: "approximate",
 };
 
 const EMPTY_SEARCH = { name: "", city: "", address: "", phone: "" };
@@ -103,7 +108,8 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
   const isExistingRequest = submission?.item_key === "existing_location" || submission?.payload?.kind === "associate_existing_location";
   const selectedCandidate = submission?.payload?.candidate || null;
   const canSearch = searchData.name.trim().length >= 2 || searchData.address.trim().length >= 4 || searchData.phone.replace(/\D/g, "").length >= 7;
-  const requiredComplete = useMemo(() => form.public_display_name && form.address && form.city && form.county, [form]);
+  const requiredComplete = useMemo(() => [form.public_display_name, form.address, form.city, form.county, form.locality_siruta_code].every((value) => String(value || "").trim()), [form]);
+  const unsaved = Boolean(submission?.payload?.location && !sameSubmissionPayload("location_details", form, submission.payload.location));
   const dataStepActive = step === "form" || step === "existing";
   const reviewStepActive = pending;
 
@@ -199,11 +205,13 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
     setLoading(false);
     if (response.data?.error) { setMessage(response.data.error); return; }
     setSubmission(response.data.submission);
+    if (response.data.submission?.payload?.location) setForm({ ...EMPTY, ...response.data.submission.payload.location });
     setMessage("Draft salvat. Verifică datele și trimite cererea spre aprobare.");
   };
 
   const submitReview = async () => {
     if (!submission?.id) return;
+    if (!isExistingRequest && unsaved) { setMessage("Salvează datele actualizate înainte de trimitere."); return; }
     setLoading(true);
     setMessage("");
     const functionName = isExistingRequest ? "providerLocationIdentityResolutionOps" : "providerLocationExpansionOps";
@@ -345,14 +353,15 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div><label className="text-xs font-semibold text-muted-foreground">Nume public locație *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_display_name} onChange={(event) => setForm({ ...form, public_display_name: event.target.value })} /></div>
               <div><label className="text-xs font-semibold text-muted-foreground">Telefon public</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_phone} onChange={(event) => setForm({ ...form, public_phone: event.target.value })} /></div>
-              <div className="md:col-span-2"><label className="text-xs font-semibold text-muted-foreground">Adresa completa *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Localitate *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Județ *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.county} onChange={(event) => setForm({ ...form, county: event.target.value })} /></div>
+              <div className="md:col-span-2"><label className="text-xs font-semibold text-muted-foreground">Adresa completa *</label><input disabled={pending} className={`${input} mt-1.5`} value={form.address} onChange={(event) => setForm((current) => resetLocationAddressPosition(current, { address: event.target.value }))} /></div>
+              <div className="md:col-span-2"><label htmlFor="new-location-locality" className="text-xs font-semibold text-muted-foreground">Localitate și județ *</label>
+                {pending ? <p className="mt-2 text-sm">{form.city} · {form.county}</p> : <LocalityAutocomplete inputId="new-location-locality" className="mt-1.5"
+                  value={form.locality_siruta_code ? { display_label: `${form.city} · ${form.county}` } : null}
+                  onSelect={(geo) => setForm((current) => resetLocationAddressPosition(current, { city: geo?.name || "", county: geo?.county_name || "", locality_siruta_code: geo?.siruta_code || "" }))} />}
+                <p className="mt-2 text-xs text-muted-foreground">Județul se completează automat din lista oficială.</p>
+              </div>
               <div><label className="text-xs font-semibold text-muted-foreground">Email public</label><input disabled={pending} className={`${input} mt-1.5`} value={form.public_email} onChange={(event) => setForm({ ...form, public_email: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Cod SIRUTA, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.locality_siruta_code} onChange={(event) => setForm({ ...form, locality_siruta_code: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Latitudine, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.lat} onChange={(event) => setForm({ ...form, lat: event.target.value })} /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground">Longitudine, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.lng} onChange={(event) => setForm({ ...form, lng: event.target.value })} /></div>
-              <div className="md:col-span-2"><label className="text-xs font-semibold text-muted-foreground">Google Place ID, opțional</label><input disabled={pending} className={`${input} mt-1.5`} value={form.place_id} onChange={(event) => setForm({ ...form, place_id: event.target.value })} /></div>
+              <div className="md:col-span-2"><LocationPositionField value={form} onChange={setForm} disabled={pending} /></div>
             </div>
           </section>
 
@@ -378,7 +387,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
             <section className="sticky bottom-0 rounded-[24px] border border-border bg-background/95 p-4 shadow-lg backdrop-blur">
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={pending || loading || !requiredComplete} onClick={saveDraft} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40">{loading ? "Se salvează..." : "Salvează draft"}</button>
-                {submission && submission.status !== "pending_review" && <button type="button" disabled={loading} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40">Trimite spre verificare</button>}
+                {submission && submission.status !== "pending_review" && <button type="button" disabled={loading || unsaved} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40">Trimite spre verificare</button>}
               </div>
             </section>
           </div>
