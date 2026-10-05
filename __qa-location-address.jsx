@@ -6,6 +6,7 @@ import { base44 } from "./src/api/base44Client";
 import ProviderLocationsWithPhoto from "./src/components/workspace/provider/ProviderLocationsWithPhoto";
 let draft = null;
 base44.functions.invoke = async (name, p) => {
+  if (p?.__function) { name = p.__function; p = p.payload; }
   if (name === "searchGeographicLocalities") return { data: { results: [{ siruta_code: "54975", name: "Cluj-Napoca", county_name: "Cluj", county_code: "CJ", display_label: "Cluj-Napoca, Cluj" }] } };
   if (name === "submitProviderWorkspaceChange") {
     if (p.action === "list_mine") return { data: { submissions: draft ? [draft] : [] } };
