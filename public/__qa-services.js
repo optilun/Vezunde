@@ -28310,7 +28310,7 @@ function useProviderServicesConfig({ locationId, location, onWorkspaceSnapshot, 
       return false;
     }
     const savedDraft = response.data?.submission;
-    if (!savedDraft?.id && !currentDraft?.id) {
+    if (!savedDraft?.id) {
       setError("Nu am primit confirmarea salv\u0103rii. Selec\u021Biile sunt p\u0103strate; \xEEncearc\u0103 din nou.");
       return false;
     }
@@ -29721,9 +29721,10 @@ function selectionChanges(before = [], after = [], label = (value) => value) {
     ...[...oldSet].filter((key) => !newSet.has(key)).map((key) => ({ key, label: label(key), kind: "removed" }))
   ];
 }
-function getEditorStatus({ saving, error, dirty, pendingReview, hasDraft, hasChanges, approvedCount }) {
+function getEditorStatus({ saving, committing, error, dirty, pendingReview, hasDraft, hasChanges, approvedCount }) {
   if (error) return { tone: "error", title: "Modific\u0103rile nu au fost confirmate", detail: error };
-  if (saving) return { tone: "info", title: "Se salveaz\u0103\u2026", detail: "A\u0219teapt\u0103 confirmarea \xEEnainte s\u0103 \xEEnchizi pagina." };
+  if (committing) return { tone: "info", title: "Se proceseaz\u0103 cererea\u2026", detail: "A\u0219teapt\u0103 confirmarea \xEEnainte s\u0103 \xEEnchizi pagina." };
+  if (saving) return { tone: "info", title: "Se salveaz\u0103 automat\u2026", detail: "A\u0219teapt\u0103 confirmarea \xEEnainte s\u0103 \xEEnchizi pagina." };
   if (dirty) return { tone: "warning", title: "Salvare automat\u0103 \xEEn a\u0219teptare", detail: "Selec\u021Biile se salveaz\u0103 automat \xEEn draft." };
   if (pendingReview) return { tone: "pending", title: "Cererea este \xEEn verificare", detail: "Po\u021Bi salva alte modific\u0103ri. Le trimi\u021Bi dup\u0103 solu\u021Bionarea cererii curente." };
   if (hasDraft && hasChanges) return { tone: "ready", title: "Modific\u0103rile sunt salvate", detail: "Verific\u0103 rezumatul, apoi trimite spre aprobare." };
@@ -29734,8 +29735,8 @@ function getEditorStatus({ saving, error, dirty, pendingReview, hasDraft, hasCha
 // src/components/workspace/provider/ProviderServicesEditor.jsx
 var import_jsx_runtime19 = __toESM(require_jsx_runtime(), 1);
 var unitLabel = (key) => getFunctionalUnitDefinition(key)?.shortTitle || getFunctionalUnitDefinition(key)?.title || key;
-function ReviewCard({ title, count, onEdit, children }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("section", { className: "services-editor__review-card", children: [
+function ReviewCard({ title, count, onEdit, children, compact = false }) {
+  return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("section", { className: "services-editor__review-card" + (compact ? " services-editor__review-card--compact" : ""), children: [
     /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("header", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("h3", { children: title }),
@@ -29768,7 +29769,7 @@ function ProviderServicesEditor(props) {
   const publicKeys = selectedServiceKeys(m.selected).filter((key) => !globalKeys.has(key));
   const approvedPublicKeys = selectedServiceKeys(m.approvedSelected).filter((key) => !globalKeys.has(key));
   const hasWorkingCopy = Boolean(m.draft || m.dirty);
-  const activeUnitKey = m.visibleUnits[unitIndex] || m.visibleUnits[0];
+  const activeUnitKey = m.activeUnits[unitIndex] || m.activeUnits[0];
   const sections = m.sectionsByUnit[activeUnitKey] || [];
   const unitItemCount = (key) => new Set((m.sectionsByUnit[key] || []).flatMap((section) => section.items).filter((item2) => isSelected(m.selected, item2)).map((item2) => item2.id)).size;
   const emptyUnits = m.activeUnits.filter((key) => unitItemCount(key) === 0 && !m.suggestions.some((item2) => item2.functional_unit_key === key));
@@ -29785,8 +29786,8 @@ function ProviderServicesEditor(props) {
     }
   }, [m.loading, m.config, m.draft, approvedPublicKeys.length]);
   (0, import_react23.useEffect)(() => {
-    if (unitIndex >= m.visibleUnits.length) setUnitIndex(0);
-  }, [unitIndex, m.visibleUnits.length]);
+    if (unitIndex >= m.activeUnits.length) setUnitIndex(0);
+  }, [unitIndex, m.activeUnits.length]);
   const onDirtyChange = props.onDirtyChange;
   (0, import_react23.useEffect)(() => {
     onDirtyChange?.(m.dirty || m.saving);
@@ -29848,7 +29849,7 @@ function ProviderServicesEditor(props) {
   const assignmentChanges = publicKeys.filter((key) => approvedPublicKeys.includes(key) && (m.serviceUnitMap[key] || "") !== (m.config?.service_unit_map?.[key] || "") && (m.serviceUnitMap[key] || m.config?.service_unit_map?.[key]));
   const totalChanges = serviceChanges.length + globalChanges.length + spaceChanges.length + casChanges.length + capabilityChanges.length + m.suggestions.length + m.rawRemovalKeys.length + Number(careChanged) + Number(resourcesChanged) + assignmentChanges.length;
   const hasChanges = hasWorkingCopy && totalChanges > 0;
-  const status = getEditorStatus({ saving: m.saving, error: m.error, dirty: m.dirty, pendingReview: m.pendingReview, hasDraft: Boolean(m.draft), hasChanges, approvedCount: approvedPublicKeys.length });
+  const status = getEditorStatus({ saving: m.saving, committing: m.committing, error: m.error, dirty: m.dirty, pendingReview: m.pendingReview, hasDraft: Boolean(m.draft), hasChanges, approvedCount: approvedPublicKeys.length });
   const title = m.query ? "Rezultatele c\u0103ut\u0103rii" : view === "unit" ? "Ce servicii oferi?" : view === "configuration" ? "Ce spa\u021Bii ai la aceast\u0103 loca\u021Bie?" : view === "options" ? "Op\u021Biuni pentru \xEEntreaga loca\u021Bie" : view === "advanced" ? "Servicii din eviden\u021Ba anterioar\u0103" : "Verific\u0103 oferta loca\u021Biei";
   const description = m.query ? "Po\u021Bi selecta un serviciu direct din rezultate." : view === "configuration" ? "Bifeaz\u0103 tipurile de spa\u021Bii existente. Nu este nevoie s\u0103 treci fiecare camer\u0103." : view === "unit" ? "Bifeaz\u0103 doar serviciile pe care le oferi. Po\u021Bi l\u0103sa un grup f\u0103r\u0103 selec\u021Bii." : view === "options" ? "Alege ce se aplic\u0103 loca\u021Biei. Po\u021Bi continua \u0219i f\u0103r\u0103 op\u021Biuni suplimentare." : "Verific\u0103 serviciile \u0219i detaliile \xEEnainte s\u0103 trimi\u021Bi modific\u0103rile spre aprobare.";
   const disabled = !m.editable || m.committing || transitioning;
@@ -29906,7 +29907,7 @@ function ProviderServicesEditor(props) {
           }, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(X, {}) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("nav", { className: "services-editor__categories", "aria-label": "Spa\u021Bii \u0219i op\u021Biuni", children: [
-          m.visibleUnits.map((key, index) => /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("button", { type: "button", "aria-pressed": view === "unit" && unitIndex === index, disabled: m.committing || transitioning, onClick: () => go("unit:" + index), children: [
+          m.activeUnits.map((key, index) => /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("button", { type: "button", "aria-pressed": view === "unit" && unitIndex === index, disabled: m.committing || transitioning, onClick: () => go("unit:" + index), children: [
             unitLabel(key),
             /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("span", { children: unitItemCount(key) })
           ] }, key)),
@@ -29919,6 +29920,7 @@ function ProviderServicesEditor(props) {
       /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "services-editor__content", children: m.query ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(ServicesSearchResults, { query: m.query, results: m.searchResults, selected: m.selected, approvedSelected: m.approvedSelected, reviewState: m.reviewState, serviceUnitMap: m.serviceUnitMap, activeUnits: m.activeUnits, prerequisites: m.draftPrerequisites, disabled, onToggleService: m.toggleService, onClearQuery: () => m.setQuery("") }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(import_jsx_runtime19.Fragment, { children: [
         view === "configuration" && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(UnitPicker, { units: m.selectableUnits, activeUnits: m.activeUnits, approvedUnits: m.approvedUnits, selectedByUnit: m.selectedByUnit, primaryUnits: m.primaryUnits, reviewState: m.reviewState, disabled, onToggle: m.toggleUnit }),
         view === "options" && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(GlobalServiceSections, { sections: m.globalSections, selected: m.selected, approvedSelected: m.approvedSelected, reviewState: m.reviewState, disabled, onToggleService: m.toggleService, onSetSelection: m.setServicesSelection, careSettingSlot: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(CareSettingPicker, { embedded: true, options: m.operationalLayout.careSettings || [], approvedValue: m.approvedCareSetting, value: m.careSetting, disabled, onChange: m.setCareSetting }) }),
+        view === "unit" && activeUnitKey && sections.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "services-editor__footnote", children: "Acest spa\u021Biu nu are servicii publice \xEEn catalog. Po\u021Bi asocia resursele mai jos, op\u021Bional." }),
         view === "unit" && activeUnitKey && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(UnitAccordion, { unitKey: activeUnitKey, sections, selected: m.selected, approvedSelected: m.approvedSelected, reviewState: m.reviewState, serviceUnitMap: m.serviceUnitMap, prerequisites: m.draftPrerequisites, config: { ...m.config, activeUnits: m.activeUnits }, resourceLinks: m.resourceLinks, approvedResourceLinks: m.approvedResourceLinks, customSuggestions: m.suggestions, capabilities: m.capabilities, approvedCapabilities: m.approvedCapabilities, onToggleCapability: m.toggleCapability, open: true, disabled, casServiceKeys: m.casServiceKeys, onToggleCas: m.toggleCasService, onToggleService: m.toggleService, onSetSelection: m.setServicesSelection, onChangeSectionUnit: m.changeSectionUnit, onToggleResource: m.toggleResource, onAddSuggestion: m.addSuggestion, onRemoveSuggestion: m.removeSuggestion, stepMode: true, active: true, hideStepFooter: true, dirty: m.dirty, saving: m.committing || transitioning }, activeUnitKey),
         view === "unit" && !activeUnitKey && /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "services-editor__notice", children: [
           "Alege mai \xEEnt\xE2i spa\u021Biile existente.",
@@ -29987,7 +29989,7 @@ function ProviderServicesEditor(props) {
               ". Adaug\u0103 serviciile oferite acolo sau las\u0103-le a\u0219a dac\u0103 nu ofer\u0103 servicii pacien\u021Bilor."
             ] })
           ] }),
-          m.visibleUnits.map((key, index) => {
+          m.activeUnits.map((key, index) => {
             const unitSections = m.sectionsByUnit[key] || [];
             const items = [...new Map(unitSections.flatMap((section) => section.items).filter((item2) => isSelected(m.selected, item2)).map((item2) => [item2.id, item2])).values()];
             const suggestions = m.suggestions.filter((item2) => item2.functional_unit_key === key);
@@ -29996,12 +29998,12 @@ function ProviderServicesEditor(props) {
               ...(m.resourceLinks.equipment || []).filter((item2) => item2.unit_key === key).map((item2) => m.config.equipment?.find((row) => row.id === item2.equipment_id)?.equipment_label || "Echipament"),
               ...(m.resourceLinks.facilities || []).filter((item2) => item2.unit_key === key).map((item2) => m.config.facilities?.find((row) => row.id === item2.facility_id)?.facility_key || "Facilitate")
             ];
-            return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(ReviewCard, { title: unitLabel(key), count: items.length + " servicii selectate", onEdit: () => go("unit:" + index), children: [
+            return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(ReviewCard, { title: unitLabel(key), count: items.length + " servicii selectate", compact: !items.length && !suggestions.length && !links.length, onEdit: () => go("unit:" + index), children: [
               items.length ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("ul", { className: "services-editor__offer-list", children: items.map((item2) => /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("li", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Check, {}),
                 /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("span", { children: serviceLabel(item2) }),
                 m.casServiceKeys.includes(item2.id) && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("small", { children: "Decontat CAS" })
-              ] }, item2.id)) }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { children: "Niciun serviciu selectat. Po\u021Bi revizui zona sau o po\u021Bi l\u0103sa f\u0103r\u0103 servicii." }),
+              ] }, item2.id)) }) : null,
               suggestions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("p", { children: [
                 "Propuse manual: ",
                 suggestions.map((item2) => item2.label).join(" \xB7 ")
@@ -30022,10 +30024,10 @@ function ProviderServicesEditor(props) {
       ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("footer", { className: "services-editor__actions", children: [
         /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { role: "status", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("strong", { children: m.error ? "Salvarea nu este confirmat\u0103" : m.saving ? "Se salveaz\u0103 automat\u2026" : m.dirty ? "Salvare automat\u0103 \xEEn a\u0219teptare\u2026" : m.pendingReview ? "Cerere \xEEn verificare" : "Toate modific\u0103rile sunt salvate" }),
+          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("strong", { children: m.error ? m.dirty ? "Salvarea nu este confirmat\u0103" : "Ac\u021Biunea nu este confirmat\u0103" : m.committing ? "Se proceseaz\u0103 cererea\u2026" : m.saving ? "Se salveaz\u0103 automat\u2026" : m.dirty ? "Salvare automat\u0103 \xEEn a\u0219teptare\u2026" : m.pendingReview ? "Cerere \xEEn verificare" : "Toate modific\u0103rile sunt salvate" }),
           /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("small", { children: "Draftul se salveaz\u0103 automat. Trimiterea spre aprobare se face doar c\xE2nd alegi tu." })
         ] }),
-        m.error && m.editable && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { type: "button", disabled: m.saving || transitioning, onClick: m.save, children: "Re\xEEncearc\u0103 salvarea" }),
+        m.error && m.dirty && m.editable && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { type: "button", disabled: m.saving || transitioning, onClick: m.save, children: "Re\xEEncearc\u0103 salvarea" }),
         currentStep > 0 && /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("button", { type: "button", disabled: m.committing || transitioning, onClick: () => go(currentStep === 2 ? "services" : "configuration"), children: [
           /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(ArrowLeft, {}),
           "\xCEnapoi"

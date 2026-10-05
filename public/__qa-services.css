@@ -4633,6 +4633,9 @@ button.provider-services-three__stat.is-active {
     min-height: 44px;
   }
 }
+.services-editor__review-card--compact > header {
+  margin-bottom: 0;
+}
 .services-editor {
   --services-accent:#3459df;
   --services-accent-strong:#2747bd;
