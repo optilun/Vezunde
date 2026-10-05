@@ -10,6 +10,8 @@
 export const DISTINCT_APPROVAL_NOTE_MIN_LENGTH = 15;
 export const BLOCKING_DUPLICATE_SEVERITIES = Object.freeze(['strong_duplicate', 'possible_duplicate']);
 
+import { locationCoordinates } from './locationMapPosition.js';
+
 const clean = (value) => String(value ?? '').trim();
 
 /**
@@ -28,6 +30,7 @@ export function proposedLocationSnapshot(location = {}, geo = {}) {
     phone_public: clean(location.phone_public),
     public_email: clean(location.public_email),
   };
+  snapshot.map_precision = location.map_precision === 'exact' && locationCoordinates(location) ? 'exact' : 'approximate';
   if (clean(location.place_id)) snapshot.place_id = clean(location.place_id);
   if (typeof location.lat === 'number') snapshot.lat = location.lat;
   if (typeof location.lng === 'number') snapshot.lng = location.lng;
@@ -67,6 +70,7 @@ export function newLocationRecord({ proposed = {}, geo = {}, organizationId = nu
     city: clean(geo.name),
     county: clean(geo.county_name),
     address: clean(proposed.address),
+    map_precision: proposed.map_precision === 'exact' && locationCoordinates(proposed) ? 'exact' : 'approximate',
     phone_public: clean(proposed.phone_public),
     public_email: clean(proposed.public_email),
     availability_status: 'necunoscuta',
@@ -83,8 +87,8 @@ export function newLocationRecord({ proposed = {}, geo = {}, organizationId = nu
     last_confirmed_at: nowIso,
   };
   if (clean(proposed.place_id)) record.place_id = clean(proposed.place_id);
-  if (typeof proposed.lat === 'number') record.lat = proposed.lat;
-  if (typeof proposed.lng === 'number') record.lng = proposed.lng;
+  const point = locationCoordinates(proposed);
+  if (point) Object.assign(record, point);
   if (organizationId) record.organization_id = organizationId;
   return record;
 }
