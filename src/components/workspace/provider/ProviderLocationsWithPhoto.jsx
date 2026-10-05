@@ -285,7 +285,7 @@ export default function ProviderLocationsWithPhoto(props) {
   ]);
 
   useEffect(() => {
-    if (!canManagePhoto) closePhoto();
+    if (!canManagePhoto) setPhotoOpen(false);
     if (!canAddLocation) setAddLocationOpen(false);
   }, [canAddLocation, canManagePhoto]);
 
