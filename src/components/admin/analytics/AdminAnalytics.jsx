@@ -4,6 +4,7 @@ import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import useAdminAnalytics from "./useAdminAnalytics";
 import RequestsAnalyticsCard from "./RequestsAnalyticsCard";
 import StatRow from "./StatRow";
+import CountyCoverageCard from "./CountyCoverageCard";
 
 const PERIODS = [7, 30, 90];
 
@@ -49,6 +50,7 @@ export default function AdminAnalytics({ onNavigate }) {
               <StatRow label="Servicii neconfirmate" value={data.unconfirmedServices} onClick={() => onNavigate("servicii")} />
             </AdminCard>
           </div>
+          <CountyCoverageCard />
         </div>
       )}
     </div>
