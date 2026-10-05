@@ -177,7 +177,7 @@ export default function ProviderLocationsWithPhoto(props) {
         (button) =>
           String(button.textContent || "").includes("Editează datele"),
       );
-      const summarySection = editButton?.closest("section");
+      const summarySection = root.querySelector("[data-location-summary]") || editButton?.closest("section");
       if (!summarySection) return;
 
       summarySection.classList.add("vezunde-location-summary");
@@ -217,8 +217,7 @@ export default function ProviderLocationsWithPhoto(props) {
         }
       }
 
-      const mapFrame = summarySection.querySelector('iframe[title^="Harta "]');
-      const mapPanel = mapFrame?.parentElement?.parentElement;
+      const mapPanel = summarySection.querySelector("[data-location-summary-map]");
       mapPanel?.classList.add("vezunde-location-map");
     };
 
