@@ -40,12 +40,17 @@ if(name==="providerPhotoUploadLifecycleOps"){
 return {data:{success:true}};
 }},integrations:{Core:{UploadFile:async()=>{state.uploads++;return {file_url:"/images/specialists/optical-team-hero-v1.webp"};}}}};
 `);
+await writeFile(dir+"/locations.jsx",`
+import React from "react";
+export const CONFIGURE_TONES={fotografie:{border:"#deded8",bg:"#faf9f5"}};
+export default function Locations(){return <><h1 className="text-xl font-bold mb-6">Locație demonstrativă</h1><section><h2 className="text-lg font-bold mb-4">Configurează locația</h2><div className="grid gap-3"><button>Servicii</button><button>Program</button><button>Specialiști</button></div></section></>;}
+`);
 await writeFile(dir+"/entry.jsx",`
 import React,{useState} from "react";
 import {createRoot} from "react-dom/client";
 import {BrowserRouter} from "react-router-dom";
 import ProviderLocationModulePage from "@/components/workspace/provider/ProviderLocationModulePage";
-import ProviderLocationPhotoCompact from "@/components/workspace/provider/ProviderLocationPhotoCompact";
+import ProviderLocationsWithPhoto from "@/components/workspace/provider/ProviderLocationsWithPhoto";
 import {state} from "./api.js";
 const weekly={monday:{open:true,from:"09:00",to:"18:00"},tuesday:{open:true,from:"09:00",to:"18:00"},wednesday:{open:true,from:"09:00",to:"18:00"},thursday:{open:true,from:"09:00",to:"18:00"},friday:{open:true,from:"09:00",to:"18:00"},saturday:{open:true,from:"09:00",to:"14:00"},sunday:{open:false,from:"",to:""}};
 const location={id:"demo-location",name:"Locație demonstrativă",locality:"Giroc",county:"Timiș",organization_id:"demo-org",active_status:"inactiva",opening_hours_json:JSON.stringify({weekly,exceptions:[]}),availability_status:"necunoscuta",capabilities:["location.manage_content","location.manage_operational_status","location.manage_specialists"]};
@@ -58,11 +63,11 @@ return <BrowserRouter><header className="qa-header"><img src="/images/viasee-log
 <button onClick={async()=>{const blob=await (await fetch("/images/specialists/optical-team-hero-v1.webp")).blob();const file=new File([blob],"fotografie-demonstrativa.webp",{type:"image/webp"});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector('input[type="file"]');input.files=transfer.files;input.dispatchEvent(new Event("change",{bubbles:true}));}}>Selectează imagine demonstrativă</button>
 <label><input type="checkbox" checked={missing} onChange={e=>{state.missingAck=e.target.checked;setMissing(e.target.checked);}}/> Răspuns fără confirmare</label>
 </header><main key={module}>
-{module==="foto"?<div className="provider-location-editor-page"><header className="location-editor-header"><div><h1>Fotografia locației</h1><p><strong>Locație demonstrativă</strong> · Giroc, Timiș</p></div></header><ProviderLocationPhotoCompact locationId="demo-location" onRefresh={()=>refresh(x=>x+1)}/></div>
+{module==="foto"?<ProviderLocationsWithPhoto workspace={{locations:[location],current_user_capabilities:location.capabilities}} selectedLocationId="demo-location" onRefresh={()=>refresh(x=>x+1)}/>
 :<ProviderLocationModulePage workspace={{locations:[location]}} locationId="demo-location" moduleKey={module} onRefresh={()=>refresh(x=>x+1)}/>}
 </main><output className="qa-counts">Operații mock: {state.writes} · Încărcări: {state.uploads} · Trimiteri foto: {state.submits} · Invitații: {state.invites}</output></BrowserRouter>;
 }
 createRoot(document.getElementById("root")).render(<App/>);
 `);
-await build({entryPoints:[dir+"/entry.jsx"],outfile:"public/__qa-modules.js",bundle:true,format:"esm",platform:"browser",jsx:"automatic",external:["/images/*"],alias:{"@/api/base44Client":dir+"/api.js","@":path.resolve("src"),react:path.resolve("node_modules/react"),"react-dom":path.resolve("node_modules/react-dom"),"react-router-dom":path.resolve("node_modules/react-router-dom")},define:{"process.env.NODE_ENV":'"development"'}});
+await build({entryPoints:[dir+"/entry.jsx"],outfile:"public/__qa-modules.js",bundle:true,format:"esm",platform:"browser",jsx:"automatic",plugins:[{name:"mock-location-list",setup(api){api.onResolve({filter:/^\\.\\/ProviderLocations$/},args=>args.importer.endsWith("ProviderLocationsWithPhoto.jsx")?{path:dir+"/locations.jsx"}:undefined);}}],external:["/images/*"],alias:{"@/api/base44Client":dir+"/api.js","@":path.resolve("src"),react:path.resolve("node_modules/react"),"react-dom":path.resolve("node_modules/react-dom"),"react-router-dom":path.resolve("node_modules/react-router-dom")},define:{"process.env.NODE_ENV":'"development"'}});
 await writeFile("public/__qa-modules.html",`<!doctype html><html lang="ro"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/src/index.css?direct"><link rel="stylesheet" href="/__qa-modules.css"><style>body{background:#faf9f5}.qa-header{padding:14px 22px;border-bottom:1px solid #deded8;background:white;display:flex;gap:15px;align-items:center;flex-wrap:wrap;font-size:11px}.qa-header img{width:90px}.qa-header nav{display:flex;gap:10px}.qa-header button{font-size:13px;border:1px solid #deded8;border-radius:6px;padding:8px 12px}main{padding:24px;max-width:1170px;margin:auto}.qa-counts{display:block;font-size:11px;color:#777;text-align:center;margin:20px}@media(max-width:600px){main{padding:16px}.qa-header{padding:10px;gap:10px}}</style><div id="root"></div><script type="module" src="/__qa-modules.js"></script></html>`);
