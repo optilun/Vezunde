@@ -25,7 +25,7 @@ const iconsFile=path.join(temp,"icons.mjs");
 await writeFile(iconsFile,'export const ArrowLeft=()=>null,ArrowRight=()=>null,Plus=()=>null,Save=()=>null,Trash2=()=>null;');
 const entry=path.join(temp,"entry.mjs"), output=path.join(temp,"bundle.mjs");
 await writeFile(entry,`export {default as Editor} from ${JSON.stringify(path.resolve("src/components/workspace/provider/ProviderHours.jsx"))};export {begin,flush,reset} from ${JSON.stringify(reactFile)};`);
-await build({entryPoints:[entry],outfile:output,bundle:true,platform:"node",format:"esm",jsx:"transform",loader:{".css":"empty"},logLevel:"silent",alias:{react:reactFile,"lucide-react":iconsFile,"@/api/base44Client":apiFile,"@":path.resolve("src")}});
+await build({entryPoints:[entry],outfile:output,bundle:true,platform:"node",format:"esm",jsx:"transform",tsconfigRaw:{compilerOptions:{jsx:"react"}},loader:{".css":"empty"},logLevel:"silent",alias:{react:reactFile,"lucide-react":iconsFile,"@/api/base44Client":apiFile,"@":path.resolve("src")}});
 globalThis.window={addEventListener(){},removeEventListener(){}};
 const h=await import(pathToFileURL(output).href);
 const weekly=Object.fromEntries(["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].map(key=>[key,{open:key!=="sunday",from:key==="sunday"?"":"09:00",to:key==="sunday"?"":key==="saturday"?"14:00":"18:00"}]));
