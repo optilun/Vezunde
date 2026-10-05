@@ -357,7 +357,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
               {shownPhoto ? <img src={shownPhoto} alt={stagedFile ? "Previzualizarea fotografiei selectate" : editableDraft || pending ? "Fotografia din draft" : "Fotografia aprobată a locației"} />
                 : <div className="photo-editor-frame__empty"><ImagePlus /><strong className="mt-3 text-sm">Nicio fotografie selectată</strong><p className="location-editor-intro">Adaugă o imagine clară a locației.</p></div>}
             </div>
-            <p className="photo-editor-caption">{stagedFile ? "Previzualizare locală · fișierul nu a fost încărcat" : pending ? "Trimisă spre verificare" : editableDraft ? "Draft salvat · încă nepublicat" : currentPhoto ? "Fotografie aprobată" : "Formatul afișat: 4:3"}</p>
+            <p className="photo-editor-caption">{stagedFile ? (uploadedAsset?.url ? "Fișier încărcat · draftul nu este încă salvat" : "Previzualizare locală · fișierul nu a fost încărcat") : pending ? "Trimisă spre verificare" : editableDraft ? "Draft salvat · încă nepublicat" : currentPhoto ? "Fotografie aprobată" : "Formatul afișat: 4:3"}</p>
           </div>
           <aside className="photo-editor-guidance">
             <h2>{pending ? "Ce urmează?" : step === "review" ? "Gata pentru verificare" : "O fotografie bună"}</h2>
@@ -375,7 +375,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
         {submission?.admin_note && ["needs_more_info","rejected"].includes(submission.status) && <div className="location-editor-notice"><b>Mesaj VIASEE:</b> {submission.admin_note}</div>}
         {message && <p role="status" className="location-editor-notice">{message}</p>}
         <footer className="location-editor-actions">
-          <div className="location-editor-actions__status" role="status">{processing ? "Se procesează fotografia…" : pending ? "În verificare · așteaptă aprobarea" : stagedFile ? "Selecția este doar pe acest dispozitiv" : editableDraft ? "Draft salvat · netrimis" : currentPhoto ? "Fotografia este la zi" : "Alege o fotografie pentru a continua"}</div>
+          <div className="location-editor-actions__status" role="status">{processing ? "Se procesează fotografia…" : pending ? "În verificare · așteaptă aprobarea" : stagedFile ? (uploadedAsset?.url ? "Fișier încărcat · reîncearcă salvarea draftului" : "Selecția este doar pe acest dispozitiv") : editableDraft ? "Draft salvat · netrimis" : currentPhoto ? "Fotografia este la zi" : "Alege o fotografie pentru a continua"}</div>
           <div className="location-editor-actions__buttons">
             {(stagedFile || editableDraft) && !pending && <button type="button" disabled={processing} onClick={discardDraft} className="location-editor-button"><Trash2 /> {stagedFile ? "Renunță la selecție" : "Retrage draftul"}</button>}
             {stagedFile && <button type="button" disabled={processing} onClick={saveDraft} className="location-editor-button location-editor-button--primary">{processing ? <Loader2 className="animate-spin" /> : <CheckCircle2 />} Salvează ca draft</button>}
