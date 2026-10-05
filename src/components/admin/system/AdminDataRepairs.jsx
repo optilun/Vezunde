@@ -11,6 +11,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import RepairIssuesList from "@/components/admin/system/RepairIssuesList";
 
 const TYPE_LABELS = {
   organization_completeness: "Completitudine organizatie",
@@ -121,6 +122,7 @@ export default function AdminDataRepairs() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [batchSize, setBatchSize] = useState(100);
   const [progress, setProgress] = useState(null);
+  const [issues, setIssues] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -200,6 +202,9 @@ export default function AdminDataRepairs() {
     let applied = 0;
     let skipped = 0;
     let failed = 0;
+    const titles = new Map(snapshot.map((repair) => [repair.id, repair.title]));
+    const collected = [];
+    setIssues([]);
     setProgress({ done: 0, total: snapshot.length, applied: 0, skipped: 0, failed: 0 });
 
     try {
@@ -214,6 +219,13 @@ export default function AdminDataRepairs() {
         applied += response.data?.applied_count || 0;
         skipped += response.data?.skipped_count || 0;
         failed += response.data?.failed_count || 0;
+        for (const item of response.data?.failed || []) {
+          collected.push({ kind: "failed", id: item.id, title: titles.get(item.id), reason: item.error || "Aplicare esuata" });
+        }
+        for (const item of response.data?.skipped || []) {
+          collected.push({ kind: "skipped", id: item.id, title: titles.get(item.id), reason: item.reason || "Sarita" });
+        }
+        setIssues([...collected]);
         const done = Math.min(snapshot.length, offset + chunk.length);
         setProgress({ done, total: snapshot.length, applied, skipped, failed });
       }
@@ -285,6 +297,7 @@ export default function AdminDataRepairs() {
               Procesate {progress.done}/{progress.total} · aplicate {progress.applied} · sarite {progress.skipped} · esuate {progress.failed}
             </div>
           )}
+          <RepairIssuesList issues={issues} />
         </div>
       )}
 
