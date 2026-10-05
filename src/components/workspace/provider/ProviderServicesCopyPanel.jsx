@@ -26,7 +26,7 @@ function resultLabel(status) {
   return "Eroare";
 }
 
-export default function ProviderServicesCopyPanel({ workspace, currentLocationId, onRefresh, onCopied }) {
+export default function ProviderServicesCopyPanel({ workspace, currentLocationId, onRefresh, onCopied, onBeforeCopy }) {
   const [open, setOpen] = useState(false);
   const [sourceId, setSourceId] = useState(currentLocationId || "");
   const [targetIds, setTargetIds] = useState([]);
@@ -79,6 +79,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
   };
 
   const loadPreview = async () => {
+    if (onBeforeCopy && await onBeforeCopy() !== true) { setError("Salvarea ofertei nu este confirmată. Reîncearcă salvarea înainte de copiere."); return; }
     setLoading(true);
     setError("");
     setResult(null);
@@ -100,6 +101,7 @@ export default function ProviderServicesCopyPanel({ workspace, currentLocationId
   };
 
   const copyServices = async () => {
+    if (onBeforeCopy && await onBeforeCopy() !== true) { setError("Salvarea ofertei nu este confirmată. Reîncearcă salvarea înainte de copiere."); return; }
     setLoading(true);
     setError("");
     const response = await base44.functions
