@@ -32446,7 +32446,7 @@ function ProviderHours({ locationId, location: location2 = {}, onRefresh, onDirt
   };
   const steps = [
     { id: "weekly", label: "Program s\u0103pt\u0103m\xE2nal", detail: "Orele fiec\u0103rei zile" },
-    { id: "exceptions", label: "Program special", detail: state2.exceptions.length ? state2.exceptions.length + " excep\u021Bii" : "Op\u021Bional" },
+    { id: "exceptions", label: "Program special", detail: state2.exceptions.length ? state2.exceptions.length + (state2.exceptions.length === 1 ? " excep\u021Bie" : " excep\u021Bii") : "Op\u021Bional" },
     { id: "review", label: "Verific\u0103 \u0219i salveaz\u0103", detail: "Previzualizare \u0219i acces" }
   ];
   return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "location-editor hours-editor", children: [
@@ -33177,7 +33177,7 @@ function ProviderTeam({ locationId }) {
   return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "location-editor team-editor", children: [
     /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(LocationEditorSteps, { label: "Gestionarea speciali\u0219tilor", active: step, onChange: setStep, disabled: saving, steps: [
       { id: "team", label: "Speciali\u0219ti", detail: activeAssignments.length + " asocia\u021Bi activi" },
-      { id: "invite", label: "Invit\u0103 un specialist", detail: pendingInvitations.length + " invita\u021Bii \xEEn a\u0219teptare" },
+      { id: "invite", label: "Invit\u0103 un specialist", detail: pendingInvitations.length + (pendingInvitations.length === 1 ? " invita\u021Bie \xEEn a\u0219teptare" : " invita\u021Bii \xEEn a\u0219teptare") },
       { id: "requests", label: "Cereri \u0219i acorduri", detail: associationRequests.length + (associationRequests.length === 1 ? " cerere de asociere" : " cereri de asociere") }
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "team-editor-summary", children: [
