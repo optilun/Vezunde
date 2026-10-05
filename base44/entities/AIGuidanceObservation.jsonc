@@ -1,0 +1,76 @@
+{
+  "name": "AIGuidanceObservation",
+  "type": "object",
+  "properties": {
+    "ai_status": {
+      "type": "string"
+    },
+    "deterministic_intent": {
+      "type": "string"
+    },
+    "ai_intent": {
+      "type": "string"
+    },
+    "intent_agreement": {
+      "type": "string"
+    },
+    "service_agreement": {
+      "type": "string"
+    },
+    "care_path": {
+      "type": "string"
+    },
+    "next_question_key": {
+      "type": "string"
+    },
+    "sufficient_for_search": {
+      "type": "boolean",
+      "default": false
+    },
+    "conflict_detected": {
+      "type": "boolean",
+      "default": false
+    },
+    "conflict_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fallback_used": {
+      "type": "boolean",
+      "default": false
+    },
+    "fallback_reason": {
+      "type": "string"
+    },
+    "failure_diagnosis": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ai_status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

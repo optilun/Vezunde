@@ -7,6 +7,7 @@ import StatRow from "./StatRow";
 import CountyCoverageCard from "./CountyCoverageCard";
 import SearchInsightsCards from "./SearchInsightsCards";
 import useSearchAnalytics from "./useSearchAnalytics";
+import AIGuidanceCard from "./AIGuidanceCard";
 
 const PERIODS = [7, 30, 90];
 
@@ -53,6 +54,7 @@ export default function AdminAnalytics({ onNavigate }) {
               <StatRow label="Servicii neconfirmate" value={data.unconfirmedServices} onClick={() => onNavigate("servicii")} />
             </AdminCard>
           </div>
+          <AIGuidanceCard days={days} />
           <SearchInsightsCards data={search.data} days={days} />
           <CountyCoverageCard rows={search.data?.counties} failed={search.failed} days={days} />
         </div>

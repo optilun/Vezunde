@@ -442,12 +442,36 @@ function explicitLocalityFromPayload(payload) {
   return Object.keys(controlled).length > 0 ? controlled : null;
 }
 
-function observePatientGuidanceShadow(context) {
+// Pastreaza comparatia AI vs sistemul fix pentru raportul admin. Fara textul pacientului:
+// doar chei si acorduri. O eroare aici nu afecteaza niciodata cautarea.
+async function recordGuidanceObservation(base44, context, observation) {
+  const s = observation.summary || {};
+  const c = observation.comparison || {};
+  const diagnosis = context.liveResult?.diagnosis;
+  await base44.asServiceRole.entities.AIGuidanceObservation.create({
+    ai_status: s.ai_status || context.legacyStatus || 'unavailable',
+    deterministic_intent: clean(context.deterministicIntent),
+    ai_intent: s.confirmed_primary_intent || '',
+    intent_agreement: c.intent_agreement || '',
+    service_agreement: c.service_agreement || '',
+    care_path: s.care_path || '',
+    next_question_key: s.next_question_key || '',
+    sufficient_for_search: s.sufficient_for_search === true,
+    conflict_detected: c.conflict_detected === true,
+    conflict_flags: s.conflict_flags || [],
+    fallback_used: c.fallback_used === true,
+    fallback_reason: s.fallback_reason || '',
+    failure_diagnosis: typeof diagnosis === 'string' ? diagnosis : clean(diagnosis?.category || diagnosis?.code),
+  }).catch(() => null);
+}
+
+async function observePatientGuidanceShadow(base44, context) {
   const observation = runPatientGuidanceRuntimeShadow(context);
   console.info(
     PATIENT_GUIDANCE_SHADOW_EVENT,
     JSON.stringify({ ...observation.summary, ...observation.comparison }),
   );
+  await recordGuidanceObservation(base44, context, observation);
   return {
     ...observation.live_result,
     patient_guidance_question_selection: observation.question_selection,
@@ -539,7 +563,7 @@ async function interpretPatientNeed(
       status: 'completed',
       interpretation,
     };
-    return observePatientGuidanceShadow({
+    return await observePatientGuidanceShadow(base44, {
       liveResult,
       text: searchText,
       legacyStatus: 'completed',
@@ -558,7 +582,7 @@ async function interpretPatientNeed(
       diagnosis,
       raw_error_message: String(_error?.message || '').slice(0, 300),
     };
-    return observePatientGuidanceShadow({
+    return await observePatientGuidanceShadow(base44, {
       liveResult,
       text: searchText,
       legacyStatus: 'unavailable',
