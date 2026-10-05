@@ -33983,6 +33983,15 @@ function App() {
         } }),
         " Simuleaz\u0103 eroare"
       ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("button", { onClick: async () => {
+        const blob = await (await fetch("/images/specialists/optical-team-hero-v1.webp")).blob();
+        const file = new File([blob], "fotografie-demonstrativa.webp", { type: "image/webp" });
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        const input = document.querySelector('input[type="file"]');
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }, children: "Selecteaz\u0103 imagine demonstrativ\u0103" }),
       /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("label", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("input", { type: "checkbox", checked: missing, onChange: (e) => {
           state.missingAck = e.target.checked;
