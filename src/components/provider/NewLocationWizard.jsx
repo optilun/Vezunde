@@ -36,6 +36,7 @@ const INITIAL = {
     phone_public: "",
     public_email: "",
     place_id: "",
+    map_precision: "approximate",
     lat: null,
     lng: null,
   },
