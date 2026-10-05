@@ -8,6 +8,6 @@ export function useDraftAutosave({ scope, ...snapshot }) {
     controller.schedule();
     return controller.cancel;
   }, [controller, snapshot.enabled, snapshot.signature, snapshot.baseline]);
-  useEffect(() => () => controller.cancel(), [controller]);
+  useEffect(() => () => { void controller.flush(); }, [controller]);
   return controller.flush;
 }
