@@ -3,6 +3,7 @@ import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff, Clock3, Stethoscope, 
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
+import LocationEditorSteps from "./LocationEditorSteps";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
 
@@ -45,6 +46,9 @@ function EmptyCard({ children }) {
 }
 
 export default function ProviderTeam({ locationId }) {
+  const [step, setStep] = useState("team");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [publicTeam, setPublicTeam] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -73,8 +77,10 @@ export default function ProviderTeam({ locationId }) {
 
   const load = async () => {
     if (!locationId) return;
+    setLoading(true);
+    setLoadError("");
     const [publicRes, inviteRes, assignmentRes] = await Promise.all([
-      base44.functions.invoke("getPublicProviderContent", { location_id: locationId }).catch(() => ({ data: { team: [] } })),
+      base44.functions.invoke("getPublicProviderContent", { location_id: locationId }).catch((error) => ({ data: { team: [], error: error.response?.data?.error || error.message } })),
       base44.functions.invoke("professionalInvitationOps", { action: "list", location_id: locationId }).catch((error) => ({ data: { invitations: [], error: error.response?.data?.error || error.message } })),
       base44.functions.invoke("manageProfessionalAssignment", { action: "list", location_id: locationId }).catch((error) => ({ data: { assignments: [], error: error.response?.data?.error || error.message } })),
     ]);
@@ -82,14 +88,16 @@ export default function ProviderTeam({ locationId }) {
     setInvitations(inviteRes.data?.invitations || []);
     setAssignments(assignmentRes.data?.assignments || []);
     setCurrentProfessional(assignmentRes.data?.current_user_professional || null);
-    if (inviteRes.data?.error) setMsg(inviteRes.data.error);
-    else if (assignmentRes.data?.error) setMsg(assignmentRes.data.error);
+    setLoading(false);
+    if (inviteRes.data?.error || assignmentRes.data?.error || publicRes.data?.error) setLoadError(inviteRes.data?.error || assignmentRes.data?.error || publicRes.data?.error);
   };
 
   useEffect(() => {
     setNewLink("");
     setCopied(false);
     setMsg("");
+    setForm({ email: "", professional_type: "optometrist" });
+    setStep("team");
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- se reincarca doar la schimbarea locatiei
   }, [locationId]);
@@ -259,15 +267,29 @@ export default function ProviderTeam({ locationId }) {
 
   const copyLink = async () => {
     if (!newLink) return;
-    await navigator.clipboard.writeText(newLink);
-    setCopied(true);
+    try { await navigator.clipboard.writeText(newLink); setCopied(true); }
+    catch { setMsg("Linkul nu a putut fi copiat. Selectează și copiază manual linkul de mai jos."); }
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-      <div className="order-2 space-y-4 xl:order-1">
+    <div className="location-editor team-editor">
+      <LocationEditorSteps label="Gestionarea specialiștilor" active={step} onChange={setStep} disabled={saving} steps={[
+        {id:"team",label:"Specialiști",detail:activeAssignments.length + " asociați activi"},
+        {id:"invite",label:"Invită un specialist",detail:pendingInvitations.length + " invitații în așteptare"},
+        {id:"requests",label:"Cereri și acorduri",detail:associationRequests.length + " cereri de asociere"},
+      ]} />
+      <div className="team-editor-summary">
+        <div><span>Asociați activi</span><strong>{activeAssignments.length}</strong></div>
+        <div><span>Vizibili public</span><strong>{publicTeam.length}</strong></div>
+        <div><span>Acord în așteptare</span><strong>{pendingVisibility.length}</strong></div>
+      </div>
+      {msg && <p role="status" className="location-editor-notice">{msg}</p>}
+      {loadError && <div className="location-editor-notice" role="alert">{loadError} <button type="button" onClick={load} disabled={loading} className="location-editor-button ml-2">Reîncearcă încărcarea</button></div>}
+      {loading && <p role="status" className="location-editor-notice">Se încarcă specialiștii…</p>}
+      {!loading && <div className={`team-editor-layout team-editor-layout--${step}`}>
+      <div className="team-editor-list" hidden={step === "requests" && associationRequests.length === 0}>
         {associationRequests.length > 0 && (
-          <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
+          <section hidden={step !== "requests"} className="location-editor-panel">
             <div className="mb-3">
               <h2 className="text-sm font-bold">Cereri „Lucrez aici”</h2>
               <p className="mt-1 text-xs text-muted-foreground">Specialiști care spun că lucrează la această locație. Aprobă doar dacă știi că e adevărat. Aprobarea nu dă acces la contul organizației.</p>
@@ -293,7 +315,7 @@ export default function ProviderTeam({ locationId }) {
           </section>
         )}
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section hidden={step !== "team"} className="location-editor-panel">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold">Specialiști asociați</h2>
@@ -351,7 +373,7 @@ export default function ProviderTeam({ locationId }) {
           )}
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section hidden={step !== "invite"} className="location-editor-panel">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold">Invitații profesionale</h2>
@@ -411,11 +433,11 @@ export default function ProviderTeam({ locationId }) {
         </section>
       </div>
 
-      <aside className="order-1 space-y-4 xl:sticky xl:top-4 xl:order-2">
+      <aside hidden={step === "requests"} className="space-y-4">
         {/* 2026-10-03 (structura conturilor, pasul 2): ownerul/managerul care e si specialist se
             afiseaza singur, fara sa-si trimita invitatie pe email. */}
         {!selfAssociated && (
-          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <section hidden={step !== "team"} className="location-editor-panel">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Stethoscope className="h-4 w-4" /></div>
               <div className="min-w-0">
@@ -436,53 +458,32 @@ export default function ProviderTeam({ locationId }) {
             </div>
           </section>
         )}
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="mb-3 flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            <h2 className="text-sm font-bold">Rezumat specialiști</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-xl bg-secondary/45 p-3">
-              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Asociați activi</div>
-              <div className="mt-1 text-xl font-extrabold">{activeAssignments.length}</div>
-            </div>
-            <div className="rounded-xl bg-secondary/45 p-3">
-              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Vizibili public</div>
-              <div className="mt-1 text-xl font-extrabold">{publicTeam.length}</div>
-            </div>
-            <div className="rounded-xl bg-secondary/45 p-3">
-              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Acord în așteptare</div>
-              <div className="mt-1 text-xl font-extrabold">{pendingVisibility.length}</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section hidden={step !== "invite"} className="location-editor-panel team-editor-form">
           <div className="mb-4 flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary">
               <UserPlus className="h-4 w-4" />
             </div>
             <div>
               <h2 className="text-sm font-bold">Invită un specialist</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul este aprobat și specialistul acceptă separat afișarea la această locație.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Completează emailul și profesia. Specialistul primește invitația și o acceptă din propriul cont.</p>
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">Email specialist</label>
-              <input className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+              <label htmlFor={`invite-email-${locationId}`} className="text-xs font-semibold text-muted-foreground">Email specialist</label>
+              <input id={`invite-email-${locationId}`} type="email" autoComplete="email" disabled={saving} className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">Tip profesional</label>
-              <select className={`${inputCls} mt-1.5`} value={form.professional_type} onChange={(event) => setForm({ ...form, professional_type: event.target.value })}>
+              <label htmlFor={`invite-type-${locationId}`} className="text-xs font-semibold text-muted-foreground">Tip profesional</label>
+              <select id={`invite-type-${locationId}`} disabled={saving} className={`${inputCls} mt-1.5`} value={form.professional_type} onChange={(event) => setForm({ ...form, professional_type: event.target.value })}>
                 {Object.entries(PROFESSIONAL_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
             </div>
           </div>
 
-          <button type="button" disabled={saving} onClick={createInvitation} className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50">
-            <Send className="h-4 w-4" /> Creează invitația
+          <button type="button" disabled={saving || !form.email.trim()} onClick={createInvitation} className="location-editor-button location-editor-button--primary w-full">
+            <Send className="h-4 w-4" /> {saving ? "Se creează invitația…" : "Trimite invitația"}
           </button>
 
           <div ref={inviteResultRef} />
@@ -497,7 +498,7 @@ export default function ProviderTeam({ locationId }) {
             </div>
           )}
 
-          {msg && <p className="mt-3 text-xs text-muted-foreground">{msg}</p>}
+
 
           <div className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3">
             <div className="text-[11px] font-bold text-foreground">Separat de Acces și utilizatori</div>
@@ -505,6 +506,13 @@ export default function ProviderTeam({ locationId }) {
           </div>
         </section>
       </aside>
+      {step === "requests" && <section className="location-editor-panel" aria-label="Acorduri de afișare">
+        <h2>Acorduri de afișare publică</h2>
+        <p className="location-editor-intro">Asocierea și afișarea publică sunt separate. Specialistul își dă acordul din contul său.</p>
+        {pendingVisibility.length ? <ul className="mt-4 space-y-3">{pendingVisibility.map(item => <li key={item.id} className="rounded-lg border border-border p-3"><strong className="text-sm">{item.full_name}</strong><p className="location-editor-intro">{roleLabel(item.professional_type)} · Așteaptă acordul specialistului</p></li>)}</ul> : <p className="location-editor-notice mt-4">Nu există acorduri în așteptare.</p>}
+        {!associationRequests.length && <p className="location-editor-intro mt-4">Nu există cereri „Lucrez aici” de analizat.</p>}
+      </section>}
+      </div>}
     </div>
   );
 }
