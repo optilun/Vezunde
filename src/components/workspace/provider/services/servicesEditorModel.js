@@ -24,7 +24,7 @@ export function selectionChanges(before = [], after = [], label = value => value
 export function getEditorStatus({ saving, error, dirty, pendingReview, hasDraft, hasChanges, approvedCount }) {
   if (error) return { tone: "error", title: "Modificările nu au fost confirmate", detail: error };
   if (saving) return { tone: "info", title: "Se salvează…", detail: "Așteaptă confirmarea înainte să închizi pagina." };
-  if (dirty) return { tone: "warning", title: "Ai modificări nesalvate", detail: "Salvează progresul ca să îl poți relua mai târziu." };
+  if (dirty) return { tone: "warning", title: "Salvare automată în așteptare", detail: "Selecțiile se salvează automat în draft." };
   if (pendingReview) return { tone: "pending", title: "Cererea este în verificare", detail: "Poți salva alte modificări. Le trimiți după soluționarea cererii curente." };
   if (hasDraft && hasChanges) return { tone: "ready", title: "Modificările sunt salvate", detail: "Verifică rezumatul, apoi trimite spre aprobare." };
   if (approvedCount > 0) return { tone: "live", title: "Oferta este la zi", detail: "Serviciile aprobate sunt păstrate. Poți modifica orice secțiune." };
