@@ -1,6 +1,8 @@
 import React from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import LocationPositionField from "@/components/provider/LocationPositionField";
+import { resetLocationAddressPosition } from "../../../../shared/locationMapPosition.js";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 
 const inputCls = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-foreground/50";
@@ -23,13 +25,13 @@ export default function WizProfessionalBasics({ data, update, next }) {
   const prof = data.professional;
   const loc = data.location;
   const contact = data.contact;
-  const setLoc = (k, v) => update({ location: { ...loc, [k]: v } });
+  const setLoc = (k, v) => update({ location: k === "address" ? resetLocationAddressPosition(loc, { [k]: v }) : { ...loc, [k]: v } });
   const setContact = (k, v) => update({ contact: { ...contact, [k]: v } });
 
   const selectLocality = (g) =>
     update({
       location: {
-        ...loc,
+        ...loc, lat: null, lng: null, place_id: "", map_precision: "approximate",
         locality_siruta_code: g?.siruta_code || "",
         city: g?.name || "",
         county: g?.county_name || "",
@@ -72,7 +74,8 @@ export default function WizProfessionalBasics({ data, update, next }) {
         value={loc.locality_siruta_code ? { display_label: `${loc.city}${loc.county ? ", " + loc.county : ""}` } : null}
         onSelect={selectLocality}
       />
-      <input className={inputCls} placeholder="Adresa *" value={loc.address} onChange={(e) => setLoc("address", e.target.value)} />
+      <input className={inputCls} placeholder="Strada și numărul *" value={loc.address} onChange={(e) => setLoc("address", e.target.value)} />
+      <LocationPositionField value={loc} onChange={(location) => update({ location })} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input className={inputCls} placeholder="Telefon public" value={loc.phone_public} onChange={(e) => setLoc("phone_public", e.target.value)} />
         <input className={inputCls} type="email" placeholder="Email public" value={loc.public_email} onChange={(e) => setLoc("public_email", e.target.value)} />
