@@ -358,7 +358,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
           <div className="location-editor-actions__status" role="status">{processing ? "Se procesează fotografia…" : pending ? "În verificare · așteaptă aprobarea" : stagedFile ? "Selecția este doar pe acest dispozitiv" : editableDraft ? "Draft salvat · netrimis" : currentPhoto ? "Fotografia este la zi" : "Alege o fotografie pentru a continua"}</div>
           <div className="location-editor-actions__buttons">
             {(stagedFile || editableDraft) && !pending && <button type="button" disabled={processing} onClick={discardDraft} className="location-editor-button"><Trash2 /> {stagedFile ? "Renunță la selecție" : "Retrage draftul"}</button>}
-            {stagedFile && <button type="button" disabled={processing} onClick={saveDraft} className="location-editor-button location-editor-button--primary">{processing ? <Loader2 className="animate-spin" /> : <CheckCircle2 />} Salvează draftul</button>}
+            {stagedFile && <button type="button" disabled={processing} onClick={saveDraft} className="location-editor-button location-editor-button--primary">{processing ? <Loader2 className="animate-spin" /> : <CheckCircle2 />} Salvează ca draft</button>}
             {editableDraft && !stagedFile && <button type="button" disabled={processing} onClick={submitReview} className="location-editor-button location-editor-button--primary">{processing ? <Loader2 className="animate-spin" /> : <Send />} Trimite spre verificare</button>}
           </div>
         </footer>
