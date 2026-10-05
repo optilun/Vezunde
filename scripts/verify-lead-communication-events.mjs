@@ -14,7 +14,7 @@ import {
 import {
   communicationDeliveryIdempotencyKey,
   deliverCommunicationEmail,
-} from '../shared/communicationDelivery.js';
+} from '../base44/shared/communicationDelivery.js';
 
 assert.equal(COMMUNICATION_EVENT_CATALOG_VERSION, 'communication-events-v2');
 assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE)?.template_version, 'provider-lead-available-v1');
@@ -169,8 +169,8 @@ for (const forbidden of ['recipient_email', 'body', 'contact_name', 'contact_pho
   assert.equal(schema.properties[forbidden], undefined, `${forbidden} nu trebuie stocat in jurnalul de livrare`);
 }
 
-const notifier = await readFile(new URL('../shared/leadCommunicationNotifications.js', import.meta.url), 'utf8');
-const patientNotifier = await readFile(new URL('../shared/patientCommunicationNotifications.js', import.meta.url), 'utf8');
+const notifier = await readFile(new URL('../base44/shared/leadCommunicationNotifications.js', import.meta.url), 'utf8');
+const patientNotifier = await readFile(new URL('../base44/shared/patientCommunicationNotifications.js', import.meta.url), 'utf8');
 const distributionBackend = await readFile(new URL('../base44/functions/authorizePatientRequestDistribution/entry.ts', import.meta.url), 'utf8');
 const createBackend = await readFile(new URL('../base44/functions/createPatientRequest/entry.ts', import.meta.url), 'utf8');
 const responseBackend = await readFile(new URL('../base44/functions/providerLeadResponseOps/entry.ts', import.meta.url), 'utf8');

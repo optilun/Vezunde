@@ -5,8 +5,8 @@
   },
   "include": [
     "../shared/communicationEventCatalog.js",
-    "../shared/communicationDelivery.js",
-    "../shared/patientCommunicationNotifications.js",
+    "../base44/shared/communicationDelivery.js",
+    "../base44/shared/patientCommunicationNotifications.js",
     "../shared/patientCommunicationProjection.js",
     "../shared/inAppNotificationPolicy.js",
     "../shared/inAppNotificationDelivery.js",
