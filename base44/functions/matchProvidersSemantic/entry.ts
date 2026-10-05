@@ -52,6 +52,7 @@ import {
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { buildCacheKey, invokePatientNeedLlm } from '../../shared/patientNeedLlmEngine.js';
+import { detectAnswerContradictions } from '../../shared/patientAnswerContradictions.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
@@ -449,6 +450,7 @@ async function recordGuidanceObservation(base44, context, observation) {
   const s = observation.summary || {};
   const c = observation.comparison || {};
   const diagnosis = context.liveResult?.diagnosis;
+  const answerFlags = detectAnswerContradictions(context.legacyInterpretation, context.guidedAnswers);
   await base44.asServiceRole.entities.AIGuidanceObservation.create({
     ai_status: s.ai_status || context.legacyStatus || 'unavailable',
     deterministic_intent: clean(context.deterministicIntent),
@@ -458,8 +460,8 @@ async function recordGuidanceObservation(base44, context, observation) {
     care_path: s.care_path || '',
     next_question_key: s.next_question_key || '',
     sufficient_for_search: s.sufficient_for_search === true,
-    conflict_detected: c.conflict_detected === true,
-    conflict_flags: s.conflict_flags || [],
+    conflict_detected: c.conflict_detected === true || answerFlags.length > 0,
+    conflict_flags: [...(s.conflict_flags || []), ...answerFlags],
     fallback_used: c.fallback_used === true,
     fallback_reason: s.fallback_reason || '',
     model_used: context.engineMeta?.model_used || '',

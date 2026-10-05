@@ -4,6 +4,7 @@ import {
   normalizeServiceKey,
 } from './canonicalServiceRegistryExtended.js';
 import { getApprovedPatientGuidanceQuestion } from './patientGuidanceQuestionCatalog.js';
+import { ANSWER_PRIORITY_RULES } from './patientAnswerContradictions.js';
 
 // 2026-09-24, audit LLM cautare/recomandare: v2 a interpretarii.
 //
@@ -359,6 +360,7 @@ export function buildPatientNeedPrompt({
     ...EXTRACTION_RULES,
     ...SERVICE_RULES,
     ...SAFETY_RULES,
+    ...ANSWER_PRIORITY_RULES,
     'evidence_phrases: up to 5 short phrases copied exactly from the patient text that justify the intent.',
     'EXAMPLES (input text followed by the expected JSON):',
     ...PATIENT_NEED_INTERPRETATION_EXAMPLES.map((example) => (
