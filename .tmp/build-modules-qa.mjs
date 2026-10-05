@@ -30,7 +30,7 @@ if(name==="manageProfessionalAssignment"){
 if(name==="locationPhotoOps"){
  if(payload.action==="get")return {data:{location:{current_photo_url:"/images/specialists/optical-team-hero-v1.webp"},submission:state.photo}};
  if(payload.action==="save_draft"){state.photo={id:"demo-photo",status:"draft",payload:payload.photo};return {data:{submission:state.photo}};}
- if(payload.action==="submit_review"){state.submits++;state.photo={...state.photo,status:"pending_review"};return {data:{submission:state.photo}};}
+ if(payload.action==="submit_review"){state.submits++;state.photo={...state.photo,status:"pending_review"};return {data:{success:true,submission:state.photo}};}
 }
 if(name==="providerPhotoUploadLifecycleOps"){
  if(payload.action==="register_upload")return {data:{asset:{id:"demo-asset"}}};
