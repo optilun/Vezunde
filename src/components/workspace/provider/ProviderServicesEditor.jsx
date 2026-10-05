@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Search, Send, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Search, Send, X } from "lucide-react";
 import { CARE_SETTINGS, getFunctionalUnitDefinition, getCapabilityDefinition } from "@/lib/providerLocationFunctionalUnits";
 import { useProviderServicesConfig } from "./services/useProviderServicesConfig";
 import UnitPicker from "./services/UnitPicker";
@@ -10,7 +10,7 @@ import ServicesSearchResults from "./services/ServicesSearchResults";
 import DependencyRemovalDialog from "./services/DependencyRemovalDialog";
 import LegacyServices from "./services/LegacyServices";
 import { isSelected, selectedServiceKeys, serviceLabel } from "./services/servicesConfigModel";
-import { getEditorStatus, reviewFingerprint, saveBeforeContinuing, selectionChanges, stableSignature } from "./services/servicesEditorModel";
+import { getEditorStatus, selectionChanges, stableSignature } from "./services/servicesEditorModel";
 
 const unitLabel = key => getFunctionalUnitDefinition(key)?.shortTitle || getFunctionalUnitDefinition(key)?.title || key;
 
@@ -26,14 +26,11 @@ export default function ProviderServicesEditor(props) {
   const m = useProviderServicesConfig(props);
   const [view, setView] = useState("configuration");
   const [unitIndex, setUnitIndex] = useState(0);
-  const [navOpen, setNavOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [reviewed, setReviewed] = useState({});
+  const [transitioning, setTransitioning] = useState(false);
   const headingRef = useRef(null);
   const searchRef = useRef(null);
   const initialised = useRef(false);
   const continueLock = useRef(false);
-  const storageKey = "viasee:services-reviewed:v1:" + (props.locationId || props.location?.id || "");
   const allItems = m.profileSections.flatMap(section => section.items);
   const itemMap = Object.fromEntries(allItems.map(item => [item.id, item]));
   const itemLabel = key => serviceLabel(itemMap[key] || { id: key, label: key });
@@ -43,46 +40,16 @@ export default function ProviderServicesEditor(props) {
   const hasWorkingCopy = Boolean(m.draft || m.dirty);
   const activeUnitKey = m.visibleUnits[unitIndex] || m.visibleUnits[0];
   const sections = m.sectionsByUnit[activeUnitKey] || [];
-  const groupFingerprint = section => reviewFingerprint({
-    services: section.items.filter(item => isSelected(m.selected, item)).map(item => item.id),
-    cas: section.items.filter(item => m.casServiceKeys.includes(item.id)).map(item => item.id),
-    capabilities: m.capabilities.filter(item => item.parent_unit_key === activeUnitKey),
-    map: Object.fromEntries(section.items.map(item => [item.id, m.serviceUnitMap[item.id] || ""])),
-  });
-  const fingerprints = {
-    configuration: reviewFingerprint(m.activeUnits),
-    options: reviewFingerprint({ care: m.careSetting, selected: selectedServiceKeys(m.selected).filter(key => globalKeys.has(key)) }),
-  };
-  for (const key of m.visibleUnits) {
-    const unitSections = m.sectionsByUnit[key] || [];
-    for (const section of unitSections) {
-      fingerprints[key + ":" + section.key] = reviewFingerprint({
-        services: section.items.filter(item => isSelected(m.selected, item)).map(item => item.id),
-        cas: section.items.filter(item => m.casServiceKeys.includes(item.id)).map(item => item.id),
-        capabilities: m.capabilities.filter(item => item.parent_unit_key === key),
-        map: Object.fromEntries(section.items.map(item => [item.id, m.serviceUnitMap[item.id] || ""])),
-      });
-    }
-  }
   // 2026-10-04 (audit cont organizație, #18): spațiile bifate fără niciun serviciu se văd și în
   // rezumat, nu doar deschizând fiecare spațiu. Rămân permise.
   const unitItemCount = key => new Set((m.sectionsByUnit[key] || []).flatMap(section => section.items).filter(item => isSelected(m.selected, item)).map(item => item.id)).size;
-  const emptyUnits = m.visibleUnits.filter(key => unitItemCount(key) === 0 && !m.suggestions.some(item => item.functional_unit_key === key));
-  const unitDone = key => (m.sectionsByUnit[key] || []).length > 0 && m.sectionsByUnit[key].every(section => reviewed[key + ":" + section.key] === fingerprints[key + ":" + section.key]);
+  const emptyUnits = m.activeUnits.filter(key => unitItemCount(key) === 0 && !m.suggestions.some(item => item.functional_unit_key === key));
   const steps = [
-    { key: "configuration", title: "Spațiile locației", meta: m.activeUnits.length + " selectate", done: reviewed.configuration === fingerprints.configuration },
-    ...m.visibleUnits.map((key, index) => ({ key: "unit:" + index, title: unitLabel(key), meta: (m.selectedByUnit[key] || 0) + " servicii selectate", done: unitDone(key) })),
-    { key: "options", title: "Opțiunile locației", meta: "Opțional", done: reviewed.options === fingerprints.options },
-    { key: "review", title: "Verifică și trimite", meta: "Rezumatul ofertei" },
+    { key: "configuration", title: "Spațiile locației" },
+    { key: "services", title: "Serviciile oferite" },
+    { key: "review", title: "Verifică și trimite" },
   ];
-  const currentKey = view === "unit" ? "unit:" + unitIndex : view;
-  const currentStep = steps.findIndex(step => step.key === currentKey);
-  const doneCount = steps.filter(step => step.done).length;
-
-  useEffect(() => {
-    try { const saved = JSON.parse(localStorage.getItem(storageKey) || "{}"); setReviewed(saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {}); } catch { setReviewed({}); }
-    initialised.current = false;
-  }, [storageKey]);
+  const currentStep = view === "configuration" ? 0 : view === "review" ? 2 : 1;
   useEffect(() => {
     if (!m.loading && m.config && !initialised.current) {
       initialised.current = true;
@@ -93,7 +60,9 @@ export default function ProviderServicesEditor(props) {
     if (unitIndex >= m.visibleUnits.length) setUnitIndex(0);
   }, [unitIndex, m.visibleUnits.length]);
   const onDirtyChange = props.onDirtyChange;
-  useEffect(() => { onDirtyChange?.(m.dirty); }, [m.dirty, onDirtyChange]);
+  useEffect(() => { onDirtyChange?.(m.dirty || m.saving); }, [m.dirty, m.saving, onDirtyChange]);
+  const onRegisterSave = props.onRegisterSave;
+  useEffect(() => { onRegisterSave?.(m.save); return () => onRegisterSave?.(null); }, [m.save, onRegisterSave]);
   useEffect(() => {
     if (!m.dirty) return;
     const warn = event => { event.preventDefault(); event.returnValue = ""; };
@@ -102,32 +71,25 @@ export default function ProviderServicesEditor(props) {
   }, [m.dirty]);
 
   const go = key => {
-    if (m.saving) return;
+    if (m.committing || continueLock.current) return;
     m.setQuery("");
-    setSearchOpen(false);
     if (key.startsWith("unit:")) { setUnitIndex(Number(key.split(":")[1])); setView("unit"); }
-    else setView(key === "selected" ? "review" : key);
-    setNavOpen(false);
+    else setView(key === "services" ? "unit" : key === "selected" ? "review" : key);
     requestAnimationFrame(() => {
       headingRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
       headingRef.current?.focus({ preventScroll: true });
     });
   };
-  const markReviewed = (key, fingerprint) => setReviewed(previous => {
-    const next = { ...previous, [key]: fingerprint };
-    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* Progress is optional when storage is unavailable. */ }
-    return next;
-  });
-  const continueStep = async (key, fingerprint, next) => {
-    if (continueLock.current || m.saving) return false;
+  const continueStep = async next => {
+    if (continueLock.current || m.committing) return false;
     continueLock.current = true;
-    const result = await saveBeforeContinuing({
-      dirty: m.dirty,
-      save: m.save,
-      onSuccess: () => { markReviewed(key, fingerprint); next?.(); },
-    });
-    continueLock.current = false;
-    return result;
+    setTransitioning(true);
+    let saved = false;
+    try { saved = await m.save() === true; } finally {
+      continueLock.current = false; setTransitioning(false);
+    }
+    if (saved) go(next);
+    return saved;
   };
 
   const serviceChanges = selectionChanges(approvedPublicKeys, publicKeys, itemLabel);
@@ -145,9 +107,9 @@ export default function ProviderServicesEditor(props) {
   const totalChanges = serviceChanges.length + globalChanges.length + spaceChanges.length + casChanges.length + capabilityChanges.length + m.suggestions.length + m.rawRemovalKeys.length + Number(careChanged) + Number(resourcesChanged) + assignmentChanges.length;
   const hasChanges = hasWorkingCopy && totalChanges > 0;
   const status = getEditorStatus({ saving: m.saving, error: m.error, dirty: m.dirty, pendingReview: m.pendingReview, hasDraft: Boolean(m.draft), hasChanges, approvedCount: approvedPublicKeys.length });
-  const title = m.query ? "Rezultatele căutării" : view === "unit" ? unitLabel(activeUnitKey) : view === "configuration" ? "Ce spații ai la această locație?" : view === "options" ? "Opțiuni pentru întreaga locație" : view === "advanced" ? "Servicii din evidența anterioară" : "Verifică oferta locației";
+  const title = m.query ? "Rezultatele căutării" : view === "unit" ? "Ce servicii oferi?" : view === "configuration" ? "Ce spații ai la această locație?" : view === "options" ? "Opțiuni pentru întreaga locație" : view === "advanced" ? "Servicii din evidența anterioară" : "Verifică oferta locației";
   const description = m.query ? "Poți selecta un serviciu direct din rezultate." : view === "configuration" ? "Bifează tipurile de spații existente. Nu este nevoie să treci fiecare cameră." : view === "unit" ? "Bifează doar serviciile pe care le oferi. Poți lăsa un grup fără selecții." : view === "options" ? "Alege ce se aplică locației. Poți continua și fără opțiuni suplimentare." : "Verifică serviciile și detaliile înainte să trimiți modificările spre aprobare.";
-  const disabled = !m.editable || m.saving;
+  const disabled = !m.editable || m.committing || transitioning;
   const isReview = view === "review" && !m.query;
   const changeList = (title, entries) => entries.length > 0 && <div className="services-editor__change-group"><h4>{title}</h4><ul>{entries.map(entry => <li key={entry.kind + entry.key}><span data-kind={entry.kind}>{entry.kind === "added" ? "Adăugat" : "Eliminare propusă"}</span>{entry.label}{m.reviewState[entry.key] && <small>În verificare</small>}</li>)}</ul></div>;
 
@@ -155,26 +117,20 @@ export default function ProviderServicesEditor(props) {
   if (!m.config) return <div className="services-editor__notice" role="alert"><p>{m.error || "Nu am putut încărca oferta."}</p><button type="button" onClick={m.load}>Încearcă din nou</button></div>;
 
   return <div className="services-editor" data-view={m.query ? "search" : view}>
-    <aside className="services-editor__nav">
-      <button type="button" className="services-editor__mobile-toggle" aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}>Secțiunile ofertei <ChevronDown /></button>
-      <nav aria-label="Configurarea serviciilor" data-open={navOpen}>
-        <div className="services-editor__nav-intro"><strong>Oferta locației</strong><p>{publicKeys.length} servicii selectate</p></div>
-        <ol>{steps.map((step, index) => <li key={step.key}><button type="button" disabled={m.saving} aria-current={!m.query && step.key === currentKey ? "step" : undefined} onClick={() => go(step.key)}>
-          <span className="services-editor__step-number">{step.done ? <Check /> : String(index + 1).padStart(2, "0")}</span>
-          <span><strong>{step.title}</strong><small>{step.done ? "Revizuită · " : ""}{step.meta}</small></span>
-        </button></li>)}</ol>
-        <p className="services-editor__progress-note">{doneCount} din {steps.length - 1} secțiuni revizuite pe acest dispozitiv. Poți reveni oricând la o secțiune.</p>
-      </nav>
-    </aside>
+    <nav className="services-editor__steps" aria-label="Configurarea serviciilor">
+      <ol>{steps.map((step, index) => <li key={step.key}>
+        <button type="button" aria-current={currentStep === index ? "step" : undefined} disabled={m.committing || transitioning} onClick={() => index === 2 ? continueStep("review") : go(step.key)}>
+          <span className="services-editor__step-number">{String(index + 1).padStart(2, "0")}</span>
+          <strong>{step.title}</strong>
+        </button>
+      </li>)}</ol>
+    </nav>
 
     <section className="services-editor__main" aria-labelledby="services-editor-title">
       <header className="services-editor__heading">
         <div className="services-editor__heading-row">
           <h2 ref={headingRef} tabIndex={-1} id="services-editor-title">{title}</h2>
-          <button type="button" className="services-editor__search-toggle" aria-label="Caută în toate serviciile" aria-expanded={searchOpen || Boolean(m.query)} aria-controls="services-editor-search" onClick={() => {
-            if (searchOpen || m.query) { setSearchOpen(false); m.setQuery(""); }
-            else { setSearchOpen(true); requestAnimationFrame(() => searchRef.current?.focus()); }
-          }}><Search /><span>Caută servicii</span></button>
+          {isReview && m.editable && <button type="button" className="services-editor__edit-offer" disabled={disabled} onClick={() => go("configuration")}>Editează oferta<ArrowRight /></button>}
         </div>
         <p>{description}</p>
       </header>
@@ -185,13 +141,19 @@ export default function ProviderServicesEditor(props) {
       {!m.editable && <div className="services-editor__notice">{m.conflicts[0]?.message || "Ai acces de vizualizare. Ownerul sau managerul locației poate modifica oferta."}</div>}
       {m.draft?.admin_note && ["needs_more_info", "rejected"].includes(m.draft.status) && <div className="services-editor__notice"><strong>Completări solicitate</strong><p>{m.draft.admin_note}</p></div>}
       {m.persistenceMode === "legacy" && <div className="services-editor__notice">Salvarea spațiilor și a resurselor este momentan indisponibilă. Serviciile pot fi salvate.</div>}
-      <div id="services-editor-search" className="services-editor__search" hidden={!searchOpen && !m.query}><Search /><input ref={searchRef} type="search" aria-label="Caută în toate serviciile" placeholder="Caută în toate serviciile" value={m.query} onChange={event => m.setQuery(event.target.value)} />{m.query && <button type="button" aria-label="Șterge căutarea" onClick={() => { m.setQuery(""); searchRef.current?.focus(); }}><X /></button>}</div>
+      {currentStep === 1 && <>
+        <div id="services-editor-search" className="services-editor__search"><Search aria-hidden="true" /><input ref={searchRef} type="search" aria-label="Caută în toate serviciile" placeholder="Caută un serviciu, de exemplu: lentile progresive" value={m.query} onChange={event => m.setQuery(event.target.value)} />{m.query && <button type="button" aria-label="Șterge căutarea" onClick={() => { m.setQuery(""); searchRef.current?.focus(); }}><X /></button>}</div>
+        <nav className="services-editor__categories" aria-label="Spații și opțiuni">
+          {m.visibleUnits.map((key, index) => <button key={key} type="button" aria-pressed={view === "unit" && unitIndex === index} disabled={m.committing || transitioning} onClick={() => go("unit:" + index)}>{unitLabel(key)}<span>{unitItemCount(key)}</span></button>)}
+          <button type="button" aria-pressed={view === "options"} disabled={m.committing || transitioning} onClick={() => go("options")}>Opțiunile locației<span>Opțional</span></button>
+        </nav>
+      </>}
 
       <div className="services-editor__content">
       {m.query ? <ServicesSearchResults query={m.query} results={m.searchResults} selected={m.selected} approvedSelected={m.approvedSelected} reviewState={m.reviewState} serviceUnitMap={m.serviceUnitMap} activeUnits={m.activeUnits} prerequisites={m.draftPrerequisites} disabled={disabled} onToggleService={m.toggleService} onClearQuery={() => m.setQuery("")} /> : <>
         {view === "configuration" && <UnitPicker units={m.selectableUnits} activeUnits={m.activeUnits} approvedUnits={m.approvedUnits} selectedByUnit={m.selectedByUnit} primaryUnits={m.primaryUnits} reviewState={m.reviewState} disabled={disabled} onToggle={m.toggleUnit} />}
         {view === "options" && <GlobalServiceSections sections={m.globalSections} selected={m.selected} approvedSelected={m.approvedSelected} reviewState={m.reviewState} disabled={disabled} onToggleService={m.toggleService} onSetSelection={m.setServicesSelection} careSettingSlot={<CareSettingPicker embedded options={m.operationalLayout.careSettings || []} approvedValue={m.approvedCareSetting} value={m.careSetting} disabled={disabled} onChange={m.setCareSetting} />} />}
-        {view === "unit" && activeUnitKey && <UnitAccordion key={activeUnitKey} unitKey={activeUnitKey} sections={sections} selected={m.selected} approvedSelected={m.approvedSelected} reviewState={m.reviewState} serviceUnitMap={m.serviceUnitMap} prerequisites={m.draftPrerequisites} config={{ ...m.config, activeUnits: m.activeUnits }} resourceLinks={m.resourceLinks} approvedResourceLinks={m.approvedResourceLinks} customSuggestions={m.suggestions} capabilities={m.capabilities} approvedCapabilities={m.approvedCapabilities} onToggleCapability={m.toggleCapability} open disabled={disabled} casServiceKeys={m.casServiceKeys} onToggleCas={m.toggleCasService} onToggleService={m.toggleService} onSetSelection={m.setServicesSelection} onChangeSectionUnit={m.changeSectionUnit} onToggleResource={m.toggleResource} onAddSuggestion={m.addSuggestion} onRemoveSuggestion={m.removeSuggestion} stepMode active stepIndex={unitIndex} onGoToUnit={index => go("unit:" + index)} onChooseView={() => go("options")} unitTitles={m.visibleUnits} onBeforeNext={section => continueStep(activeUnitKey + ":" + section.key, groupFingerprint(section))} dirty={m.dirty} saving={m.saving} reviewedGroups={reviewed} groupFingerprints={fingerprints} />}
+        {view === "unit" && activeUnitKey && <UnitAccordion key={activeUnitKey} unitKey={activeUnitKey} sections={sections} selected={m.selected} approvedSelected={m.approvedSelected} reviewState={m.reviewState} serviceUnitMap={m.serviceUnitMap} prerequisites={m.draftPrerequisites} config={{ ...m.config, activeUnits: m.activeUnits }} resourceLinks={m.resourceLinks} approvedResourceLinks={m.approvedResourceLinks} customSuggestions={m.suggestions} capabilities={m.capabilities} approvedCapabilities={m.approvedCapabilities} onToggleCapability={m.toggleCapability} open disabled={disabled} casServiceKeys={m.casServiceKeys} onToggleCas={m.toggleCasService} onToggleService={m.toggleService} onSetSelection={m.setServicesSelection} onChangeSectionUnit={m.changeSectionUnit} onToggleResource={m.toggleResource} onAddSuggestion={m.addSuggestion} onRemoveSuggestion={m.removeSuggestion} stepMode active hideStepFooter dirty={m.dirty} saving={m.committing || transitioning} />}
         {view === "unit" && !activeUnitKey && <div className="services-editor__notice">Alege mai întâi spațiile existente.<button type="button" onClick={() => go("configuration")}>Alege spațiile</button></div>}
         {view === "advanced" && <LegacyServices services={m.config.legacy_or_unknown_services || []} rawRemovalKeys={m.rawRemovalKeys} disabled={disabled} onToggle={m.toggleRawRemoval} />}
         {isReview && <>
@@ -227,20 +189,15 @@ export default function ProviderServicesEditor(props) {
       </>}
       </div>
 
-      {(!m.query && ["configuration", "options"].includes(view)) && <div className="services-editor__continue">
-        <span>{view === "configuration" ? "Selectează doar spațiile existente." : "Opțiunile suplimentare nu sunt obligatorii."}</span>
-        {currentStep > 0 && <button type="button" disabled={m.saving} onClick={() => go(steps[currentStep - 1].key)}><ArrowLeft /> Înapoi</button>}
-        <button type="button" className="is-primary" disabled={m.saving} onClick={() => continueStep(view, fingerprints[view], () => go(steps[currentStep + 1]?.key || "review"))}>{m.saving ? "Se salvează…" : m.dirty ? "Salvează și continuă" : "Confirmă și continuă"}<ArrowRight /></button>
-      </div>}
-
       <footer className="services-editor__actions">
-        <div><strong>{m.saving ? "Se salvează…" : m.dirty ? "Modificări nesalvate" : m.pendingReview ? "Cerere în verificare" : m.draft && hasChanges ? "Modificări salvate" : "Oferta este salvată"}</strong><small>Salvarea păstrează progresul. Trimiterea cere aprobarea modificărilor.</small></div>
-        {m.editable && m.dirty && <button type="button" disabled={m.saving} onClick={m.save}>Salvează progresul</button>}
-        {isReview && m.draft && !m.pendingReview && hasChanges && <button type="button" className="is-primary" disabled={disabled || m.dirty || !m.readiness.configurationComplete} onClick={m.submit}><Send /> Trimite spre aprobare</button>}
-        {!isReview && <button type="button" disabled={m.saving} onClick={() => go("review")}>Vezi rezumatul</button>}
-        {isReview && m.pendingReview && m.persistenceMode === "v2" && m.editable && <button type="button" disabled={m.saving} onClick={m.withdraw}>Retrage cererea</button>}
+        <div role="status"><strong>{m.error ? "Salvarea nu este confirmată" : m.saving ? "Se salvează automat…" : m.dirty ? "Salvare automată în așteptare…" : m.pendingReview ? "Cerere în verificare" : "Toate modificările sunt salvate"}</strong><small>Draftul se salvează automat. Trimiterea spre aprobare se face doar când alegi tu.</small></div>
+        {m.error && m.editable && <button type="button" disabled={m.saving || transitioning} onClick={m.save}>Reîncearcă salvarea</button>}
+        {currentStep > 0 && <button type="button" disabled={m.committing || transitioning} onClick={() => go(currentStep === 2 ? "services" : "configuration")}><ArrowLeft />Înapoi</button>}
+        {currentStep < 2 && <button type="button" className="is-primary" disabled={m.committing || transitioning} onClick={() => continueStep(currentStep === 0 ? "services" : "review")}>{transitioning ? "Se salvează…" : currentStep === 0 ? "Continuă la servicii" : "Verifică oferta"}<ArrowRight /></button>}
+        {isReview && !m.pendingReview && hasChanges && <button type="button" className="is-primary" disabled={disabled || m.saving || !m.readiness.configurationComplete} onClick={m.submit}><Send />Trimite spre aprobare</button>}
+        {isReview && m.pendingReview && m.persistenceMode === "v2" && m.editable && <button type="button" disabled={m.saving || transitioning} onClick={m.withdraw}>Retrage cererea</button>}
       </footer>
-      {isReview && m.dirty && <p className="services-editor__footnote">Salvează progresul pentru a putea trimite modificările spre aprobare.</p>}
+
     </section>
     <DependencyRemovalDialog request={m.pendingRemoval} onCancel={m.cancelDependencyRemoval} onConfirm={m.confirmDependencyRemoval} />
   </div>;
