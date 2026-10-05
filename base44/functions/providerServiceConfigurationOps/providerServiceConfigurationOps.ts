@@ -154,13 +154,22 @@ function isPromotedPrivateDraft(submission) {
   return (submission.access_origin || 'provider_workspace') === 'provider_workspace' && Boolean(submission.claim_request_id);
 }
 
-function conflict(submission) {
+function conflict(submission, authorName = '') {
   return {
     conflict: true,
     section: 'services',
     status: submission.status,
-    message: 'Există deja o modificare în lucru pentru serviciile acestei locații.',
+    submission_id: submission.id,
+    author_name: authorName,
+    message: authorName
+      ? `${authorName} are o modificare în lucru pentru serviciile acestei locații. O poți prelua ca să continui tu.`
+      : 'Un alt membru al echipei are o modificare în lucru pentru serviciile acestei locații. O poți prelua ca să continui tu.',
   };
+}
+
+async function authorName(svc, userId) {
+  const users = await svc.entities.User.filter({ id: userId }).catch(() => []);
+  return users[0]?.full_name || users[0]?.email || '';
 }
 
 async function audit(svc, user, record) {
@@ -346,7 +355,7 @@ export async function handle(req: Request) {
     const svc = base44.asServiceRole;
     const payload = await req.json().catch(() => ({}));
     const action = clean(payload.action || 'list_mine');
-    if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw'].includes(action)) {
+    if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw', 'take_over'].includes(action)) {
       return Response.json({ error: 'Acțiune invalidă' }, { status: 400 });
     }
 
@@ -382,13 +391,10 @@ export async function handle(req: Request) {
         section: 'services',
         status: { $in: ACTIVE_STATUSES },
       }, '-created_date', 50);
-      return Response.json({
-        mode: access.mode,
-        submissions: own.map(safeSubmission),
-        conflicts: active
-          .filter((item) => item.submitted_by_user_id !== user.id && !isPromotedPrivateDraft(item))
-          .map(conflict),
-      });
+      const others = active.filter((item) => item.submitted_by_user_id !== user.id && !isPromotedPrivateDraft(item));
+      const conflicts = [];
+      for (const item of others) conflicts.push(conflict(item, await authorName(svc, item.submitted_by_user_id)));
+      return Response.json({ mode: access.mode, submissions: own.map(safeSubmission), conflicts });
     }
 
     if (action === 'create_draft' || action === 'update_draft') {
@@ -511,6 +517,27 @@ export async function handle(req: Request) {
         note: 'Configurația serviciilor și unităților a fost actualizată.',
       });
       return Response.json({ success: true, submission: safeSubmission({ ...submission, payload_json: JSON.stringify(validation.clean), status: 'draft' }) });
+    }
+
+    if (action === 'take_over') {
+      // Ownerul sau managerul locatiei preia ciorna lasata de alt membru, ca sa nu ramana blocat.
+      if (access.mode !== 'provider_workspace') return Response.json({ error: 'Preluarea nu este disponibilă aici' }, { status: 403 });
+      const target = await svc.entities.ProviderWorkspaceSubmission.get(clean(payload.submission_id)).catch(() => null);
+      if (!target || target.location_id !== access.location_id || target.section !== 'services'
+        || (target.access_origin || 'provider_workspace') !== 'provider_workspace'
+        || !ACTIVE_STATUSES.includes(target.status)) {
+        return Response.json({ error: 'Modificarea nu mai poate fi preluată' }, { status: 400 });
+      }
+      if (target.submitted_by_user_id !== user.id) {
+        await svc.entities.ProviderWorkspaceSubmission.update(target.id, { submitted_by_user_id: user.id });
+        await audit(svc, user, {
+          entity_type: 'ProviderWorkspaceSubmission', entity_id: target.id,
+          action_type: 'take_over_service_configuration', changed_fields: ['submitted_by_user_id'],
+          previous: { submitted_by_user_id: target.submitted_by_user_id }, next: { submitted_by_user_id: user.id },
+          note: 'Modificarea în lucru a fost preluată de alt membru al echipei.',
+        });
+      }
+      return Response.json({ success: true });
     }
 
     const submissionId = clean(payload.submission_id);

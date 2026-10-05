@@ -138,7 +138,7 @@ export default function ProviderServicesEditor(props) {
         <span className="services-editor__status-dot" /><div><strong>{status.title}</strong>{(m.error || m.dirty || m.pendingReview || m.saving || status.tone === "ready") && <p>{status.detail}</p>}
         {m.message && !m.dirty && !m.error && <small>{m.message}</small>}</div>
       </div>
-      {!m.editable && <div className="services-editor__notice">{m.conflicts[0]?.message || "Ai acces de vizualizare. Ownerul sau managerul locației poate modifica oferta."}</div>}
+      {!m.editable && <div className="services-editor__notice">{m.conflicts[0]?.message || "Ai acces de vizualizare. Ownerul sau managerul locației poate modifica oferta."}{m.canTakeOver && <button type="button" disabled={m.saving} onClick={m.takeOver} className="ml-3 rounded-full bg-foreground px-4 py-1.5 text-xs font-semibold text-background disabled:opacity-50">Preia modificarea</button>}</div>}
       {m.draft?.admin_note && ["needs_more_info", "rejected"].includes(m.draft.status) && <div className="services-editor__notice"><strong>Completări solicitate</strong><p>{m.draft.admin_note}</p></div>}
       {m.persistenceMode === "legacy" && <div className="services-editor__notice">Salvarea spațiilor și a resurselor este momentan indisponibilă. Serviciile pot fi salvate.</div>}
       {currentStep === 1 && <>

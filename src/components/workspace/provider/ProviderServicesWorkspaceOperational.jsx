@@ -27,7 +27,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
     visibleUnits, searchResults, selectedCount, selectedByUnit, draftPrerequisites, readiness, dirty, editable,
     pendingReview, isB2BProfile, load, toggleUnit, toggleCapability, toggleService, setServicesSelection, toggleCasService,
     changeSectionUnit, toggleResource, addSuggestion, removeSuggestion, toggleRawRemoval,
-    confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw, setQuery,
+    confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw, setQuery, takeOver, canTakeOver,
   } = useProviderServicesConfig(props);
 
   // Faza 3 din docs/plan-refactor-servicii-2026-08-18.md: sectiunea activa, filtrul si
@@ -63,7 +63,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
           se poate lucra mai departe, iar ce se lucreaza acum pleaca la urmatoarea cerere. */}
       {pendingReview && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900"><strong className="block">Cererea ta este în verificare</strong><span className="mt-1 block">Poți lucra mai departe: elementele marcate „În verificare” așteaptă decizia și nu se mai schimbă, iar restul intră într-o cerere nouă, pe care o trimiți după ce primești răspunsul.</span></div>}
       {draft?.admin_note && ["needs_more_info", "rejected"].includes(draft.status) && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950"><strong className="block">Completări solicitate</strong><span className="mt-1 block">{draft.admin_note}</span></div>}
-      {conflicts.length > 0 && !draft && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">{conflicts[0].message}</div>}
+      {conflicts.length > 0 && !draft && <div className="services-alert flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950"><span>{conflicts[0].message}</span>{canTakeOver && <button type="button" disabled={saving} onClick={takeOver} className="rounded-full bg-foreground px-4 py-1.5 text-xs font-semibold text-background disabled:opacity-50">Preia modificarea</button>}</div>}
       {/* Conditia "&& !pendingReview" a fost scoasa (2026-08-23): un membru fara drept de
           editare primea, in timpul unei verificari, explicatia "in curs de aprobare" in locul
           celei reale. Ii spunea ca trebuie sa astepte, cand de fapt nu ar fi putut edita nici

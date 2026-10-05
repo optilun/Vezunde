@@ -910,6 +910,20 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     setMessage("Cererea a fost retrasă.");
   };
 
+  const takeOver = async () => {
+    const target = conflicts[0];
+    if (!target?.submission_id || savingRef.current) return;
+    if (!window.confirm("Preiei modificarea în lucru? Vei continua tu de unde a rămas.")) return;
+    setSaving(true); setError("");
+    const response = await base44.functions.invoke("providerServiceConfigurationOps", {
+      action: "take_over", submission_id: target.submission_id, location_id: locationId, section: "services",
+    }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+    setSaving(false);
+    if (response.data?.error) { setError(response.data.error); return; }
+    await load();
+    setMessage("Ai preluat modificarea. Poți continua.");
+  };
+
   // Conectam handlerii reali la ref, dupa ce toti trei sunt definiti.
   actionsRef.current = { save, submit, withdraw };
 
@@ -983,6 +997,8 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     save,
     submit,
     withdraw,
+    takeOver,
+    canTakeOver: Boolean(blockedByOtherMember && config?.can_edit_services !== false && conflicts[0]?.submission_id),
   };
 }
 
