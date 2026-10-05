@@ -70,6 +70,7 @@ const AutomaticEmailWorkspace = lazy(
 const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBillingCenter"));
 // 2026-09-28: datele de contact lasate de pacienti la cautare (PatientSearchContact).
 const AdminSearchContacts = lazy(() => import("@/components/admin/patients/AdminSearchContacts"));
+const AdminAnalytics = lazy(() => import("@/components/admin/analytics/AdminAnalytics"));
 
 const SIMPLE_HEADERS = {
   billing: "Urmărește facturile, încasările și abonamentele Pro ale locațiilor VIASEE.",
@@ -252,6 +253,8 @@ export default function AdminDirectoryOps() {
             </div>
           </div>
         )}
+
+        {tab === "analytics" && <AdminAnalytics onNavigate={navigate} />}
 
         {tab === "profiluri" && (
           <div>

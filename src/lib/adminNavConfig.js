@@ -12,6 +12,7 @@ import {
   MailCheck,
   CreditCard,
   Users,
+  BarChart3,
 } from "lucide-react";
 
 // Meniul admin e grupat pe intentie, nu ca lista plata: primele elemente sunt cele
@@ -47,7 +48,8 @@ export const ADMIN_NAV_PRIMARY = [
 ];
 
 export const ADMIN_NAV_SECONDARY = [
-  { key: "billing", label: "Plăți și abonamente", icon: CreditCard, groupLabel: "Sistem" },
+  { key: "analytics", label: "Analytics", icon: BarChart3, groupLabel: "Sistem" },
+  { key: "billing", label: "Plăți și abonamente", icon: CreditCard },
   { key: "data_integrity", label: "Integritate date", icon: DatabaseZap },
 ];
 
