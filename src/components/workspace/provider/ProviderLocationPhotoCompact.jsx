@@ -211,19 +211,23 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
 
     try {
       let asset = uploadedAsset;
-      if (!asset?.url || !asset?.id) {
-        setMessage("Fotografia se încarcă și se înregistrează...");
+      if (!asset?.url) {
+        setMessage("Fotografia se încarcă...");
         const uploadResponse = await base44.integrations.Core.UploadFile({ file: stagedFile });
         const photoUrl = String(uploadResponse?.file_url || "").trim();
         if (!photoUrl) throw new Error("Încărcarea fotografiei nu a returnat un URL valid.");
-
+        asset = { url: photoUrl };
+        setUploadedAsset(asset);
+      }
+      if (!asset.id) {
+        setMessage("Fișierul se înregistrează...");
         const registerResponse = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
           action: "register_upload",
           location_id: locationId,
-          storage_reference: photoUrl,
+          storage_reference: asset.url,
         });
         if (registerResponse.data?.error) throw new Error(registerResponse.data.error);
-        asset = { id: registerResponse.data?.asset?.id, url: photoUrl };
+        asset = { id: registerResponse.data?.asset?.id, url: asset.url };
         if (!asset.id) throw new Error("Fișierul încărcat nu a putut fi înregistrat.");
         setUploadedAsset(asset);
       }
@@ -296,9 +300,10 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
 
   const discardDraft = async () => {
     if (stagedFile || stagedPreview) {
+      const wasUploaded = Boolean(uploadedAsset?.url);
       clearStaged();
       setStep(editableDraft ? "review" : "choose");
-      setMessage("Fotografia selectată a fost eliminată. Niciun fișier nu a fost încărcat.");
+      setMessage(wasUploaded ? "Selecția a fost anulată. Încărcarea anterioară nu a fost trimisă spre verificare." : "Fotografia selectată a fost eliminată. Niciun fișier nu a fost încărcat.");
       return;
     }
     if (!submission?.id || !editableDraft) return;
