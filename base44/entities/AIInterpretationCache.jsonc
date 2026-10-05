@@ -1,0 +1,48 @@
+{
+  "name": "AIInterpretationCache",
+  "type": "object",
+  "properties": {
+    "cache_key": {
+      "type": "string"
+    },
+    "engine_version": {
+      "type": "string"
+    },
+    "model_used": {
+      "type": "string"
+    },
+    "raw_json": {
+      "type": "string"
+    },
+    "hit_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "cache_key",
+    "raw_json"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

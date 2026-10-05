@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import StatRow from "./StatRow";
+import AIEngineStats from "./AIEngineStats";
 
 // Comparatia AI (in umbra) vs sistemul fix. Un singur aggregate pe perioada aleasa.
 const LABELS = {
@@ -43,6 +44,7 @@ export default function AIGuidanceCard({ days }) {
             <StatRow key={key} label={`Servicii: ${label}`} value={sum((r) => r.ai_status === "completed" && r.service_agreement === key)} />
           ))}
           <StatRow label="Conflicte cu regulile fixe" value={sum((r) => r.conflict_detected === true)} />
+          <AIEngineStats days={days} />
         </>
       )}
     </AdminCard>

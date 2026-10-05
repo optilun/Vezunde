@@ -51,6 +51,7 @@ import {
   resolveEquivalentLocalityCodes,
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
+import { buildCacheKey, invokePatientNeedLlm } from '../../shared/patientNeedLlmEngine.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
@@ -461,6 +462,10 @@ async function recordGuidanceObservation(base44, context, observation) {
     conflict_flags: s.conflict_flags || [],
     fallback_used: c.fallback_used === true,
     fallback_reason: s.fallback_reason || '',
+    model_used: context.engineMeta?.model_used || '',
+    escalated: context.engineMeta?.escalated === true,
+    cache_hit: context.engineMeta?.cache_hit === true,
+    latency_ms: Number(context.engineMeta?.latency_ms) || 0,
     failure_diagnosis: typeof diagnosis === 'string' ? diagnosis : clean(diagnosis?.category || diagnosis?.code),
   }).catch(() => null);
 }
@@ -547,12 +552,16 @@ async function interpretPatientNeed(
     answers: payload.answers,
   });
 
+  let engineMeta = null;
   try {
-    const raw = await base44.integrations.Core.InvokeLLM({
+    const cacheKey = await buildCacheKey({ text: searchText, deterministicIntent, answers: payload.answers });
+    const engine = await invokePatientNeedLlm(base44, {
       prompt,
-      add_context_from_internet: false,
-      response_json_schema: getPatientNeedResponseSchema(),
+      schema: getPatientNeedResponseSchema(),
+      cacheKey,
     });
+    engineMeta = engine.meta;
+    const raw = engine.raw;
     const interpretation = sanitizePatientNeedInterpretation(raw, {
       deterministicIntent,
       deterministicServiceKeys,
@@ -568,6 +577,7 @@ async function interpretPatientNeed(
       text: searchText,
       legacyStatus: 'completed',
       legacyInterpretation: interpretation,
+      engineMeta,
       ...shadowContext,
     });
   } catch (_error) {
@@ -587,6 +597,7 @@ async function interpretPatientNeed(
       text: searchText,
       legacyStatus: 'unavailable',
       legacyInterpretation: null,
+      engineMeta,
       ...shadowContext,
     });
   }

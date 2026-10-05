@@ -46,6 +46,20 @@
     },
     "failure_diagnosis": {
       "type": "string"
+    },
+    "model_used": {
+      "type": "string"
+    },
+    "escalated": {
+      "type": "boolean",
+      "default": false
+    },
+    "cache_hit": {
+      "type": "boolean",
+      "default": false
+    },
+    "latency_ms": {
+      "type": "number"
     }
   },
   "required": [
