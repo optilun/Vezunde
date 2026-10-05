@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ImagePlus, Loader2, Send, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import LocationEditorSteps from "./LocationEditorSteps";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACTIVE_SUBMISSION_STATUSES = ["draft", "pending_review", "needs_more_info"];
@@ -53,7 +54,7 @@ async function optimizeLocationPhoto(file, locationId) {
     sy = (image.height - sh) / 2;
   }
 
-  const width = Math.min(1200, Math.max(640, Math.round(sw)));
+  const width = Math.min(1600, Math.round(sw));
   const height = Math.round(width / ratio);
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -84,7 +85,9 @@ async function optimizeLocationPhoto(file, locationId) {
   throw new Error("Fotografia rămâne prea mare după optimizare.");
 }
 
-export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) {
+export default function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, onBusyChange }) {
+  const [step, setStep] = useState("choose");
+  const [loadError, setLoadError] = useState("");
   const [currentPhoto, setCurrentPhoto] = useState("");
   const [submission, setSubmission] = useState(null);
   const [preview, setPreview] = useState("");
@@ -111,6 +114,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   const load = async () => {
     if (!locationId) return;
     setLoading(true);
+    setLoadError("");
     const response = await base44.functions.invoke("locationPhotoOps", {
       action: "get",
       location_id: locationId,
@@ -118,7 +122,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
     setLoading(false);
 
     if (response.data?.error) {
-      setMessage(response.data.error);
+      setLoadError(response.data.error);
       return;
     }
 
@@ -128,6 +132,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
 
     setCurrentPhoto(isLegacyOrganizationLogo ? "" : (response.data?.location?.current_photo_url || ""));
     setSubmission(nextSubmission);
+    setStep(ACTIVE_SUBMISSION_STATUSES.includes(nextSubmission?.status) ? "review" : "choose");
     setPreview(hasActivePreview
       ? (nextSubmission?.payload?.photo_url || nextSubmission?.payload?.photo_data_url || "")
       : "");
@@ -155,6 +160,13 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   const pending = submission?.status === "pending_review";
   const editableDraft = EDITABLE_SUBMISSION_STATUSES.includes(submission?.status);
   const shownPhoto = stagedPreview || preview || currentPhoto;
+  useEffect(() => { onDirtyChange?.(Boolean(stagedFile)); }, [stagedFile, onDirtyChange]);
+  useEffect(() => { onBusyChange?.(processing); }, [processing, onBusyChange]);
+  useEffect(() => {
+    const warn = event => { if (stagedFile || processing) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [stagedFile, processing]);
 
   const choosePhoto = async (file) => {
     if (!file) return;
@@ -175,6 +187,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
       const localPreviewUrl = URL.createObjectURL(optimizedFile);
       setStagedFile(optimizedFile);
+      setStep("preview");
       setStagedPreview(localPreviewUrl);
       setUploadedAsset(null);
       setMessage("Verifică fotografia. Fișierul nu este trimis până nu salvezi draftul.");
@@ -233,6 +246,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       setSubmission(nextSubmission);
       setPreview(asset.url);
       clearStaged();
+      setStep("review");
       setMessage("Draftul fotografiei a fost salvat. Verifică imaginea și trimite-o separat spre aprobare.");
       onRefresh?.();
     } catch (error) {
@@ -273,6 +287,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   const discardDraft = async () => {
     if (stagedFile || stagedPreview) {
       clearStaged();
+      setStep(editableDraft ? "review" : "choose");
       setMessage("Fotografia selectată a fost eliminată. Niciun fișier nu a fost încărcat.");
       return;
     }
@@ -288,6 +303,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       if (response.data?.error) throw new Error(response.data.error);
       setSubmission(null);
       setPreview("");
+      setStep("choose");
       setMessage("Draftul fotografiei a fost retras. Fișierul a fost adăugat în coada de curățare.");
       onRefresh?.();
     } catch (error) {
@@ -306,86 +322,48 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="mb-2">
-          <div className="text-sm font-bold">Fotografie principală a locației</div>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Alege fotografia, verifică previzualizarea, salvează draftul și trimite-l separat spre aprobare.
-          </p>
-        </div>
-
-        <div className="overflow-hidden rounded-[22px] border border-border bg-card">
-          <div className="aspect-[4/3] max-h-[420px] bg-secondary/35">
-            {shownPhoto ? (
-              <img src={shownPhoto} alt="Fotografia locației" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm font-semibold">Adaugă fotografia locației</p>
-                <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-                  Poate fi o imagine a fatadei, interiorului sau spatiului principal.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {pending ? (
-        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          Fotografia locației este în verificare. Fotografia publică actuală rămâne neschimbată până la aprobare.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto || editableDraft ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${processing ? "pointer-events-none opacity-50" : ""}`}>
-              {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-              {stagedFile ? "Alege altă fotografie" : editableDraft ? "Schimbă fotografia din draft" : currentPhoto ? "Schimbă fotografia locației" : "Alege fotografia locației"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                disabled={processing}
-                onChange={(event) => {
-                  choosePhoto(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-            </label>
-            {currentPhoto && !preview && !stagedPreview && <span className="text-xs text-muted-foreground">Fotografie aprobată</span>}
-            {editableDraft && !stagedFile && <span className="text-xs font-semibold text-amber-800">Draft netrimis</span>}
-            {stagedFile && <span className="text-xs font-semibold text-blue-800">Previzualizare locală, neîncărcată</span>}
-          </div>
-
-          {(stagedFile || editableDraft) && (
-            <div className="flex flex-wrap gap-2 border-t border-border/70 pt-3">
-              {stagedFile && (
-                <button type="button" disabled={processing} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40">
-                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Salvează ca draft
-                </button>
-              )}
-              {editableDraft && !stagedFile && (
-                <button type="button" disabled={processing} onClick={submitReview} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">
-                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Trimite spre verificare
-                </button>
-              )}
-              <button type="button" disabled={processing} onClick={discardDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-destructive hover:bg-red-50 disabled:opacity-40">
-                <Trash2 className="h-4 w-4" /> {stagedFile ? "Renunță la selecție" : "Retrage draftul"}
-              </button>
+    <div className="location-editor photo-editor">
+      <LocationEditorSteps label="Configurarea fotografiei" active={pending ? "review" : step} disabled={processing || pending || Boolean(loadError)} onChange={setStep} steps={[
+        {id:"choose",label:"Alege fotografia",detail:"JPG, PNG sau WEBP"},
+        {id:"preview",label:"Verifică imaginea",detail:"Încadrare 4:3",disabled:!stagedFile && !editableDraft},
+        {id:"review",label:"Trimite spre verificare",detail:pending ? "În verificare" : "Draft și aprobare",disabled:!editableDraft || Boolean(stagedFile)},
+      ]} />
+      {loadError ? <div role="alert" className="location-editor-notice">{loadError} <button type="button" onClick={load} className="location-editor-button ml-2">Reîncearcă încărcarea</button></div> : <>
+        <section className="location-editor-panel photo-editor-layout">
+          <div>
+            <h2>{pending ? "Fotografia este în verificare" : step === "choose" ? "Arată clienților cum arată locația" : step === "preview" ? "Verifică fotografia înainte de încărcare" : "Fotografia este salvată ca draft"}</h2>
+            <p className="location-editor-intro">{stagedFile ? "Aceasta este încadrarea care va apărea pe cardul locației." : editableDraft ? "Draftul nu apare public până la aprobare." : currentPhoto ? "Fotografia aprobată rămâne publică până când una nouă este aprobată." : "Alege o imagine a fațadei, interiorului sau spațiului principal."}</p>
+            <div className="photo-editor-frame mt-4">
+              {shownPhoto ? <img src={shownPhoto} alt={stagedFile ? "Previzualizarea fotografiei selectate" : editableDraft || pending ? "Fotografia din draft" : "Fotografia aprobată a locației"} />
+                : <div className="photo-editor-frame__empty"><ImagePlus /><strong className="mt-3 text-sm">Nicio fotografie selectată</strong><p className="location-editor-intro">Adaugă o imagine clară a locației.</p></div>}
             </div>
-          )}
-        </div>
-      )}
-
-      {submission?.admin_note && ["needs_more_info", "rejected"].includes(submission.status) && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          <b>Mesaj VIASEE:</b> {submission.admin_note}
-        </div>
-      )}
-
-      {message && <p className="text-xs leading-relaxed text-muted-foreground">{message}</p>}
+            <p className="photo-editor-caption">{stagedFile ? "Previzualizare locală · fișierul nu a fost încărcat" : pending ? "Trimisă spre verificare" : editableDraft ? "Draft salvat · încă nepublicat" : currentPhoto ? "Fotografie aprobată" : "Formatul afișat: 4:3"}</p>
+          </div>
+          <aside className="photo-editor-guidance">
+            <h2>{pending ? "Ce urmează?" : step === "review" ? "Gata pentru verificare" : "O fotografie bună"}</h2>
+            <ul>
+              {pending ? <><li>VIASEE verifică fotografia.</li><li>Fotografia actuală rămâne neschimbată până la aprobare.</li></>
+                : step === "review" ? <><li>Verifică imaginea și eventualul mesaj VIASEE.</li><li>Trimite fotografia separat spre verificare.</li><li>Fotografia se publică numai după aprobare.</li></>
+                : <><li>Alege lumină bună și o imagine în care se recunoaște locația.</li><li>Folosește o fotografie, în locul logoului organizației.</li><li>Încadrare centrală 4:3, maximum 4 MB. Imaginea este optimizată înainte de încărcare.</li></>}
+            </ul>
+            {!pending && <label className={`location-editor-button photo-editor-upload ${processing ? "opacity-50" : ""}`}>
+              <ImagePlus /> {stagedFile ? "Alege altă fotografie" : currentPhoto || editableDraft ? "Schimbă fotografia" : "Alege fotografia"}
+              <input aria-label="Alege fotografia locației" type="file" accept="image/png,image/jpeg,image/webp" disabled={processing} onChange={event => { choosePhoto(event.target.files?.[0]); event.target.value = ""; }} />
+            </label>}
+          </aside>
+        </section>
+        {submission?.admin_note && ["needs_more_info","rejected"].includes(submission.status) && <div className="location-editor-notice"><b>Mesaj VIASEE:</b> {submission.admin_note}</div>}
+        {message && <p role="status" className="location-editor-notice">{message}</p>}
+        <footer className="location-editor-actions">
+          <div className="location-editor-actions__status" role="status">{processing ? "Se procesează fotografia…" : pending ? "În verificare · așteaptă aprobarea" : stagedFile ? "Selecția este doar pe acest dispozitiv" : editableDraft ? "Draft salvat · netrimis" : currentPhoto ? "Fotografia este la zi" : "Alege o fotografie pentru a continua"}</div>
+          <div className="location-editor-actions__buttons">
+            {(stagedFile || editableDraft) && !pending && <button type="button" disabled={processing} onClick={discardDraft} className="location-editor-button"><Trash2 /> {stagedFile ? "Renunță la selecție" : "Retrage draftul"}</button>}
+            {stagedFile && <button type="button" disabled={processing} onClick={saveDraft} className="location-editor-button location-editor-button--primary">{processing ? <Loader2 className="animate-spin" /> : <CheckCircle2 />} Salvează draftul</button>}
+            {editableDraft && !stagedFile && <button type="button" disabled={processing} onClick={submitReview} className="location-editor-button location-editor-button--primary">{processing ? <Loader2 className="animate-spin" /> : <Send />} Trimite spre verificare</button>}
+          </div>
+        </footer>
+      </>}
     </div>
   );
 }
+
