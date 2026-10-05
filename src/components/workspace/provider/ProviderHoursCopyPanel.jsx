@@ -18,7 +18,7 @@ function canManageHours(location) {
   return Array.isArray(location.capabilities) && location.capabilities.includes("location.manage_operational_status");
 }
 
-export default function ProviderHoursCopyPanel({ workspace, currentLocationId, onRefresh }) {
+export default function ProviderHoursCopyPanel({ workspace, currentLocationId, onRefresh, onBeforeCopy, onCopied }) {
   const [open, setOpen] = useState(false);
   const [sourceId, setSourceId] = useState(currentLocationId || "");
   const [targetIds, setTargetIds] = useState([]);
@@ -67,6 +67,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
   };
 
   const loadPreview = async () => {
+    if (onBeforeCopy && !(await onBeforeCopy())) { setError("Salvează programul modificat înainte de a copia între locații."); return; }
     setLoading(true);
     setError("");
     setResult(null);
@@ -87,6 +88,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
   };
 
   const copyHours = async () => {
+    if (onBeforeCopy && !(await onBeforeCopy())) { setError("Salvează programul modificat înainte de a copia între locații."); return; }
     setLoading(true);
     setError("");
     const response = await base44.functions
@@ -104,6 +106,7 @@ export default function ProviderHoursCopyPanel({ workspace, currentLocationId, o
       return;
     }
     setResult(response.data);
+    onCopied?.();
     onRefresh?.();
   };
 
