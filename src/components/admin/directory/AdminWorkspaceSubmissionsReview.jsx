@@ -33,6 +33,9 @@ const SECTION_LABELS = {
 const LOCATION_FIELDS = [
   ["public_display_name", "Nume public locatie"],
   ["address", "Adresa"],
+  ["city", "Localitate"],
+  ["county", "Județ"],
+  ["locality_siruta_code", "Codul localității"],
   ["public_phone", "Telefon public locatie"],
   ["public_email", "Email public locatie"],
   ["lat", "Latitudine"],
