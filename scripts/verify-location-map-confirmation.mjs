@@ -25,7 +25,13 @@ for (const payload of [
 ]) assert.ok(locationPrecisionError(payload), "confirmation requires the address and both valid coordinates");
 
 assert.deepEqual(locationMapApprovalFields({ ...current, lat: 45.741 }, current), { map_precision: "exact" }, "an explicit confirmation approves the new point");
-assert.deepEqual(locationMapApprovalFields({ address: "Altă adresă" }, current), { map_precision: "approximate" }, "legacy address edits invalidate prior confirmation");
+const addressReset = locationMapApprovalFields({ address: "Altă adresă" }, current);
+assert.equal(addressReset.map_precision, "approximate");
+assert.equal(addressReset.lat, null, "legacy address edits discard the old point");
+assert.equal(addressReset.lng, null);
+assert.equal(addressReset.place_id, "", "legacy Google identifiers cannot redirect the new address");
+assert.equal(addressReset.geocoded_address, "");
+assert.equal(addressReset.geocode_attempt_count, 0, "a new address gets a fresh geocoding attempt");
 assert.deepEqual(locationMapApprovalFields({ lat: 45.741, lng: 21.24 }, current), { map_precision: "approximate" }, "legacy pin edits invalidate prior confirmation");
 assert.deepEqual(locationMapApprovalFields({ address: "  strada TESTULUI nr. 10 " }, current), {}, "format-only edits preserve confirmation");
 assert.deepEqual(locationMapApprovalFields({ public_phone: "0722000000" }, current), {}, "contact-only edits preserve confirmation");
