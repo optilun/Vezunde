@@ -7,7 +7,7 @@ import { loadPublishedLocationsForMap } from "../base44/shared/nationalMapSource
 import { buildGoogleMapsDirectionsUrl } from "../src/lib/maps.js";
 import { hasPublishedSectionChanges, sameSubmissionPayload } from "../shared/providerWorkspaceSubmissionComparison.js";
 
-const old = { id: "test", address: "Strada Veche 1", city: "Giroc", locality_name: "Giroc", county: "Timiș", county_name: "Timiș", county_code: "TM", locality_siruta_code: "old", lat: 45.7, lng: 21.2, place_id: "old-google", map_precision: "exact", profile_control_status: "verified", public_visibility_status: "approved", status: "publicata", active_status: "activa" };
+const old = { id: "test", address: "Strada Veche 1", city: "Giroc", locality_name: "Giroc", county: "Timiș", county_name: "Timiș", county_code: "TM", locality_siruta_code: "old", lat: 45.7, lng: 21.2, place_id: "old-google", map_precision: "exact", control_status: "verified", profile_control_status: "verified", public_visibility_status: "approved", status: "publicata", active_status: "activa" };
 const geo = { siruta_code: "54975", name: "Cluj-Napoca", county_name: "Cluj", county_code: "CJ", uat_code: "54975", uat_name: "Cluj-Napoca" };
 let reads = 0;
 const svc = { entities: { GeographicLocality: { filter: async (query) => { reads++; assert.equal(query.is_active, true); return query.siruta_code === geo.siruta_code ? [geo] : []; } } } };
