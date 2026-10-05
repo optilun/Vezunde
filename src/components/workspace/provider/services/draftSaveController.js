@@ -4,7 +4,7 @@ export function createDraftSaveController({ delay = 1000, timers = globalThis } 
   const cancel = () => { if (timer != null) timers.clearTimeout(timer); timer = null; };
   const update = next => {
     snapshot = next;
-    if (confirmed === undefined && next.baseline != null) confirmed = next.baseline;
+    if (next.baseline != null && (confirmed === undefined || (!flight && !next.dirty))) confirmed = next.baseline;
     if (!next.enabled) cancel();
   };
   const flush = () => {
