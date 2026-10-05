@@ -48,6 +48,13 @@ export default function ProviderLocationsWithPhoto(props) {
   const canAddLocation = capabilities.has("organization.manage_locations");
   const containerRef = useRef(null);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoDirty, setPhotoDirty] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const closePhoto = React.useCallback(() => {
+    if (photoBusy) return;
+    if (photoDirty && !window.confirm("Fotografia selectată nu este salvată. Închizi fără să o încarci?")) return;
+    setPhotoOpen(false);
+  }, [photoBusy, photoDirty]);
   const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState(null);
   const selectedLocation =
@@ -278,7 +285,7 @@ export default function ProviderLocationsWithPhoto(props) {
   ]);
 
   useEffect(() => {
-    if (!canManagePhoto) setPhotoOpen(false);
+    if (!canManagePhoto) closePhoto();
     if (!canAddLocation) setAddLocationOpen(false);
   }, [canAddLocation, canManagePhoto]);
 
@@ -288,7 +295,7 @@ export default function ProviderLocationsWithPhoto(props) {
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event) => {
       if (event.key !== "Escape") return;
-      setPhotoOpen(false);
+      closePhoto();
       setAddLocationOpen(false);
     };
     document.addEventListener("keydown", closeOnEscape);
@@ -296,7 +303,7 @@ export default function ProviderLocationsWithPhoto(props) {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [photoOpen, addLocationOpen]);
+  }, [photoOpen, addLocationOpen, closePhoto]);
 
   return (
     <div ref={containerRef} className="min-w-0">
@@ -617,11 +624,14 @@ export default function ProviderLocationsWithPhoto(props) {
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setPhotoOpen(false);
+            if (event.target === event.currentTarget) closePhoto();
           }}
         >
           <div
-            className="flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[28px]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Fotografia locației"
+            className="photo-editor-modal flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[28px]"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="safe-area-top flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5">
@@ -638,12 +648,13 @@ export default function ProviderLocationsWithPhoto(props) {
                 onClick={() => setPhotoOpen(false)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
                 aria-label="Închide"
+                disabled={photoBusy}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
-              <ProviderLocationPhotoCompact locationId={selectedLocation.id} />
+            <div className="photo-editor-modal-body min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
+              <ProviderLocationPhotoCompact key={selectedLocation.id} locationId={selectedLocation.id} onRefresh={onRefresh} onDirtyChange={setPhotoDirty} onBusyChange={setPhotoBusy} />
             </div>
           </div>
         </div>
