@@ -857,7 +857,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
 
   const submit = async () => {
     if (!editable || pendingReview || savingRef.current || committing) return false;
-    if (await save() !== true) return false;
+    if (await save() !== true || savingRef.current) return false;
     const currentDraft = draftRef.current;
     if (!currentDraft) return false;
     if (latestSignatureRef.current !== confirmedSignatureRef.current) {
@@ -889,7 +889,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   const withdraw = async () => {
     if (!draft || !pendingReview || persistenceMode !== "v2" || savingRef.current || committing) return;
     const confirmed = window.confirm("Retragi modificările din procesul de aprobare? Configurația aprobată rămâne neschimbată.");
-    if (!confirmed || await save() !== true) return;
+    if (!confirmed || await save() !== true || savingRef.current) return;
     savingRef.current = true;
     setCommitting(true);
     setSaving(true);
