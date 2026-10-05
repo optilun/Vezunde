@@ -1,6 +1,8 @@
 import React from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import LocationPositionField from "@/components/provider/LocationPositionField";
+import { resetLocationAddressPosition } from "../../../../shared/locationMapPosition.js";
 
 const inputCls = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-foreground/50";
 
@@ -21,11 +23,11 @@ const ORG_TYPE_TO_PROFILE_TYPE = {
 export default function WizOrgBasics({ data, update, next }) {
   const org = data.organization;
   const loc = data.location;
-  const setLoc = (key, value) => update({ location: { ...loc, [key]: value } });
+  const setLoc = (key, value) => update({ location: key === "address" ? resetLocationAddressPosition(loc, { [key]: value }) : { ...loc, [key]: value } });
 
   const selectLocality = (geo) => update({
     location: {
-      ...loc,
+      ...loc, lat: null, lng: null, place_id: "", map_precision: "approximate",
       locality_siruta_code: geo?.siruta_code || "",
       city: geo?.name || "",
       county: geo?.county_name || "",
@@ -82,7 +84,8 @@ export default function WizOrgBasics({ data, update, next }) {
           value={loc.locality_siruta_code ? { display_label: `${loc.city}${loc.county ? ", " + loc.county : ""}` } : null}
           onSelect={selectLocality}
         />
-        <input className={inputCls} placeholder="Adresa *" value={loc.address} onChange={(event) => setLoc("address", event.target.value)} />
+        <input className={inputCls} placeholder="Strada și numărul *" value={loc.address} onChange={(event) => setLoc("address", event.target.value)} />
+      <LocationPositionField value={loc} onChange={(location) => update({ location })} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input className={inputCls} placeholder="Telefon public" value={loc.phone_public} onChange={(event) => setLoc("phone_public", event.target.value)} />
           <input className={inputCls} type="email" placeholder="Email public" value={loc.public_email} onChange={(event) => setLoc("public_email", event.target.value)} />
