@@ -5015,10 +5015,10 @@ button.provider-services-three__stat.is-active {
 .location-editor [hidden] {
   display: none !important;
 }
-.location-editor fieldset {
+.location-editor fieldset.location-editor-panel {
   min-width: 0;
-  padding: 0;
-  border: 0;
+  padding: 24px;
+  border: 1px solid #deded8;
 }
 .location-editor input,
 .location-editor select {
@@ -5349,7 +5349,8 @@ button.provider-services-three__stat.is-active {
   .location-editor-steps small {
     font-size: 10px;
   }
-  .location-editor-panel {
+  .location-editor-panel,
+  .location-editor fieldset.location-editor-panel {
     padding: 18px 14px;
   }
   .location-editor-header h1 {
