@@ -7,6 +7,8 @@ import {
   providerMembershipAccessRole,
 } from '../../shared/providerOrganizationOwnerScope.js';
 import { providerRoleHasCapability } from '../../shared/providerRolePolicy.js';
+import { resolveLocationLocality } from '../../shared/locationLocalityResolution.js';
+import { locationPrecisionError, locationMapApprovalFields } from '../../shared/locationMapPosition.js';
 
 const PROVIDER_ROLES = [ORGANIZATION_OWNER_ROLE];
 
@@ -70,7 +72,7 @@ function safeNumber(value: unknown, min: number, max: number) {
 function validateLocation(raw: unknown) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Datele locatiei sunt invalide' };
   const input = raw as Record<string, unknown>;
-  const allowed = ['public_display_name', 'address', 'city', 'county', 'locality_siruta_code', 'public_phone', 'public_email', 'lat', 'lng', 'place_id'];
+  const allowed = ['public_display_name', 'address', 'city', 'county', 'locality_siruta_code', 'public_phone', 'public_email', 'lat', 'lng', 'place_id', 'map_precision'];
   const unknown = Object.keys(input).filter((key) => !allowed.includes(key));
   if (unknown.length) return { error: 'Campuri nepermise', fields: unknown };
 
@@ -85,11 +87,24 @@ function validateLocation(raw: unknown) {
     lat: safeNumber(input.lat, -90, 90),
     lng: safeNumber(input.lng, -180, 180),
     place_id: text(input.place_id, 300),
+    map_precision: input.map_precision === undefined ? 'approximate' : String(input.map_precision),
   };
   if (!clean.public_display_name || !clean.address || !clean.city || !clean.county) return { error: 'Numele, adresa, localitatea si judetul sunt obligatorii' };
+  for (const key of ['lat', 'lng']) {
+    if (input[key] !== null && input[key] !== undefined && String(input[key]).trim() !== '' && clean[key] === null) return { error: 'Coordonatele sunt invalide' };
+  }
+  const precisionError = locationPrecisionError(clean);
+  if (precisionError) return { error: precisionError };
   if ((clean.lat === null) !== (clean.lng === null)) return { error: 'Completeaza si latitudinea, si longitudinea' };
   if (clean.public_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean.public_email)) return { error: 'Email public invalid' };
   return { value: clean };
+}
+
+async function checkedLocation(svc: any, raw: unknown) {
+  const checked = validateLocation(raw);
+  if (checked.error) return checked;
+  const resolved = await resolveLocationLocality(svc, checked.value, { required: true });
+  return resolved.error ? { error: resolved.error } : { value: resolved.value, geography: resolved.fields };
 }
 
 async function providerContext(svc: any, user: any, anchorLocationId: string) {
@@ -197,7 +212,7 @@ async function providerSearch(svc: any, user: any, payload: Record<string, unkno
 async function providerSave(svc: any, user: any, payload: Record<string, unknown>) {
   const context = await providerContext(svc, user, text(payload.anchor_location_id, 120));
   if (context.error) return res({ error: context.error }, context.status);
-  const checked = validateLocation(payload.location);
+  const checked = await checkedLocation(svc, payload.location);
   if (checked.error) return res({ error: checked.error, fields: checked.fields || [] }, 400);
   const duplicateCandidates = await searchCandidates(svc, context, {
     name: checked.value.public_display_name,
@@ -236,6 +251,9 @@ async function providerSubmit(svc: any, user: any, payload: Record<string, unkno
   const submission = await svc.entities.ProviderWorkspaceSubmission.get(text(payload.submission_id, 120)).catch(() => null);
   if (!submission || submission.submitted_by_user_id !== user.id || submission.section !== 'location_create' || submission.organization_id !== context.organizationId) return res({ error: 'Cererea nu a fost gasita' }, 404);
   if (!['draft', 'needs_more_info'].includes(submission.status)) return res({ error: 'Cererea nu poate fi trimisa' }, 409);
+  const stored = JSON.parse(submission.payload_json || '{}');
+  const checked = await checkedLocation(svc, stored.location);
+  if (checked.error) return res({ error: checked.error }, 400);
   await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: new Date().toISOString(), admin_note: '' });
   return res({ success: true });
 }
@@ -298,7 +316,7 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
   }
 
   const parsed = JSON.parse(submission.payload_json || '{}');
-  const checked = validateLocation(parsed.location);
+  const checked = await checkedLocation(svc, parsed.location);
   if (checked.error) return res({ error: checked.error }, 400);
   const anchor = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
   if (!anchor) return res({ error: 'Locatia de referinta nu exista' }, 404);
@@ -308,6 +326,8 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
 
   const location = await svc.entities.ProviderLocation.create({
     organization_id: submission.organization_id,
+    ...checked.geography,
+    ...locationMapApprovalFields(checked.value),
     name: checked.value.public_display_name,
     public_display_name: checked.value.public_display_name,
     address: checked.value.address,
