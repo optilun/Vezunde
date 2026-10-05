@@ -61,6 +61,7 @@ export default function ProviderTeam({ locationId }) {
   // Rezultatul unei invitații apare în cardul „Invită un specialist”; pe ecrane înguste cardul e
   // deasupra listei, așa că după „Trimite din nou” îl aducem în vizor.
   const inviteResultRef = useRef(null);
+  const operationRef = useRef(false);
 
   // 2026-10-03 (structura conturilor, pasul 2): cererile „Lucrez aici” trimise de specialisti apar
   // separat, cu Aprobă / Refuză. Cererile refuzate sau anulate nu mai apar in lista.
@@ -109,6 +110,8 @@ export default function ProviderTeam({ locationId }) {
       return;
     }
 
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     setNewLink("");
@@ -122,6 +125,7 @@ export default function ProviderTeam({ locationId }) {
       invitation_base_url: window.location.origin,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
 
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -135,6 +139,8 @@ export default function ProviderTeam({ locationId }) {
   };
 
   const resendInvitation = async (invitationId) => {
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     setNewLink("");
@@ -144,6 +150,7 @@ export default function ProviderTeam({ locationId }) {
       invitation_id: invitationId,
       invitation_base_url: window.location.origin,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -159,12 +166,15 @@ export default function ProviderTeam({ locationId }) {
     const confirmed = window.confirm("Revoci această invitație?");
     if (!confirmed) return;
 
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("professionalInvitationOps", {
       action: "revoke",
       invitation_id: invitationId,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
 
     if (response.data?.error) {
@@ -179,6 +189,8 @@ export default function ProviderTeam({ locationId }) {
     const confirmed = window.confirm("Elimini acest specialist din locație? Profilul profesional nu va fi șters.");
     if (!confirmed) return;
 
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
@@ -186,6 +198,7 @@ export default function ProviderTeam({ locationId }) {
       location_id: locationId,
       professional_id: professionalId,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
 
     if (response.data?.error) {
@@ -203,6 +216,8 @@ export default function ProviderTeam({ locationId }) {
       : "Ascunzi specialistul de pe profilul public? O republicare va necesita un nou acord al specialistului.");
     if (!confirmed) return;
 
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
@@ -211,6 +226,7 @@ export default function ProviderTeam({ locationId }) {
       professional_id: assignment.professional_id,
       ...(requesting ? {} : { public_status: "privat" }),
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
 
     if (response.data?.error) {
@@ -229,6 +245,8 @@ export default function ProviderTeam({ locationId }) {
       ? `Aprobi asocierea lui ${assignment.full_name} cu această locație? Nu primește acces la contul organizației.`
       : `Refuzi cererea lui ${assignment.full_name}?`);
     if (!confirmed) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
@@ -236,6 +254,7 @@ export default function ProviderTeam({ locationId }) {
       location_id: locationId,
       professional_id: assignment.professional_id,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -248,12 +267,15 @@ export default function ProviderTeam({ locationId }) {
   };
 
   const addSelf = async () => {
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
       action: "add_self",
       location_id: locationId,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -276,7 +298,7 @@ export default function ProviderTeam({ locationId }) {
       <LocationEditorSteps label="Gestionarea specialiștilor" active={step} onChange={setStep} disabled={saving} steps={[
         {id:"team",label:"Specialiști",detail:activeAssignments.length + " asociați activi"},
         {id:"invite",label:"Invită un specialist",detail:pendingInvitations.length + " invitații în așteptare"},
-        {id:"requests",label:"Cereri și acorduri",detail:associationRequests.length + " cereri de asociere"},
+        {id:"requests",label:"Cereri și acorduri",detail:associationRequests.length + (associationRequests.length === 1 ? " cerere de asociere" : " cereri de asociere")},
       ]} />
       <div className="team-editor-summary">
         <div><span>Asociați activi</span><strong>{activeAssignments.length}</strong></div>
