@@ -32976,6 +32976,7 @@ function ProviderTeam({ locationId }) {
   const [msg, setMsg] = (0, import_react29.useState)("");
   const [currentProfessional, setCurrentProfessional] = (0, import_react29.useState)(null);
   const inviteResultRef = (0, import_react29.useRef)(null);
+  const operationRef = (0, import_react29.useRef)(false);
   const associationRequests = (0, import_react29.useMemo)(() => assignments2.filter((item2) => item2.is_association_request), [assignments2]);
   const listedAssignments = (0, import_react29.useMemo)(() => assignments2.filter((item2) => !item2.is_association_request && !(item2.association_origin === "professional_request" && item2.active_status !== "activ" && ["declined", "withdrawn"].includes(item2.association_request_status))), [assignments2]);
   const selfAssociated = Boolean(currentProfessional && assignments2.some((item2) => item2.professional_id === currentProfessional.id && item2.active_status === "activ"));
@@ -33013,6 +33014,8 @@ function ProviderTeam({ locationId }) {
       setMsg("Introdu un email valid.");
       return;
     }
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     setNewLink("");
@@ -33024,6 +33027,7 @@ function ProviderTeam({ locationId }) {
       professional_type: form.professional_type,
       invitation_base_url: window.location.origin
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33035,6 +33039,8 @@ function ProviderTeam({ locationId }) {
     await load();
   };
   const resendInvitation = async (invitationId) => {
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     setNewLink("");
@@ -33044,6 +33050,7 @@ function ProviderTeam({ locationId }) {
       invitation_id: invitationId,
       invitation_base_url: window.location.origin
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33057,12 +33064,15 @@ function ProviderTeam({ locationId }) {
   const revokeInvitation = async (invitationId) => {
     const confirmed = window.confirm("Revoci aceast\u0103 invita\u021Bie?");
     if (!confirmed) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("professionalInvitationOps", {
       action: "revoke",
       invitation_id: invitationId
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33074,6 +33084,8 @@ function ProviderTeam({ locationId }) {
   const deactivateAssignment = async (professionalId) => {
     const confirmed = window.confirm("Elimini acest specialist din loca\u021Bie? Profilul profesional nu va fi \u0219ters.");
     if (!confirmed) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
@@ -33081,6 +33093,7 @@ function ProviderTeam({ locationId }) {
       location_id: locationId,
       professional_id: professionalId
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33093,6 +33106,8 @@ function ProviderTeam({ locationId }) {
     const requesting = nextAction === "request_visibility";
     const confirmed = window.confirm(requesting ? "Trimi\u021Bi specialistului solicitarea de a ap\u0103rea public la aceast\u0103 loca\u021Bie? Publicarea se face numai dup\u0103 acordul lui." : "Ascunzi specialistul de pe profilul public? O republicare va necesita un nou acord al specialistului.");
     if (!confirmed) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
@@ -33101,6 +33116,7 @@ function ProviderTeam({ locationId }) {
       professional_id: assignment.professional_id,
       ...requesting ? {} : { public_status: "privat" }
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33113,6 +33129,8 @@ function ProviderTeam({ locationId }) {
     const approving = action === "approve_association";
     const confirmed = window.confirm(approving ? `Aprobi asocierea lui ${assignment.full_name} cu aceast\u0103 loca\u021Bie? Nu prime\u0219te acces la contul organiza\u021Biei.` : `Refuzi cererea lui ${assignment.full_name}?`);
     if (!confirmed) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
@@ -33120,6 +33138,7 @@ function ProviderTeam({ locationId }) {
       location_id: locationId,
       professional_id: assignment.professional_id
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33129,12 +33148,15 @@ function ProviderTeam({ locationId }) {
     await load();
   };
   const addSelf = async () => {
+    if (operationRef.current) return;
+    operationRef.current = true;
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
       action: "add_self",
       location_id: locationId
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    operationRef.current = false;
     setSaving(false);
     if (response.data?.error) {
       setMsg(response.data.error);
@@ -33156,7 +33178,7 @@ function ProviderTeam({ locationId }) {
     /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(LocationEditorSteps, { label: "Gestionarea speciali\u0219tilor", active: step, onChange: setStep, disabled: saving, steps: [
       { id: "team", label: "Speciali\u0219ti", detail: activeAssignments.length + " asocia\u021Bi activi" },
       { id: "invite", label: "Invit\u0103 un specialist", detail: pendingInvitations.length + " invita\u021Bii \xEEn a\u0219teptare" },
-      { id: "requests", label: "Cereri \u0219i acorduri", detail: associationRequests.length + " cereri de asociere" }
+      { id: "requests", label: "Cereri \u0219i acorduri", detail: associationRequests.length + (associationRequests.length === 1 ? " cerere de asociere" : " cereri de asociere") }
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "team-editor-summary", children: [
       /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { children: [
@@ -33653,6 +33675,7 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
   const [processing, setProcessing] = (0, import_react31.useState)(false);
   const [message, setMessage] = (0, import_react31.useState)("");
   const legacyMigrationAttempted = (0, import_react31.useRef)(false);
+  const processingRef = (0, import_react31.useRef)(false);
   const clearStaged = () => {
     if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
     setStagedFile(null);
@@ -33725,6 +33748,8 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
       setMessage("Fotografia trebuie s\u0103 aib\u0103 maximum 4 MB.");
       return;
     }
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     try {
       const optimizedFile = await optimizeLocationPhoto(file, locationId);
@@ -33738,11 +33763,14 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
     } catch (error) {
       setMessage(error.message || "Fotografia nu a putut fi preg\u0103tit\u0103.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
   const saveDraft = async () => {
     if (!stagedFile && !uploadedAsset?.url) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     setMessage("");
     try {
@@ -33790,11 +33818,14 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Draftul fotografiei nu a putut fi salvat.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
   const submitReview = async () => {
     if (!submission?.id || !editableDraft) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     setMessage("");
     try {
@@ -33815,6 +33846,7 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimis\u0103.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
@@ -33826,6 +33858,8 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
       return;
     }
     if (!submission?.id || !editableDraft) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
     setMessage("");
     try {
@@ -33843,6 +33877,7 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || "Draftul nu a putut fi retras.");
     } finally {
+      processingRef.current = false;
       setProcessing(false);
     }
   };
