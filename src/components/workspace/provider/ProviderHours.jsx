@@ -304,7 +304,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh, on
 
   const steps = [
     { id:"weekly", label:"Program săptămânal", detail:"Orele fiecărei zile" },
-    { id:"exceptions", label:"Program special", detail:state.exceptions.length ? state.exceptions.length + " excepții" : "Opțional" },
+    { id:"exceptions", label:"Program special", detail:state.exceptions.length ? state.exceptions.length + (state.exceptions.length === 1 ? " excepție" : " excepții") : "Opțional" },
     { id:"review", label:"Verifică și salvează", detail:"Previzualizare și acces" },
   ];
 
