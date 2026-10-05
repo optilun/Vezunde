@@ -47,6 +47,7 @@ export default function ProviderLocationsWithPhoto(props) {
   const canManagePhoto = capabilities.has("location.manage_content");
   const canAddLocation = capabilities.has("organization.manage_locations");
   const containerRef = useRef(null);
+  const photoDialogRef = useRef(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoDirty, setPhotoDirty] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -288,6 +289,28 @@ export default function ProviderLocationsWithPhoto(props) {
     if (!canManagePhoto) setPhotoOpen(false);
     if (!canAddLocation) setAddLocationOpen(false);
   }, [canAddLocation, canManagePhoto]);
+
+  useEffect(() => {
+    if (!photoOpen) return undefined;
+    const previousFocus = document.activeElement;
+    const frame = requestAnimationFrame(() => photoDialogRef.current?.querySelector("button")?.focus());
+    const containFocus = event => {
+      if (event.key !== "Tab") return;
+      const dialog = photoDialogRef.current;
+      if (!dialog) return;
+      const controls = Array.from(dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]')).filter(item => item.getClientRects().length);
+      if (!controls.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (!dialog.contains(document.activeElement) || (event.shiftKey && document.activeElement === first)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", containFocus);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", containFocus);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [photoOpen]);
 
   useEffect(() => {
     if (!photoOpen && !addLocationOpen) return undefined;
@@ -628,6 +651,7 @@ export default function ProviderLocationsWithPhoto(props) {
           }}
         >
           <div
+            ref={photoDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Fotografia locației"
