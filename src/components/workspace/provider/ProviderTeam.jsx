@@ -297,7 +297,7 @@ export default function ProviderTeam({ locationId }) {
     <div className="location-editor team-editor">
       <LocationEditorSteps label="Gestionarea specialiștilor" active={step} onChange={setStep} disabled={saving} steps={[
         {id:"team",label:"Specialiști",detail:activeAssignments.length + " asociați activi"},
-        {id:"invite",label:"Invită un specialist",detail:pendingInvitations.length + " invitații în așteptare"},
+        {id:"invite",label:"Invită un specialist",detail:pendingInvitations.length + (pendingInvitations.length === 1 ? " invitație în așteptare" : " invitații în așteptare")},
         {id:"requests",label:"Cereri și acorduri",detail:associationRequests.length + (associationRequests.length === 1 ? " cerere de asociere" : " cereri de asociere")},
       ]} />
       <div className="team-editor-summary">
