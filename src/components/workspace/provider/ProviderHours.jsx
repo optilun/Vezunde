@@ -233,7 +233,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
   );
 }
 
-export default function ProviderHours({ locationId, location = {}, onRefresh, onDirtyChange }) {
+export default function ProviderHours({ locationId, location = {}, onRefresh, onDirtyChange, onBusyChange }) {
   const [state, setState] = useState(() => initialState(location));
   const [savedSignature, setSavedSignature] = useState(() => location.opening_hours_json ? JSON.stringify(initialState(location)) : "");
   const [saving, setSaving] = useState(false);
@@ -247,6 +247,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh, on
   const weeklyText = useMemo(() => formatWeeklyText(state.weekly), [state.weekly]);
 
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => { onBusyChange?.(saving); }, [saving, onBusyChange]);
   useEffect(() => {
     const warn = event => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn);
