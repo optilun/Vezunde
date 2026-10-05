@@ -43,6 +43,7 @@ export default function ProviderLocationModulePage({
   const [servicesDirty, setServicesDirty] = useState(false);
   const servicesSaveRef = useRef(null);
   const registerServicesSave = React.useCallback(save => { servicesSaveRef.current = save; }, []);
+  const saveServicesBeforeCopy = React.useCallback(() => servicesSaveRef.current ? servicesSaveRef.current() : Promise.resolve(true), []);
   const closeServices = async () => {
     const saved = servicesSaveRef.current ? await servicesSaveRef.current() : !servicesDirty;
     if (!saved) return;
@@ -150,6 +151,7 @@ export default function ProviderLocationModulePage({
               currentLocationId={location.id}
               onRefresh={onRefresh || (() => {})}
               onCopied={() => setServicesRevision((value) => value + 1)}
+            onBeforeCopy={saveServicesBeforeCopy}
             />
             <ProviderServices
               key={`${location.id}:${servicesRevision}`}
