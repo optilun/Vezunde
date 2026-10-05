@@ -43,6 +43,7 @@ export default function ProviderLocationModulePage({
   const [servicesRevision, setServicesRevision] = useState(0);
   const [servicesDirty, setServicesDirty] = useState(false);
   const [hoursDirty, setHoursDirty] = useState(false);
+  const [hoursBusy, setHoursBusy] = useState(false);
   const [hoursRevision, setHoursRevision] = useState(0);
   const checkHoursBeforeCopy = React.useCallback(() => !hoursDirty, [hoursDirty]);
   const servicesSaveRef = useRef(null);
@@ -114,7 +115,7 @@ export default function ProviderLocationModulePage({
             <h1>{config.title}</h1>
             <p><MapPin aria-hidden="true" /><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</p>
           </div>
-          <button type="button" className="location-editor-close" aria-label="Închide și revino la locații" onClick={() => {
+          <button type="button" className="location-editor-close" disabled={moduleKey === "program" && hoursBusy} aria-label="Închide și revino la locații" onClick={() => {
             if (moduleKey === "program" && hoursDirty && !window.confirm("Ai modificări nesalvate la program. Revii la locații fără să le salvezi?")) return;
             onBack?.();
           }}><X aria-hidden="true" /></button>
@@ -154,6 +155,7 @@ export default function ProviderLocationModulePage({
             <ProviderHours
               key={`${location.id}:${hoursRevision}`}
               onDirtyChange={setHoursDirty}
+              onBusyChange={setHoursBusy}
               locationId={location.id}
               location={location}
               onRefresh={onRefresh || (() => {})}
