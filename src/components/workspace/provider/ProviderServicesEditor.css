@@ -301,7 +301,9 @@
   .services-editor .services-global-options .services-card-grid { grid-template-columns:1fr; }
   .services-editor__actions, .services-editor[data-view="review"] .services-editor__actions { gap:8px; padding:12px; }
   .services-editor__actions > div { flex-basis:100%; }
-  .services-editor__actions small { font-size:10px; }
+  .services-editor__actions small { display:none; }
+  .services-editor__actions > div { flex-basis:100%; }
+  .services-editor__actions strong { font-size:11px; line-height:1.4; }
   .services-editor__actions button { padding:10px 12px; flex:1 1 auto; }
   .services-editor__actions button.is-primary { flex-grow:2; }
 }
