@@ -246,6 +246,7 @@
 .workspace-neutral:has(.services-editor) { overflow-x:clip; overflow-y:visible; }
 
 @media (max-width:580px) { .services-editor .services-unit__footer > .services-unit__toolbar-spacer { display:none; } .services-editor .services-group-card__all { width:44px; height:44px; min-width:44px; min-height:44px; } }
+.services-editor__review-card--compact > header { margin-bottom:0; }
 /* Three clear steps; categories belong to the service step, not the progress bar. */
 .services-editor {
   --services-accent:#3459df; --services-accent-strong:#2747bd; --services-accent-soft:#eef2ff;
