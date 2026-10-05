@@ -55,6 +55,7 @@ const [fail,setFail]=useState(false);const [missing,setMissing]=useState(false);
 return <BrowserRouter><header className="qa-header"><img src="/images/viasee-logo.svg" alt="VIASEE" onError={e=>e.currentTarget.style.display="none"}/><strong>PREVIZUALIZARE DE TEST · DATE DEMONSTRATIVE</strong>
 <nav>{["program","specialisti","foto"].map(key=><button key={key} onClick={()=>setModule(key)}>{key==="program"?"Program":key==="specialisti"?"Specialiști":"Foto"}</button>)}</nav>
 <label><input type="checkbox" checked={fail} onChange={e=>{state.fail=e.target.checked;setFail(e.target.checked);}}/> Simulează eroare</label>
+<button onClick={async()=>{const blob=await (await fetch("/images/specialists/optical-team-hero-v1.webp")).blob();const file=new File([blob],"fotografie-demonstrativa.webp",{type:"image/webp"});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector('input[type="file"]');input.files=transfer.files;input.dispatchEvent(new Event("change",{bubbles:true}));}}>Selectează imagine demonstrativă</button>
 <label><input type="checkbox" checked={missing} onChange={e=>{state.missingAck=e.target.checked;setMissing(e.target.checked);}}/> Răspuns fără confirmare</label>
 </header><main key={module}>
 {module==="foto"?<div className="provider-location-editor-page"><header className="location-editor-header"><div><h1>Fotografia locației</h1><p><strong>Locație demonstrativă</strong> · Giroc, Timiș</p></div></header><ProviderLocationPhotoCompact locationId="demo-location" onRefresh={()=>refresh(x=>x+1)}/></div>
