@@ -26855,7 +26855,7 @@ var base44 = { functions: { invoke: async (name, payload) => {
     if (payload.action === "submit_review") {
       state.submits++;
       state.photo = { ...state.photo, status: "pending_review" };
-      return { data: { submission: state.photo } };
+      return { data: { success: true, submission: state.photo } };
     }
   }
   if (name === "providerPhotoUploadLifecycleOps") {
@@ -32363,7 +32363,7 @@ function ExceptionRow({ item: item2, index, onChange, onRemove }) {
     ] })
   ] });
 }
-function ProviderHours({ locationId, location: location2 = {}, onRefresh, onDirtyChange }) {
+function ProviderHours({ locationId, location: location2 = {}, onRefresh, onDirtyChange, onBusyChange }) {
   const [state2, setState] = (0, import_react27.useState)(() => initialState(location2));
   const [savedSignature, setSavedSignature] = (0, import_react27.useState)(() => location2.opening_hours_json ? JSON.stringify(initialState(location2)) : "");
   const [saving, setSaving] = (0, import_react27.useState)(false);
@@ -32378,6 +32378,9 @@ function ProviderHours({ locationId, location: location2 = {}, onRefresh, onDirt
   (0, import_react27.useEffect)(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
+  (0, import_react27.useEffect)(() => {
+    onBusyChange?.(saving);
+  }, [saving, onBusyChange]);
   (0, import_react27.useEffect)(() => {
     const warn = (event) => {
       if (dirty) {
@@ -33447,6 +33450,7 @@ function ProviderLocationModulePage({
   const [servicesRevision, setServicesRevision] = (0, import_react30.useState)(0);
   const [servicesDirty, setServicesDirty] = (0, import_react30.useState)(false);
   const [hoursDirty, setHoursDirty] = (0, import_react30.useState)(false);
+  const [hoursBusy, setHoursBusy] = (0, import_react30.useState)(false);
   const [hoursRevision, setHoursRevision] = (0, import_react30.useState)(0);
   const checkHoursBeforeCopy = import_react30.default.useCallback(() => !hoursDirty, [hoursDirty]);
   const servicesSaveRef = (0, import_react30.useRef)(null);
@@ -33521,7 +33525,7 @@ function ProviderLocationModulePage({
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { type: "button", className: "location-editor-close", "aria-label": "\xCEnchide \u0219i revino la loca\u021Bii", onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { type: "button", className: "location-editor-close", disabled: moduleKey === "program" && hoursBusy, "aria-label": "\xCEnchide \u0219i revino la loca\u021Bii", onClick: () => {
             if (moduleKey === "program" && hoursDirty && !window.confirm("Ai modific\u0103ri nesalvate la program. Revii la loca\u021Bii f\u0103r\u0103 s\u0103 le salvezi?")) return;
             onBack?.();
           }, children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(X, { "aria-hidden": "true" }) })
@@ -33569,6 +33573,7 @@ function ProviderLocationModulePage({
               ProviderHours,
               {
                 onDirtyChange: setHoursDirty,
+                onBusyChange: setHoursBusy,
                 locationId: location2.id,
                 location: location2,
                 onRefresh: onRefresh || (() => {
@@ -33840,6 +33845,8 @@ function ProviderLocationPhotoCompact({ locationId, onRefresh, onDirtyChange, on
         submission_id: submission.id
       });
       if (submitResponse.data?.error) throw new Error(submitResponse.data.error);
+      if (submitResponse.data?.success !== true) throw new Error("Trimiterea nu a fost confirmat\u0103. \xCEncearc\u0103 din nou.");
+      setSubmission((current) => ({ ...current, status: "pending_review" }));
       await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
         action: "sync_submission_status",
         location_id: locationId,
