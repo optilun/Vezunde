@@ -30,7 +30,7 @@ import {
 // 2026-10-05: meniul reorganizat in 5 grupe (Azi, De rezolvat, Director,
 // Clienți și comunicare, Sistem). Cheile si rutele raman neschimbate.
 export const ADMIN_NAV_PRIMARY = [
-  { key: "dashboard", label: "Panou general", icon: LayoutDashboard, groupLabel: "Azi" },
+  { key: "dashboard", label: "Panou de azi", icon: LayoutDashboard, groupLabel: "Azi" },
   { key: "workspace_reviews", label: "Coada de verificare", icon: ClipboardCheck },
 
   { key: "revendicari", label: "Revendicări", icon: UserCheck, groupLabel: "De rezolvat" },

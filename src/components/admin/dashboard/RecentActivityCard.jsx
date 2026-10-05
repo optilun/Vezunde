@@ -8,7 +8,7 @@ export default function RecentActivityCard({ records, onNavigate }) {
   return (
     <AdminCard className="p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-heading font-bold text-sm">Activitate recenta</h3>
+        <h3 className="font-heading font-bold text-sm">Activitate recentă</h3>
         {records.length > 0 && <button onClick={() => onNavigate("audit")} className="text-xs text-muted-foreground hover:text-foreground">Vezi tot</button>}
       </div>
       {records.length === 0 ? (

@@ -2,206 +2,83 @@ import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import KpiGrid from "./KpiGrid";
-import ResearchPipelineCard from "./ResearchPipelineCard";
-import ProfilesTrustCard from "./ProfilesTrustCard";
-import GeoCoverageCard from "./GeoCoverageCard";
 import ActionQueueCard from "./ActionQueueCard";
 import RecentActivityCard from "./RecentActivityCard";
 import QuickActionsGrid from "./QuickActionsGrid";
 
-const TOTAL_COUNTIES = 42;
-const ACTIVE_SUPPORT_STATUSES = new Set(["open", "in_progress", "waiting_user"]);
-const pj = (value, fallback) => {
-  try {
-    const parsed = JSON.parse(value);
-    return parsed ?? fallback;
-  } catch (_error) {
-    return fallback;
-  }
-};
-
+// 2026-10-05: panoul "Azi". Toate cifrele se numara pe server (count), fara a
+// descarca mii de inregistrari in browser. Statisticile de director (research,
+// acoperire judete, niveluri de incredere) se muta in ecranul Analytics.
 const safeInvoke = (functionName, payload, fallback) => (
-  base44.functions
-    .invoke(functionName, payload)
-    .catch(() => ({ data: fallback }))
+  base44.functions.invoke(functionName, payload).catch(() => ({ data: fallback }))
 );
+const safeCount = (entity, query) => entity.count(query).catch(() => 0);
 
 function uniqueById(rows = []) {
-  return rows.filter((row, index, allRows) => row?.id && allRows.findIndex((item) => item?.id === row.id) === index);
+  const seen = new Set();
+  return rows.filter((row) => row?.id && !seen.has(row.id) && seen.add(row.id));
 }
 
 export default function AdminDashboardHome({ onNavigate }) {
   const [data, setData] = useState(null);
 
   useEffect(() => {
+    const e = base44.entities;
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     Promise.all([
-      // Limita ridicata la 5000 (era 500) - cu 500 se incarcau doar primele 500 din
-      // baza (neordonate explicit), iar toate statisticile de mai jos (publicate,
-      // distributie Directory/Revendicat/Verificat, judete acoperite) se calculau doar
-      // pe acel esantion trunchiat, nu pe intreg directorul. Descoperit 2026-08-06 cand
-      // panoul arata 494 de locatii publicate desi baza reala are ~500+.
-      base44.entities.ProviderLocation.list(null, 5000),
-      base44.entities.LocationService.list(null, 2000),
-      base44.entities.ProviderClaimRequest.filter({ status: "in_asteptare" }, null, 200),
-      base44.entities.SupportTicket.list("-updated_date", 500),
-      base44.entities.AIResearchDraft.list("-created_date", 200),
-      base44.entities.ResearchSource.list("-created_date", 200),
-      base44.entities.DirectoryAuditRecord.list("-created_date", 200),
+      safeCount(e.ProviderLocation, { status: "publicata" }),
+      safeCount(e.ProviderClaimRequest, { status: "in_asteptare" }),
+      safeCount(e.SupportTicket, { status: { $in: ["open", "in_progress", "waiting_user"] } }),
+      safeCount(e.DirectoryCorrectionRequest, { status: { $in: ["submitted", "in_review"] } }),
+      safeCount(e.PatientRequest, { created_date: { $gte: weekAgo } }),
+      safeCount(e.ProviderSubscription, { plan_code: "pro", status: { $in: ["active", "trialing", "grace_period"] } }),
+      safeCount(e.ProviderLocation, { profile_control_status: { $in: ["claimed", "verified"] } }),
+      e.DirectoryAuditRecord.filter({}, { sort: "-created_date", limit: 6 }).then((page) => page.items || []).catch(() => []),
       safeInvoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }, { submissions: [] }),
       safeInvoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }, { submissions: [] }),
       safeInvoke("providerLocationExpansionOps", { action: "admin_list" }, { submissions: [] }),
       safeInvoke("adminProfessionalProfileReview", { action: "list", status: "pending_review" }, { profiles: [] }),
-    ]).then(([
-      locations,
-      services,
-      claims,
-      supportTickets,
-      drafts,
-      sources,
-      audit,
-      workspaceResponse,
-      organizationResponse,
-      newLocationResponse,
-      professionalResponse,
-    ]) => {
-      const generalPending = (workspaceResponse.data?.submissions || []).filter(
-        (submission) => !(submission.section === "public_profile" && submission.organization_id),
-      );
-      const organizationPending = organizationResponse.data?.submissions || [];
-      const reviewSubmissions = uniqueById([...generalPending, ...organizationPending]);
-
-      setData({
-        locations,
-        services,
-        claims,
-        supportTickets,
-        drafts,
-        sources,
-        audit,
-        reviewSubmissions,
-        newLocationReviews: newLocationResponse.data?.submissions || [],
-        professionalReviews: professionalResponse.data?.profiles || [],
-      });
+    ]).then(([published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit, ws, org, newLoc, prof]) => {
+      const general = (ws.data?.submissions || []).filter((s) => !(s.section === "public_profile" && s.organization_id));
+      const reviewQueue = uniqueById([...general, ...(org.data?.submissions || [])]).length
+        + (newLoc.data?.submissions || []).length
+        + (prof.data?.profiles || []).length;
+      setData({ published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit, reviewQueue });
     });
   }, []);
 
-  if (!data) return <p className="text-sm text-muted-foreground">Se incarca...</p>;
-
-  const {
-    locations,
-    services,
-    claims,
-    supportTickets,
-    drafts,
-    sources,
-    audit,
-    reviewSubmissions,
-    newLocationReviews,
-    professionalReviews,
-  } = data;
-
-  const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-  const recentAuditCount = audit.filter((record) => {
-    const raw = record.performed_at || record.created_date;
-    const timestamp = raw ? new Date(raw).getTime() : 0;
-    return Number.isFinite(timestamp) && timestamp >= sevenDaysAgo;
-  }).length;
-
-  const reviewQueueCount = reviewSubmissions.length + newLocationReviews.length + professionalReviews.length;
-  const activeSupportTickets = supportTickets.filter(
-    (ticket) => ACTIVE_SUPPORT_STATUSES.has(ticket.status || "open"),
-  );
-  const directoryProfiles = locations.filter((location) => (location.profile_control_status || "directory") === "directory").length;
-  const unconfirmedServices = services.filter((service) => (service.confirmation_level || "not_confirmed") === "not_confirmed").length;
-  const activeResearchDrafts = drafts.filter((draft) => ["draft", "in_review", "ready_to_transfer"].includes(draft.status)).length;
-
-  const stats = {
-    published: locations.filter((location) => location.status === "publicata").length,
-    reviewQueue: reviewQueueCount,
-    pendingClaims: claims.length,
-    unconfirmedServices,
-    activeResearchDrafts,
-    directoryProfiles,
-    countiesCovered: new Set(locations.map((location) => location.county_name || location.county).filter(Boolean)).size,
-    totalCounties: TOTAL_COUNTIES,
-    recentAuditCount,
-  };
-
-  const pipeline = {
-    sources: sources.length,
-    drafts: drafts.length,
-    inReview: drafts.filter((draft) => draft.status === "in_review").length,
-    readyToTransfer: drafts.filter((draft) => draft.status === "ready_to_transfer").length,
-    rejected: drafts.filter((draft) => draft.status === "rejected").length,
-  };
-
-  const pcsCounts = { directory: 0, claimed: 0, verified: 0, suspended: 0 };
-  for (const location of locations) {
-    const key = location.profile_control_status || "directory";
-    pcsCounts[key] = (pcsCounts[key] || 0) + 1;
-  }
-
-  const geo = {
-    locationsCount: locations.length,
-    countiesWithLocations: stats.countiesCovered,
-    countiesWithoutLocations: Math.max(TOTAL_COUNTIES - stats.countiesCovered, 0),
-    localitiesPublished: new Set(
-      locations
-        .filter((location) => location.status === "publicata")
-        .map((location) => location.locality_siruta_code)
-        .filter(Boolean),
-    ).size,
-  };
+  if (!data) return <p className="text-sm text-muted-foreground">Se încarcă...</p>;
 
   const actionItems = [
-    { label: "Tichete de suport active", count: activeSupportTickets.length, tab: "support_tickets" },
-    { label: "Cereri in coada de verificare", count: reviewQueueCount, tab: "workspace_reviews" },
-    { label: "Revendicari noi", count: claims.length, tab: "revendicari" },
-    { label: "Profiluri directory neverificate", count: directoryProfiles, tab: "profiluri" },
-    { label: "Servicii care necesita confirmare", count: unconfirmedServices, tab: "servicii" },
-    {
-      label: "Surse sau drafturi cu conflicte",
-      count: drafts.filter((draft) => pj(draft.conflicts_json, []).length > 0).length,
-      tab: "research",
-    },
-    {
-      label: "Locatii care necesita reverificare",
-      count: locations.filter((location) => location.next_recheck_at && new Date(location.next_recheck_at) < new Date()).length,
-      tab: "research",
-    },
+    { label: "Coada de verificare", count: data.reviewQueue, tab: "workspace_reviews" },
+    { label: "Revendicări noi", count: data.claims, tab: "revendicari" },
+    { label: "Tichete de suport active", count: data.tickets, tab: "support_tickets" },
+    { label: "Sesizări de director deschise", count: data.corrections, tab: "corectii" },
   ];
 
   return (
     <div>
       <AdminPageHeader
-        title="Panou general"
-        subtitle="Vezi starea directorului, cozile operationale si progresul acoperirii."
+        title="Azi"
+        subtitle="Ce ai de rezolvat acum și starea pe scurt a platformei."
         actions={(
-          <>
-            <button onClick={() => onNavigate("adauga")} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background">
-              Adauga organizatie / locatie
-            </button>
-            <button onClick={() => onNavigate("workspace_reviews")} className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold">
-              Deschide coada
-            </button>
-          </>
+          <button onClick={() => onNavigate("adauga")} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background">
+            Adaugă organizație / locație
+          </button>
         )}
       />
 
-      <KpiGrid stats={stats} onNavigate={onNavigate} />
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <ResearchPipelineCard pipeline={pipeline} onNavigate={onNavigate} />
-        <ProfilesTrustCard counts={pcsCounts} total={locations.length} />
-        <GeoCoverageCard geo={geo} />
+      <div className="mt-6">
         <ActionQueueCard items={actionItems} onNavigate={onNavigate} />
       </div>
 
+      <KpiGrid stats={data} onNavigate={onNavigate} />
+
       <div className="mt-4">
-        <RecentActivityCard records={audit} onNavigate={onNavigate} />
+        <RecentActivityCard records={data.audit} onNavigate={onNavigate} />
       </div>
 
-      <h2 className="mb-3 mt-8 font-heading text-sm font-bold">Actiuni rapide</h2>
+      <h2 className="mb-3 mt-8 font-heading text-sm font-bold">Acțiuni rapide</h2>
       <QuickActionsGrid onNavigate={onNavigate} />
     </div>
   );

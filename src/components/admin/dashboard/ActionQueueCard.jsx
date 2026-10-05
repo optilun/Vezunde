@@ -9,9 +9,9 @@ export default function ActionQueueCard({ items, onNavigate }) {
   const active = items.filter((i) => i.count > 0);
   return (
     <AdminCard className="p-5">
-      <h3 className="font-heading font-bold text-sm">Necesita actiune</h3>
+      <h3 className="font-heading font-bold text-sm">De rezolvat acum</h3>
       {active.length === 0 ? (
-        <EmptyState icon={CheckCircle2} title="Nu exista actiuni care necesita atentie acum." />
+        <EmptyState icon={CheckCircle2} title="Totul e la zi. Nu există nimic de rezolvat acum." />
       ) : (
         <ul className="mt-2 space-y-1">
           {active.map((i) => (
