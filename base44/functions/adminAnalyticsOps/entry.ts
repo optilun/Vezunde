@@ -32,9 +32,8 @@ export default async function (req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-    const body = await req.json().catch(() => ({}));
-    const days = [7, 30, 90].includes(Number(body.days)) ? Number(body.days) : 30;
-    const inPeriod = { created_date: { $gte: new Date(Date.now() - days * 86400000).toISOString() } };
+    // Un singur calcul pe 90 de zile, impartit pe zile; perioadele 7/30/90 le deriva clientul.
+    const inPeriod = { created_date: { $gte: new Date(Date.now() - 90 * 86400000).toISOString() } };
 
     const e = base44.asServiceRole.entities;
     const coverage = coverageCache.value && Date.now() - coverageCache.at < COVERAGE_TTL_MS
@@ -43,23 +42,20 @@ export default async function (req) {
         countByField(e.ProviderLocation, { status: 'publicata' }, 'county_name'),
         countByField(e.PatientSearchContact, {}, 'county'),
       ]).then((value) => { coverageCache.value = value; coverageCache.at = Date.now(); return value; });
-    const [[locations, contacts], searchesByCounty, topServices, zeroResults] = await Promise.all([
+    const [[locations, contacts], searchDaily] = await Promise.all([
       coverage,
-      e.PatientSearchEvent.aggregate({ query: inPeriod, groupBy: 'county_name', limit: 100 }),
-      e.PatientSearchEvent.aggregate({ query: inPeriod, groupBy: 'service_key', sort: '-count', limit: 15 }),
-      e.PatientSearchEvent.aggregate({ query: { ...inPeriod, zero_results: true }, groupBy: ['county_name', 'service_key'], sort: '-count', limit: 20 }),
+      e.PatientSearchEvent.aggregate({
+        query: inPeriod,
+        groupBy: ['county_name', 'service_key', 'zero_results'],
+        dateBucket: { field: 'created_date', unit: 'day' },
+        limit: 1000,
+      }),
     ]);
 
-    const searches = rowsToMap(searchesByCounty.rows, 'county_name');
-    const names = new Set([...Object.keys(locations), ...Object.keys(contacts), ...Object.keys(searches)]);
-    const counties = [...names]
-      .map((name) => ({ county: name, locations: locations[name] || 0, searches: searches[name] || 0, search_contacts: contacts[name] || 0 }))
-      .sort((a, b) => b.locations - a.locations);
-
     return Response.json({
-      counties,
-      top_services: (topServices.rows || []).map((r) => ({ service_key: r.service_key || '', count: r.count })),
-      zero_results: (zeroResults.rows || []).map((r) => ({ county: r.county_name || '', service_key: r.service_key || '', count: r.count })),
+      coverage: { locations, contacts },
+      search_daily: searchDaily.rows || [],
+      truncated: Boolean(searchDaily.truncated),
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
