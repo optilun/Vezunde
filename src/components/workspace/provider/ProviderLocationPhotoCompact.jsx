@@ -280,6 +280,8 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh, on
         submission_id: submission.id,
       });
       if (submitResponse.data?.error) throw new Error(submitResponse.data.error);
+      if (submitResponse.data?.success !== true) throw new Error("Trimiterea nu a fost confirmată. Încearcă din nou.");
+      setSubmission(current => ({ ...current, status: "pending_review" }));
 
       await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
         action: "sync_submission_status",
