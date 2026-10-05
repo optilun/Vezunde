@@ -76,7 +76,7 @@ export default function ProviderServicesEditor(props) {
     if (key.startsWith("unit:")) { setUnitIndex(Number(key.split(":")[1])); setView("unit"); }
     else setView(key === "services" ? "unit" : key === "selected" ? "review" : key);
     requestAnimationFrame(() => {
-      headingRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      headingRef.current?.closest(".services-editor")?.scrollIntoView({ block: "start", behavior: "smooth" });
       headingRef.current?.focus({ preventScroll: true });
     });
   };
