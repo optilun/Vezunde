@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from "react";
-import { CalendarDays, Info, Plus, Save, Trash2 } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Plus, Save, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { AVAILABILITY_OPTIONS } from "@/lib/providerTaxonomy";
+import { validateProviderOpeningHours } from "../../../../shared/providerOpeningHours.js";
+import LocationEditorSteps from "./LocationEditorSteps";
 
 const inputCls =
   "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
@@ -96,9 +98,10 @@ function normalizeTime(value) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function TimeField({ value, disabled, onChange, placeholder = "09:00" }) {
+function TimeField({ value, disabled, onChange, label, placeholder = "09:00" }) {
   return (
     <input
+      aria-label={label}
       type="text"
       inputMode="numeric"
       maxLength={5}
@@ -135,7 +138,7 @@ function formatSaturdayText(weekly) {
 }
 
 function nextException(exceptions) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   return (
     [...exceptions]
       .filter((item) => item.end_date >= today)
@@ -151,6 +154,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
         <div>
           <label className="text-[11px] font-semibold text-muted-foreground">Tip</label>
           <select
+            aria-label={`Tip excepție ${index + 1}`}
             className={`${inputCls} mt-1`}
             value={item.type || "closed"}
             onChange={(event) => onChange(index, { ...item, type: event.target.value })}
@@ -163,6 +167,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
           <label className="text-[11px] font-semibold text-muted-foreground">De la</label>
           <input
             type="date"
+            aria-label={`Data de final pentru excepția ${index + 1}`}
             className={`${inputCls} mt-1`}
             value={item.start_date || ""}
             onChange={(event) => onChange(index, { ...item, start_date: event.target.value })}
@@ -182,6 +187,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
             <label className="text-[11px] font-semibold text-muted-foreground">De la ora</label>
             <div className="mt-1">
               <TimeField
+                label={`Ora de deschidere pentru excepția ${index + 1}`}
                 disabled={closed}
                 value={item.from || ""}
                 onChange={(value) => onChange(index, { ...item, from: value })}
@@ -192,6 +198,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
             <label className="text-[11px] font-semibold text-muted-foreground">Până la</label>
             <div className="mt-1">
               <TimeField
+                label={`Ora de închidere pentru excepția ${index + 1}`}
                 disabled={closed}
                 value={item.to || ""}
                 onChange={(value) => onChange(index, { ...item, to: value })}
@@ -204,7 +211,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
           type="button"
           onClick={() => onRemove(index)}
           className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 hover:bg-secondary"
-          aria-label="Șterge excepția"
+          aria-label={`Șterge excepția ${index + 1}`}
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -215,6 +222,8 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
         </label>
         <input
           className={`${inputCls} mt-1`}
+          aria-label={`Mesaj public pentru excepția ${index + 1}`}
+          maxLength={300}
           value={item.public_note || ""}
           onChange={(event) => onChange(index, { ...item, public_note: event.target.value })}
           placeholder="Ex: Închis de sărbători / Program special de inventar"
@@ -224,335 +233,139 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
   );
 }
 
-export default function ProviderHours({ locationId, location = {}, onRefresh }) {
+export default function ProviderHours({ locationId, location = {}, onRefresh, onDirtyChange }) {
   const [state, setState] = useState(() => initialState(location));
+  const [savedSignature, setSavedSignature] = useState(() => location.opening_hours_json ? JSON.stringify(initialState(location)) : "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
-
+  const [error, setError] = useState("");
+  const [step, setStep] = useState("weekly");
+  const savingRef = useRef(false);
+  const signature = JSON.stringify(state);
+  const dirty = signature !== savedSignature;
   const upcoming = useMemo(() => nextException(state.exceptions), [state.exceptions]);
   const weeklyText = useMemo(() => formatWeeklyText(state.weekly), [state.weekly]);
-  const accessModeHelp =
-    ACCESS_MODE_HELP[state.availability_status] || ACCESS_MODE_HELP.necunoscuta;
 
-  const updateDay = (key, patch) => {
-    setState((current) => ({
-      ...current,
-      weekly: { ...current.weekly, [key]: { ...current.weekly[key], ...patch } },
-    }));
-  };
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => {
+    const warn = event => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  // Copying a saved schedule to this location refreshes the editor only when it has no local edits.
+  useEffect(() => {
+    if (dirty || saving) return;
+    const next = initialState(location);
+    setState(next);
+    setSavedSignature(location.opening_hours_json ? JSON.stringify(next) : "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.opening_hours_json, location.availability_status]);
 
-  const applyPreset = (preset) => {
-    if (preset === "standard") {
-      setState((current) => ({ ...current, weekly: normalizeWeekly(DEFAULT_WEEKLY) }));
-    }
-    if (preset === "copy_monday") {
-      setState((current) => {
-        const monday = current.weekly.monday;
-        return {
-          ...current,
-          weekly: Object.fromEntries(
-            DAYS.map(([key]) => [
-              key,
-              key === "sunday" ? current.weekly.sunday : { ...monday },
-            ]),
-          ),
-        };
-      });
-    }
-    if (preset === "weekend_closed") {
-      setState((current) => ({
-        ...current,
-        weekly: {
-          ...current.weekly,
-          saturday: { open: false, from: "", to: "" },
-          sunday: { open: false, from: "", to: "" },
-        },
-      }));
-    }
-  };
-
-  const addException = () => {
-    setState((current) => ({
-      ...current,
-      exceptions: [
-        ...current.exceptions,
-        {
-          type: "closed",
-          start_date: "",
-          end_date: "",
-          from: "",
-          to: "",
-          public_note: "",
-        },
-      ],
-    }));
-  };
-
-  const updateException = (index, value) => {
-    setState((current) => ({
-      ...current,
-      exceptions: current.exceptions.map((item, itemIndex) =>
-        itemIndex === index ? value : item,
-      ),
-    }));
-  };
-
-  const removeException = (index) => {
-    setState((current) => ({
-      ...current,
-      exceptions: current.exceptions.filter((_item, itemIndex) => itemIndex !== index),
-    }));
-  };
+  const update = callback => { setError(""); setMsg(""); setState(callback); };
+  const updateDay = (key, patch) => update(current => ({ ...current, weekly: { ...current.weekly, [key]: { ...current.weekly[key], ...patch } } }));
+  const applyPreset = preset => update(current => {
+    if (preset === "standard") return { ...current, weekly: normalizeWeekly(DEFAULT_WEEKLY) };
+    if (preset === "copy_monday") return { ...current, weekly: Object.fromEntries(DAYS.map(([key]) => [key, ["tuesday","wednesday","thursday","friday"].includes(key) ? { ...current.weekly.monday } : current.weekly[key]])) };
+    return { ...current, weekly: { ...current.weekly, saturday: { open:false, from:"", to:"" }, sunday: { open:false, from:"", to:"" } } };
+  });
+  const addException = () => update(current => ({ ...current, exceptions: [...current.exceptions, { type:"closed", start_date:"", end_date:"", from:"", to:"", public_note:"" }] }));
+  const updateException = (index, item) => update(current => ({ ...current, exceptions: current.exceptions.map((old, i) => i === index ? item : old) }));
+  const removeException = index => update(current => ({ ...current, exceptions: current.exceptions.filter((_, i) => i !== index) }));
 
   const save = async () => {
+    if (savingRef.current) return;
+    setError(""); setMsg("");
+    const normalizedWeekly = Object.fromEntries(DAYS.map(([key]) => [key, state.weekly[key].open
+      ? { open:true, from:normalizeTime(state.weekly[key].from), to:normalizeTime(state.weekly[key].to) }
+      : { open:false, from:"", to:"" }]));
+    const normalizedExceptions = state.exceptions.map(item => ({ ...item, from:item.type === "closed" ? "" : normalizeTime(item.from), to:item.type === "closed" ? "" : normalizeTime(item.to) }));
+    const checked = validateProviderOpeningHours({ weekly:normalizedWeekly, exceptions:normalizedExceptions });
+    if (!checked.valid) { setError(checked.error); return; }
+    savingRef.current = true;
     setSaving(true);
-    setMsg("");
-    const normalizedWeekly = Object.fromEntries(
-      DAYS.map(([key]) => {
-        const day = state.weekly[key];
-        return [
-          key,
-          day.open
-            ? { ...day, from: normalizeTime(day.from), to: normalizeTime(day.to) }
-            : { open: false, from: "", to: "" },
-        ];
-      }),
-    );
-    const normalizedExceptions = state.exceptions.map((item) =>
-      item.type === "closed"
-        ? { ...item, from: "", to: "" }
-        : { ...item, from: normalizeTime(item.from), to: normalizeTime(item.to) },
-    );
-    const opening_hours_json = JSON.stringify({
-      weekly: normalizedWeekly,
-      exceptions: normalizedExceptions,
-    });
-    const payload = {
-      location_id: locationId,
-      opening_hours_json,
-      opening_hours: formatWeeklyText(normalizedWeekly),
-      saturday_hours: formatSaturdayText(normalizedWeekly),
-      availability_status: state.availability_status,
-      availability_updated_at: new Date().toISOString(),
-    };
-    const response = await base44.functions
-      .invoke("saveProviderRoutineProfile", payload)
-      .catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
-    setSaving(false);
-    if (response.data?.error) {
-      setMsg(response.data.error);
-      return;
-    }
-    setState((current) => ({
-      ...current,
-      weekly: normalizedWeekly,
-      exceptions: normalizedExceptions,
-    }));
-    setMsg("Programul și modul de acces au fost salvate.");
-    onRefresh?.();
+    try {
+      const response = await base44.functions.invoke("saveProviderRoutineProfile", {
+        location_id:locationId,
+        opening_hours_json:JSON.stringify(checked.value),
+        opening_hours:formatWeeklyText(checked.value.weekly),
+        saturday_hours:formatSaturdayText(checked.value.weekly),
+        availability_status:state.availability_status,
+        availability_updated_at:new Date().toISOString(),
+      });
+      if (response.data?.error) throw new Error(response.data.error);
+      if (response.data?.success !== true) throw new Error("Salvarea nu a fost confirmată. Încearcă din nou.");
+      const next = { ...checked.value, availability_status:state.availability_status };
+      setState(next); setSavedSignature(JSON.stringify(next));
+      setMsg("Programul și modul de primire au fost salvate.");
+      onRefresh?.();
+    } catch (requestError) { setError(requestError.response?.data?.error || requestError.message || "Programul nu a putut fi salvat."); }
+    finally { savingRef.current = false; setSaving(false); }
   };
 
-  return (
-    <div className="provider-hours-workspace">
-      <div className="provider-hours-grid">
-        <div className="provider-hours-card provider-hours-card--schedule">
-          <section className="provider-hours-section">
-            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold">Program săptămânal</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Completează intervalul de lucru pentru fiecare zi. Formatul orei este
-                  24h: 09:00, 18:00.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyPreset("standard")}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-                >
-                  L-V 09:00-18:00, S 09:00-14:00
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset("copy_monday")}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-                >
-                  Copiază luni
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset("weekend_closed")}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-                >
-                  Weekend închis
-                </button>
-              </div>
-            </div>
+  const steps = [
+    { id:"weekly", label:"Program săptămânal", detail:"Orele fiecărei zile" },
+    { id:"exceptions", label:"Program special", detail:state.exceptions.length ? state.exceptions.length + " excepții" : "Opțional" },
+    { id:"review", label:"Verifică și salvează", detail:"Previzualizare și acces" },
+  ];
 
-            <div className="provider-hours-days">
-              {DAYS.map(([key, label]) => {
-                const day = state.weekly[key];
-                return (
-                  <div
-                    key={key}
-                    className="provider-hours-day grid gap-2 md:grid-cols-[108px_112px_1fr_1fr] md:items-center"
-                  >
-                    <div className="text-sm font-bold">{label}</div>
-                    <select
-                      className={inputCls}
-                      value={day.open ? "open" : "closed"}
-                      onChange={(event) =>
-                        updateDay(
-                          key,
-                          event.target.value === "open"
-                            ? {
-                                open: true,
-                                from: day.from || "09:00",
-                                to: day.to || "18:00",
-                              }
-                            : { open: false, from: "", to: "" },
-                        )
-                      }
-                    >
-                      <option value="open">Deschis</option>
-                      <option value="closed">Închis</option>
-                    </select>
-                    <TimeField
-                      disabled={!day.open}
-                      value={day.from || ""}
-                      onChange={(value) => updateDay(key, { from: value })}
-                    />
-                    <TimeField
-                      disabled={!day.open}
-                      value={day.to || ""}
-                      onChange={(value) => updateDay(key, { to: value })}
-                      placeholder="18:00"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="provider-hours-section provider-hours-section--divided">
-            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold">Program special</h2>
-                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-                  Adaugă perioade temporare pentru sărbători, concedii, inventar sau
-                  evenimente. După data de final, profilul revine automat la programul
-                  saptamanal.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={addException}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-              >
-                <Plus className="h-3.5 w-3.5" /> Adaugă excepție
-              </button>
-            </div>
-
-            <div>
-              {state.exceptions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
-                  Nu există program special setat.
-                </div>
-              ) : (
-                state.exceptions.map((item, index) => (
-                  <ExceptionRow
-                    key={index}
-                    item={item}
-                    index={index}
-                    onChange={updateException}
-                    onRemove={removeException}
-                  />
-                ))
-              )}
-            </div>
-          </section>
+  return <div className="location-editor hours-editor">
+    <LocationEditorSteps label="Configurarea programului" steps={steps} active={step} onChange={setStep} disabled={saving} />
+    {!location.opening_hours_json && <p className="location-editor-notice">Orele de mai jos sunt un punct de plecare. Verifică-le înainte de prima salvare.{location.opening_hours && <> Programul actual: {location.opening_hours}</>}</p>}
+    <fieldset disabled={saving} className="location-editor-panel">
+      <section hidden={step !== "weekly"} aria-label="Program săptămânal">
+        <h2>În ce interval este deschisă locația?</h2>
+        <p className="location-editor-intro">Alege Deschis sau Închis pentru fiecare zi. Orele se completează în format 24h.</p>
+        <div className="hours-editor-presets">
+          <button type="button" onClick={() => applyPreset("standard")}>Program standard</button>
+          <button type="button" onClick={() => applyPreset("copy_monday")}>Copiază luni în marți–vineri</button>
+          <button type="button" onClick={() => applyPreset("weekend_closed")}>Weekend închis</button>
         </div>
-
-        <aside className="provider-hours-card provider-hours-card--public">
-          <section className="provider-hours-section">
-            <div className="mb-3 flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              <h2 className="text-sm font-bold">Cum apare public</h2>
-            </div>
-            <div className="provider-hours-preview">
-              <div>
-                <div className="text-[11px] font-semibold text-muted-foreground">
-                  Program afișat
-                </div>
-                <p className="mt-1 text-sm font-semibold leading-relaxed">{weeklyText}</p>
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-muted-foreground">
-                  Următoarea excepție
-                </div>
-                <p className="mt-1 text-sm font-semibold leading-relaxed">
-                  {upcoming
-                    ? `${upcoming.start_date} - ${upcoming.end_date}: ${
-                        upcoming.type === "closed"
-                          ? "Închis"
-                          : `${normalizeTime(upcoming.from) || "--:--"} - ${
-                              normalizeTime(upcoming.to) || "--:--"
-                            }`
-                      }${upcoming.public_note ? ` · ${upcoming.public_note}` : ""}`
-                    : "Nu există excepții viitoare"}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="provider-hours-section provider-hours-section--divided">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold">Cum se accesează serviciile?</h2>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Indică dacă vizitele se fac cu programare, fără programare sau în ambele
-                  moduri. Informația se afișează public lângă program.
-                </p>
-              </div>
-              <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                Opțional
-              </span>
-            </div>
-            <select
-              className={`${inputCls} mt-4`}
-              value={state.availability_status}
-              onChange={(event) =>
-                setState({ ...state, availability_status: event.target.value })
-              }
-            >
+        <div className="hours-editor-days">
+          {DAYS.map(([key,label]) => {
+            const day = state.weekly[key];
+            return <div key={key} className="hours-editor-day">
+              <strong className="hours-editor-day__name">{label}</strong>
+              <div><label htmlFor={`hours-${locationId}-${key}`}>Stare</label><select id={`hours-${locationId}-${key}`} aria-label={`Stare ${label}`} className={inputCls} value={day.open ? "open" : "closed"} onChange={event => updateDay(key, event.target.value === "open" ? { open:true, from:day.from || "09:00", to:day.to || "18:00" } : { open:false, from:"", to:"" })}>
+                <option value="open">Deschis</option><option value="closed">Închis</option>
+              </select></div>
+              <div><label>Deschidere</label><TimeField label={`Deschidere ${label}`} disabled={!day.open} value={day.from} onChange={value => updateDay(key,{from:value})} /></div>
+              <div><label>Închidere</label><TimeField label={`Închidere ${label}`} disabled={!day.open} value={day.to} onChange={value => updateDay(key,{to:value})} placeholder="18:00" /></div>
+            </div>;
+          })}
+        </div>
+      </section>
+      <section hidden={step !== "exceptions"} aria-label="Program special">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h2>Sărbători, concedii sau program redus</h2><p className="location-editor-intro">Setează o perioadă temporară. La final, se folosește din nou programul săptămânal.</p></div>
+          <button type="button" className="location-editor-button" onClick={addException}><Plus /> Adaugă excepție</button>
+        </div>
+        <div className="mt-6">
+          {state.exceptions.length === 0 ? <p className="location-editor-notice">Nu ai excepții. Poți continua direct la verificare.</p>
+            : state.exceptions.map((item,index) => <ExceptionRow key={index} item={item} index={index} onChange={updateException} onRemove={removeException} />)}
+        </div>
+      </section>
+      <section hidden={step !== "review"} aria-label="Verifică programul">
+        <h2>Verifică informațiile afișate clienților</h2>
+        <p className="location-editor-intro">Salvarea actualizează programul locației. {location.active_status === "inactiva" ? "Locația este inactivă și nu apare public." : "Dacă profilul locației este public, noul program apare imediat."}</p>
+        <div className="hours-editor-preview mt-5">
+          <div><h3 className="text-sm font-bold">Program săptămânal</h3><dl>{DAYS.map(([key,label]) => <div key={key}><dt>{label}</dt><dd>{formatDay(state.weekly[key])}</dd></div>)}</dl><p className="location-editor-intro mt-3">{upcoming ? `Următoarea excepție: ${upcoming.start_date} – ${upcoming.end_date} · ${upcoming.type === "closed" ? "Închis" : formatDay({open:true,...upcoming})}` : "Nu există excepții viitoare."}</p></div>
+          <div><label htmlFor={`access-mode-${locationId}`} className="text-sm font-bold">Cum primesc clienții serviciile?</label><p className="location-editor-intro">Opțional. Alege dacă vizita necesită programare.</p>
+            <select id={`access-mode-${locationId}`} className={`${inputCls} mt-4`} value={state.availability_status} onChange={event => update(current => ({...current,availability_status:event.target.value}))}>
               <option value="necunoscuta">Nu afișa această informație</option>
-              {Object.entries(AVAILABILITY_OPTIONS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <div className="mt-3 flex items-start gap-2 border-t border-border/70 pt-3 text-xs leading-relaxed text-muted-foreground">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{accessModeHelp}</span>
-            </div>
-          </section>
-        </aside>
-      </div>
-
-      <div className="provider-hours-actions sticky bottom-0 z-10">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            disabled={saving}
-            onClick={save}
-            className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" /> Salvează programul
-          </button>
-          {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
+              {Object.entries(AVAILABILITY_OPTIONS).map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+            </select><p className="location-editor-intro">{ACCESS_MODE_HELP[state.availability_status] || ACCESS_MODE_HELP.necunoscuta}</p>
+          </div>
         </div>
+      </section>
+    </fieldset>
+    {error && <p className="location-editor-notice" role="alert">{error}</p>}
+    <footer className="location-editor-actions">
+      <div className="location-editor-actions__status" role="status">{saving ? "Se salvează…" : msg || (dirty ? "Ai modificări nesalvate" : "Programul este la zi")}</div>
+      <div className="location-editor-actions__buttons">
+        {step !== "weekly" && <button type="button" disabled={saving} className="location-editor-button" onClick={() => setStep(step === "review" ? "exceptions" : "weekly")}><ArrowLeft /> Înapoi</button>}
+        {step !== "review" ? <button type="button" disabled={saving} className="location-editor-button location-editor-button--primary" onClick={() => setStep(step === "weekly" ? "exceptions" : "review")}>Continuă <ArrowRight /></button>
+          : <button type="button" disabled={saving || !dirty} onClick={save} className="location-editor-button location-editor-button--primary"><Save /> {saving ? "Se salvează…" : "Salvează programul"}</button>}
       </div>
-    </div>
-  );
+    </footer>
+  </div>;
 }
