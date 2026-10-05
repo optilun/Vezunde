@@ -467,6 +467,10 @@ export default function ProviderLocations({
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
+    if (!values.address.trim() || !values.city.trim() || !values.county.trim()) {
+      setMessage("Completează adresa și alege localitatea din lista oficială.");
+      return;
+    }
     if (hasCoordinateIssues) {
       setMessage(coordinateValidation.issues[0]);
       return;
