@@ -344,13 +344,13 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       canSave: Boolean(!saving && editable && dirty),
       // !pendingReview: se poate lucra in paralel cu o verificare, dar nu se poate trimite
       // o a doua cerere peste una nedecisa - backendul tine oricum o singura cerere activa.
-      canSubmit: Boolean(!saving && draft && editable && !pendingReview && !dirty && readiness.configurationComplete),
+      canSubmit: Boolean(!saving && draft && editable && !dirty && readiness.configurationComplete),
       canWithdraw: Boolean(!saving && pendingReview && persistenceMode === "v2"),
       // Era true neconditionat, deci "Salveaza draftul" se randa si in pending_review sau
       // pentru un membru fara drept de editare - un buton care nu putea functiona niciodata,
       // doar estompat. Acum dispare cand nu are ce face.
       hasSave: editable,
-      hasSubmit: Boolean(draft && draft.status !== "pending_review"),
+      hasSubmit: Boolean(draft),
       hasWithdraw: Boolean(pendingReview && persistenceMode === "v2"),
       approvedCount: approvedPublicKeys.length,
       pendingReview,
@@ -856,7 +856,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   });
 
   const submit = async () => {
-    if (!editable || pendingReview || savingRef.current || committing) return false;
+    if (!editable || savingRef.current || committing) return false;
     if (await save() !== true || savingRef.current) return false;
     const currentDraft = draftRef.current;
     if (!currentDraft) return false;

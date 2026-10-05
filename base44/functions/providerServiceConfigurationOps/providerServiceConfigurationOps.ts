@@ -522,7 +522,10 @@ export async function handle(req: Request) {
 
     if (action === 'submit') {
       if (access.mode !== 'provider_workspace') return Response.json({ error: 'Draftul de revendicare nu poate fi trimis înainte de aprobarea revendicării' }, { status: 403 });
-      if (!['draft', 'needs_more_info'].includes(submission.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
+      // 2026-10-05: si din pending_review - furnizorul retrimite versiunea curenta, care
+      // inlocuieste copia inghetata aflata in verificare.
+      if (!['draft', 'needs_more_info', 'pending_review'].includes(submission.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
+      if (submission.status === 'pending_review') await restoreRemovalVisibility(svc, submission.location_id, submission.id);
       const storedPayload = parsePayload(submission.payload_json);
       const validation = validateServiceConfigurationPayload(storedPayload, {
         allowSuggestions: true,
