@@ -1,5 +1,6 @@
 // Shared by the editor and the approval flow. Coordinates alone are not confirmation.
 export function locationCoordinates(location = {}) {
+  location = location || {};
   const parse = (value, limit) => {
     if (value == null || String(value).trim() === "") return null;
     const number = Number(String(value).trim().replace(",", "."));
