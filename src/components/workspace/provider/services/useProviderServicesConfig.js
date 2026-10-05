@@ -836,7 +836,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       return false;
     }
     const savedDraft = response.data?.submission;
-    if (!savedDraft?.id && !currentDraft?.id) {
+    if (!savedDraft?.id) {
       setError("Nu am primit confirmarea salvării. Selecțiile sunt păstrate; încearcă din nou.");
       return false;
     }
