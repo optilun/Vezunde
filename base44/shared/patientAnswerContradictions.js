@@ -23,6 +23,10 @@ export function detectAnswerContradictions(interpretation, answers) {
   if (byKey.optical_product_type === "contact_lenses" && intent !== "unknown" && intent !== "lentile_contact") {
     flags.push("answer_contact_lenses_vs_ai_other");
   }
+  // Textul liber contrazice un raspuns ales: AI-ul urmeaza raspunsul, dar coboara increderea.
+  if (flags.length === 0 && Object.keys(byKey).length > 0 && interpretation?.confidence_band === "low") {
+    flags.push("text_vs_answer_low_confidence");
+  }
   return flags;
 }
 
