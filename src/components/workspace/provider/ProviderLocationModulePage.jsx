@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ArrowLeft, Clock, Info, MapPin, Users, Wrench, X } from "lucide-react";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import ProviderServices from "./ProviderServices";
@@ -41,8 +41,11 @@ export default function ProviderLocationModulePage({
 }) {
   const [servicesRevision, setServicesRevision] = useState(0);
   const [servicesDirty, setServicesDirty] = useState(false);
-  const closeServices = () => {
-    if (servicesDirty && !window.confirm("Ai modificări nesalvate. Închizi pagina fără să le salvezi?")) return;
+  const servicesSaveRef = useRef(null);
+  const registerServicesSave = React.useCallback(save => { servicesSaveRef.current = save; }, []);
+  const closeServices = async () => {
+    const saved = servicesSaveRef.current ? await servicesSaveRef.current() : !servicesDirty;
+    if (!saved) return;
     onBack?.();
   };
   const location = (workspace.locations || []).find((item) => item.id === locationId) || null;
@@ -154,6 +157,7 @@ export default function ProviderLocationModulePage({
               location={location}
               overview={overview || { content_summary: { approved_service_count: 0 } }}
               onDirtyChange={setServicesDirty}
+            onRegisterSave={registerServicesSave}
               onRefresh={onRefresh || (() => {})}
             />
           </>
