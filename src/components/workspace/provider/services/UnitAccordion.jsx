@@ -28,7 +28,7 @@ const ZONE_LEVEL_CAPABILITY_KEYS = {
   b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
 };
 
-export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, reviewState = {}, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, onGoToUnit, onChooseView, unitTitles = [], onBeforeNext, dirty = false, saving = false, reviewedGroups = {}, groupFingerprints = {} }) {
+export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, reviewState = {}, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, hideStepFooter = false, onGoToUnit, onChooseView, unitTitles = [], onBeforeNext, dirty = false, saving = false, reviewedGroups = {}, groupFingerprints = {} }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -76,7 +76,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
   const nextUnitTitle = nextUnitKey ? (getFunctionalUnitDefinition(nextUnitKey)?.shortTitle || getFunctionalUnitDefinition(nextUnitKey)?.title || "") : "";
   // Subsolul apare ori de cate ori exista grupuri de parcurs. Trecerea la zona
   // urmatoare ramane doar in stepMode (esti intr-o zona, nu in lista completa).
-  const showStepFooter = filter === "all" && groupCount > 0;
+  const showStepFooter = !hideStepFooter && filter === "all" && groupCount > 0;
   // Zona singura pe ecran (2026-08-23): antetul de acordeon repeta cuvant cu cuvant
   // titlul paginii ("Cabinet de optica"), iar contorul lui - "6 selectate din 11" -
   // repeta si bara de dedesubt, si coloana din stanga. Acelasi numar de trei ori, pe
@@ -139,7 +139,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                     <button
                       key={section.key}
                       type="button"
-                      aria-current={index === safeGroupIndex ? "step" : undefined}
+                      aria-current={index === safeGroupIndex ? "true" : undefined}
                       disabled={saving}
                       onClick={() => setGroupIndex(index)}
                       className="services-unit__group-chip"
@@ -152,7 +152,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                 </nav>
               )}
           {filter === "all" && groupCount > 1 && <label className="services-unit__group-select">
-            <span>Grup {safeGroupIndex + 1} din {groupCount}</span>
+            <span>Categoria de servicii</span>
             <select aria-label="Grupul de servicii" value={safeGroupIndex} disabled={saving} onChange={event => setGroupIndex(Number(event.target.value))}>
               {visibleSections.map((section, index) => <option key={section.key} value={index}>{section.title} · {selectedCountForSection(selected, section)} alese</option>)}
             </select>
