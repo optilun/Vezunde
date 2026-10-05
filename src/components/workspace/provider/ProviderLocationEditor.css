@@ -105,7 +105,7 @@
 .team-editor-layout--invite > aside { grid-column:1; grid-row:1; }
 .team-editor-layout--invite > .team-editor-list { grid-column:2; grid-row:1; }
 .team-editor-layout--requests { grid-template-columns:minmax(0,1fr); }
-.team-editor .text-xs { line-height:1.6; }
+.team-editor .text-xs { font-size:13px; line-height:1.6; }
 @media(max-width:700px) {
  .team-editor-layout--invite > aside,.team-editor-layout--invite > .team-editor-list { grid-column:auto; grid-row:auto; }
  .team-editor-layout--invite > aside { order:-1; }
