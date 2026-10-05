@@ -303,7 +303,7 @@ export default function AdminDataIntegrity() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Verificarea citeste tot directorul, deci porneste doar la cerere, nu la deschiderea paginii.
 
   const issues = useMemo(() => data ? inspectData(data) : [], [data]);
   const criticalCount = issues.filter((item) => item.severity === "error").length;
@@ -411,7 +411,7 @@ export default function AdminDataIntegrity() {
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Analizeaza relatiile, statusurile, completitudinea, cererile duplicate si datele legacy. Aceasta pagina nu modifica si nu sterge nimic.</p>
           </div>
           <button type="button" onClick={load} disabled={loading} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Reincarca
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} {data ? "Reincarca" : "Porneste verificarea"}
           </button>
         </div>
         {data && (
@@ -456,7 +456,7 @@ export default function AdminDataIntegrity() {
       )}
 
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
-      {!data && !error && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se verifica datele...</div>}
+      {!data && !error && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se verifica datele...</> : "Apasa „Porneste verificarea” ca sa analizezi datele."}</div>}
 
       {data && issues.length === 0 && (
         <AdminCard className="p-5"><EmptyState icon={CheckCircle2} title="Nu au fost detectate neconcordante." subtitle="Verificarea este read-only si reflecta regulile curente ale aplicatiei." /></AdminCard>

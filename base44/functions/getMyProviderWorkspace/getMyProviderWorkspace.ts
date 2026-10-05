@@ -215,7 +215,7 @@ async function getMemberSummary(svc, memberships, locationIds) {
     for (const membership of valid) activeRowsById.set(membership.id, membership);
   }
   const activeRows = [...activeRowsById.values()];
-  const pendingInvitations = await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 500).catch(() => []);
+  const pendingInvitations = ownerLocationIds.length === 0 ? [] : await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 500).catch(() => []);
   return {
     current_user_role: highestRole(Object.values(roleByLocation)),
     current_user_role_by_location: roleByLocation,
@@ -316,10 +316,14 @@ export async function handle(req: Request) {
     }
 
     const locationIds = [...locationMap.keys()];
-    const contentIndex = await loadLocationContentIndex(svc, locationIds);
+    // Cele trei citiri nu depind una de alta: pornesc impreuna, nu una dupa alta.
+    const [contentIndex, organizationSubmissions, memberSummary] = await Promise.all([
+      loadLocationContentIndex(svc, locationIds),
+      filterByIdList(svc.entities.ProviderWorkspaceSubmission, 'organization_id', [...organizationMap.keys()], { section: 'public_profile', access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } }),
+      getMemberSummary(svc, memberships, locationIds),
+    ]);
     let pendingReviewCount = 0;
     for (const locationId of locationIds) pendingReviewCount += visibleLocationSubmissions(contentIndex, locationId, user.id).length;
-    const organizationSubmissions = await filterByIdList(svc.entities.ProviderWorkspaceSubmission, 'organization_id', [...organizationMap.keys()], { section: 'public_profile', access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } });
     pendingReviewCount += organizationSubmissions.filter((submission) => submission.submitted_by_user_id === user.id && !submission.location_id).length;
 
     const contentSummaries = new Map();
@@ -331,7 +335,6 @@ export async function handle(req: Request) {
       const normalizedRole = membershipAccessRole(membership);
       return { membership_id: membership.id || null, virtual_owner_access: membership.virtual_owner_access === true, role: normalizedRole, capabilities: capabilitiesForRole(normalizedRole), organization_id: organizationId, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
     });
-    const memberSummary = await getMemberSummary(svc, memberships, [...locationMap.keys()]);
     const organizations = [...organizationMap.values()].map((organization) => sanitizeOrganization(organization, [...locationMap.values()].filter((location) => location.organization_id === organization.id)));
     const sanitizedLocations = [...locationMap.values()].map((location) => ({ ...sanitizeLocation(location, location.organization_id ? (organizationMap.get(location.organization_id)?.public_display_name || organizationMap.get(location.organization_id)?.name) : null), content_summary: contentSummaries.get(location.id) }));
     const organizationContexts = buildOrganizationContexts(organizations, sanitizedLocations, membershipData);
@@ -358,4 +361,3 @@ export async function handle(req: Request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

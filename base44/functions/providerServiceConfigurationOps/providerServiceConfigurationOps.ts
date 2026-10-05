@@ -271,13 +271,31 @@ function validateSubmissionReadiness() {
   return null;
 }
 
+// O singura citire pentru o lista de id-uri, in loc de cate o cerere pe element.
+async function idsAtLocation(entity, ids, locationId) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Set();
+  const rows = await entity.filter({ id: { $in: unique } }, null, unique.length).catch(() => []);
+  return new Set(rows.filter((row) => row.location_id === locationId).map((row) => row.id));
+}
+
 async function assertReferences(svc, locationId, payload) {
-  for (const ids of Object.values(payload.removal_ids || {})) {
-    for (const serviceKey of ids) {
-      const rows = await svc.entities.LocationService.filter({ location_id: locationId, service_key: serviceKey });
-      if (!rows.some((row) => row.is_active !== false)) throw new Error(`Serviciul aprobat nu există activ: ${serviceKey}`);
-    }
+  const removalKeys = [...new Set([...Object.values(payload.removal_ids || {}).flat(), ...(payload.raw_removal_keys || [])])];
+  if (removalKeys.length > 0) {
+    const rows = await svc.entities.LocationService.filter({ location_id: locationId, service_key: { $in: removalKeys } }, null, 1000);
+    const activeKeys = new Set(rows.filter((row) => row.is_active !== false).map((row) => row.service_key));
+    const missing = removalKeys.find((key) => !activeKeys.has(key));
+    if (missing) throw new Error(`Serviciul aprobat nu există activ: ${missing}`);
   }
+  const resourceChecks = [
+    [svc.entities.ProfessionalLocationAssignment, 'assignment_id', [...(payload.resource_removals?.professionals || []), ...(payload.resource_links?.professionals || [])], 'Specialistul selectat nu aparține locației.'],
+    [svc.entities.LocationEquipment, 'equipment_id', [...(payload.resource_removals?.equipment || []), ...(payload.resource_links?.equipment || [])], 'Echipamentul selectat nu aparține locației.'],
+    [svc.entities.LocationFacility, 'facility_id', [...(payload.resource_removals?.facilities || []), ...(payload.resource_links?.facilities || [])], 'Facilitatea selectată nu aparține locației.'],
+  ];
+  const found = await Promise.all(resourceChecks.map(([entity, field, items]) => idsAtLocation(entity, items.map((item) => item[field]), locationId)));
+  resourceChecks.forEach(([, field, items, errorMessage], index) => {
+    if (items.some((item) => !found[index].has(item[field]))) throw new Error(errorMessage);
+  });
 
   const removalUnitKeys = payload.removal_unit_keys || [];
   const removalCapabilities = payload.removal_capabilities || [];
@@ -296,36 +314,6 @@ async function assertReferences(svc, locationId, payload) {
     }
   }
 
-  for (const rawKey of payload.raw_removal_keys || []) {
-    const rows = await svc.entities.LocationService.filter({ location_id: locationId, service_key: rawKey });
-    if (!rows.some((row) => row.is_active !== false)) throw new Error(`Serviciul legacy sau necunoscut nu există activ: ${rawKey}`);
-  }
-
-  for (const removal of payload.resource_removals?.professionals || []) {
-    const assignment = await svc.entities.ProfessionalLocationAssignment.get(removal.assignment_id).catch(() => null);
-    if (!assignment || assignment.location_id !== locationId) throw new Error('Specialistul eliminat nu aparține locației.');
-  }
-  for (const removal of payload.resource_removals?.equipment || []) {
-    const equipment = await svc.entities.LocationEquipment.get(removal.equipment_id).catch(() => null);
-    if (!equipment || equipment.location_id !== locationId) throw new Error('Echipamentul eliminat nu aparține locației.');
-  }
-  for (const removal of payload.resource_removals?.facilities || []) {
-    const facility = await svc.entities.LocationFacility.get(removal.facility_id).catch(() => null);
-    if (!facility || facility.location_id !== locationId) throw new Error('Facilitatea eliminată nu aparține locației.');
-  }
-
-  for (const link of payload.resource_links?.professionals || []) {
-    const assignment = await svc.entities.ProfessionalLocationAssignment.get(link.assignment_id).catch(() => null);
-    if (!assignment || assignment.location_id !== locationId) throw new Error('Specialistul selectat nu aparține locației.');
-  }
-  for (const link of payload.resource_links?.equipment || []) {
-    const equipment = await svc.entities.LocationEquipment.get(link.equipment_id).catch(() => null);
-    if (!equipment || equipment.location_id !== locationId) throw new Error('Echipamentul selectat nu aparține locației.');
-  }
-  for (const link of payload.resource_links?.facilities || []) {
-    const facility = await svc.entities.LocationFacility.get(link.facility_id).catch(() => null);
-    if (!facility || facility.location_id !== locationId) throw new Error('Facilitatea selectată nu aparține locației.');
-  }
 }
 
 function activeSubmissionQuery(access) {
@@ -379,18 +367,20 @@ export async function handle(req: Request) {
         }, '-created_date', 50);
         return Response.json({ mode: access.mode, submissions: rows.filter((item) => !isLockedPreparation(item)).map(safeSubmission), conflicts: [] });
       }
-      const own = await svc.entities.ProviderWorkspaceSubmission.filter({
-        location_id: access.location_id,
-        submitted_by_user_id: user.id,
-        access_origin: 'provider_workspace',
-        section: 'services',
-      }, '-created_date', 50);
-      const active = await svc.entities.ProviderWorkspaceSubmission.filter({
-        location_id: access.location_id,
-        access_origin: 'provider_workspace',
-        section: 'services',
-        status: { $in: ACTIVE_STATUSES },
-      }, '-created_date', 50);
+      const [own, active] = await Promise.all([
+        svc.entities.ProviderWorkspaceSubmission.filter({
+          location_id: access.location_id,
+          submitted_by_user_id: user.id,
+          access_origin: 'provider_workspace',
+          section: 'services',
+        }, '-created_date', 50),
+        svc.entities.ProviderWorkspaceSubmission.filter({
+          location_id: access.location_id,
+          access_origin: 'provider_workspace',
+          section: 'services',
+          status: { $in: ACTIVE_STATUSES },
+        }, '-created_date', 50),
+      ]);
       const others = active.filter((item) => item.submitted_by_user_id !== user.id && !isPromotedPrivateDraft(item));
       const conflicts = [];
       for (const item of others) conflicts.push(conflict(item, await authorName(svc, item.submitted_by_user_id)));

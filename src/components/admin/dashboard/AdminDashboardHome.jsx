@@ -34,20 +34,25 @@ export default function AdminDashboardHome({ onNavigate }) {
       safeCount(e.ProviderSubscription, { plan_code: "pro", status: { $in: ["active", "trialing", "grace_period"] } }),
       safeCount(e.ProviderLocation, { profile_control_status: { $in: ["claimed", "verified"] } }),
       e.DirectoryAuditRecord.filter({}, { sort: "-created_date", limit: 6 }).then((page) => page.items || []).catch(() => []),
+    ]).then(([published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit]) => {
+      setData((current) => ({ reviewQueue: null, ...current, published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit }));
+    });
+    // Listele de verificare sunt cele mai lente; vin separat, ca restul panoului sa apara imediat.
+    Promise.all([
       safeInvoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }, { submissions: [] }),
       safeInvoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }, { submissions: [] }),
       safeInvoke("providerLocationExpansionOps", { action: "admin_list" }, { submissions: [] }),
       safeInvoke("adminProfessionalProfileReview", { action: "list", status: "pending_review" }, { profiles: [] }),
-    ]).then(([published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit, ws, org, newLoc, prof]) => {
+    ]).then(([ws, org, newLoc, prof]) => {
       const general = (ws.data?.submissions || []).filter((s) => !(s.section === "public_profile" && s.organization_id));
       const reviewQueue = uniqueById([...general, ...(org.data?.submissions || [])]).length
         + (newLoc.data?.submissions || []).length
         + (prof.data?.profiles || []).length;
-      setData({ published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit, reviewQueue });
+      setData((current) => ({ ...current, reviewQueue }));
     });
   }, []);
 
-  if (!data) return <p className="text-sm text-muted-foreground">Se încarcă...</p>;
+  if (!data || data.published === undefined) return <p className="text-sm text-muted-foreground">Se încarcă...</p>;
 
   const actionItems = [
     { label: "Coada de verificare", count: data.reviewQueue, tab: "workspace_reviews" },
