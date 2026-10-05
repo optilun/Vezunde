@@ -492,7 +492,8 @@ export async function handle(req: Request) {
           changed_fields: ['payload_json'], previous: { status: submission.status }, next: { status: submission.status },
           note: 'Configurația a fost modificată în paralel cu o cerere aflată în verificare.',
         });
-        return Response.json({ success: true, pending_review: true });
+        // Clientul cere `submission` ca dovada a salvarii; fara el afisa "Nu am primit confirmarea".
+        return Response.json({ success: true, pending_review: true, submission: safeSubmission({ ...submission, payload_json: JSON.stringify(validation.clean) }) });
       }
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { payload_json: JSON.stringify(validation.clean), status: 'draft' });
       // Aici era syncRemovalVisibility, adica RE-ascundea serviciile la prima tasta apasata
@@ -509,7 +510,7 @@ export async function handle(req: Request) {
         changed_fields: ['payload_json', 'status'], previous: { status: submission.status }, next: { status: 'draft' },
         note: 'Configurația serviciilor și unităților a fost actualizată.',
       });
-      return Response.json({ success: true });
+      return Response.json({ success: true, submission: safeSubmission({ ...submission, payload_json: JSON.stringify(validation.clean), status: 'draft' }) });
     }
 
     const submissionId = clean(payload.submission_id);
