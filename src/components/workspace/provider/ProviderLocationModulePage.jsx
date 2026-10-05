@@ -1,11 +1,12 @@
 import React, { useRef, useState } from "react";
-import { ArrowLeft, Clock, Info, MapPin, Users, Wrench, X } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Users, Wrench, X } from "lucide-react";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import ProviderServices from "./ProviderServices";
 import ProviderServicesCopyPanel from "./ProviderServicesCopyPanel";
 import ProviderHours from "./ProviderHours";
 import ProviderHoursCopyPanel from "./ProviderHoursCopyPanel";
 import ProviderTeam from "./ProviderTeam";
+import "./ProviderLocationEditor.css";
 
 const MODULES = {
   servicii: {
@@ -41,6 +42,9 @@ export default function ProviderLocationModulePage({
 }) {
   const [servicesRevision, setServicesRevision] = useState(0);
   const [servicesDirty, setServicesDirty] = useState(false);
+  const [hoursDirty, setHoursDirty] = useState(false);
+  const [hoursRevision, setHoursRevision] = useState(0);
+  const checkHoursBeforeCopy = React.useCallback(() => !hoursDirty, [hoursDirty]);
   const servicesSaveRef = useRef(null);
   const registerServicesSave = React.useCallback(save => { servicesSaveRef.current = save; }, []);
   const saveServicesBeforeCopy = React.useCallback(() => servicesSaveRef.current ? servicesSaveRef.current() : Promise.resolve(true), []);
@@ -67,9 +71,8 @@ export default function ProviderLocationModulePage({
     );
   }
 
-  const Icon = config.icon;
   const locationName = location.public_display_name || location.name || "Locație";
-  const locationPlace = [location.locality || location.city, location.county]
+  const locationPlace = [location.locality_name || location.locality || location.city, location.county_name || location.county]
     .filter(Boolean)
     .join(", ");
 
@@ -78,7 +81,7 @@ export default function ProviderLocationModulePage({
       className={
         moduleKey === "servicii"
           ? "provider-location-services-page"
-          : `provider-location-module-page provider-location-module-page--${moduleKey}`
+          : `provider-location-editor-page provider-location-editor-page--${moduleKey}`
       }
     >
       {moduleKey === "servicii" ? (
@@ -106,44 +109,19 @@ export default function ProviderLocationModulePage({
           </div>
         </header>
       ) : (
-        <header className="provider-location-module-hero">
-          <button type="button" onClick={onBack} className="provider-location-module-hero__back">
-            <ArrowLeft aria-hidden="true" /> Înapoi la locații
-          </button>
-          <div className="provider-location-module-hero__eyebrow">
-            <span aria-hidden="true" />
-            <strong>Gestionare locație</strong>
+        <header className="location-editor-header">
+          <div>
+            <h1>{config.title}</h1>
+            <p><MapPin aria-hidden="true" /><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</p>
           </div>
-          <div className="provider-location-module-hero__row">
-            <div className="provider-location-module-hero__title">
-              <span className="provider-location-module-hero__icon">
-                <Icon aria-hidden="true" />
-              </span>
-              <div>
-                <h1>{config.title}</h1>
-                <p>{config.description}</p>
-              </div>
-            </div>
-            <div className="provider-location-module-hero__meta">
-              <div className="provider-location-module-hero__location">
-                <MapPin aria-hidden="true" />
-                <span><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</span>
-              </div>
-              {/* 2026-10-04 (audit #15): pentru o locație închisă nu promitem publicarea. */}
-              {moduleKey === "program" && <span className="provider-location-module-hero__status">{location.active_status === "inactiva" ? "Locație închisă: nu apare public" : "Se publică imediat"}</span>}
-            </div>
-          </div>
+          <button type="button" className="location-editor-close" aria-label="Închide și revino la locații" onClick={() => {
+            if (moduleKey === "program" && hoursDirty && !window.confirm("Ai modificări nesalvate la program. Revii la locații fără să le salvezi?")) return;
+            onBack?.();
+          }}><X aria-hidden="true" /></button>
         </header>
       )}
 
-      {moduleKey === "program" && (
-        <div className="provider-location-module-note md:hidden">
-          <Info aria-hidden="true" />
-          <span>Pentru fiecare zi, completează mai întâi ora de deschidere, apoi ora de închidere. Butonul de salvare rămâne disponibil în partea de jos a ecranului.</span>
-        </div>
-      )}
-
-      <div className={moduleKey === "servicii" ? "" : "provider-location-module-page__content"} key={`${location.id}:${moduleKey}`}>
+      <div className={moduleKey === "servicii" ? "" : "provider-location-editor-page__content"} key={`${location.id}:${moduleKey}`}>
         {moduleKey === "servicii" && (
           <>
             <ProviderServicesCopyPanel
@@ -169,9 +147,13 @@ export default function ProviderLocationModulePage({
             <ProviderHoursCopyPanel
               workspace={workspace}
               currentLocationId={location.id}
+              onBeforeCopy={checkHoursBeforeCopy}
+              onCopied={() => setHoursRevision(value => value + 1)}
               onRefresh={onRefresh || (() => {})}
             />
             <ProviderHours
+              key={`${location.id}:${hoursRevision}`}
+              onDirtyChange={setHoursDirty}
               locationId={location.id}
               location={location}
               onRefresh={onRefresh || (() => {})}
