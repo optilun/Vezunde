@@ -22,7 +22,7 @@
 .location-editor-panel h2 { font-size:19px; font-weight:750; letter-spacing:-.02em; }
 .location-editor-intro { color:#6d6d66; font-size:13px; line-height:1.6; margin-top:6px; }
 .location-editor [hidden] { display:none!important; }
-.location-editor fieldset { min-width:0; padding:0; border:0; }
+.location-editor fieldset.location-editor-panel { min-width:0; padding:24px; border:1px solid #deded8; }
 .location-editor input,.location-editor select { min-height:44px; border-radius:8px; font-size:14px; }
 .location-editor :is(button,input,select,a):focus-visible { outline:2px solid #3459df; outline-offset:3px; }
 .location-editor button:disabled { cursor:not-allowed; }
@@ -86,7 +86,7 @@
  .location-editor-steps__number { width:24px; height:24px; margin-bottom:7px; font-size:11px; }
  .location-editor-steps strong { font-size:12px; }
  .location-editor-steps small { font-size:10px; }
- .location-editor-panel { padding:18px 14px; }
+ .location-editor-panel,.location-editor fieldset.location-editor-panel { padding:18px 14px; }
  .location-editor-header h1 { font-size:20px; }
  .hours-editor-day { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; padding:16px 0; }
  .hours-editor-preview,.team-editor-layout,.team-editor-invite,.photo-editor-layout { grid-template-columns:minmax(0,1fr); }
