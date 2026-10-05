@@ -194,6 +194,8 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, casServiceKeys, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
   );
   if (baselineSignature !== null && !savingRef.current) confirmedSignatureRef.current = baselineSignature;
+  const latestSignatureRef = useRef(currentSignature);
+  latestSignatureRef.current = currentSignature;
   const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
 
   const draftPrerequisites = useMemo(() => {
@@ -858,7 +860,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     if (await save() !== true) return false;
     const currentDraft = draftRef.current;
     if (!currentDraft) return false;
-    if (currentSignature !== confirmedSignatureRef.current) {
+    if (latestSignatureRef.current !== confirmedSignatureRef.current) {
       setError("Salvează modificările înainte de trimitere.");
       return;
     }
@@ -873,7 +875,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     setError("");
     const response = persistenceMode === "v2"
       ? await base44.functions.invoke("providerServiceConfigurationOps", { action: "submit", submission_id: currentDraft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }))
-      : await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+      : await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: currentDraft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
     if (response.data?.error) {
       savingRef.current = false; setSaving(false); setCommitting(false);
       setError(response.data.error); return false;
@@ -899,9 +901,12 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       location_id: locationId,
       section: "services",
     }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
-    setSaving(false);
-    if (response.data?.error) { setError(response.data.error); return; }
+    if (response.data?.error) {
+      savingRef.current = false; setSaving(false); setCommitting(false);
+      setError(response.data.error); return false;
+    }
     await load();
+    savingRef.current = false; setSaving(false); setCommitting(false);
     setMessage("Cererea a fost retrasă.");
   };
 
