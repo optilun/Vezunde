@@ -26975,7 +26975,7 @@ var fresh = params.get("scenario") === "new";
 var pending = params.get("scenario") === "pending";
 var readOnly = params.get("scenario") === "readonly";
 var keys = [...new Set(PROVIDER_SERVICE_SECTIONS3.filter((x) => x.key !== "business_attributes").flatMap((x) => x.items).slice(0, 21).map((x) => x.id))];
-var config = { service_keys: fresh ? [] : keys, functional_units: [{ unit_key: "optical_store", is_active: true }, { unit_key: "optometric_office", is_active: true }, { unit_key: "optical_workshop", is_active: true }, { unit_key: "ophthalmology_office", is_active: true }], capabilities: [], service_unit_map: {}, cas_service_keys: [], can_edit_services: !readOnly, assignments: [], equipment: [], facilities: [], care_setting: "commercial" };
+var config = { service_keys: fresh ? [] : keys, functional_units: [{ unit_key: "optical_store", is_active: true }, { unit_key: "optometry_cabinet", is_active: true }, { unit_key: "optical_cabinet", is_active: true }, { unit_key: "optical_laboratory", is_active: true }, { unit_key: "ophthalmology_diagnostics", is_active: true }, { unit_key: "optical_workshop", is_active: true }, { unit_key: "ophthalmology_office", is_active: true }], capabilities: [], service_unit_map: {}, cas_service_keys: [], can_edit_services: !readOnly, assignments: [], equipment: [], facilities: [], care_setting: "retail_only" };
 var submission = pending ? { id: "qa-draft", section: "services", status: "pending_review", payload_json: JSON.stringify({ selected_ids: {}, functional_units: config.functional_units }), submitted_payload_json: JSON.stringify({ selected_ids: {}, functional_units: config.functional_units }) } : null;
 var writes = 0;
 var creates = 0;
@@ -29813,7 +29813,7 @@ function ProviderServicesEditor(props) {
       setView("unit");
     } else setView(key === "services" ? "unit" : key === "selected" ? "review" : key);
     requestAnimationFrame(() => {
-      headingRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      headingRef.current?.closest(".services-editor")?.scrollIntoView({ block: "start", behavior: "smooth" });
       headingRef.current?.focus({ preventScroll: true });
     });
   };
@@ -30059,7 +30059,7 @@ var import_jsx_runtime21 = __toESM(require_jsx_runtime());
     /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h1", { children: "Serviciile loca\u021Biei" }),
     /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { children: "Loca\u021Bie demonstrativ\u0103 \xB7 Giroc, Timi\u0219" })
   ] }),
-  /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ProviderServices, { locationId: "qa-location", location: { id: "qa-location", provider_profile_type: "optical_store", provider_type: "optica" } })
+  /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ProviderServices, { locationId: "qa-location", location: { id: "qa-location", provider_profile_type: "independent_optical_store", provider_type: "optica" } })
 ] }));
 /*! Bundled license information:
 
