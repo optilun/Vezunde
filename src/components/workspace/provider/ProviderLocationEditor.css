@@ -100,4 +100,17 @@
  .photo-editor-modal { border-radius:12px 12px 0 0!important; }
  .photo-editor-modal-body { padding:16px!important; }
 }
+
+.team-editor-layout--invite { grid-template-columns:minmax(0,1fr) minmax(280px,.8fr); }
+.team-editor-layout--invite > aside { grid-column:1; grid-row:1; }
+.team-editor-layout--invite > .team-editor-list { grid-column:2; grid-row:1; }
+.team-editor-layout--requests { grid-template-columns:minmax(0,1fr); }
+.team-editor .text-xs { line-height:1.6; }
+@media(max-width:700px) {
+ .team-editor-layout--invite > aside,.team-editor-layout--invite > .team-editor-list { grid-column:auto; grid-row:auto; }
+ .team-editor-layout--invite > aside { order:-1; }
+ .team-editor-layout--invite { grid-template-columns:minmax(0,1fr); }
+ .team-editor-list li > div:last-child { justify-content:flex-start; }
+}
+
 @media(prefers-reduced-motion:reduce) { .location-editor * { scroll-behavior:auto!important; } }
