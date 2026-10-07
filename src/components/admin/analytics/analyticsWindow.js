@@ -1,14 +1,37 @@
 // Datele vin o singura data pe 90 de zile, impartite pe zile; perioadele de 7/30/90
 // se obtin de aici, fara alt calcul pe server.
+// 2026-10-07: perioada = ultimele `days` zile calendaristice, azi inclusiv (7 zile = azi + 6 zile dinainte;
+// inainte includea si a opta zi), ca perioada de dinainte sa aiba exact aceeasi lungime la comparatie.
 export const MAX_DAYS = 90;
 
-export const sinceIso = (days) => new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+const DAY_MS = 86400000;
+const dayOf = (value) => String(value || "").slice(0, 10);
 
-export const inWindow = (rows, days) => {
+// Data (UTC, AAAA-LL-ZZ) cu `daysBack` zile inaintea lui `now`.
+export const sinceIso = (daysBack, now = Date.now()) => new Date(now - daysBack * DAY_MS).toISOString().slice(0, 10);
+
+export const inWindow = (rows, days, now = Date.now()) => {
   if (!rows) return null;
-  const since = sinceIso(days);
-  return rows.filter((r) => String(r.created_date || "").slice(0, 10) >= since);
+  const since = sinceIso(days - 1, now);
+  return rows.filter((r) => dayOf(r.created_date) >= since);
 };
+
+// Perioada de dinainte, de aceeasi lungime, imediat inaintea celei curente; null daca datele nu ajung
+// (peste 90 de zile nu avem istoric) sau lipsesc.
+export const inPreviousWindow = (rows, days, now = Date.now()) => {
+  if (!rows || days * 2 > MAX_DAYS) return null;
+  const from = sinceIso(days * 2 - 1, now);
+  const to = sinceIso(days - 1, now);
+  return rows.filter((r) => dayOf(r.created_date) >= from && dayOf(r.created_date) < to);
+};
+
+// Diferenta dintre doua numere: { diff, pct }. null cand nu e nimic de comparat (indisponibil sau 0 si 0).
+export function changeBetween(current, previous) {
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  if (current === 0 && previous === 0) return null;
+  const diff = current - previous;
+  return { diff, pct: previous > 0 ? Math.round((diff / previous) * 100) : null };
+}
 
 // Insumeaza randurile pe campurile date, ignorand ziua.
 export function sumBy(rows, fields) {

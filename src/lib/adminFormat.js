@@ -68,3 +68,10 @@ export function oldestFirst(items, getDate) {
 export function plural(count, one, many) {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+// „1 zi”, „7 zile”, „30 de zile”, „90 de zile”, „101 zile”: de la 20 în sus (și la sute pline) se pune „de”.
+export function daysLabel(count) {
+  const n = Math.abs(Number(count) || 0);
+  const mod = n % 100;
+  return `${count} ${n === 1 ? "zi" : mod === 0 || mod >= 20 ? "de zile" : "zile"}`;
+}

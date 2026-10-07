@@ -1,26 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { inWindow, sumBy } from "./analyticsWindow";
 
 // Judete + ce cauta pacientii. Serverul (adminAnalyticsOps) intoarce o data cautarile
-// pe 90 de zile, pe zile; perioada aleasa se calculeaza aici. Tinute 5 minute.
+// pe 90 de zile, pe zile; perioada aleasa se calculeaza aici. Tinute 5 minute, cu buton de actualizare.
+// `truncated` = serverul a taiat lista la limita de randuri (prea multe combinatii judet x serviciu x zi).
 const TTL_MS = 5 * 60 * 1000;
 let cache = null;
 
 export default function useSearchAnalytics(days) {
   const [state, setState] = useState(() => ({ base: cache?.value || null, failed: false }));
+  const [loadedAt, setLoadedAt] = useState(() => cache?.at || null);
+  const [refreshing, setRefreshing] = useState(false);
+  const sequence = useRef(0);
+
+  const load = useCallback(async () => {
+    const mine = sequence.current + 1;
+    sequence.current = mine;
+    setRefreshing(true);
+    try {
+      const response = await base44.functions.invoke("adminAnalyticsOps", {});
+      if (response.data?.error) throw new Error(response.data.error);
+      cache = { at: Date.now(), value: response.data };
+      if (mine !== sequence.current) return;
+      setState({ base: response.data, failed: false });
+      setLoadedAt(cache.at);
+    } catch {
+      // La o actualizare esuata pastram ce aveam deja, dar spunem ca nu s-a putut actualiza.
+      if (mine === sequence.current) setState((current) => ({ base: current.base, failed: true }));
+    } finally {
+      if (mine === sequence.current) setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (cache && Date.now() - cache.at < TTL_MS) return undefined;
-    let alive = true;
-    base44.functions.invoke("adminAnalyticsOps", {})
-      .then((r) => {
-        cache = { at: Date.now(), value: r.data };
-        if (alive) setState({ base: r.data, failed: false });
-      })
-      .catch(() => alive && setState({ base: null, failed: true }));
-    return () => { alive = false; };
-  }, []);
+    load();
+    return () => { sequence.current += 1; };
+  }, [load]);
 
   const data = useMemo(() => {
     const base = state.base;
@@ -36,8 +53,10 @@ export default function useSearchAnalytics(days) {
       top_services: sumBy(rows, ["service_key"]).slice(0, 15).map((r) => ({ service_key: r.service_key || "", count: r.count })),
       zero_results: sumBy(rows.filter((r) => r.zero_results === true), ["county_name", "service_key"]).slice(0, 20)
         .map((r) => ({ county: r.county_name || "", service_key: r.service_key || "", count: r.count })),
+      truncated: Boolean(base.truncated),
     };
   }, [state.base, days]);
 
-  return { data, failed: state.failed };
+  // `failed` = nu avem deloc date; `stale` = avem date vechi si ultima actualizare a esuat.
+  return { data, failed: state.failed && !state.base, stale: state.failed && Boolean(state.base), loadedAt, refreshing, refresh: load };
 }

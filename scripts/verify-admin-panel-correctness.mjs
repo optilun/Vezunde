@@ -55,7 +55,8 @@ import {
   sidebarBadgeFor,
   summarizeCounts,
 } from '../src/lib/adminCounts.js';
-import { deadlineInfo, oldestFirst, plural, relativeTime, waitingInfo } from '../src/lib/adminFormat.js';
+import { daysLabel, deadlineInfo, oldestFirst, plural, relativeTime, waitingInfo } from '../src/lib/adminFormat.js';
+import { buckets, changeBetween, inPreviousWindow, inWindow } from '../src/components/admin/analytics/analyticsWindow.js';
 import { sourceHost, validateQuickEdit } from '../src/lib/adminProfileEdit.js';
 import { buildLocationIndex, normalizeSearch, searchLocationIndex, searchTokens } from '../src/lib/adminSearch.js';
 import { ORGANIZATION_ID_PREFIX, buildGlobalIndexes, searchEverything } from '../src/lib/adminGlobalSearch.js';
@@ -1207,6 +1208,68 @@ await check('plăți: ecranele folosesc componentele comune, fără culori scris
   assert.match(center, /loadSubscriptionSummary/);
   assert.ok(!/\[view, setView\] = useState/.test(center), 'fila nu mai e stare locală');
   assert.ok(center.split('\n').every((line) => line.length < 200), 'liniile nu mai sunt comprimate la sute de caractere');
+});
+
+// ---------- Analytics ----------
+await check('analytics: perioadele sunt zile calendaristice întregi, iar cea de dinainte are aceeași lungime', () => {
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const rows = ['2026-09-23', '2026-09-24', '2026-09-30', '2026-10-01', '2026-10-06', '2026-10-07'].map((created_date) => ({ created_date, count: 1 }));
+  assert.deepEqual(inWindow(rows, 7, now).map((row) => row.created_date), ['2026-10-01', '2026-10-06', '2026-10-07'], '7 zile = azi + 6 zile dinainte');
+  assert.deepEqual(inPreviousWindow(rows, 7, now).map((row) => row.created_date), ['2026-09-24', '2026-09-30'], 'cele 7 zile dinainte');
+  assert.equal(inWindow(rows, 30, now).length, 6);
+  assert.equal(inPreviousWindow(rows, 30, now).length, 0);
+  assert.equal(inPreviousWindow(rows, 90, now), null, 'peste 90 de zile nu avem istoric de comparat');
+  assert.equal(inWindow(null, 7, now), null);
+  assert.equal(inPreviousWindow(null, 7, now), null);
+  // fără suprapunere
+  const all = Array.from({ length: 14 }, (_, index) => ({ created_date: new Date(now - index * 86400000).toISOString().slice(0, 10), count: 1 }));
+  assert.equal(inWindow(all, 7, now).length, 7);
+  assert.equal(inPreviousWindow(all, 7, now).length, 7);
+});
+
+await check('analytics: comparația cu perioada de dinainte nu inventează diferențe', () => {
+  assert.deepEqual(changeBetween(5, 3), { diff: 2, pct: 67 });
+  assert.deepEqual(changeBetween(1, 4), { diff: -3, pct: -75 });
+  assert.deepEqual(changeBetween(3, 0), { diff: 3, pct: null }, 'de la 0 nu are procent');
+  assert.deepEqual(changeBetween(2, 2), { diff: 0, pct: 0 });
+  assert.equal(changeBetween(0, 0), null, 'nimic în ambele perioade: fără săgeată');
+  assert.equal(changeBetween(null, 2), null, 'indisponibil nu se compară');
+  assert.equal(changeBetween(2, null), null);
+});
+
+await check('analytics: graficul pe săptămâni (peste 30 de zile) începe lunea', () => {
+  const rows = [{ created_date: '2026-10-07', count: 2 }, { created_date: '2026-10-05', count: 3 }, { created_date: '2026-10-04', count: 1 }];
+  assert.deepEqual(buckets(rows, 90), [{ created_date: '2026-09-28', count: 1 }, { created_date: '2026-10-05', count: 5 }]);
+  assert.deepEqual(buckets(rows, 30).map((row) => row.created_date), ['2026-10-04', '2026-10-05', '2026-10-07'], 'până la 30 de zile: pe zile');
+  assert.equal(buckets(null, 30), null);
+});
+
+await check('zilele se scriu corect în română („7 zile”, „30 de zile”, „101 zile”)', () => {
+  assert.equal(daysLabel(1), '1 zi');
+  assert.equal(daysLabel(7), '7 zile');
+  assert.equal(daysLabel(19), '19 zile');
+  assert.equal(daysLabel(20), '20 de zile');
+  assert.equal(daysLabel(30), '30 de zile');
+  assert.equal(daysLabel(90), '90 de zile');
+  assert.equal(daysLabel(100), '100 de zile');
+  assert.equal(daysLabel(101), '101 zile');
+  assert.equal(daysLabel(120), '120 de zile');
+});
+
+await check('analytics: ecranele au actualizare, comparație și stări oneste, fără culori scrise de mână', () => {
+  const dir = 'src/components/admin/analytics';
+  for (const name of readdirSync(path.join(root, dir)).filter((file) => /\.(jsx|js)$/.test(file))) {
+    const text = source(`${dir}/${name}`).replace(/\/\/.*$/gm, '');
+    assert.ok(!/(red|green|amber|blue|sky|violet|emerald)-\d{2,3}/.test(text), `${name}: culori scrise de mână`);
+    assert.ok(!/Se incarca|Actualizeaza|Indisponibil momentan\.\.\./.test(text), `${name}: text fără diacritice`);
+  }
+  const page = source(`${dir}/AdminAnalytics.jsx`);
+  assert.match(page, /Actualizează/);
+  assert.match(page, /AdminChips/);
+  assert.match(page, /truncated/, 'o listă tăiată de server trebuie spusă');
+  assert.match(source(`${dir}/useAdminAnalytics.js`), /inPreviousWindow/);
+  assert.match(source(`${dir}/useSearchAnalytics.js`), /response\.data\?\.error/, 'eroarea serverului nu mai trece drept date');
+  assert.match(source(`${dir}/CountyCoverageCard.jsx`), /De cercetat/);
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);
