@@ -27,9 +27,15 @@ async function listFiles(dir) {
   for (const file of await listFiles('src')) {
     const source = await read(file);
     if (file.endsWith('VectorResultsCanvas.jsx')) continue;
+    // 2026-10-08: harta cu un singur punct (LocationPinMap, din 2026-10-05) are propriul canvas vectorial,
+    // incarcat tot doar prin import dinamic (verificat mai jos).
+    if (file.endsWith('LocationPinVectorCanvas.jsx')) continue;
     assert.doesNotMatch(source, /from ["']maplibre-gl/, `${file} nu importa MapLibre direct`);
     assert.doesNotMatch(source, /import\s+VectorResultsCanvas\s+from/, `${file} nu importa static harta vectoriala`);
   }
+  const pinMap = await read('src/components/maps/LocationPinMap.jsx');
+  assert.match(pinMap, /lazy\(\(\) => import\("\.\/LocationPinVectorCanvas"\)/, 'canvasul hartii cu un punct se incarca doar dinamic');
+  assert.doesNotMatch(pinMap, /import\s+LocationPinVectorCanvas\s+from/);
   const loader = await read('src/components/results/vectorCanvasLoader.js');
   assert.match(loader, /return import\("\.\/VectorResultsCanvas"\);/);
   const resultsMap = await read('src/components/results/ResultsMap.jsx');

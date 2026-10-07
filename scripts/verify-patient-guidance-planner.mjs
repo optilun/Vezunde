@@ -628,7 +628,13 @@ await scenario("planner is wired only into interpretation shadow mode", async ()
     source,
     /runPatientGuidanceRuntimeShadow.*patientGuidancePlanner\.js/s,
   );
-  assert.equal((source.match(/Core\.InvokeLLM\(/g) || []).length, 1);
+  // 2026-10-08: apelul LLM s-a mutat din entry.ts in motorul comun base44/shared/patientNeedLlmEngine.js (cache, model rapid, apoi cel puternic doar la nevoie; commit 4903c3bc). Regula ramane: un singur punct de apel LLM, folosit o singura data de interpretare; alegerea intrebarii nu apeleaza LLM.
+  assert.equal((source.match(/Core\.InvokeLLM\(/g) || []).length, 0);
+  assert.equal((source.match(/invokePatientNeedLlm\(/g) || []).length, 1);
+  assert.equal(
+    ((await readFile(new URL("../base44/shared/patientNeedLlmEngine.js", import.meta.url), "utf8")).match(/Core\.InvokeLLM\(/g) || []).length,
+    1,
+  );
   assert.match(source, /if \(payload\.mode === 'interpret_only'\)/);
   assert.match(
     source,

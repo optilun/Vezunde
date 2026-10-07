@@ -76,9 +76,11 @@ assert.match(adminQueue, /close_location/);
 assert.match(adminQueue, /hide_profile/);
 
 assert.match(adminNav, /key: "corectii"/);
-assert.match(adminNav, /Corectii si eliminari/);
+// 2026-10-08: eticheta din meniu are diacritice (Corecții și eliminări) din 2026-10-05.
+assert.match(adminNav, /Corecții și eliminări/);
 assert.match(adminPage, /DirOpsCorrections/);
-assert.match(adminPage, /tab === "corectii"/);
+// 2026-10-07: secțiunea vine din adresă (?s=corectii), nu din starea locală `tab`.
+assert.match(adminPage, /section === "corectii"/);
 assert.match(presentation, /label: "Profil nerevendicat"/);
 assert.doesNotMatch(presentation, /buildDirectoryReportHref/);
 

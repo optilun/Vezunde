@@ -54,16 +54,18 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   assert.match(resultsMap, /signature: fitSignature/);
 }
 
-// 3. Harta Google din profil
+// 3. Harta din profil
+// 2026-10-08: din 2026-10-05 profilul foloseste harta VIASEE (LocationPinMap) in locul iframe-ului Google
+// (DeferredMapEmbed). Regula ramane aceeasi: nimic greu nu porneste pana cand harta se apropie de ecran.
 {
   const profile = await read('src/pages/ProviderProfile.jsx');
-  assert.match(profile, /function DeferredMapEmbed\(\{ src, title \}\)/);
-  assert.match(profile, /new IntersectionObserver\(/);
-  assert.match(profile, /rootMargin: "400px 0px"/);
-  assert.match(profile, /<DeferredMapEmbed title=\{`Harta \$\{profile\.name\}`\} src=\{embedUrl\} \/>/);
-  assert.equal((profile.match(/<iframe/g) || []).length, 1, 'Un singur iframe, in DeferredMapEmbed');
-  assert.match(profile, /\{visible \? \(\s*<iframe/, 'Iframe-ul exista doar dupa ce cardul se apropie de ecran');
-  assert.match(profile, /Afișează harta/, 'Harta se poate cere si direct');
+  assert.match(profile, /<LocationPinMap location=\{profile\} \/>/);
+  assert.equal((profile.match(/<iframe/g) || []).length, 0, 'Profilul nu mai incarca un iframe de harta');
+  const pin = await read('src/components/maps/LocationPinMap.jsx');
+  assert.match(pin, /new IntersectionObserver\(/);
+  assert.match(pin, /rootMargin: "160px"/);
+  assert.match(pin, /\{visible \? <Suspense/, 'Canvas-ul de harta exista doar dupa ce cardul se apropie de ecran');
+  assert.match(pin, /lazy\(\(\) => import\("\.\/LocationPinVectorCanvas"\)/, 'Biblioteca de harta se incarca doar la nevoie');
 }
 
 console.log('Page stability and performance checks passed.');

@@ -61,7 +61,12 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
 // 2026-09-30: 50 in loc de 49 - automaticEmailOps (emailuri automate, adaugata pe 2026-09-29) e
 // functie fizica proprie. Verificat pe site: publicata si functionala, iar celelalte functii raspund
 // normal, deci platforma accepta 50. Regula ramane: functiile noi intra in routerele existente.
-assert.equal(physicalEndpoints.length, 50, 'Suprafata Base44 trebuie sa contina exact 50 de functii fizice (49 + automaticEmailOps, 2026-09-29) dupa folosirea bridge-ului existent (48 + matchProfessionals, 2026-09-03: recomandarea de specialisti este a doua unitate de matching, in aceeasi familie cu matchProviders si matchProvidersSemantic, deci endpoint propriu; nu este logica de directory si nu are ce cauta in routerul directoryOps)');
+// 2026-10-08: 52 in loc de 50 - editorul Base44 a adaugat pe 2026-10-05 doua functii fizice:
+// adminAnalyticsOps (Analytics, acoperire pe judete; commit f0b6b30f) si recordSearchEvent (cautare
+// anonima pentru Analytics; commit 1ba86de2). Numarul urmeaza depozitul publicat; nu s-a verificat pe
+// site ca platforma publica toate cele 52 (verificat pana acum: 50). Regula ramane: functiile noi intra
+// in routerele existente.
+assert.equal(physicalEndpoints.length, 52, 'Suprafata Base44 trebuie sa contina exact 52 de functii fizice (50 + adminAnalyticsOps si recordSearchEvent, 2026-10-05; 49 + automaticEmailOps, 2026-09-29) dupa folosirea bridge-ului existent (48 + matchProfessionals, 2026-09-03: recomandarea de specialisti este a doua unitate de matching, in aceeasi familie cu matchProviders si matchProvidersSemantic, deci endpoint propriu; nu este logica de directory si nu are ce cauta in routerul directoryOps)');
 assert.deepEqual(logicalNames, expectedLogicalNames, 'Contractul trebuie sa pastreze cele 16 nume logice (inclusiv providerBillingOps si inboxul organizatiei) (8 + createProviderCheckoutSession + createProviderBillingPortalSession + syncProviderStripeSubscription + reconcileProviderStripeSubscriptions, 2026-09-11: checkout self-service Stripe pentru planul Pro; sincronizarea s-a mutat de pe webhook, interceptat de platforma Base44, pe confirmare sincrona + resincronizare periodica)');
 assert.equal(Object.keys(DIRECTORY_FUNCTION_ROUTES).length, 24, 'Cele 24 de rute directory trebuie pastrate (19 + adminFragmentedOrganizations 2026-08-19 + researchServiceBatchOps 2026-09-03 + directoryGeocodeOps 2026-09-05 + outreachCampaignOps + outreachSendOps 2026-09-12: modulul de outreach email, portat si imbunatatit dupa sistemul din Optilun)');
 assert.equal(Object.keys(SERVICE_CONFIGURATION_FUNCTION_ROUTES).length, 13, 'Cele 13 rute service configuration trebuie pastrate');
