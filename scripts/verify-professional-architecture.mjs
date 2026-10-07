@@ -110,8 +110,10 @@ check('adminul poate arhiva si reactiva un profil', () => {
   assert.match(backend, /nextProfessionalProfileState\(action, profile\)/);
   assert.match(backend, /if \(!note\) return res\(\{ error: 'Nota este obligatorie' \}, 400\);/, 'arhivarea nu cere motiv scris');
   const ui = read('src/components/admin/directory/AdminProfessionalProfileReview.jsx');
-  assert.match(ui, /decide\(profile, "archive"\)/);
-  assert.match(ui, /decide\(profile, "restore"\)/);
+  // 2026-10-07: acțiunile trec prin AdminDecisionBar (cheie + motiv obligatoriu), apoi decide(profile, action, note).
+  assert.match(ui, /key: "archive"[^}]*note: "required"/, 'arhivarea trebuie să ceară motiv');
+  assert.match(ui, /key: "restore"[^}]*note: "required"/, 'reactivarea trebuie să ceară motiv');
+  assert.match(ui, /decide\(profile, action, note\)/);
 });
 
 check('traducerea tip -> rol legacy acopera toate tipurile', () => {

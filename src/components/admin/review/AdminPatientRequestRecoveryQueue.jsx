@@ -1,9 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clock3, Inbox, Loader2, RefreshCw, SearchCheck } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, Inbox, Loader2, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminChips from "@/components/admin/ui/AdminChips";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
 import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { fullDateTime, oldestFirst, waitingInfo } from "@/lib/adminFormat";
+import { getServiceLabel } from "@/lib/serviceAutocomplete";
 
 const ACTIVE_STATUSES = new Set(["queued", "in_review"]);
 
@@ -13,6 +19,7 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Finalizată" },
   { value: "closed", label: "Închisă" },
 ];
+const STATUS_TONES = { queued: "warning", in_review: "info", completed: "success", closed: "neutral" };
 
 const OUTCOME_OPTIONS = [
   { value: "pending", label: "Rezultat în așteptare" },
@@ -34,32 +41,22 @@ const REASON_LABELS = {
   no_search_results: "Căutarea nu a returnat rezultate",
 };
 
-function formatDate(value) {
-  if (!value) return "—";
-  try {
-    return new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-  } catch (_error) {
-    return String(value);
-  }
-}
+const FILTER_LABEL = { active: "Active", history: "Istoric", all: "Toate" };
 
 function statusLabel(status) {
   return STATUS_OPTIONS.find((item) => item.value === status)?.label || "În așteptare";
 }
 
-function SummaryCard({ icon: Icon, label, value }) {
+function queuedAt(item) {
+  return item.queued_at || item.created_date;
+}
+
+function Stat({ label, value }) {
   return (
-    <AdminCard className="p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold text-muted-foreground">{label}</div>
-          <div className="mt-1 font-heading text-2xl font-extrabold">{value}</div>
-        </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </AdminCard>
+    <div className="rounded-xl bg-secondary/50 p-3">
+      <p className="text-[10px] font-bold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-extrabold">{value}</p>
+    </div>
   );
 }
 
@@ -73,6 +70,7 @@ export default function AdminPatientRequestRecoveryQueue() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const detailRef = useRef(null);
   const [draft, setDraft] = useState({
     status: "queued",
     outcome: "pending",
@@ -88,7 +86,7 @@ export default function AdminPatientRequestRecoveryQueue() {
       setCases(nextCases);
       setSelectedId((current) => {
         if (preserveSelection && current && nextCases.some((item) => item.id === current)) return current;
-        return nextCases[0]?.id || "";
+        return "";
       });
     } catch (loadError) {
       setCases([]);
@@ -108,11 +106,15 @@ export default function AdminPatientRequestRecoveryQueue() {
     };
   }, [cases]);
 
-  const visibleCases = useMemo(() => (cases || []).filter((item) => {
-    if (statusFilter === "active") return ACTIVE_STATUSES.has(item.status || "queued");
-    if (statusFilter === "history") return !ACTIVE_STATUSES.has(item.status || "queued");
-    return true;
-  }), [cases, statusFilter]);
+  // Cele active, cele mai vechi primele (sunt cele care așteaptă cel mai mult); istoricul, cele mai noi primele.
+  const visibleCases = useMemo(() => {
+    const rows = (cases || []).filter((item) => {
+      if (statusFilter === "active") return ACTIVE_STATUSES.has(item.status || "queued");
+      if (statusFilter === "history") return !ACTIVE_STATUSES.has(item.status || "queued");
+      return true;
+    });
+    return statusFilter === "active" ? oldestFirst(rows, queuedAt) : rows;
+  }, [cases, statusFilter]);
 
   useEffect(() => {
     if (visibleCases.length === 0) {
@@ -148,6 +150,16 @@ export default function AdminPatientRequestRecoveryQueue() {
       })
       .finally(() => setLoadingRequest(false));
   }, [selectedCase]);
+
+  const select = (id) => {
+    setSelectedId(id);
+    setMessage("");
+    setError("");
+    // Sub ecranul larg, detaliul e sub listă: te ducem la el, ca să nu cauți formularul.
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1280px)").matches) {
+      window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
+    }
+  };
 
   const save = async () => {
     if (!selectedCase || saving) return;
@@ -186,62 +198,84 @@ export default function AdminPatientRequestRecoveryQueue() {
     }
   };
 
-  if (!cases) return <p className="text-sm text-muted-foreground">Se încarcă cererile fără rezultate...</p>;
+  if (!cases) return <AdminLoading label="Se încarcă cererile fără rezultate…" />;
+
+  const chips = [
+    { key: "active", label: FILTER_LABEL.active, count: counts.queued + counts.review },
+    { key: "history", label: FILTER_LABEL.history, count: counts.completed },
+    { key: "all", label: FILTER_LABEL.all, count: counts.total },
+  ];
+  const serviceKeys = request?.service_keys || selectedCase?.service_keys || [];
 
   return (
     <div className="space-y-4" data-component="AdminPatientRequestRecoveryQueue">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={Inbox} label="În așteptare" value={counts.queued} />
-        <SummaryCard icon={SearchCheck} label="În verificare" value={counts.review} />
-        <SummaryCard icon={CheckCircle2} label="Finalizate / închise" value={counts.completed} />
-        <SummaryCard icon={Clock3} label="Total" value={counts.total} />
-      </div>
-
       <AdminCard className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {[
-              ["active", `Active (${counts.queued + counts.review})`],
-              ["history", `Istoric (${counts.completed})`],
-              ["all", `Toate (${counts.total})`],
-            ].map(([key, label]) => (
-              <button key={key} type="button" onClick={() => setStatusFilter(key)} className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${statusFilter === key ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary"}`}>
-                {label}
-              </button>
-            ))}
+          <div>
+            <AdminChips options={chips} value={statusFilter} onChange={setStatusFilter} label="Filtrează cererile" />
+            {statusFilter === "active" && (counts.queued > 0 || counts.review > 0) && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {counts.queued} în așteptare · {counts.review} în verificare
+              </p>
+            )}
           </div>
-          <button type="button" onClick={() => void load()} disabled={saving} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
-            <RefreshCw className="h-3.5 w-3.5" /> Actualizează
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={saving}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Actualizează
           </button>
         </div>
       </AdminCard>
 
-      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
-      {message && <div aria-live="polite" className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-800">{message}</div>}
+      {error && <AdminNotice tone="danger">{error}</AdminNotice>}
+      {message && <AdminNotice tone="success" onDismiss={() => setMessage("")}>{message}</AdminNotice>}
 
       {visibleCases.length === 0 ? (
-        <AdminCard className="p-5"><EmptyState icon={Inbox} title="Nu există cereri în acest filtru" subtitle="Cererile salvate după o căutare fără rezultate vor apărea aici numai după acordul pacientului." /></AdminCard>
+        <AdminCard className="p-5">
+          <EmptyState
+            icon={Inbox}
+            title="Nu există cereri în acest filtru."
+            subtitle="Cererile salvate după o căutare fără rezultate apar aici doar cu acordul pacientului."
+          />
+        </AdminCard>
       ) : (
         <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.5fr)]">
           <AdminCard className="p-3">
-            <div className="space-y-2">
-              {visibleCases.map((item) => (
-                <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setMessage(""); setError(""); }} className={`w-full rounded-2xl border p-4 text-left ${selectedId === item.id ? "border-foreground bg-secondary" : "border-border bg-card hover:bg-secondary/50"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-foreground">{item.public_reference || "Fără referință"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{item.city || "Localitate nespecificată"}{item.county ? `, ${item.county}` : ""}</p>
-                    </div>
-                    <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-bold text-muted-foreground">{statusLabel(item.status)}</span>
-                  </div>
-                  <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{REASON_LABELS[item.reason] || "Căutare fără rezultate"}</p>
-                  <p className="mt-2 text-[10px] text-muted-foreground">Adăugată: {formatDate(item.queued_at || item.created_date)}</p>
-                </button>
-              ))}
-            </div>
+            <ul className="space-y-2" aria-label="Cereri fără rezultate">
+              {visibleCases.map((item) => {
+                const active = ACTIVE_STATUSES.has(item.status || "queued");
+                const waiting = active ? waitingInfo(queuedAt(item)) : null;
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => select(item.id)}
+                      aria-current={selectedId === item.id ? "true" : undefined}
+                      className={`w-full rounded-2xl border p-4 text-left transition-colors ${selectedId === item.id ? "border-foreground bg-secondary" : "border-border bg-card hover:bg-secondary/50"}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-foreground">{item.public_reference || "Fără referință"}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{item.city || "Localitate nespecificată"}{item.county ? `, ${item.county}` : ""}</p>
+                        </div>
+                        <StatusBadge label={statusLabel(item.status)} tone={STATUS_TONES[item.status] || "warning"} />
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{REASON_LABELS[item.reason] || "Căutare fără rezultate"}</p>
+                      <p className="mt-2 text-[11px] text-muted-foreground" title={fullDateTime(queuedAt(item))}>
+                        {waiting ? <>Adăugată <span className={waiting.tone === "danger" ? "font-semibold text-danger" : waiting.tone === "warning" ? "font-semibold text-warning" : ""}>{waiting.label}</span></> : `Adăugată ${fullDateTime(queuedAt(item))}`}
+                      </p>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </AdminCard>
 
           <AdminCard className="p-4 sm:p-5">
+            <div ref={detailRef} className="scroll-mt-20" />
             {!selectedCase ? null : (
               <div>
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
@@ -250,58 +284,61 @@ export default function AdminPatientRequestRecoveryQueue() {
                     <h2 className="mt-1 font-heading text-xl font-extrabold">{selectedCase.public_reference}</h2>
                     <p className="mt-1 text-xs text-muted-foreground">{selectedCase.city || "—"}{selectedCase.county ? `, ${selectedCase.county}` : ""}</p>
                   </div>
-                  <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold">{statusLabel(selectedCase.status)}</span>
+                  <StatusBadge label={statusLabel(selectedCase.status)} tone={STATUS_TONES[selectedCase.status] || "warning"} />
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl bg-secondary/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Profiluri locale</p><p className="mt-1 text-lg font-extrabold">{Number(selectedCase.local_provider_count) || 0}</p></div>
-                  <div className="rounded-xl bg-secondary/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Cu date serviciu</p><p className="mt-1 text-lg font-extrabold">{Number(selectedCase.configured_matching_provider_count) || 0}</p></div>
-                  <div className="rounded-xl bg-secondary/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Eligibile</p><p className="mt-1 text-lg font-extrabold">{Number(selectedCase.eligible_provider_count) || 0}</p></div>
+                  <Stat label="Profiluri locale" value={Number(selectedCase.local_provider_count) || 0} />
+                  <Stat label="Cu date serviciu" value={Number(selectedCase.configured_matching_provider_count) || 0} />
+                  <Stat label="Eligibile" value={Number(selectedCase.eligible_provider_count) || 0} />
                 </div>
 
                 <div className="mt-4 rounded-xl border border-border bg-background p-4">
-                  <p className="text-xs font-bold text-foreground">Motivul intrării în coadă</p>
+                  <p className="text-xs font-bold text-foreground">De ce a intrat în coadă</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{REASON_LABELS[selectedCase.reason] || "Căutarea nu a returnat rezultate."}</p>
                 </div>
 
                 <div className="mt-4 rounded-xl border border-border bg-background p-4">
                   <p className="text-xs font-bold text-foreground">Cererea pacientului</p>
                   {loadingRequest ? (
-                    <p className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Se încarcă...</p>
+                    <p className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Se încarcă…</p>
                   ) : (
                     <>
                       <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{request?.detailed_message || request?.original_message || "Fără mesaj disponibil."}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {(request?.service_keys || selectedCase.service_keys || []).map((key) => <span key={key} className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{key}</span>)}
-                      </div>
+                      {serviceKeys.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {serviceKeys.map((key) => <StatusBadge key={key} label={getServiceLabel(key)} />)}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <label className="text-xs font-semibold">Status
-                    <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal">
+                    <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal">
                       {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
                   <label className="text-xs font-semibold">Rezultat
-                    <select value={draft.outcome} onChange={(event) => setDraft((current) => ({ ...current, outcome: event.target.value }))} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal">
+                    <select value={draft.outcome} onChange={(event) => setDraft((current) => ({ ...current, outcome: event.target.value }))} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal">
                       {OUTCOME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
                 </div>
 
                 <label className="mt-4 block text-xs font-semibold">Mesaj vizibil pacientului
-                  <textarea value={draft.patient_update} onChange={(event) => setDraft((current) => ({ ...current, patient_update: event.target.value }))} maxLength={500} rows={4} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="Explică rezultatul verificării fără date interne sau promisiuni de disponibilitate." />
+                  <textarea value={draft.patient_update} onChange={(event) => setDraft((current) => ({ ...current, patient_update: event.target.value }))} maxLength={500} rows={4} className="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-3 text-base font-normal sm:text-sm" placeholder="Explică rezultatul verificării fără date interne sau promisiuni de disponibilitate." />
+                  <span className="mt-1 block text-right text-[11px] font-normal text-muted-foreground">{draft.patient_update.length}/500</span>
                 </label>
 
-                <label className="mt-4 block text-xs font-semibold">Notă internă
-                  <textarea value={draft.internal_note} onChange={(event) => setDraft((current) => ({ ...current, internal_note: event.target.value }))} maxLength={1000} rows={3} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="Informații interne pentru audit. Nu sunt afișate pacientului." />
+                <label className="mt-2 block text-xs font-semibold">Notă internă
+                  <textarea value={draft.internal_note} onChange={(event) => setDraft((current) => ({ ...current, internal_note: event.target.value }))} maxLength={1000} rows={3} className="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-3 text-base font-normal sm:text-sm" placeholder="Informații interne pentru istoric. Nu sunt afișate pacientului." />
                 </label>
 
                 <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-bold text-background disabled:opacity-50">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  {saving ? "Se salvează..." : "Salvează verificarea"}
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+                  {saving ? "Se salvează…" : "Salvează verificarea"}
                 </button>
               </div>
             )}

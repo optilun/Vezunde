@@ -75,6 +75,26 @@ export const LOCATION_STATUS_LABELS = Object.freeze({
 });
 export const locationStatusLabel = (status) => labelFrom(LOCATION_STATUS_LABELS, status, "Necunoscut");
 
+// Controlul profilului (ProviderLocation.profile_control_status), în cuvinte.
+export const PROFILE_CONTROL_LABELS = Object.freeze({
+  directory: "Din director",
+  claimed: "Revendicat",
+  verified: "Verificat",
+  suspended: "Suspendat",
+});
+export const profileControlLabel = (status) => labelFrom(PROFILE_CONTROL_LABELS, status, "Necunoscut");
+
+// De ce un fișier foto a ajuns în coada de curățare (ProviderMediaAsset.cleanup_reason).
+export const MEDIA_CLEANUP_REASON_LABELS = Object.freeze({
+  upload_replaced_before_attachment: "Încărcare înlocuită înainte de atașare",
+  photo_draft_replaced: "Ciornă de fotografie înlocuită",
+  photo_draft_withdrawn: "Ciornă de fotografie retrasă",
+  submission_rejected: "Fotografie respinsă",
+  submission_withdrawn: "Cerere retrasă de furnizor",
+  submission_approved: "Înlocuită de o fotografie aprobată",
+});
+export const mediaCleanupReasonLabel = (reason) => labelFrom(MEDIA_CLEANUP_REASON_LABELS, reason, "Fișier nefolosit");
+
 export const ACTIVE_STATUS_LABELS = Object.freeze({ activa: "Activă", inactiva: "Inactivă" });
 export const activeStatusLabel = (status) => labelFrom(ACTIVE_STATUS_LABELS, status, "Necunoscut");
 

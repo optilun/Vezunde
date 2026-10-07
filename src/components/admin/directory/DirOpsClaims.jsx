@@ -441,7 +441,7 @@ export default function DirOpsClaims() {
                     <label className="mt-2 flex cursor-pointer items-start gap-2">
                       <input
                         type="checkbox"
-                        className="mt-0.5 h-4 w-4"
+                        className="mt-0.5 h-4 w-4 shrink-0"
                         checked={action.newCandidates.every((candidate) => action.acknowledgedIds?.includes(candidate.location_id))}
                         onChange={(event) => setAction((current) => ({
                           ...current,
@@ -501,7 +501,7 @@ export default function DirOpsClaims() {
                                   ? [...new Set([...current.approvedLocationIds, item.id])]
                                   : current.approvedLocationIds.filter((id) => id !== item.id),
                               }))}
-                              className="mt-0.5 h-4 w-4"
+                              className="mt-0.5 h-4 w-4 shrink-0"
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block break-words font-semibold text-foreground">{item.name}{primary ? " · principală" : ""}</span>

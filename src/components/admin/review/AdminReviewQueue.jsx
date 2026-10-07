@@ -4,6 +4,7 @@ import AdminNewLocationReview from "@/components/admin/directory/AdminNewLocatio
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
 import AdminLocationLifecycleReview from "@/components/admin/directory/AdminLocationLifecycleReview";
 import AdminPhotoCleanupQueue from "@/components/admin/directory/AdminPhotoCleanupQueue";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import AdminTabs from "@/components/admin/ui/AdminTabs";
 import AdminPatientRequestRecoveryQueue from "./AdminPatientRequestRecoveryQueue";
 import { useAdminCounts } from "@/components/admin/useAdminCounts";
@@ -38,6 +39,10 @@ export default function AdminReviewQueue() {
 
   const tabs = TABS.map((item) => ({ ...item, count: counts?.review?.[item.key] ?? null }));
   const activeTab = TABS.find((item) => item.key === tab) || TABS[0];
+  // Când termini o coadă, panoul îți arată singur unde mai e de lucru (nu trebuie să cauți printre taburi).
+  const nextWithWork = counts?.review?.[activeTab.key] === 0
+    ? TABS.find((item) => item.key !== activeTab.key && counts?.review?.[item.key] > 0)
+    : null;
 
   return (
     <div className="space-y-5">
@@ -45,6 +50,21 @@ export default function AdminReviewQueue() {
         <AdminTabs tabs={tabs} value={tab} onChange={setTab} label="Coada de verificare" />
         <p className="mt-3 text-xs text-muted-foreground">{activeTab.description}</p>
       </div>
+
+      {nextWithWork && (
+        <AdminNotice tone="success">
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span>Gata aici: „{activeTab.label}” e goală.</span>
+            <button
+              type="button"
+              onClick={() => setTab(nextWithWork.key)}
+              className="inline-flex min-h-9 items-center rounded-full border border-success-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-secondary"
+            >
+              Treci la „{nextWithWork.label}” ({counts.review[nextWithWork.key]})
+            </button>
+          </span>
+        </AdminNotice>
+      )}
 
       {tab === "workspace" && <AdminWorkspaceSubmissionsReview />}
       {tab === "patient_requests" && <AdminPatientRequestRecoveryQueue />}

@@ -46,6 +46,24 @@ export function deadlineInfo(startValue, days, now = Date.now()) {
   return { due: new Date(due), daysLeft, late, soon, label, tone: late ? "danger" : soon ? "warning" : "neutral" };
 }
 
+// Cât așteaptă un element în coadă (pentru „Trimisă acum 2 zile”). Ton: neutru, apoi avertisment de la
+// 3 zile și alertă de la 7 zile; e doar un indiciu vizual, nu un termen legal (cum e cel GDPR).
+export function waitingInfo(startValue, now = Date.now()) {
+  const start = new Date(startValue).getTime();
+  if (!startValue || !Number.isFinite(start)) return null;
+  const days = Math.max(0, Math.floor((now - start) / DAY));
+  return { days, label: relativeTime(startValue, now), tone: days >= 7 ? "danger" : days >= 3 ? "warning" : "neutral" };
+}
+
+// Cele mai vechi primele: ordinea în care ar trebui rezolvată o coadă. Elementele fără dată merg la final.
+export function oldestFirst(items, getDate) {
+  const time = (item) => {
+    const value = new Date(getDate(item)).getTime();
+    return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+  };
+  return [...items].sort((a, b) => time(a) - time(b));
+}
+
 // „1 revendicare” / „3 revendicări”.
 export function plural(count, one, many) {
   return `${count} ${count === 1 ? one : many}`;

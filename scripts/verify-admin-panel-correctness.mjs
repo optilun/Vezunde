@@ -20,7 +20,9 @@ import {
   correctionStatusLabel,
   humanizeCode,
   locationStatusLabel,
+  mediaCleanupReasonLabel,
   organizationLinkLabel,
+  profileControlLabel,
   profileStateOf,
   selectionRequestLabel,
   selectionRequestTone,
@@ -35,7 +37,7 @@ import {
   sidebarBadgeFor,
   summarizeCounts,
 } from '../src/lib/adminCounts.js';
-import { deadlineInfo, plural, relativeTime } from '../src/lib/adminFormat.js';
+import { deadlineInfo, oldestFirst, plural, relativeTime, waitingInfo } from '../src/lib/adminFormat.js';
 import { sourceHost, validateQuickEdit } from '../src/lib/adminProfileEdit.js';
 import {
   ADMIN_NAV_LABELS,
@@ -585,6 +587,78 @@ await check('shell-ul admin nu mai foloseste CSS-ul contului de furnizor (.works
   const css = source('src/styles/admin-surface.css');
   assert.ok(!/!important/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'admin-surface.css nu trebuie sa foloseasca !important');
   assert.ok(!/:has\(/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'admin-surface.css nu trebuie sa foloseasca :has()');
+});
+
+// ---------- Coada de verificare (M2) ----------
+await check('cât așteaptă un element: ton neutru, apoi avertisment (3 zile) și alertă (7 zile)', () => {
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const ago = (days) => new Date(now - days * 86400000).toISOString();
+  assert.equal(waitingInfo(ago(0.1), now).tone, 'neutral');
+  assert.equal(waitingInfo(ago(2), now).tone, 'neutral');
+  assert.equal(waitingInfo(ago(3), now).tone, 'warning');
+  assert.equal(waitingInfo(ago(6), now).tone, 'warning');
+  assert.equal(waitingInfo(ago(7), now).tone, 'danger');
+  assert.equal(waitingInfo(ago(8), now).label, 'acum 8 zile');
+  assert.equal(waitingInfo(ago(1), now).label, 'ieri');
+  assert.equal(waitingInfo('', now), null);
+  assert.equal(waitingInfo('nu-e-data', now), null);
+});
+
+await check('cozile se rezolvă cele mai vechi primele; elementele fără dată merg la final', () => {
+  const rows = [{ id: 'c', d: '2026-10-06' }, { id: 'x' }, { id: 'a', d: '2026-10-01' }, { id: 'b', d: '2026-10-03' }];
+  assert.deepEqual(oldestFirst(rows, (row) => row.d).map((row) => row.id), ['a', 'b', 'c', 'x']);
+  assert.deepEqual(rows.map((row) => row.id), ['c', 'x', 'a', 'b'], 'nu modifică lista primită');
+});
+
+await check('motivele de curățare a fotografiilor și controlul profilului au etichete în română', () => {
+  for (const code of ['upload_replaced_before_attachment', 'photo_draft_replaced', 'photo_draft_withdrawn', 'submission_rejected', 'submission_withdrawn', 'submission_approved']) {
+    const label = mediaCleanupReasonLabel(code);
+    assert.ok(label && !label.includes('_') && label !== code, `${code}: ${label}`);
+  }
+  assert.equal(mediaCleanupReasonLabel(''), 'Fișier nefolosit');
+  assert.equal(profileControlLabel('directory'), 'Din director');
+  assert.equal(profileControlLabel('suspended'), 'Suspendat');
+  assert.equal(profileControlLabel(undefined), 'Necunoscut');
+});
+
+await check('cozile folosesc bara de decizie comună, fără casete de notă proprii și fără culori scrise de mână', () => {
+  const withBar = [
+    'src/components/admin/directory/AdminWorkspaceSubmissionsReview.jsx',
+    'src/components/admin/directory/AdminNewLocationReview.jsx',
+    'src/components/admin/directory/AdminProfessionalProfileReview.jsx',
+  ];
+  for (const file of withBar) {
+    const text = source(file);
+    assert.match(text, /AdminDecisionBar/, `${file}: lipsește AdminDecisionBar`);
+    assert.ok(!/<textarea/.test(text), `${file}: nota se scrie în bara de decizie, nu într-o casetă proprie`);
+  }
+  const screens = [
+    ...withBar,
+    'src/components/admin/directory/AdminPhotoCleanupQueue.jsx',
+    'src/components/admin/review/AdminPatientRequestRecoveryQueue.jsx',
+    'src/components/admin/ui/AdminDecisionBar.jsx',
+    'src/components/admin/ui/AdminNotice.jsx',
+  ];
+  for (const file of screens) {
+    const text = source(file).replace(/\/\/.*$/gm, '');
+    assert.ok(!/(red|green|amber|blue)-\d{2,3}/.test(text), `${file}: culori scrise de mână (folosește tokenii semantici)`);
+    assert.ok(!/(Aproba\b|Cere informatii|Locatie\b|Organizatie\b|Specialisti\b|trimisa\b|Respinge solicitarea)/.test(text), `${file}: text vizibil fără diacritice`);
+  }
+});
+
+await check('bara de decizie: motivul obligatoriu se validează local, eroarea apare lângă butoane', () => {
+  const bar = source('src/components/admin/ui/AdminDecisionBar.jsx');
+  assert.match(bar, /note: "required"|action\.note === "required"/, 'acțiunile cu motiv obligatoriu');
+  assert.match(bar, /Scrie mai întâi motivul/, 'mesaj local pentru motiv lipsă');
+  assert.match(bar, /role="alert"/, 'eroarea se anunță');
+  assert.match(bar, /event\.key === "Escape"/, 'Esc închide câmpul');
+  assert.match(bar, /aria-expanded/, 'starea butoanelor care deschid câmpul');
+});
+
+await check('coada: la final propune singură următoarea coadă cu lucru', () => {
+  const queue = source('src/components/admin/review/AdminReviewQueue.jsx');
+  assert.match(queue, /nextWithWork/);
+  assert.match(queue, /Gata aici/);
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);
