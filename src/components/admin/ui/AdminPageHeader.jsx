@@ -3,7 +3,7 @@ import AdminHint from "@/components/admin/ui/AdminHint";
 
 // UI-1: consistent page header used across every admin section.
 // 2026-10-07: subtitlul rămâne o singură linie scurtă; explicațiile lungi merg în `hint` (ⓘ).
-export default function AdminPageHeader({ title, subtitle, actions, hint }) {
+export default function AdminPageHeader({ title, subtitle = undefined, actions = undefined, hint = undefined }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">

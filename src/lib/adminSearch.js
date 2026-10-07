@@ -39,6 +39,10 @@ const joinText = (parts) => normalizeSearch(parts.filter(Boolean).join(" "));
 //   name   = textul principal (după el se clasează);
 //   parts  = toate câmpurile în care se caută;
 //   phones = câmpurile cu telefon (se caută și fără spații, puncte sau paranteze).
+/**
+ * @param {any[] | null | undefined} items
+ * @param {{ name: (item: any) => any, parts: (item: any) => any[], phones?: (item: any) => any[] }} accessors
+ */
 export function buildSearchIndex(items, { name, parts, phones = () => [] }) {
   return (items || []).map((item) => {
     const digits = phones(item).map(digitsOnly).filter((value) => value.length >= 5).join(" ");

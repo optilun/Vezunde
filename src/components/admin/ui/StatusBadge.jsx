@@ -15,7 +15,7 @@ const TONES = {
 // Denumiri vechi, păstrate ca ecranele neschimbate încă să nu se strice.
 const ALIASES = { green: "success", amber: "warning", blue: "info", red: "danger" };
 
-export default function StatusBadge({ label, tone = "neutral", icon: Icon, className = "", children }) {
+export default function StatusBadge({ label = undefined, tone = "neutral", icon: Icon = undefined, className = "", children = undefined }) {
   const key = TONES[tone] ? tone : ALIASES[tone] || "neutral";
   return (
     <span

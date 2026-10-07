@@ -30,6 +30,11 @@ export function useAdminRoute() {
 
 // Sub-tab-ul curent al secțiunii. Un sub-tab necunoscut cade pe cel implicit.
 // Al treilea element: `explicit` = adresa conține deja un sub-tab ales (nu cel implicit din lipsă).
+/**
+ * @param {string[]} validKeys
+ * @param {string} defaultKey
+ * @returns {[string, (key: string, options?: { replace?: boolean }) => void, { explicit: boolean }]}
+ */
 export function useAdminSubTab(validKeys, defaultKey) {
   const { section, tab, go } = useAdminRoute();
   const explicit = validKeys.includes(tab);
@@ -42,6 +47,7 @@ export function useAdminSubTab(validKeys, defaultKey) {
 }
 
 // Elementul deschis în detaliu (ex. o campanie, un profil de research), păstrat în adresă.
+/** @returns {[string, (nextId?: string | number | null) => void]} */
 export function useAdminSelectedId() {
   const { section, tab, id, go } = useAdminRoute();
   const setId = useCallback((nextId) => go(section, tab, nextId || ""), [go, section, tab]);

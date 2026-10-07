@@ -33,7 +33,7 @@ export default function AdminDecisionBar({
   actions,
   secondaryActions = [],
   onDecide,
-  validate,
+  validate = undefined,
   busy = false,
   stack = false,
   className = "",

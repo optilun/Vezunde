@@ -12,10 +12,10 @@ const ICON_TONES = {
 
 // Contor compact comun (2026-10-07): înlocuiește SummaryCard/StatTile copiate prin ecrane.
 // `value` null/undefined = indisponibil, se afișează „—” (nu 0).
-export default function StatCard({ icon: Icon, label, value, hint, tone = "neutral", onClick, active = false }) {
+export default function StatCard({ icon: Icon = undefined, label, value, hint = undefined, tone = "neutral", onClick = undefined, active = false }) {
   const unavailable = value === null || value === undefined;
   const Wrapper = onClick ? "button" : "div";
-  const wrapperProps = onClick ? { type: "button", onClick, "aria-pressed": active || undefined } : {};
+  const wrapperProps = onClick ? { type: /** @type {"button"} */ ("button"), onClick, "aria-pressed": active || undefined } : {};
   return (
     <AdminCard className={cn("overflow-hidden", active && "border-foreground")}>
       <Wrapper

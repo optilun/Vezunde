@@ -46,7 +46,7 @@ function NavGroup({ items, activeKey, counts, onItemClick }) {
   ));
 }
 
-export default function AdminSidebarContent({ activeKey, user, onLogout, onItemClick }) {
+export default function AdminSidebarContent({ activeKey, user, onLogout, onItemClick = undefined }) {
   const { counts } = useAdminCounts();
   return (
     <div className="flex h-full flex-col">

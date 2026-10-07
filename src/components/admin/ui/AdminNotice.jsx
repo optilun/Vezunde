@@ -12,7 +12,7 @@ const TONES = {
   info: { box: "border-info-border bg-info-soft text-info", icon: Info, role: "status" },
 };
 
-export default function AdminNotice({ tone = "info", children, className = "", onDismiss, icon = true }) {
+export default function AdminNotice({ tone = "info", children = undefined, className = "", onDismiss = undefined, icon = true }) {
   const config = TONES[tone] || TONES.info;
   const Icon = config.icon;
   return (

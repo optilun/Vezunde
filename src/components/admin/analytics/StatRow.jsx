@@ -20,7 +20,7 @@ function Change({ change, since }) {
   );
 }
 
-export default function StatRow({ label, value, onClick, change, changeSince }) {
+export default function StatRow({ label, value, onClick = undefined, change = undefined, changeSince = undefined }) {
   const Tag = onClick ? "button" : "div";
   const unavailable = value === null || value === undefined;
   return (
