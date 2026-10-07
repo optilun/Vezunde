@@ -1,0 +1,25 @@
+/* Suprafața panoului de admin (2026-10-07, audit admin).
+ *
+ * Înainte, shell-ul admin folosea clasa `.workspace-neutral`, scrisă pentru contul de furnizor:
+ * în index.css și în stilurile de furnizor are ~34 de reguli pe selectori (unele cu :has() pe clase
+ * utilitare, 43 de !important) care modificau ecrane de admin fără să se vadă în cod. Exemplu real:
+ * `.workspace-neutral details > div { width: min(18rem, …) !important }` strângea la 288 px conținutul
+ * din Istoric audit („Detalii tehnice”), din Import director („Detalii loturi”), din Reparații
+ * (lista de eșecuri) și din detaliul campaniei.
+ *
+ * Tokenii de culoare sunt cei din :root (identici cu cei redefiniți de .workspace-neutral), deci nu
+ * trebuie repetați aici. Rămân doar protecțiile tactile pe tabletă/telefon pe care adminul le moștenea,
+ * ca să nu se schimbe zonele de atingere.
+ */
+@media (max-width: 1023px) {
+  .admin-surface input,
+  .admin-surface select,
+  .admin-surface textarea {
+    font-size: 16px;
+  }
+
+  /* Minim 44 px pentru butoane, exceptând cele deja dimensionate explicit (min-h-*, h-*). */
+  .admin-surface button:not([class*="min-h-"]):not([class*=" h-"]) {
+    min-height: 44px;
+  }
+}
