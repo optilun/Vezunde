@@ -90,11 +90,15 @@ check('admin navigation and page wiring', () => {
 
 check('screen: admin-only entity, confirmed delete, safe export', () => {
   const screen = source('src/components/admin/patients/AdminSearchContacts.jsx');
-  assert.match(screen, /base44\.entities\.PatientSearchContact\.list\("-created_date", 500\)/);
-  assert.match(screen, /base44\.entities\.PatientSearchContact\.update\(selected\.id, changes\)/);
+  assert.match(screen, /const LOAD_LIMIT = 500/);
+  assert.match(screen, /base44\.entities\.PatientSearchContact\.list\("-created_date", LOAD_LIMIT\)/);
+  assert.match(screen, /base44\.entities\.PatientSearchContact\.update\(contactId, changes\)/);
+  // 2026-10-07: confirmarea în doi pași e un dialog (AdminConfirm), nu un al doilea click pe același buton.
   const deleteFn = screen.slice(screen.indexOf('const deleteContact = async'), screen.indexOf('const exportVisible'));
-  assert.ok(deleteFn.indexOf('if (!confirmDelete)') < deleteFn.indexOf('PatientSearchContact.delete('), 'stergerea cere confirmare');
-  assert.match(screen, /Confirmă ștergerea definitivă/);
+  assert.ok(deleteFn.includes('await confirm('), 'stergerea cere confirmare');
+  assert.ok(deleteFn.indexOf('await confirm(') < deleteFn.indexOf('PatientSearchContact.delete('), 'confirmarea vine inainte de stergere');
+  assert.match(deleteFn, /tone: "danger"/);
+  assert.match(deleteFn, /Șterge definitiv/);
   assert.match(screen, /downloadCsv\(`contacte-cautari-\$\{day\}\.csv`, \[\.\.\.SEARCH_CONTACT_CSV_HEADER\], searchContactCsvRows\(visibleContacts\)\)/);
   assert.match(source('src/components/admin/outreach/outreachLabels.js'), /buildCsv\(header, rows\)/, 'exportul foloseste buildCsv (protectie la formule)');
   assert.match(screen, /marketing_unsubscribed_at: new Date\(\)\.toISOString\(\)/);

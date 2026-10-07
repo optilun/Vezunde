@@ -57,6 +57,7 @@ import {
 } from '../src/lib/adminCounts.js';
 import { daysLabel, deadlineInfo, oldestFirst, plural, relativeTime, waitingInfo } from '../src/lib/adminFormat.js';
 import { buckets, changeBetween, inPreviousWindow, inWindow } from '../src/components/admin/analytics/analyticsWindow.js';
+import { searchContactFollowUpTone } from '../src/lib/adminSearchContacts.js';
 import { sourceHost, validateQuickEdit } from '../src/lib/adminProfileEdit.js';
 import { buildLocationIndex, normalizeSearch, searchLocationIndex, searchTokens } from '../src/lib/adminSearch.js';
 import { ORGANIZATION_ID_PREFIX, buildGlobalIndexes, searchEverything } from '../src/lib/adminGlobalSearch.js';
@@ -1270,6 +1271,22 @@ await check('analytics: ecranele au actualizare, comparație și stări oneste, 
   assert.match(source(`${dir}/useAdminAnalytics.js`), /inPreviousWindow/);
   assert.match(source(`${dir}/useSearchAnalytics.js`), /response\.data\?\.error/, 'eroarea serverului nu mai trece drept date');
   assert.match(source(`${dir}/CountyCoverageCard.jsx`), /De cercetat/);
+});
+
+// ---------- Contacte din căutări ----------
+await check('contacte din căutări: „Nou” cere acțiune (albastru), „Contactat” e verde, necunoscutul cade pe „Nou”', () => {
+  assert.equal(searchContactFollowUpTone({ follow_up_status: 'nou' }), 'info');
+  assert.equal(searchContactFollowUpTone({ follow_up_status: 'contactat' }), 'success');
+  assert.equal(searchContactFollowUpTone({ follow_up_status: 'fara_raspuns' }), 'warning');
+  assert.equal(searchContactFollowUpTone({ follow_up_status: 'nu_mai_contacta' }), 'neutral');
+  assert.equal(searchContactFollowUpTone({ follow_up_status: 'status-necunoscut' }), 'info');
+  assert.equal(searchContactFollowUpTone(null), 'info');
+  const screen = source('src/components/admin/patients/AdminSearchContacts.jsx').replace(/\/\/.*$/gm, '');
+  assert.ok(!/(red|green|amber|blue|sky|violet|emerald)-\d{2,3}/.test(screen), 'culori scrise de mână');
+  assert.ok(!/SummaryCard|function Tag\(/.test(screen), 'componentele locale duplicate au fost înlocuite');
+  assert.match(screen, /AdminListControls/);
+  assert.match(screen, /Marchează contactat/);
+  assert.ok(!/window\.confirm/.test(screen));
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

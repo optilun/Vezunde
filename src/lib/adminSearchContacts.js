@@ -33,6 +33,12 @@ export function searchContactFollowUpLabel(row) {
   return FOLLOW_UP_LABELS[searchContactFollowUp(row)];
 }
 
+// Tonul insignei de urmărire (tokenii semantici ai panoului): „Nou” cere o acțiune de la tine.
+const FOLLOW_UP_TONES = { nou: "info", contactat: "success", fara_raspuns: "warning", nu_mai_contacta: "neutral" };
+export function searchContactFollowUpTone(row) {
+  return FOLLOW_UP_TONES[searchContactFollowUp(row)];
+}
+
 // Cine poate primi oferte: a bifat acordul separat, nu s-a dezabonat si nu a cerut sa nu mai fie
 // contactat. Legea 506/2004: fara acord, fara oferte pe email sau SMS.
 export function canReceiveSearchContactOffers(row) {

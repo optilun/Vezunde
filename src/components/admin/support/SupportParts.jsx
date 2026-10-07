@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, RefreshCw, Search } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { ORGANIZATION_ID_PREFIX } from "@/lib/adminGlobalSearch";
 import { supportSourceLabel } from "@/lib/adminLabels";
 import { adminHref } from "@/lib/adminNavConfig";
@@ -8,50 +8,14 @@ import { adminHref } from "@/lib/adminNavConfig";
 // Piese comune pentru Tichete suport și Feedback (2026-10-07): același câmp de căutare, același buton
 // de actualizare, aceleași detalii de context și aceeași defilare spre detaliu pe telefon.
 
-export function SupportSearchField({ value, onChange, placeholder, label }) {
-  return (
-    <label className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3">
-      <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="sr-only">{label}</span>
-      <input
-        type="search"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-      />
-    </label>
-  );
-}
-
-export function RefreshButton({ onClick, busy }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
-    >
-      <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} aria-hidden="true" />
-      Actualizează
-    </button>
-  );
-}
-
-export function FilterSelect({ value, onChange, label, children }) {
-  return (
-    <label>
-      <span className="sr-only">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-10 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {children}
-      </select>
-    </label>
-  );
-}
+// Câmpul de căutare, butonul de actualizare, filtrul cu listă și defilarea spre detaliu sunt comune cu celelalte
+// liste „listă + detaliu” (vezi ui/AdminListControls.jsx); aici păstrăm numele vechi.
+export {
+  AdminFilterSelect as FilterSelect,
+  AdminRefreshButton as RefreshButton,
+  AdminSearchField as SupportSearchField,
+  useScrollToDetail,
+} from "@/components/admin/ui/AdminListControls";
 
 export function EmailLink({ email }) {
   if (!email) return <span className="text-muted-foreground">Email indisponibil</span>;
@@ -96,13 +60,4 @@ export function SupportContext({ source, pagePath, organizationId, professionalP
       )}
     </div>
   );
-}
-
-// Pe ecrane înguste lista și detaliul sunt unul sub altul: după alegerea unui element, ducem ecranul
-// la detaliu. Pe ecrane late (două coloane) nu mișcăm nimic.
-export function useScrollToDetail(detailRef) {
-  return useCallback(() => {
-    if (typeof window === "undefined" || window.matchMedia?.("(min-width: 1280px)").matches) return;
-    window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
-  }, [detailRef]);
 }
