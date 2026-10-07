@@ -365,16 +365,24 @@ Ramura de lucru: `claude/tender-davinci-4q6djk`. Nimic nu apare pe viasee.ro pan
 | T10 | „Sari la continut”, `aria-current` pe meniu, taburi cu sageti, titlu/descriere pentru sertarul de pe telefon, focus in dialoguri |
 | UX | Texte lungi mutate in ⓘ; meniu fara taieturi pe laptop; „Panou de azi” te duce la ce are de facut |
 
+### Val 2 — modulele de zi cu zi: facut pana acum
+| Modul | Ce s-a schimbat |
+|---|---|
+| M2 Coada de verificare | Bara de decizie comuna: „Aproba” dintr-un click, „Cere informatii/Respinge/Arhiveaza” deschid motivul sub butoane (validare locala, eroare langa butoane); doar campurile schimbate (restul in spatele unui comutator); „Trimisa acum N zile” (avertisment 3 zile, alerta 7); cele mai vechi primele; dupa decizie elementul dispare imediat; cand o coada se goleste, propune singura urmatoarea coada cu lucru; validari locale pentru transfer intre organizatii; stari in romana |
+| M7 Servicii pe locatii | Cautare de locatie in loc de lista cu ~1.600 de optiuni (fara diacritice, cuvinte multiple, „Doar cu servicii”); locatia aleasa sta in adresa; servicii cu eticheta din catalog si stari in romana; „Adauga serviciu” pliat; eligibilitate cu rezumat compact |
+| T11 Cautare globala | Ctrl/Cmd+K si buton in antet: meniu rapid cu toate sectiunile (inclusiv cele fara loc in bara) si cautare in locatii, organizatii, revendicari, tichete (nume, telefon in orice format, email); rezultatul deschide elementul (Profiluri/Revendicari/Tichete, cu `?id=`) |
+| M11 Emailuri automate | Fila „Jurnal trimiteri” (CommunicationDelivery): ce a plecat/esuat si de ce, filtre cu numere exacte; rand in Panou + insigna in meniu pentru emailurile esuate in ultimele 7 zile |
+| M3 Revendicari | „De rezolvat/Istoric”, „Trimisa acum N zile”, relatia si starea pe locatie in romana, text cu diacritice |
+| M6 Profiluri | O singura insigna de stare, filtre cu numere, „De verificat” = doar contradictii reale, afisare treptata, „Vezi pe site”, deschidere din cautare |
+
 ### Verificare
-- `scripts/verify-admin-panel-correctness.mjs`: 39 verificari (etichete, reguli, citire pe id-uri, numaratori incl. esec/lentoare, adrese, rute vechi, fara `window.confirm`, fara `.workspace-neutral` in shell).
+- `scripts/verify-admin-panel-correctness.mjs`: 52 de verificari (etichete, reguli, citire pe id-uri, numaratori incl. esec/lentoare, adrese, rute vechi, cautare, jurnal de emailuri, fara `window.confirm`, fara `.workspace-neutral` in shell, fara culori scrise de mana in ecranele refacute).
 - `npm run lint` (0 erori), `npm run lint:services`, `npm run build`: trec.
-- `npm run test:all`: aceleasi 18 esecuri ca inainte de lucru (toate in afara panoului admin); 8 teste pe sursa au fost aliniate la noua structura (adrese in loc de stare locala, diacritice).
-- Verificare in browser pe date demonstrative (local, nepublicata): 39 de pasi — Panou in 4 stari, Coada, Profiluri, Integritate, Revendicari, Audit, Corectii, telefon 390 px, rute vechi, toate sectiunile fara eroare in consola.
+- `npm run test:all`: aceleasi 18 esecuri ca inainte de lucru (toate in afara panoului admin); 9 teste pe sursa au fost aliniate la noua structura (adrese in loc de stare locala, diacritice, bara de decizie).
+- Verificare in browser pe date demonstrative (local, nepublicata), 5 suite: Panou/Profiluri/Integritate/Revendicari/Audit/Corectii/telefon/rute vechi (39 de pasi), Coada de verificare (28), Servicii pe locatii (13), Cautare globala (12), Emailuri automate (9). Fara erori in consola; fara defilare orizontala la 390 px.
 
-### Ramas din Val 0/1 (se face odata cu modulul respectiv)
-- Texte fara diacritice si explicatii lungi in: Coada (`AdminNewLocationReview`, `AdminPhotoCleanupQueue`, `AdminWorkspaceSubmissionsReview`), Servicii pe locatii, Import/Mapare, Research, Campanii, Emailuri automate, Analytics, Plati.
-- `AdminDialog`/`DataTable` comune (se introduc la primul modul care le cere: Profiluri v2).
-- T11 cautare globala, T12 notificari — Val 2/3.
-
-### Urmatorul pas propus
-M6 Profiluri si locatii (citire/paginare pe server, cautare, actiuni in masa) → M2 Coada de verificare → M3 Revendicari → M1 Panou „Azi v2”.
+### Ramas
+- Text fara diacritice si explicatii lungi in: Tichete suport + Feedback (M5), Campanii si marketing (M10), Research director (M8), Contacte din cautari (M9), Analytics (M12), Plati (M13), Import/Mapare (M15), Geografie (M16), Adauga locatie (M18).
+- Emailurile trimise utilizatorilor (sabloanele din `base44/shared/automaticEmailCatalog.js`) sunt scrise fara diacritice („Buna ziua”): decizie de continut, necesita deploy de backend.
+- T12 notificari catre admin (revendicare/tichet/sesizare noua) si email la raspunsul de suport: necesita functii backend.
+- Panou „Azi v2”: indicatori de sanatate (scheduler, Stripe), starea importului.
