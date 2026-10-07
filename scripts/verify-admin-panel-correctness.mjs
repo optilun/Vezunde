@@ -22,7 +22,10 @@ import {
   deliveryStatusLabel,
   deliveryStatusTone,
   accountModeLabel,
+  billingStatusTone,
   correctionStatusLabel,
+  enterpriseOfferLabel,
+  enterpriseOfferTone,
   feedbackStatusLabel,
   feedbackStatusTone,
   humanizeCode,
@@ -46,6 +49,7 @@ import { chunk, fetchByIds, fetchWhereIn, uniqueIds, ID_CHUNK } from '../src/lib
 import {
   REVIEW_PARTS,
   loadAdminCounts,
+  loadSubscriptionSummary,
   mergeWorkspacePending,
   reviewTotal,
   sidebarBadgeFor,
@@ -538,6 +542,7 @@ await check('sub-tab-urile stau in adresa, nu in stare locala', () => {
     'src/components/admin/outreach/OutreachWorkspace.jsx',
     'src/components/admin/support/AdminSupportCenter.jsx',
     'src/components/admin/directory/DirOpsClaims.jsx',
+    'src/components/admin/billing/AdminBillingCenter.jsx',
   ]) {
     assert.match(source(file), /useAdminSubTab/, `${file}: sub-tab-ul trebuie sa foloseasca adresa`);
   }
@@ -1155,6 +1160,53 @@ await check('procese automate: o sursă indisponibilă nu devine 0 și nu lasă 
   const counts = await loadAdminCounts(partial);
   assert.equal(counts.campaigns_attention, null);
   assert.equal(sidebarBadgeFor(counts, 'outreach'), null);
+});
+
+// ---------- Plăți și abonamente ----------
+await check('plăți: tonurile stărilor Stripe (plata restantă e roșie, încasat verde) și ofertele Enterprise în română', () => {
+  for (const status of ['active', 'paid', 'succeeded']) assert.equal(billingStatusTone(status), 'success', status);
+  for (const status of ['past_due', 'unpaid', 'failed', 'uncollectible', 'disputed', 'configuration_review']) assert.equal(billingStatusTone(status), 'danger', status);
+  for (const status of ['open', 'requires_action', 'incomplete']) assert.equal(billingStatusTone(status), 'warning', status);
+  assert.equal(billingStatusTone('canceled'), 'neutral');
+  assert.equal(billingStatusTone(undefined), 'neutral');
+  assert.equal(enterpriseOfferLabel('sent'), 'Trimisă');
+  assert.equal(enterpriseOfferLabel('accepted'), 'Acceptată și plătită');
+  assert.equal(enterpriseOfferLabel('expired'), 'Expirată');
+  assert.equal(enterpriseOfferTone('accepted'), 'success');
+  assert.equal(enterpriseOfferTone('expired'), 'warning');
+  assert.equal(enterpriseOfferTone('canceled'), 'neutral');
+});
+
+await check('plăți: sumarul abonamentelor (active Pro, plată restantă, anulate) vine din numărători pe server', async () => {
+  const client = fakeClient({ overrides: { counts: { ProviderSubscription: 3 } } });
+  const seen = [];
+  const recording = {
+    ...client,
+    entities: new Proxy({}, { get: (_t, name) => ({ count: async (query) => { seen.push({ name, query }); return client.entities[name].count(query); } }) }),
+  };
+  assert.deepEqual(await loadSubscriptionSummary(recording), { active: 3, attention: 3, canceled: 3 });
+  assert.equal(seen.length, 3);
+  assert.deepEqual(seen[0].query, { plan_code: 'pro', status: { $in: ['active', 'trialing', 'grace_period'] } }, 'aceeași definiție ca „Conturi Pro active” din Panou');
+  assert.deepEqual(seen[1].query, { status: { $in: ['past_due', 'unpaid'] } });
+  assert.deepEqual(seen[2].query, { status: 'canceled' });
+  const down = await loadSubscriptionSummary(fakeClient({ failEntities: ['ProviderSubscription'] }));
+  assert.deepEqual(down, { active: null, attention: null, canceled: null }, 'indisponibil nu devine 0');
+});
+
+await check('plăți: ecranele folosesc componentele comune, fără culori scrise de mână și fără text fără diacritice', () => {
+  const dir = 'src/components/admin/billing';
+  for (const name of readdirSync(path.join(root, dir)).filter((file) => /\.(jsx|js)$/.test(file))) {
+    const text = source(`${dir}/${name}`).replace(/\/\/.*$/gm, '');
+    assert.ok(!/(red|green|amber|blue|sky|violet|emerald)-\d{2,3}/.test(text), `${name}: culori scrise de mână`);
+    assert.ok(!/window\.confirm/.test(text), `${name}: confirmare nativă`);
+    const bad = text.match(/(Sincronizeaza|Reincearca|Se incarca|Cauta in|Locatie \/|Plata restanta|Retrage oferta[^"]*ofert[^a])/);
+    assert.ok(!bad, `${name}: text fără diacritice („${bad && bad[0]}”)`);
+  }
+  const center = source(`${dir}/AdminBillingCenter.jsx`);
+  assert.match(center, /AdminTabs/);
+  assert.match(center, /loadSubscriptionSummary/);
+  assert.ok(!/\[view, setView\] = useState/.test(center), 'fila nu mai e stare locală');
+  assert.ok(center.split('\n').every((line) => line.length < 200), 'liniile nu mai sunt comprimate la sute de caractere');
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

@@ -174,6 +174,30 @@ export const ACCOUNT_MODE_LABELS = Object.freeze({
 });
 export const accountModeLabel = (mode) => labelFrom(ACCOUNT_MODE_LABELS, mode, "Cont");
 
+// Plăți (Stripe): tonul unei stări de abonament / tranzacție / factură. Etichetele vin din BILLING_STATUSES
+// (ProviderBillingPanel), aceleași ca în contul furnizorului; aici sunt doar culorile, pentru triere.
+const BILLING_STATUS_TONES = {
+  active: "success", paid: "success", succeeded: "success",
+  trialing: "info", processing: "info", pending: "info",
+  open: "warning", requires_action: "warning", requires_payment_method: "warning", requires_confirmation: "warning",
+  requires_capture: "warning", incomplete: "warning", paused: "warning", partially_refunded: "warning",
+  failed: "danger", blocked: "danger", past_due: "danger", unpaid: "danger", uncollectible: "danger",
+  disputed: "danger", configuration_review: "danger", incomplete_expired: "danger",
+};
+export const billingStatusTone = (status) => BILLING_STATUS_TONES[status] || "neutral";
+
+// Ofertele Enterprise (ProviderEnterpriseOffer.status).
+export const ENTERPRISE_OFFER_LABELS = Object.freeze({
+  sent: "Trimisă",
+  accepted: "Acceptată și plătită",
+  canceled: "Retrasă",
+  superseded: "Înlocuită",
+  expired: "Expirată",
+});
+const ENTERPRISE_OFFER_TONES = { sent: "info", accepted: "success", expired: "warning" };
+export const enterpriseOfferLabel = (status) => labelFrom(ENTERPRISE_OFFER_LABELS, status, "—");
+export const enterpriseOfferTone = (status) => ENTERPRISE_OFFER_TONES[status] || "neutral";
+
 export const ACTIVE_STATUS_LABELS = Object.freeze({ activa: "Activă", inactiva: "Inactivă" });
 export const activeStatusLabel = (status) => labelFrom(ACTIVE_STATUS_LABELS, status, "Necunoscut");
 

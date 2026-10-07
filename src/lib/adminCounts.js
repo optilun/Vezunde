@@ -150,6 +150,19 @@ export async function loadDashboardKpis(base44, now = Date.now()) {
   return { published, patientRequests, proAccounts, claimedProfiles };
 }
 
+// Starea abonamentelor din „Plăți și abonamente” (număr sau null = indisponibil).
+//   active    = abonamente Pro care funcționează (aceeași definiție ca „Conturi Pro active” din Panou)
+//   attention = plată restantă (vezi PAYMENT_ATTENTION_STATUSES)
+export async function loadSubscriptionSummary(base44) {
+  const e = base44.entities;
+  const [active, attention, canceled] = await Promise.all([
+    entityCount(e.ProviderSubscription, { plan_code: "pro", status: { $in: ["active", "trialing", "grace_period"] } }),
+    entityCount(e.ProviderSubscription, { status: { $in: [...PAYMENT_ATTENTION_STATUSES] } }),
+    entityCount(e.ProviderSubscription, { status: "canceled" }),
+  ]);
+  return { active, attention, canceled };
+}
+
 // Ultimele acțiuni făcute de oameni (administratori/furnizori), fără evenimentele de sistem în masă.
 // null = indisponibil.
 export async function loadRecentActivity(base44, limit = 6) {
