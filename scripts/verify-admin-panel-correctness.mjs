@@ -41,6 +41,7 @@ import {
 import { deadlineInfo, oldestFirst, plural, relativeTime, waitingInfo } from '../src/lib/adminFormat.js';
 import { sourceHost, validateQuickEdit } from '../src/lib/adminProfileEdit.js';
 import { buildLocationIndex, normalizeSearch, searchLocationIndex, searchTokens } from '../src/lib/adminSearch.js';
+import { ORGANIZATION_ID_PREFIX, buildGlobalIndexes, searchEverything } from '../src/lib/adminGlobalSearch.js';
 import {
   ADMIN_NAV_LABELS,
   ADMIN_NAV_PRIMARY,
@@ -714,6 +715,90 @@ await check('Servicii pe locații: căutare în loc de lista nativă, nivel în 
     assert.ok(!/(red|green|amber|blue)-\d{2,3}/.test(text), `${file}: culori scrise de mână`);
     assert.ok(!/(Alege locatia|Adauga serviciu|Sursa oficiala|Data verificarii|Se salveaza|Schimba nivel|Aplica\b)/.test(text), `${file}: text vizibil fără diacritice`);
   }
+});
+
+// ---------- Căutarea globală (Ctrl/Cmd+K) ----------
+await check('căutarea globală: grupuri, telefon în orice format, ținta fiecărui rezultat', () => {
+  const indexes = buildGlobalIndexes({
+    locations: [
+      { id: 'l1', name: 'Optica Soare', city: 'Brașov', county: 'Brașov', organization_id: 'o1', phone_public: '0722 111 222', profile_control_status: 'verified' },
+      { id: 'l2', name: 'Optica Soare 2', city: 'Iași', county: 'Iași', organization_id: 'o1' },
+      { id: 'l3', name: 'Cabinet Lună', city: 'Cluj-Napoca', county: 'Cluj', organization_id: 'o2' },
+    ],
+    organizations: [
+      { id: 'o1', name: 'Soare SRL', public_display_name: 'Optica Soare' },
+      { id: 'o2', name: 'Lună SRL' },
+    ],
+    claims: [
+      { id: 'c1', business_name: 'Optica Soare', contact_name: 'Maria Pop', email: 'maria@demo.ro', phone: '0733 000 111', status: 'in_asteptare' },
+      { id: 'c2', business_name: 'Cabinet Lună', contact_name: 'Dan Lupu', email: 'dan@demo.ro', status: 'aprobata' },
+    ],
+    tickets: [
+      { id: 't1', subject: 'Nu îmi văd programul', requester_name: 'Maria Pop', requester_email: 'maria@demo.ro', status: 'open' },
+    ],
+  });
+  const sections = [{ key: 'revendicari', label: 'Revendicări', count: 2 }, { key: 'profiluri', label: 'Profiluri și locații', count: 0 }];
+  const keys = (groups) => groups.flatMap((group) => group.items.map((item) => item.key));
+
+  // fără text: doar meniul rapid cu secțiunile (și numărul de lucruri de rezolvat)
+  const menu = searchEverything(indexes, '', sections);
+  assert.deepEqual(menu.map((group) => group.key), ['sections']);
+  assert.equal(menu[0].items[0].badge, '2');
+  assert.equal(menu[0].items[1].badge, '');
+
+  // secțiune găsită după un fragment, fără diacritice
+  assert.deepEqual(keys(searchEverything(indexes, 'revend', sections)), ['section:revendicari']);
+
+  // persoana apare la revendicări ȘI la tichete
+  const maria = searchEverything(indexes, 'maria', sections);
+  assert.deepEqual(maria.map((group) => group.key), ['claims', 'tickets']);
+
+  // telefon scris oricum
+  assert.ok(keys(searchEverything(indexes, '0722111222', sections)).includes('location:l1'));
+  assert.ok(keys(searchEverything(indexes, '0733 000 111', sections)).includes('claim:c1'));
+
+  // organizația arată câte locații are
+  const org = searchEverything(indexes, 'soare', sections).find((group) => group.key === 'organizations').items[0];
+  assert.equal(org.subtitle, 'Organizație · 2 locații');
+  assert.deepEqual(org.target, { section: 'profiluri', tab: '', id: `${ORGANIZATION_ID_PREFIX}o1` });
+
+  // locația se caută și după numele organizației
+  const byOrg = searchEverything(indexes, 'soare srl', sections).find((group) => group.key === 'locations');
+  assert.equal(byOrg, undefined, 'numele juridic nu e câmp de căutare pentru locații fără organization_name potrivit');
+  const locationHit = searchEverything(indexes, 'brasov', sections).find((group) => group.key === 'locations').items[0];
+  assert.deepEqual(locationHit.target, { section: 'profiluri', tab: '', id: 'l1' });
+  assert.match(locationHit.subtitle, /Brașov/);
+  assert.match(locationHit.subtitle, /Verificat/);
+
+  // ținta revendicării depinde de stare; tichetul duce la Tichete suport
+  const claims = searchEverything(indexes, 'cabinet', sections).find((group) => group.key === 'claims').items[0];
+  assert.deepEqual(claims.target, { section: 'revendicari', tab: 'istoric', id: 'c2' });
+  const pending = searchEverything(indexes, 'maria', sections).find((group) => group.key === 'claims').items[0];
+  assert.deepEqual(pending.target, { section: 'revendicari', tab: '', id: 'c1' });
+  const ticket = searchEverything(indexes, 'programul', sections).find((group) => group.key === 'tickets').items[0];
+  assert.deepEqual(ticket.target, { section: 'support_tickets', tab: '', id: 't1' });
+  assert.match(ticket.subtitle, /Deschis/);
+
+  // nimic găsit / indexuri goale: fără erori
+  assert.deepEqual(searchEverything(indexes, 'zzzzzz', sections), []);
+  assert.deepEqual(searchEverything(buildGlobalIndexes(), 'maria', sections), []);
+});
+
+await check('ținta rezultatelor se deschide în ecranele potrivite (?id= în Profiluri, Revendicări, Tichete)', () => {
+  const profiles = source('src/components/admin/directory/DirOpsProfiles.jsx');
+  assert.match(profiles, /useAdminSelectedId/);
+  assert.match(profiles, /ORGANIZATION_ID_PREFIX/);
+  assert.match(profiles, /Arată toate profilurile/);
+  const claims = source('src/components/admin/directory/DirOpsClaims.jsx');
+  assert.match(claims, /id=\{`claim-\$\{claim\.id\}`\}/);
+  assert.match(claims, /focusedView/);
+  const tickets = source('src/components/admin/support/AdminSupportTickets.jsx');
+  assert.match(tickets, /useAdminSelectedId/);
+  assert.match(tickets, /handledFocus/);
+  const shell = source('src/components/admin/shell/AdminAppShell.jsx');
+  assert.match(shell, /AdminGlobalSearch/);
+  assert.match(shell, /metaKey \|\| event\.ctrlKey/);
+  assert.match(source('src/components/admin/AdminGlobalSearch.jsx'), /DialogTitle/, 'dialog accesibil, cu titlu');
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

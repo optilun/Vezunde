@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,6 +15,7 @@ import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { useAdminSelectedId } from "@/components/admin/useAdminRoute";
 
 const ACTIVE_STATUSES = new Set(["open", "in_progress", "waiting_user"]);
 
@@ -158,6 +159,9 @@ export default function AdminSupportTickets({ adminUser }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [focusId] = useAdminSelectedId();
+  const handledFocus = useRef("");
+  const detailRef = useRef(null);
 
   const loadTickets = useCallback(async ({ preserveSelection = true } = {}) => {
     setLoading(true);
@@ -192,6 +196,20 @@ export default function AdminSupportTickets({ adminUser }) {
     () => tickets?.find((ticket) => ticket.id === selectedId) || null,
     [selectedId, tickets],
   );
+
+  // Ajuns din căutarea globală (?id=): deschide tichetul cerut, chiar dacă filtrele curente l-ar ascunde
+  // (o singură dată per tichet căutat, ca să nu te tragă înapoi după fiecare salvare).
+  useEffect(() => {
+    if (!focusId || !tickets || handledFocus.current === focusId) return;
+    handledFocus.current = focusId;
+    if (!tickets.some((ticket) => ticket.id === focusId)) return;
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setPriorityFilter("all");
+    setQuery("");
+    setSelectedId(focusId);
+    window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
+  }, [focusId, tickets]);
 
   useEffect(() => {
     if (!selectedTicket) return;
@@ -464,6 +482,7 @@ export default function AdminSupportTickets({ adminUser }) {
           </AdminCard>
 
           <AdminCard className="p-4 sm:p-5">
+            <div ref={detailRef} className="scroll-mt-20" />
             {!selectedTicket ? (
               <EmptyState
                 icon={Inbox}

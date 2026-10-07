@@ -1,5 +1,6 @@
 // Căutare în listele din panoul de admin (2026-10-07): fără diacritice, fără majuscule, cu toate
-// cuvintele scrise obligatorii. „brasov” găsește „Brașov”, „optica ia” găsește „Optica Demo — Iași”.
+// cuvintele scrise obligatorii. „brasov” găsește „Brașov”, „optica ia” găsește „Optica Demo — Iași”,
+// iar un număr de telefon se găsește oricum e scris („0722111222” găsește „0722 111 222”).
 // Fără React, ca să poată fi verificat din scripts/.
 
 export function normalizeSearch(value) {
@@ -18,29 +19,34 @@ export function matchesAllTokens(haystack, tokens) {
   return tokens.every((token) => haystack.includes(token));
 }
 
+const digitsOnly = (value) => String(value ?? "").replace(/\D+/g, "");
 const joinText = (parts) => normalizeSearch(parts.filter(Boolean).join(" "));
 
 // Indexul se construiește o dată per listă (nu la fiecare tastă): 1.600 de locații × 5 câmpuri.
-export function buildLocationIndex(locations) {
-  return (locations || []).map((location) => {
-    const text = joinText([location.public_display_name, location.name, location.city, location.locality_name, location.county, location.address, location.organization_name]);
+//   name   = textul principal (după el se clasează);
+//   parts  = toate câmpurile în care se caută;
+//   phones = câmpurile cu telefon (se caută și fără spații, puncte sau paranteze).
+export function buildSearchIndex(items, { name, parts, phones = () => [] }) {
+  return (items || []).map((item) => {
+    const digits = phones(item).map(digitsOnly).filter((value) => value.length >= 5).join(" ");
+    const text = `${joinText(parts(item))} ${digits}`.trim();
     return {
-      location,
-      name: normalizeSearch(location.public_display_name || location.name),
+      item,
+      name: normalizeSearch(name(item)),
       text,
       words: text.split(/[^a-z0-9]+/).filter(Boolean),
     };
   });
 }
 
-// Locațiile potrivite. Ordinea: întâi cele în care cât mai multe cuvinte scrise încep un cuvânt întreg
+// Elementele potrivite. Ordinea: întâi cele în care cât mai multe cuvinte scrise încep un cuvânt întreg
 // („demo 6” → „Demo 6” înaintea lui „Demo 46”), apoi cele al căror nume începe cu primul cuvânt, apoi
 // alfabetic. `total` = câte se potrivesc în tot; `items` = primele `limit`.
-export function searchLocationIndex(index, query, { limit = 50, filter = null } = {}) {
+export function searchIndex(index, query, { limit = 50, filter = null } = {}) {
   const tokens = searchTokens(query);
   const matched = [];
   for (const entry of index) {
-    if (filter && !filter(entry.location)) continue;
+    if (filter && !filter(entry.item)) continue;
     if (tokens.length > 0 && !matchesAllTokens(entry.text, tokens)) continue;
     matched.push(entry);
   }
@@ -54,7 +60,15 @@ export function searchLocationIndex(index, query, { limit = 50, filter = null } 
     if (aName !== bName) return aName - bName;
     return a.entry.name.localeCompare(b.entry.name, "ro");
   });
-  matched.length = 0;
-  matched.push(...scored.map((item) => item.entry));
-  return { items: matched.slice(0, limit).map((entry) => entry.location), total: matched.length };
+  return { items: scored.slice(0, limit).map(({ entry }) => entry.item), total: scored.length };
 }
+
+// Locațiile: nume, oraș, județ, adresă, organizație, telefon.
+export function buildLocationIndex(locations) {
+  return buildSearchIndex(locations, {
+    name: (location) => location.public_display_name || location.name,
+    parts: (location) => [location.public_display_name, location.name, location.city, location.locality_name, location.county, location.county_name, location.address, location.organization_name, location.public_email],
+    phones: (location) => [location.phone_public, location.public_phone],
+  });
+}
+export const searchLocationIndex = searchIndex;

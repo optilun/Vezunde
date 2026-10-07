@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FileCheck2, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -10,7 +10,7 @@ import AdminTabs from "@/components/admin/ui/AdminTabs";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import StatusBadge from "@/components/admin/ui/StatusBadge";
 import { useAdminCounts } from "@/components/admin/useAdminCounts";
-import { useAdminSubTab } from "@/components/admin/useAdminRoute";
+import { useAdminRoute, useAdminSubTab } from "@/components/admin/useAdminRoute";
 import { adminHref } from "@/lib/adminNavConfig";
 import {
   claimRelationshipLabel,
@@ -109,6 +109,8 @@ function locationSummary(selection, locations) {
 export default function DirOpsClaims() {
   const { refresh: refreshCounts } = useAdminCounts();
   const [view, setView] = useAdminSubTab(["de_rezolvat", "istoric"], "de_rezolvat");
+  const { section: routeSection, id: focusId, go } = useAdminRoute();
+  const scrolledTo = useRef("");
   const [locationsFailed, setLocationsFailed] = useState(false);
   const [claims, setClaims] = useState(null);
   const [locations, setLocations] = useState({});
@@ -198,6 +200,21 @@ export default function DirOpsClaims() {
   const shownClaims = view === "istoric" ? historyClaims : pendingClaims;
   const waitingNow = (claims || []).filter((claim) => claim.status === "in_asteptare").length;
 
+  // Ajuns din căutarea globală (?id=): trece pe fila în care se află revendicarea, o evidențiază și
+  // derulează până la ea.
+  const focusedClaim = focusId && claims ? claims.find((claim) => claim.id === focusId) || null : null;
+  const focusedView = focusedClaim ? (REVIEWABLE_STATUSES.has(focusedClaim.status) ? "de_rezolvat" : "istoric") : null;
+  useEffect(() => {
+    if (focusedView && focusedView !== view) go(routeSection, focusedView === "de_rezolvat" ? "" : focusedView, focusId, { replace: true });
+  }, [focusedView, view, go, routeSection, focusId]);
+  useEffect(() => {
+    if (!focusedClaim || focusedView !== view || scrolledTo.current === focusId) return;
+    const element = document.getElementById(`claim-${focusId}`);
+    if (!element) return;
+    scrolledTo.current = focusId;
+    element.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focusedClaim, focusedView, view, focusId, shownClaims.length]);
+
   return (
     <div data-admin-mobile="true" className="space-y-4">
       {claims && (
@@ -259,7 +276,11 @@ export default function DirOpsClaims() {
               const includedIds = includedSelections.map((item) => item.location_id);
               const summarizedSelections = selections.map((selection) => locationSummary(selection, locations));
               return (
-                <div key={claim.id} className="rounded-2xl border border-border bg-secondary/50 p-3.5 sm:p-4">
+                <div
+                  key={claim.id}
+                  id={`claim-${claim.id}`}
+                  className={`scroll-mt-24 rounded-2xl border bg-secondary/50 p-3.5 sm:p-4 ${claim.id === focusId ? "border-foreground ring-2 ring-foreground/20" : "border-border"}`}
+                >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <div className="min-w-0 flex-1">
                       <div className="break-words text-sm font-semibold">{claim.business_name || location?.name || "Fără nume"}</div>

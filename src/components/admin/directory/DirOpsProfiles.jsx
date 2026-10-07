@@ -3,6 +3,7 @@ import { AlertTriangle, Building2, Clock, ExternalLink, Pencil, Search } from "l
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { DAY_KEYS, DAY_LABELS } from "../../../../shared/providerOpeningHours.js";
+import { ORGANIZATION_ID_PREFIX } from "@/lib/adminGlobalSearch";
 import { locationStatusIssues } from "@/lib/adminLocationStatusRules";
 import { profileStateOf } from "@/lib/adminLabels";
 import { sourceHost, validateQuickEdit } from "@/lib/adminProfileEdit";
@@ -10,8 +11,10 @@ import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminChips from "@/components/admin/ui/AdminChips";
 import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminSelectedId } from "@/components/admin/useAdminRoute";
 
 // Campuri text editabile manual de admin - deliberat NU includ nume, adresa sau tipul
 // de furnizor: acelea ating potrivirea geografica si medicala (SIRUTA, capacitate
@@ -79,6 +82,9 @@ export default function DirOpsProfiles() {
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(PAGE_SIZE);
   const [error, setError] = useState("");
+  // Ajuns din căutarea globală (?id=locație sau ?id=org:organizație): se arată doar elementul cerut,
+  // cu un singur click înapoi la lista completă.
+  const [focusId, setFocusId] = useAdminSelectedId();
 
   const load = async () => {
     setError("");
@@ -201,8 +207,29 @@ export default function DirOpsProfiles() {
     return { all: rows.length, problems, directory, verified, suspended };
   }, [locations, issuesById]);
 
+  const focus = useMemo(() => {
+    if (!focusId || !locations) return null;
+    if (focusId.startsWith(ORGANIZATION_ID_PREFIX)) {
+      const organizationId = focusId.slice(ORGANIZATION_ID_PREFIX.length);
+      const organization = organizations[organizationId];
+      const members = locations.filter((location) => location.organization_id === organizationId);
+      return {
+        label: organization?.public_display_name || organization?.name || "",
+        locations: members,
+        missing: !organization && members.length === 0,
+      };
+    }
+    const found = locations.find((location) => location.id === focusId);
+    return {
+      label: found ? found.public_display_name || found.name || "" : "",
+      locations: found ? [found] : [],
+      missing: !found,
+    };
+  }, [focusId, locations, organizations]);
+
   const visibleLocations = useMemo(() => {
     if (!locations) return [];
+    if (focus) return focus.locations;
     const normalizedQuery = query.trim().toLowerCase();
     return locations.filter((location) => {
       if (filter === "problems" && (issuesById.get(location.id) || []).length === 0) return false;
@@ -226,7 +253,7 @@ export default function DirOpsProfiles() {
         organization?.public_display_name,
       ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     });
-  }, [filter, issuesById, locations, organizations, query]);
+  }, [filter, focus, issuesById, locations, organizations, query]);
 
   const page = visibleLocations.slice(0, shown);
 
@@ -243,6 +270,24 @@ export default function DirOpsProfiles() {
 
   return (
     <div className="space-y-4">
+      {focus ? (
+        <AdminNotice tone={focus.missing ? "warning" : "info"}>
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {focus.missing
+                ? "Nu am găsit locația sau organizația cerută."
+                : <>Afișez doar <strong>{focus.label || "elementul căutat"}</strong>{focus.locations.length > 1 ? ` (${focus.locations.length} locații)` : ""}.</>}
+            </span>
+            <button
+              type="button"
+              onClick={() => setFocusId("")}
+              className="inline-flex min-h-9 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-secondary"
+            >
+              Arată toate profilurile
+            </button>
+          </span>
+        </AdminNotice>
+      ) : (
       <AdminCard className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <AdminChips options={chips} value={filter} onChange={changeFilter} label="Filtrează profilurile" />
@@ -258,6 +303,7 @@ export default function DirOpsProfiles() {
           </label>
         </div>
       </AdminCard>
+      )}
 
       {error && (
         <div role="alert" className="rounded-2xl border border-danger-border bg-danger-soft px-4 py-3 text-sm text-danger">
