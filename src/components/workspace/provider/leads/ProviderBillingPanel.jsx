@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { CreditCard, FileText, Loader2, ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SETTINGS_GRAIN, SETTINGS_TONES, SETTINGS_BUTTON, SETTINGS_PRIMARY } from "../settingsVisuals";
-import { money } from "@/lib/billingFormat";
+import { money } from "../../../../lib/billingFormat.js";
 
 export { money };
 const date = value => value ? new Date(typeof value === "number" ? value * 1000 : value).toLocaleDateString("ro-RO") : "—";
