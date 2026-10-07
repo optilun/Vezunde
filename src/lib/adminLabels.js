@@ -95,6 +95,15 @@ export const MEDIA_CLEANUP_REASON_LABELS = Object.freeze({
 });
 export const mediaCleanupReasonLabel = (reason) => labelFrom(MEDIA_CLEANUP_REASON_LABELS, reason, "Fișier nefolosit");
 
+// Cât de sensibil e un serviciu (LocationService.service_need_level): decide dacă poate intra în recomandări.
+export const SERVICE_NEED_LEVEL_LABELS = Object.freeze({
+  general: "General",
+  technical: "Tehnic",
+  specialized_medical: "Medical specializat",
+  unknown: "Necunoscut",
+});
+export const serviceNeedLevelLabel = (level) => labelFrom(SERVICE_NEED_LEVEL_LABELS, level, "General");
+
 export const ACTIVE_STATUS_LABELS = Object.freeze({ activa: "Activă", inactiva: "Inactivă" });
 export const activeStatusLabel = (status) => labelFrom(ACTIVE_STATUS_LABELS, status, "Necunoscut");
 

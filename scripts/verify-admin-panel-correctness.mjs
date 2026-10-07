@@ -25,6 +25,7 @@ import {
   profileControlLabel,
   profileStateOf,
   selectionRequestLabel,
+  serviceNeedLevelLabel,
   selectionRequestTone,
 } from '../src/lib/adminLabels.js';
 import { locationStatusIssues } from '../src/lib/adminLocationStatusRules.js';
@@ -39,6 +40,7 @@ import {
 } from '../src/lib/adminCounts.js';
 import { deadlineInfo, oldestFirst, plural, relativeTime, waitingInfo } from '../src/lib/adminFormat.js';
 import { sourceHost, validateQuickEdit } from '../src/lib/adminProfileEdit.js';
+import { buildLocationIndex, normalizeSearch, searchLocationIndex, searchTokens } from '../src/lib/adminSearch.js';
 import {
   ADMIN_NAV_LABELS,
   ADMIN_NAV_PRIMARY,
@@ -659,6 +661,59 @@ await check('coada: la final propune singură următoarea coadă cu lucru', () =
   const queue = source('src/components/admin/review/AdminReviewQueue.jsx');
   assert.match(queue, /nextWithWork/);
   assert.match(queue, /Gata aici/);
+});
+
+// ---------- Căutare de locație / Servicii pe locații (M7) ----------
+await check('căutarea ignoră diacriticele, majusculele și forma veche (cu sedilă) a lui ș/ț', () => {
+  assert.equal(normalizeSearch('Brașov'), 'brasov');
+  assert.equal(normalizeSearch('Timişoara'), 'timisoara'); // ş cu sedilă (U+015F)
+  assert.equal(normalizeSearch('Timișoara'), 'timisoara'); // ș cu virgulă (U+0219)
+  assert.equal(normalizeSearch('CONSTANȚA'), 'constanta');
+  assert.equal(normalizeSearch('Piaţa Unirii'), 'piata unirii');
+  assert.deepEqual(searchTokens('  Optica   Iași '), ['optica', 'iasi']);
+  assert.equal(normalizeSearch(null), '');
+});
+
+await check('căutarea de locații: toate cuvintele obligatorii, limită, total, cele mai bune primele', () => {
+  const locations = [
+    { id: 'a', name: 'Optica Demo 46 — Constanța', city: 'Constanța', county: 'Constanța' },
+    { id: 'b', name: 'Optica Demo 6 — Constanța', city: 'Constanța', county: 'Constanța' },
+    { id: 'c', name: 'Clinica Soare', city: 'Brașov', county: 'Brașov', address: 'Str. Demo 6' },
+    { id: 'd', name: 'Optica Lumină', city: 'Iași', county: 'Iași' },
+    { id: 'e', public_display_name: 'Ochelari Brașov', name: 'x', city: 'Brașov', county: 'Brașov' },
+  ];
+  const index = buildLocationIndex(locations);
+  const ids = (result) => result.items.map((item) => item.id);
+  assert.deepEqual(ids(searchLocationIndex(index, 'brasov')).sort(), ['c', 'e']);
+  assert.equal(searchLocationIndex(index, 'brasov').total, 2);
+  assert.deepEqual(ids(searchLocationIndex(index, 'optica ia')), ['d'], 'toate cuvintele trebuie să se potrivească');
+  assert.equal(ids(searchLocationIndex(index, 'demo 6 constanta'))[0], 'b', '„Demo 6” înaintea lui „Demo 46”');
+  assert.equal(searchLocationIndex(index, '', { limit: 2 }).items.length, 2);
+  assert.equal(searchLocationIndex(index, '', { limit: 2 }).total, 5);
+  assert.deepEqual(ids(searchLocationIndex(index, '', { filter: (location) => location.id === 'd' })), ['d']);
+  assert.deepEqual(ids(searchLocationIndex(index, 'zzz')), []);
+  assert.deepEqual(ids(searchLocationIndex([], 'a')), []);
+});
+
+await check('Servicii pe locații: căutare în loc de lista nativă, nivel în română, fără culori scrise de mână', () => {
+  assert.equal(serviceNeedLevelLabel('general'), 'General');
+  assert.equal(serviceNeedLevelLabel('technical'), 'Tehnic');
+  assert.equal(serviceNeedLevelLabel('specialized_medical'), 'Medical specializat');
+  assert.equal(serviceNeedLevelLabel(undefined), 'General');
+  const screen = source('src/components/admin/directory/DirOpsServices.jsx');
+  assert.match(screen, /AdminLocationPicker/);
+  assert.match(screen, /useAdminSelectedId/, 'locația aleasă stă în adresă');
+  assert.ok(!/<select/.test(screen), 'lista nativă cu toate locațiile trebuie să dispară');
+  for (const file of [
+    'src/components/admin/directory/DirOpsServices.jsx',
+    'src/components/admin/directory/DirOpsServiceRow.jsx',
+    'src/components/admin/directory/DirOpsServiceAdd.jsx',
+    'src/components/admin/ui/AdminLocationPicker.jsx',
+  ]) {
+    const text = source(file).replace(/\/\/.*$/gm, '');
+    assert.ok(!/(red|green|amber|blue)-\d{2,3}/.test(text), `${file}: culori scrise de mână`);
+    assert.ok(!/(Alege locatia|Adauga serviciu|Sursa oficiala|Data verificarii|Se salveaza|Schimba nivel|Aplica\b)/.test(text), `${file}: text vizibil fără diacritice`);
+  }
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);
