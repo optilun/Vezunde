@@ -706,7 +706,30 @@ await check('căutarea ignoră diacriticele, majusculele și forma veche (cu sed
   assert.equal(normalizeSearch('CONSTANȚA'), 'constanta');
   assert.equal(normalizeSearch('Piaţa Unirii'), 'piata unirii');
   assert.deepEqual(searchTokens('  Optica   Iași '), ['optica', 'iasi']);
+  // telefonul scris cu spații/puncte/prefix de țară e un singur cuvânt
+  assert.deepEqual(searchTokens('0722 000 007'), ['0722000007']);
+  assert.deepEqual(searchTokens('0722.000.007'), ['0722000007']);
+  assert.deepEqual(searchTokens('+40 722 000 007'), ['0722000007']);
+  assert.deepEqual(searchTokens('0040722000007'), ['0722000007']);
+  assert.deepEqual(searchTokens('demo 6'), ['demo', '6'], 'cifrele scurte rămân cuvinte separate');
+  assert.deepEqual(searchTokens('10 5'), ['10', '5']);
+  assert.deepEqual(searchTokens('Str. Exemplu 12'), ['str.', 'exemplu', '12'], 'cu litere nu e telefon');
   assert.equal(normalizeSearch(null), '');
+});
+
+await check('căutarea după telefon: numărul scris cu spații se caută întreg, în orice format', () => {
+  const index = buildLocationIndex([
+    { id: 'a', name: 'A', phone_public: '0722 000 007' },
+    { id: 'b', name: 'B', phone_public: '0722 000 070' },
+    { id: 'c', name: 'C', phone_public: '+40 744 123 456' },
+  ]);
+  const ids = (query) => searchLocationIndex(index, query).items.map((item) => item.id).sort();
+  assert.deepEqual(ids('0722 000 007'), ['a']);
+  assert.deepEqual(ids('0722000007'), ['a']);
+  assert.deepEqual(ids('0722.000.007'), ['a']);
+  assert.deepEqual(ids('+40 722 000 007'), ['a']);
+  assert.deepEqual(ids('0744 123 456'), ['c'], 'numărul salvat cu prefix de țară');
+  assert.deepEqual(ids('0722 000'), ['a', 'b'], 'începutul numărului găsește ambele');
 });
 
 await check('căutarea de locații: toate cuvintele obligatorii, limită, total, cele mai bune primele', () => {

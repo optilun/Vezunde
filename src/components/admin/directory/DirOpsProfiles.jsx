@@ -7,6 +7,7 @@ import { ORGANIZATION_ID_PREFIX } from "@/lib/adminGlobalSearch";
 import { locationStatusIssues } from "@/lib/adminLocationStatusRules";
 import { profileStateOf } from "@/lib/adminLabels";
 import { sourceHost, validateQuickEdit } from "@/lib/adminProfileEdit";
+import { buildSearchIndex, matchesAllTokens, searchTokens } from "@/lib/adminSearch";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminChips from "@/components/admin/ui/AdminChips";
@@ -227,10 +228,31 @@ export default function DirOpsProfiles() {
     };
   }, [focusId, locations, organizations]);
 
+  // Căutarea ignoră diacriticele și majusculele și cere toate cuvintele („iasi optica” găsește „Optica Demo — Iași”);
+  // telefonul se găsește oricum e scris. Indexul se construiește o dată per listă încărcată.
+  const searchEntries = useMemo(() => new Map(buildSearchIndex(locations || [], {
+    name: (location) => location.public_display_name || location.name,
+    parts: (location) => {
+      const organization = organizations[location.organization_id];
+      return [
+        location.name,
+        location.public_display_name,
+        location.locality_name,
+        location.city,
+        location.county_name,
+        location.county,
+        location.address,
+        organization?.name,
+        organization?.public_display_name,
+      ];
+    },
+    phones: (location) => [location.phone_public],
+  }).map((entry) => [entry.item.id, entry.text])), [locations, organizations]);
+
   const visibleLocations = useMemo(() => {
     if (!locations) return [];
     if (focus) return focus.locations;
-    const normalizedQuery = query.trim().toLowerCase();
+    const tokens = searchTokens(query);
     return locations.filter((location) => {
       if (filter === "problems" && (issuesById.get(location.id) || []).length === 0) return false;
       if (filter === "directory" && (location.profile_control_status || "directory") !== "directory") return false;
@@ -242,18 +264,9 @@ export default function DirOpsProfiles() {
       ) {
         return false;
       }
-      if (!normalizedQuery) return true;
-      const organization = organizations[location.organization_id];
-      return [
-        location.name,
-        location.public_display_name,
-        location.city,
-        location.county,
-        organization?.name,
-        organization?.public_display_name,
-      ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+      return tokens.length === 0 || matchesAllTokens(searchEntries.get(location.id) || "", tokens);
     });
-  }, [filter, focus, issuesById, locations, organizations, query]);
+  }, [filter, focus, issuesById, locations, query, searchEntries]);
 
   const page = visibleLocations.slice(0, shown);
 
@@ -296,7 +309,7 @@ export default function DirOpsProfiles() {
             <input
               value={query}
               onChange={(event) => changeQuery(event.target.value)}
-              placeholder="Caută organizație sau locație"
+              placeholder="Caută nume, oraș, adresă sau telefon"
               aria-label="Caută organizație sau locație"
               className="min-w-0 flex-1 bg-transparent text-xs outline-none"
             />

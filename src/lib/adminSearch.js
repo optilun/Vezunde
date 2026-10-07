@@ -11,8 +11,21 @@ export function normalizeSearch(value) {
     .trim();
 }
 
+// Un număr de telefon scris cu spații, puncte sau cratime („0722 111 222”, „0722.111.222”, „+40 722 111 222”)
+// e un singur cuvânt de căutat, nu trei; altfel „0722 000 007” ar găsi și „0722 000 070”.
+function phoneToken(normalized) {
+  if (!/^[\d\s().+-]+$/.test(normalized)) return null;
+  const digits = normalized.replace(/\D+/g, "");
+  if (digits.length < 5) return null;
+  if (digits.startsWith("0040")) return `0${digits.slice(4)}`;
+  if (digits.startsWith("40") && digits.length >= 11) return `0${digits.slice(2)}`;
+  return digits;
+}
+
 export function searchTokens(query) {
-  return normalizeSearch(query).split(/\s+/).filter(Boolean);
+  const normalized = normalizeSearch(query);
+  const phone = phoneToken(normalized);
+  return phone ? [phone] : normalized.split(/\s+/).filter(Boolean);
 }
 
 export function matchesAllTokens(haystack, tokens) {
