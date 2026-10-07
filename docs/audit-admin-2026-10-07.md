@@ -374,15 +374,17 @@ Ramura de lucru: `claude/tender-davinci-4q6djk`. Nimic nu apare pe viasee.ro pan
 | M11 Emailuri automate | Fila „Jurnal trimiteri” (CommunicationDelivery): ce a plecat/esuat si de ce, filtre cu numere exacte; rand in Panou + insigna in meniu pentru emailurile esuate in ultimele 7 zile |
 | M3 Revendicari | „De rezolvat/Istoric”, „Trimisa acum N zile”, relatia si starea pe locatie in romana, text cu diacritice |
 | M6 Profiluri | O singura insigna de stare, filtre cu numere, „De verificat” = doar contradictii reale, afisare treptata, „Vezi pe site”, deschidere din cautare |
+| M10 Campanii si marketing | Ghid „Prima ta campanie” (4 pasi) cand nu exista nimic; lista de campanii cu filtre si numere, stare clara („Oprita automat”, „Continua maine”); creare in 3 pasi scurti; Contacte cu filtre pe stare (inclusiv „Probleme de domeniu”), afisare treptata (100 odata) si avertisment cand lista depaseste limita incarcata; pregatirea contactelor din director intr-o sectiune inchisa implicit; etichete comune intr-un modul pur (`lib/adminOutreachLabels.js`); text cu diacritice si tokeni semantici in tot modulul |
 
 ### Verificare
-- `scripts/verify-admin-panel-correctness.mjs`: 52 de verificari (etichete, reguli, citire pe id-uri, numaratori incl. esec/lentoare, adrese, rute vechi, cautare, jurnal de emailuri, fara `window.confirm`, fara `.workspace-neutral` in shell, fara culori scrise de mana in ecranele refacute).
+- `scripts/verify-admin-panel-correctness.mjs`: 55 de verificari (etichete, reguli, citire pe id-uri, numaratori incl. esec/lentoare, adrese, rute vechi, cautare, jurnal de emailuri, etichete de campanii, fara `window.confirm`, fara `.workspace-neutral` in shell, fara culori scrise de mana in ecranele refacute).
 - `npm run lint` (0 erori), `npm run lint:services`, `npm run build`: trec.
 - `npm run test:all`: aceleasi 18 esecuri ca inainte de lucru (toate in afara panoului admin); 9 teste pe sursa au fost aliniate la noua structura (adrese in loc de stare locala, diacritice, bara de decizie).
-- Verificare in browser pe date demonstrative (local, nepublicata), 5 suite: Panou/Profiluri/Integritate/Revendicari/Audit/Corectii/telefon/rute vechi (39 de pasi), Coada de verificare (28), Servicii pe locatii (13), Cautare globala (12), Emailuri automate (9). Fara erori in consola; fara defilare orizontala la 390 px.
+- Verificare in browser pe date demonstrative (local, nepublicata), 6 suite: Panou/Profiluri/Integritate/Revendicari/Audit/Corectii/telefon/rute vechi (39 de pasi), Coada de verificare (28), Servicii pe locatii (13), Cautare globala (12), Emailuri automate (9), Campanii si marketing (12). Fara erori in consola; fara defilare orizontala la 390 px.
 
 ### Ramas
-- Text fara diacritice si explicatii lungi in: Tichete suport + Feedback (M5), Campanii si marketing (M10), Research director (M8), Contacte din cautari (M9), Analytics (M12), Plati (M13), Import/Mapare (M15), Geografie (M16), Adauga locatie (M18).
+- Text fara diacritice si explicatii lungi in: Tichete suport + Feedback (M5), Research director (M8), Contacte din cautari (M9), Analytics (M12), Plati (M13), Import/Mapare (M15), Geografie (M16), Adauga locatie (M18).
+- Campanii si marketing: ecranele de detaliu ale campaniei (public, editor de sablon, raport) au primit etichete, diacritice si tokeni, dar structura lor interna (pasii de construire a publicului) nu a fost simplificata.
 - Emailurile trimise utilizatorilor (sabloanele din `base44/shared/automaticEmailCatalog.js`) sunt scrise fara diacritice („Buna ziua”): decizie de continut, necesita deploy de backend.
 - T12 notificari catre admin (revendicare/tichet/sesizare noua) si email la raspunsul de suport: necesita functii backend.
 - Panou „Azi v2”: indicatori de sanatate (scheduler, Stripe), starea importului.
