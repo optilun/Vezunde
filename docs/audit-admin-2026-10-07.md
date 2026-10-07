@@ -336,3 +336,45 @@ Roluri/alocare pentru mai multi admini, „vezi ca furnizor” (citire), punte C
 - Formularul public de corectii si fluxul de revendicare, ca sa intelegem de ce volumul e 0 (descoperire/vizibilitate, nu doar admin).
 
 Daca vrei verificare vizuala fara sa-mi dai acces la cont: trimite capturi de ecran sau rulez componentele reale local, cu date demonstrative si un client Base44 in memorie, ca in sesiunile anterioare (vezi `docs/servicii-editor-2026-10-05.md`).
+
+---
+
+## 9. Stare implementare (actualizat 7 oct 2026)
+
+Ramura de lucru: `claude/tender-davinci-4q6djk`. Nimic nu apare pe viasee.ro pana la „Publish App” in Base44.
+
+### Val 0 — Corectitudine: facut
+| Cod | Ce s-a schimbat | Unde |
+|---|---|---|
+| T3 | Panoul nu mai spune „Totul e la zi” cat timp numara sau cand o sursa nu raspunde; numara aceleasi 6 surse ca Coada + revendicari, tichete, corectii; sursa indisponibila apare pe nume | `lib/adminCounts.js`, `dashboard/*` |
+| T4 | „Neconcordanta” = doar contradictii reale (revendicata fara control, campuri de verificare diferite, publicata dar invizibila, schimbari vechi in asteptare). Profilele din director nu mai sunt marcate ca eroare | `lib/adminLocationStatusRules.js`, `DirOpsProfiles`, `AdminDataIntegrity` |
+| T5 | Lifecycle, Revendicari, Coada migrare, Coada de verificare citesc doar locatiile necesare (`$in`, pe bucati de 100), nu primele 1.000/1.500/5.000 | `lib/adminEntityBatch.js` |
+| T7 | Etichete in romana pentru statusuri, relatii, actiuni de audit (~130), entitati si campuri | `lib/adminLabels.js` |
+| M17 | Audit: implicit doar oameni (filtru pe server), „Sistem” grupat, pagini de 200, detalii tehnice cu latime normala | `DirOpsAudit` |
+| M4 | Termen GDPR de 30 de zile pe eliminarile de date personale | `DirOpsCorrections`, `lib/adminFormat.js` |
+| M14 | „Verificarea citeste, reparatiile sunt actiuni separate”; confirmare in dialog, nu in caseta nativa | `AdminDataIntegrity`, `AdminLocationGeocoding` |
+
+### Val 1 — Fundatie: facut
+| Cod | Ce s-a schimbat |
+|---|---|
+| T1 | Fiecare sectiune si sub-tab are adresa (`?s=…&t=…&id=…`); Inapoi/Inainte/Reincarca pastreaza locul; rutele vechi duc in locul nou |
+| T2 | `useAdminCounts`: numere in meniu, in taburile Cozii/Revendicarilor si pe Panou; se reimprospateaza la 60 s, la revenirea in fereastra si imediat dupa fiecare decizie |
+| T6 | Tokeni semantici (`success/warning/info/danger` + soft/border) si primitive: `StatusBadge`, `StatCard`, `AdminTabs`, `AdminChips`, `AdminHint` (ⓘ), `AdminLoading`, `AdminConfirm` |
+| T8 | `window.confirm` inlocuit peste tot cu dialog accesibil (9 fisiere) |
+| T9 | `admin-surface` in locul `.workspace-neutral` (corecteaza si latimea fortata a elementelor `<details>`) |
+| T10 | „Sari la continut”, `aria-current` pe meniu, taburi cu sageti, titlu/descriere pentru sertarul de pe telefon, focus in dialoguri |
+| UX | Texte lungi mutate in ⓘ; meniu fara taieturi pe laptop; „Panou de azi” te duce la ce are de facut |
+
+### Verificare
+- `scripts/verify-admin-panel-correctness.mjs`: 39 verificari (etichete, reguli, citire pe id-uri, numaratori incl. esec/lentoare, adrese, rute vechi, fara `window.confirm`, fara `.workspace-neutral` in shell).
+- `npm run lint` (0 erori), `npm run lint:services`, `npm run build`: trec.
+- `npm run test:all`: aceleasi 18 esecuri ca inainte de lucru (toate in afara panoului admin); 8 teste pe sursa au fost aliniate la noua structura (adrese in loc de stare locala, diacritice).
+- Verificare in browser pe date demonstrative (local, nepublicata): 39 de pasi — Panou in 4 stari, Coada, Profiluri, Integritate, Revendicari, Audit, Corectii, telefon 390 px, rute vechi, toate sectiunile fara eroare in consola.
+
+### Ramas din Val 0/1 (se face odata cu modulul respectiv)
+- Texte fara diacritice si explicatii lungi in: Coada (`AdminNewLocationReview`, `AdminPhotoCleanupQueue`, `AdminWorkspaceSubmissionsReview`), Servicii pe locatii, Import/Mapare, Research, Campanii, Emailuri automate, Analytics, Plati.
+- `AdminDialog`/`DataTable` comune (se introduc la primul modul care le cere: Profiluri v2).
+- T11 cautare globala, T12 notificari — Val 2/3.
+
+### Urmatorul pas propus
+M6 Profiluri si locatii (citire/paginare pe server, cautare, actiuni in masa) → M2 Coada de verificare → M3 Revendicari → M1 Panou „Azi v2”.
