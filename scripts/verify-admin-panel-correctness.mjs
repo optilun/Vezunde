@@ -17,6 +17,10 @@ import {
   claimStatusLabel,
   claimStatusTone,
   collapseAuditRuns,
+  deliveryChannelLabel,
+  deliveryRecipientLabel,
+  deliveryStatusLabel,
+  deliveryStatusTone,
   correctionStatusLabel,
   humanizeCode,
   locationStatusLabel,
@@ -799,6 +803,50 @@ await check('ținta rezultatelor se deschide în ecranele potrivite (?id= în Pr
   assert.match(shell, /AdminGlobalSearch/);
   assert.match(shell, /metaKey \|\| event\.ctrlKey/);
   assert.match(source('src/components/admin/AdminGlobalSearch.jsx'), /DialogTitle/, 'dialog accesibil, cu titlu');
+});
+
+// ---------- Emailuri automate: jurnalul de trimiteri ----------
+await check('emailurile eșuate din ultimele 7 zile apar în Panou, în meniu și duc în jurnal', async () => {
+  const counts = await loadAdminCounts(fakeClient({ overrides: { counts: { CommunicationDelivery: 3 } } }));
+  assert.equal(counts.email_failures, 3);
+  const row = summarizeCounts(counts).rows.find((item) => item.key === 'email_failures');
+  assert.deepEqual([row.section, row.tab, row.count], ['automatic_emails', 'jurnal', 3]);
+  assert.equal(sidebarBadgeFor(counts, 'automatic_emails'), 3);
+  const clean = await loadAdminCounts(fakeClient());
+  assert.equal(sidebarBadgeFor(clean, 'automatic_emails'), null, '0 nu se afișează');
+  assert.ok(!summarizeCounts(clean).rows.some((item) => item.key === 'email_failures'));
+
+  // interogarea: doar „failed”, doar ultima săptămână
+  let seen = null;
+  const client = fakeClient();
+  const proxied = { ...client, entities: new Proxy({}, { get: (_t, name) => ({ count: async (query) => { if (name === 'CommunicationDelivery') seen = query; return 0; } }) }) };
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  await loadAdminCounts(proxied, now);
+  assert.equal(seen.status, 'failed');
+  assert.equal(seen.created_date.$gte, new Date(now - 7 * 86400000).toISOString());
+
+  // o sursă indisponibilă nu înseamnă „la zi”
+  const down = await loadAdminCounts(fakeClient({ failEntities: ['CommunicationDelivery'] }));
+  assert.equal(down.email_failures, null);
+  assert.ok(summarizeCounts(down).unavailable.includes('Emailuri netrimise (ultimele 7 zile)'));
+});
+
+await check('jurnalul de trimiteri: stări, destinatari și canale în română', () => {
+  assert.equal(deliveryStatusLabel('failed'), 'Eșuat');
+  assert.equal(deliveryStatusLabel('sent'), 'Trimis');
+  assert.equal(deliveryStatusLabel('skipped'), 'Sărit');
+  assert.equal(deliveryStatusLabel('pending'), 'În așteptare');
+  assert.equal(deliveryStatusTone('failed'), 'danger');
+  assert.equal(deliveryStatusTone('sent'), 'success');
+  assert.equal(deliveryRecipientLabel('patient_contact'), 'Contact pacient');
+  assert.equal(deliveryRecipientLabel('provider_user'), 'Utilizator furnizor');
+  assert.equal(deliveryChannelLabel('in_app'), 'În aplicație');
+  const log = source('src/components/admin/automatic-emails/EmailDeliveryLog.jsx');
+  assert.match(log, /CommunicationDelivery/);
+  assert.ok(!/(red|green|amber|blue|emerald|sky)-\d{2,3}/.test(log.replace(/\/\/.*$/gm, '')), 'jurnalul folosește tokenii semantici');
+  const workspace = source('src/components/admin/automatic-emails/AutomaticEmailWorkspace.jsx');
+  assert.match(workspace, /Jurnal trimiteri/);
+  assert.ok(!/(Operatia nu a reusit|Salveaza si activeaza|Se incarca emailurile|Anuleaza editarea|Editeaza mesajul)/.test(workspace), 'text fără diacritice în ecranul de emailuri');
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

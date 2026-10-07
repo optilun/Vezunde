@@ -20,6 +20,7 @@ export const OTHER_QUEUES = Object.freeze([
   { key: "claims", label: "Revendicări noi", section: "revendicari" },
   { key: "tickets", label: "Tichete de suport active", section: "support_tickets" },
   { key: "corrections", label: "Sesizări de director deschise", section: "corectii" },
+  { key: "email_failures", label: "Emailuri netrimise (ultimele 7 zile)", section: "automatic_emails", tab: "jurnal" },
 ]);
 
 export const ACTIVE_TICKET_STATUSES = Object.freeze(["open", "in_progress", "waiting_user"]);
@@ -91,16 +92,19 @@ export async function loadReviewCounts(base44) {
   };
 }
 
-export async function loadAdminCounts(base44) {
+export async function loadAdminCounts(base44, now = Date.now()) {
   const e = base44.entities;
-  const [review, claims, tickets, corrections, feedback] = await Promise.all([
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const [review, claims, tickets, corrections, feedback, emailFailures] = await Promise.all([
     loadReviewCounts(base44),
     entityCount(e.ProviderClaimRequest, { status: "in_asteptare" }),
     entityCount(e.SupportTicket, { status: { $in: [...ACTIVE_TICKET_STATUSES] } }),
     entityCount(e.DirectoryCorrectionRequest, { status: { $in: [...OPEN_CORRECTION_STATUSES] } }),
     entityCount(e.UserFeedback, { status: "new" }),
+    // Emailurile care au eșuat în ultima săptămână (jurnalul din „Emailuri automate”).
+    entityCount(e.CommunicationDelivery, { status: "failed", created_date: { $gte: weekAgo } }),
   ]);
-  return { review, claims, tickets, corrections, feedback, loadedAt: new Date().toISOString() };
+  return { review, claims, tickets, corrections, feedback, email_failures: emailFailures, loadedAt: new Date().toISOString() };
 }
 
 // Cifrele de stare din Panou (nu sunt „de rezolvat”): număr sau null = indisponibil.
@@ -155,7 +159,7 @@ export function summarizeCounts(counts) {
   for (const queue of OTHER_QUEUES) {
     const value = counts[queue.key];
     if (value === null || value === undefined) unavailable.push(queue.label);
-    else if (value > 0) rows.push({ key: queue.key, label: queue.label, count: value, section: queue.section });
+    else if (value > 0) rows.push({ key: queue.key, label: queue.label, count: value, section: queue.section, tab: queue.tab || "" });
   }
   const total = rows.reduce((sum, row) => sum + row.count, 0);
   return { loaded: true, rows, unavailable, allClear: unavailable.length === 0 && rows.length === 0, total };
@@ -171,5 +175,6 @@ export function sidebarBadgeFor(counts, sectionKey) {
   } else if (sectionKey === "revendicari") value = counts.claims;
   else if (sectionKey === "support_tickets") value = counts.tickets;
   else if (sectionKey === "corectii") value = counts.corrections;
+  else if (sectionKey === "automatic_emails") value = counts.email_failures;
   return Number.isFinite(value) && value > 0 ? value : null;
 }

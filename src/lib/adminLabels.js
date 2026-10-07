@@ -104,6 +104,27 @@ export const SERVICE_NEED_LEVEL_LABELS = Object.freeze({
 });
 export const serviceNeedLevelLabel = (level) => labelFrom(SERVICE_NEED_LEVEL_LABELS, level, "General");
 
+// Jurnalul emailurilor automate (CommunicationDelivery).
+export const DELIVERY_STATUS_LABELS = Object.freeze({
+  pending: "În așteptare",
+  sent: "Trimis",
+  failed: "Eșuat",
+  skipped: "Sărit",
+});
+const DELIVERY_STATUS_TONES = { pending: "warning", sent: "success", failed: "danger", skipped: "neutral" };
+export const deliveryStatusLabel = (status) => labelFrom(DELIVERY_STATUS_LABELS, status, "În așteptare");
+export const deliveryStatusTone = (status) => DELIVERY_STATUS_TONES[status] || "neutral";
+
+export const DELIVERY_RECIPIENT_LABELS = Object.freeze({
+  provider_user: "Utilizator furnizor",
+  provider_location: "Locație furnizor",
+  patient_contact: "Contact pacient",
+});
+export const deliveryRecipientLabel = (type) => labelFrom(DELIVERY_RECIPIENT_LABELS, type, "—");
+
+export const DELIVERY_CHANNEL_LABELS = Object.freeze({ email: "Email", in_app: "În aplicație" });
+export const deliveryChannelLabel = (channel) => labelFrom(DELIVERY_CHANNEL_LABELS, channel, "Email");
+
 export const ACTIVE_STATUS_LABELS = Object.freeze({ activa: "Activă", inactiva: "Inactivă" });
 export const activeStatusLabel = (status) => labelFrom(ACTIVE_STATUS_LABELS, status, "Necunoscut");
 
