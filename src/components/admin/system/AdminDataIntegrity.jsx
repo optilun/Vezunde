@@ -12,6 +12,8 @@ import { locationStatusIssues } from "@/lib/adminLocationStatusRules";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminHint from "@/components/admin/ui/AdminHint";
 import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import EmptyState from "@/components/admin/ui/EmptyState";
 
 const ACTIVE_SUBMISSION_STATUSES = new Set(["draft", "pending_review", "needs_more_info"]);
@@ -23,6 +25,20 @@ const REPAIR_TYPES_BY_CATEGORY = {
   Cereri: new Set(["identical_active_submissions"]),
 };
 const INTEGRITY_BATCH_OPTIONS = [25, 50, 100, 250];
+// Cheile de mai sus (Organizatii, Statusuri…) selectează reparațiile și nu se schimbă; textul afișat vine de aici.
+const CATEGORY_LABELS = {
+  Completitudine: "Completitudine",
+  Organizatii: "Organizații",
+  Relatii: "Relații",
+  Statusuri: "Stări",
+  Provenienta: "Proveniență",
+  Cereri: "Cereri",
+  Revendicari: "Revendicări",
+  Migrare: "Migrare",
+  Legacy: "Date vechi",
+  General: "General",
+};
+const categoryLabel = (category) => CATEGORY_LABELS[category] || category;
 
 function clean(value) {
   return String(value ?? "").trim();
@@ -67,13 +83,13 @@ function inspectData({ organizations, locations, submissions, claims, services }
   const now = Date.now();
 
   for (const organization of organizations) {
-    const name = organization.public_display_name || organization.name || "Organizatie fara nume";
+    const name = organization.public_display_name || organization.name || "Organizație fără nume";
     if (!VALID_ORGANIZATION_STATUSES.has(organization.status)) {
       addIssue(issues, {
         severity: "error",
         category: "Organizatii",
-        title: `${name}: status organizational invalid`,
-        detail: `Campul status are valoarea „${organization.status || "lipsa"}”. Valorile canonice sunt activa sau inactiva.`,
+        title: `${name}: status organizațional invalid`,
+        detail: `Câmpul status are valoarea „${organization.status || "lipsă"}”. Valorile corecte sunt „activa” sau „inactiva”.`,
       });
     }
 
@@ -82,8 +98,8 @@ function inspectData({ organizations, locations, submissions, claims, services }
     if (Math.abs(calculated - stored) >= 20) {
       addIssue(issues, {
         category: "Completitudine",
-        title: `${name}: completitudine nealiniata`,
-        detail: `Valoare salvata ${stored}%, calcul curent ${calculated}%.`,
+        title: `${name}: completitudine nealiniată`,
+        detail: `Valoare salvată ${stored}%, calcul curent ${calculated}%.`,
       });
     }
 
@@ -91,20 +107,20 @@ function inspectData({ organizations, locations, submissions, claims, services }
     if (organizationLocations.length === 0) {
       addIssue(issues, {
         category: "Relatii",
-        title: `${name}: organizatie fara locatie`,
-        detail: "Organizatia nu are niciun punct de lucru asociat.",
+        title: `${name}: organizație fără locație`,
+        detail: "Organizația nu are niciun punct de lucru asociat.",
       });
     }
   }
 
   for (const location of locations) {
-    const name = location.public_display_name || location.name || "Locatie fara nume";
+    const name = location.public_display_name || location.name || "Locație fără nume";
     if (!location.organization_id || !organizationMap[location.organization_id]) {
       addIssue(issues, {
         severity: "error",
         category: "Relatii",
-        title: `${name}: organizatie lipsa`,
-        detail: "Locatia nu este asociata unei organizatii existente.",
+        title: `${name}: organizație lipsă`,
+        detail: "Locația nu este asociată unei organizații existente.",
       });
     }
 
@@ -125,7 +141,7 @@ function inspectData({ organizations, locations, submissions, claims, services }
       addIssue(issues, {
         severity: "error",
         category: "Provenienta",
-        title: `${name}: data verificarii sursei este in viitor`,
+        title: `${name}: data verificării sursei este în viitor`,
         detail: sourceCheckedAt.toLocaleString("ro-RO"),
       });
     }
@@ -135,8 +151,8 @@ function inspectData({ organizations, locations, submissions, claims, services }
     if (Math.abs(calculated - stored) >= 20) {
       addIssue(issues, {
         category: "Completitudine",
-        title: `${name}: completitudine locatie nealiniata`,
-        detail: `Valoare salvata ${stored}%, calcul curent ${calculated}%.`,
+        title: `${name}: completitudine locație nealiniată`,
+        detail: `Valoare salvată ${stored}%, calcul curent ${calculated}%.`,
       });
     }
   }
@@ -168,8 +184,8 @@ function inspectData({ organizations, locations, submissions, claims, services }
     const location = locationMap[first.location_id];
     addIssue(issues, {
       category: "Cereri",
-      title: `${location?.public_display_name || location?.name || "Organizatie"}: cereri identice repetate`,
-      detail: `${rows.length} cereri cu acelasi continut pentru sectiunea ${first.section || "necunoscuta"} si statusul ${first.status || "necunoscut"}.`,
+      title: `${location?.public_display_name || location?.name || "Organizație"}: cereri identice repetate`,
+      detail: `${rows.length} cereri cu același conținut pentru secțiunea ${first.section || "necunoscută"} și statusul ${first.status || "necunoscut"}.`,
     });
   }
 
@@ -180,8 +196,8 @@ function inspectData({ organizations, locations, submissions, claims, services }
     addIssue(issues, {
       severity: "error",
       category: "Cereri",
-      title: `${location?.public_display_name || location?.name || "Organizatie"}: mai multe cereri active pentru aceeasi sectiune`,
-      detail: `${rows.length} cereri active pentru ${first.section || "sectiune necunoscuta"}.`,
+      title: `${location?.public_display_name || location?.name || "Organizație"}: mai multe cereri active pentru aceeași secțiune`,
+      detail: `${rows.length} cereri active pentru ${first.section || "secțiune necunoscută"}.`,
     });
   }
 
@@ -196,8 +212,8 @@ function inspectData({ organizations, locations, submissions, claims, services }
     addIssue(issues, {
       severity: "error",
       category: "Revendicari",
-      title: "Revendicari active duplicate",
-      detail: `${rows.length} cereri active pentru aceeasi locatie si acelasi utilizator.`,
+      title: "Revendicări active duplicate",
+      detail: `${rows.length} cereri active pentru aceeași locație și același utilizator.`,
     });
   }
 
@@ -207,15 +223,15 @@ function inspectData({ organizations, locations, submissions, claims, services }
       addIssue(issues, {
         severity: "error",
         category: "Relatii",
-        title: `${service.service_key || "Serviciu"}: locatie inexistenta`,
-        detail: "Serviciul este orfan si nu poate participa corect la publicare sau matching.",
+        title: `${service.service_key || "Serviciu"}: locație inexistentă`,
+        detail: "Serviciul este orfan și nu poate participa corect la publicare sau matching.",
       });
     }
     if (service.migration_review_required) {
       addIssue(issues, {
         category: "Migrare",
-        title: `${service.service_key || "Serviciu"}: review de migrare necesar`,
-        detail: location ? `Locatie: ${location.public_display_name || location.name}` : "Locatie necunoscuta",
+        title: `${service.service_key || "Serviciu"}: verificare de migrare necesară`,
+        detail: location ? `Locație: ${location.public_display_name || location.name}` : "Locație necunoscută",
       });
     }
   }
@@ -235,7 +251,7 @@ function IssueRow({ issue }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm font-bold">{issue.title}</div>
-            <span className="rounded-full bg-card/80 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{issue.category}</span>
+            <span className="rounded-full bg-card/80 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{categoryLabel(issue.category)}</span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{issue.detail}</p>
         </div>
@@ -337,15 +353,15 @@ export default function AdminDataIntegrity() {
 
       if (selected.length === 0) {
         setBulkMessage(bulkScope === "current"
-          ? "Categoria curenta nu are reparatii deterministe disponibile. Problemele ramase necesita verificare umana."
-          : "Nu exista reparatii deterministe disponibile acum.");
+          ? "Categoria curentă nu are reparații deterministe disponibile. Problemele rămase necesită verificare umană."
+          : "Nu există reparații deterministe disponibile acum.");
         return;
       }
 
       const confirmed = await confirm({
         title: `Aplici ${selected.length} reparații?`,
         description: bulkScope === "current"
-          ? `Doar din categoria „${activeCategory}”. Fiecare reparație e reverificată de server înainte de aplicare și apare în Istoric audit.`
+          ? `Doar din categoria „${categoryLabel(activeCategory)}”. Fiecare reparație e reverificată de server înainte de aplicare și apare în Istoric audit.`
           : "Din toate categoriile. Fiecare reparație e reverificată de server înainte de aplicare și apare în Istoric audit.",
         confirmLabel: "Aplică reparațiile",
       });
@@ -373,10 +389,10 @@ export default function AdminDataIntegrity() {
           failed,
         });
       }
-      setBulkMessage(`Lot finalizat: ${applied} reparatii aplicate, ${skipped} sarite, ${failed} esuate.`);
+      setBulkMessage(`Lot finalizat: ${applied} reparații aplicate, ${skipped} sărite, ${failed} eșuate.`);
       await load();
     } catch (reason) {
-      setError(reason.response?.data?.error || reason.message || "Rularea in lot s-a oprit cu o eroare.");
+      setError(reason.response?.data?.error || reason.message || "Rularea în lot s-a oprit cu o eroare.");
     } finally {
       setBulkRunning(false);
     }
@@ -420,7 +436,7 @@ export default function AdminDataIntegrity() {
             <label className="w-[190px] text-[11px] font-semibold text-muted-foreground">
               Domeniu
               <select value={bulkScope} onChange={(event) => setBulkScope(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground">
-                <option value="current">Categoria curentă: {activeCategory || "—"}</option>
+                <option value="current">Categoria curentă: {activeCategory ? categoryLabel(activeCategory) : "—"}</option>
                 <option value="all">Toate reparațiile sigure</option>
               </select>
             </label>
@@ -435,13 +451,16 @@ export default function AdminDataIntegrity() {
               {bulkRunning ? "Se repară loturile..." : "Repară în lot"}
             </button>
           </div>
-          {bulkProgress && <div className="mt-3 text-xs text-muted-foreground">Procesate {bulkProgress.done}/{bulkProgress.total} · aplicate {bulkProgress.applied} · sarite {bulkProgress.skipped} · esuate {bulkProgress.failed}</div>}
+          {bulkProgress && <div className="mt-3 text-xs text-muted-foreground">Procesate {bulkProgress.done}/{bulkProgress.total} · aplicate {bulkProgress.applied} · sărite {bulkProgress.skipped} · eșuate {bulkProgress.failed}</div>}
           {bulkMessage && <div className="mt-3 rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-xs">{bulkMessage}</div>}
         </AdminCard>
       )}
 
-      {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
-      {!data && !error && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se verifică datele...</> : "Apasă „Pornește verificarea” ca să analizezi datele."}</div>}
+      {error && <AdminNotice tone="danger">{error}</AdminNotice>}
+      {!data && !error && loading && <AdminLoading label="Se verifică datele…" rows={3} />}
+      {!data && !error && !loading && (
+        <AdminCard className="p-5"><EmptyState icon={DatabaseZap} title="Verificarea pornește la cerere." subtitle="Apasă „Pornește verificarea” ca să analizezi datele." /></AdminCard>
+      )}
 
       {data && issues.length === 0 && (
         <AdminCard className="p-5"><EmptyState icon={CheckCircle2} title="Nu am găsit neconcordanțe." /></AdminCard>
@@ -460,7 +479,7 @@ export default function AdminDataIntegrity() {
                   onClick={() => { setActiveCategory(category); setPage(0); }}
                   className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${active ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary"}`}
                 >
-                  {category}
+                  {categoryLabel(category)}
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? "bg-background/20" : "bg-secondary"}`}>
                     {critical > 0 ? `${critical} critice din ${categoryIssues.length}` : categoryIssues.length}
                   </span>
@@ -471,7 +490,7 @@ export default function AdminDataIntegrity() {
 
           <AdminCard className="p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-heading text-sm font-bold">{activeCategory}</h3>
+              <h3 className="font-heading text-sm font-bold">{categoryLabel(activeCategory)}</h3>
               <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">{activeIssues.length}</span>
             </div>
             <div className="mt-3 space-y-2">
@@ -487,14 +506,14 @@ export default function AdminDataIntegrity() {
                 >
                   Anterior
                 </button>
-                <span className="text-muted-foreground">Pagina {page + 1} din {pageCount} · {activeIssues.length} probleme in aceasta categorie</span>
+                <span className="text-muted-foreground">Pagina {page + 1} din {pageCount} · {activeIssues.length} probleme în această categorie</span>
                 <button
                   type="button"
                   disabled={page >= pageCount - 1}
                   onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
                   className="rounded-full border border-border px-3 py-1.5 font-semibold hover:bg-secondary disabled:opacity-40"
                 >
-                  Urmator
+                  Următor
                 </button>
               </div>
             )}

@@ -9,12 +9,12 @@ export default function GeoCoverageCard({ geo }) {
     <AdminCard className="p-5">
       <h3 className="font-heading font-bold text-sm">Acoperire geografica</h3>
       {geo.locationsCount === 0 ? (
-        <EmptyState icon={MapPin} title="Geografia nationala este pregatita, dar nu exista inca profiluri reale." subtitle="Cele 42 de judete si localitatile SIRUTA sunt deja incarcate in platforma." />
+        <EmptyState icon={MapPin} title="Geografia națională este pregătită, dar nu există încă profiluri reale." subtitle="Cele 42 de județe și localitățile SIRUTA sunt deja încărcate în platformă." />
       ) : (
         <div className="mt-3 space-y-2 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Judete cu locatii active</span><span className="font-semibold">{geo.countiesWithLocations}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Judete fara locatii</span><span className="font-semibold">{geo.countiesWithoutLocations}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Localitati cu profiluri publicate</span><span className="font-semibold">{geo.localitiesPublished}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Județe cu locații active</span><span className="font-semibold">{geo.countiesWithLocations}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Județe fără locații</span><span className="font-semibold">{geo.countiesWithoutLocations}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Localități cu profiluri publicate</span><span className="font-semibold">{geo.localitiesPublished}</span></div>
         </div>
       )}
     </AdminCard>

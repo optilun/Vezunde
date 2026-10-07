@@ -15,8 +15,8 @@ export default function ResearchEvidencePanel({ location, organization, services
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
 
   const targets = [
-    { key: `ProviderLocation:${location.id}`, label: `Locatie: ${location.name}` },
-    ...(organization ? [{ key: `ProviderOrganization:${organization.id}`, label: `Organizatie: ${organization.name}` }] : []),
+    { key: `ProviderLocation:${location.id}`, label: `Locație: ${location.name}` },
+    ...(organization ? [{ key: `ProviderOrganization:${organization.id}`, label: `Organizație: ${organization.name}` }] : []),
     ...services.map((s) => ({ key: `LocationService:${s.id}`, label: `Serviciu: ${s.service_key}` })),
   ];
   const targetLabel = (e) => targets.find((t) => t.key === `${e.entity_type}:${e.entity_id}`)?.label || `${e.entity_type}`;
@@ -45,7 +45,7 @@ export default function ResearchEvidencePanel({ location, organization, services
   };
 
   const setStatus = async (evidenceId, status) => {
-    const note = status === "rejected" ? window.prompt("Nota pentru respingerea dovezii (obligatorie):") : window.prompt("Nota (optional):") || "";
+    const note = status === "rejected" ? window.prompt("Notă pentru respingerea dovezii (obligatorie):") : window.prompt("Nota (opțional):") || "";
     if (status === "rejected" && !note) return;
     setError(null);
     try {
@@ -61,41 +61,41 @@ export default function ResearchEvidencePanel({ location, organization, services
       <div className="flex items-center justify-between">
         <h3 className="font-heading font-bold text-sm">D. Dovezi per camp/serviciu ({evidence.length})</h3>
         <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold">
-          {showForm ? "Inchide formular" : "Adauga dovada"}
+          {showForm ? "Închide formular" : "Adaugă dovada"}
         </button>
       </div>
 
       {showForm && (
         <div className="mt-4 border border-border rounded-lg p-4 max-w-xl">
-          <label className={label}>Tinta dovezii *</label>
+          <label className={label}>Ținta dovezii *</label>
           <select className={input} value={f.target} onChange={set("target")}>
             <option value="">Alege...</option>
             {targets.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
           </select>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className={label}>Camp (field_name)</label><input className={input} value={f.field_name} onChange={set("field_name")} placeholder="ex: phone_public" /></div>
+            <div><label className={label}>Câmp (field_name)</label><input className={input} value={f.field_name} onChange={set("field_name")} placeholder="ex: phone_public" /></div>
             <div><label className={label}>Valoare (snapshot)</label><input className={input} value={f.value_snapshot} onChange={set("value_snapshot")} /></div>
           </div>
-          <label className={label}>Sursa URL * (fara Google Maps/Places)</label>
+          <label className={label}>URL-ul sursei * (fără Google Maps/Places)</label>
           <input className={input} value={f.source_url} onChange={set("source_url")} placeholder="https://..." />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className={label}>Tip sursa</label>
+              <label className={label}>Tip sursă</label>
               <select className={input} value={f.source_type} onChange={set("source_type")}>
                 <option value="site_oficial">Site oficial</option>
                 <option value="registru_public">Registru public</option>
                 <option value="director_public">Director public</option>
-                <option value="alta_sursa_publica">Alta sursa publica</option>
+                <option value="alta_sursa_publica">Altă sursă publică</option>
               </select>
             </div>
-            <div><label className={label}>Titlu sursa (optional)</label><input className={input} value={f.source_title} onChange={set("source_title")} /></div>
+            <div><label className={label}>Titlu sursă (opțional)</label><input className={input} value={f.source_title} onChange={set("source_title")} /></div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div><label className={label}>Verificat la data</label><input type="date" className={input} value={f.checked_at} onChange={set("checked_at")} /></div>
             <div>
-              <label className={label}>Incredere *</label>
+              <label className={label}>Încredere *</label>
               <select className={input} value={f.confidence} onChange={set("confidence")}>
-                <option value="low">Scazuta</option><option value="medium">Medie</option><option value="high">Ridicata</option>
+                <option value="low">Scăzută</option><option value="medium">Medie</option><option value="high">Ridicată</option>
               </select>
             </div>
           </div>
@@ -103,26 +103,26 @@ export default function ResearchEvidencePanel({ location, organization, services
           <textarea className={input} rows={2} value={f.notes} onChange={set("notes")} />
           <label className="flex items-center gap-2 mt-2 text-xs">
             <input type="checkbox" checked={f.supersede_previous} onChange={set("supersede_previous")} />
-            Marcheaza dovezile active anterioare pentru acelasi camp ca inlocuite
+            Marchează dovezile active anterioare pentru același câmp ca înlocuite
           </label>
           <button onClick={submit} disabled={saving || !f.target || !f.source_url} className="mt-3 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40">
-            {saving ? "Se salveaza..." : "Salveaza dovada"}
+            {saving ? "Se salvează..." : "Salvează dovada"}
           </button>
         </div>
       )}
 
-      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-3 text-xs text-danger">{error}</p>}
 
-      {evidence.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Nicio dovada inregistrata.</p> : (
+      {evidence.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Nicio dovadă înregistrată.</p> : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3">Tinta</th>
-                <th className="py-2 pr-3">Camp</th>
+                <th className="py-2 pr-3">Ținta</th>
+                <th className="py-2 pr-3">Câmp</th>
                 <th className="py-2 pr-3">Valoare</th>
-                <th className="py-2 pr-3">Sursa</th>
-                <th className="py-2 pr-3">Incredere</th>
+                <th className="py-2 pr-3">Sursă</th>
+                <th className="py-2 pr-3">Încredere</th>
                 <th className="py-2 pr-3">Verificat</th>
                 <th className="py-2 pr-3">Status</th>
                 <th className="py-2"></th>
@@ -144,8 +144,8 @@ export default function ResearchEvidencePanel({ location, organization, services
                   <td className="py-2">
                     {e.evidence_status === "active" && (
                       <div className="flex gap-1.5">
-                        <button onClick={() => setStatus(e.id, "superseded")} className="px-2 py-1 rounded bg-secondary">Inlocuita</button>
-                        <button onClick={() => setStatus(e.id, "rejected")} className="px-2 py-1 rounded bg-destructive/10 text-destructive">Respinge</button>
+                        <button onClick={() => setStatus(e.id, "superseded")} className="px-2 py-1 rounded bg-secondary">Înlocuită</button>
+                        <button onClick={() => setStatus(e.id, "rejected")} className="px-2 py-1 rounded bg-destructive/10 text-danger">Respinge</button>
                       </div>
                     )}
                   </td>

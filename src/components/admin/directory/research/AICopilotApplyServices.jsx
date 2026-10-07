@@ -36,7 +36,7 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
   const preview = async (targetId) => {
     const id = String(targetId || locationId || "").trim();
     if (!id) {
-      setError("Alege o locatie sau scrie un location_id.");
+      setError("Alege o locație sau scrie un location_id.");
       return;
     }
     setBusy(true);
@@ -59,7 +59,7 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
   const addToBatch = async () => {
     const id = String(locationId || "").trim();
     if (!id) {
-      setError("Alege o locatie inainte de a o adauga in lot.");
+      setError("Alege o locație înainte de a o adăuga în lot.");
       return;
     }
     setBusy(true);
@@ -75,7 +75,7 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
         draft_id: draftId,
         location_id: id,
       });
-      setBatchNote(`Adaugat in lotul ${res.data.batch.batch_key} (${res.data.batch.pair_count} perechi). Planifica si aproba lotul din tabul "Loturi de servicii".`);
+      setBatchNote(`Adăugat în lotul ${res.data.batch.batch_key} (${res.data.batch.pair_count} perechi). Planifica și aproba lotul din tabul "Loturi de servicii".`);
     } catch (callError) {
       setError(errorText(callError));
     }
@@ -99,14 +99,14 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
   return (
     <div className="mt-2 rounded-md border border-border bg-card p-3">
       <p className="text-xs text-muted-foreground">
-        Scrie pe o locatie existenta doar serviciile pe care le-ai aprobat mai sus, cu dovada din sursa.
-        Nivelul este <span className="font-semibold">publicly_listed</span>: serviciul provine dintr-o sursa publica,
-        nu de la furnizor. Locatiile revendicate sau verificate sunt refuzate — acolo serviciile le declara furnizorul.
+        Scrie pe o locație existentă doar serviciile pe care le-ai aprobat mai sus, cu dovada din sursă.
+        Nivelul este <span className="font-semibold">publicly_listed</span>: serviciul provine dintr-o sursă publică,
+        nu de la furnizor. Locațiile revendicate sau verificate sunt refuzate — acolo serviciile le declara furnizorul.
       </p>
 
       {duplicateCandidates?.length > 0 && (
         <div className="mt-3">
-          <p className="text-xs font-semibold">Locatii asemanatoare gasite in director</p>
+          <p className="text-xs font-semibold">Locații asemănătoare găsite în director</p>
           <div className="mt-1.5 space-y-1">
             {duplicateCandidates.map((candidate) => (
               <button
@@ -132,8 +132,8 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
           className={input}
           value={locationId}
           onChange={(event) => setLocationId(event.target.value)}
-          placeholder="sau lipeste direct un location_id"
-          aria-label="Identificatorul locatiei"
+          placeholder="sau lipește direct un location_id"
+          aria-label="Identificatorul locației"
         />
         <button
           type="button"
@@ -149,11 +149,11 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
           disabled={busy || !locationId.trim()}
           className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"
         >
-          <Layers className="h-3.5 w-3.5" /> Adauga in lot
+          <Layers className="h-3.5 w-3.5" /> Adaugă în lot
         </button>
       </div>
 
-      {batchNote && <p className="mt-2 text-xs text-green-700">{batchNote}</p>}
+      {batchNote && <p className="mt-2 text-xs text-success">{batchNote}</p>}
 
       {plan && (
         <div className="mt-4 rounded-md border border-border p-3">
@@ -170,10 +170,10 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
           <ul className="mt-1 space-y-1">
             {plan.planned.map((item) => (
               <li key={item.service_key} className="text-xs">
-                <Check className="mr-1 inline h-3 w-3 text-green-700" />
+                <Check className="mr-1 inline h-3 w-3 text-success" />
                 <span className="font-medium">{item.label}</span>
                 <span className="text-muted-foreground">
-                  {" "}· {item.matching_allowed ? "intra in potrivire" : "fara potrivire"} · {item.service_source_url}
+                  {" "}· {item.matching_allowed ? "intră în potrivire" : "fără potrivire"} · {item.service_source_url}
                 </span>
               </li>
             ))}
@@ -187,7 +187,7 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
           )}
 
           {plan.blocked.length > 0 && (
-            <div className="mt-3 rounded-md border border-amber-400/50 bg-amber-50 p-2">
+            <div className="mt-3 rounded-md border border-warning-border bg-warning-soft p-2">
               <p className="text-xs font-semibold">
                 <AlertTriangle className="mr-1 inline h-3 w-3" /> Blocate ({plan.blocked.length})
               </p>
@@ -227,22 +227,22 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
       )}
 
       {result && (
-        <div className="mt-4 rounded-md border border-green-600/40 bg-green-50/50 p-3">
-          <p className="text-sm font-semibold text-green-800">
+        <div className="mt-4 rounded-md border border-success-border bg-success-soft p-3">
+          <p className="text-sm font-semibold text-success">
             {result.created.length} servicii scrise pe {result.location.name || result.location.id}.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {result.created.map((item) => item.service_key).join(", ")}
           </p>
           {result.failed?.length > 0 && (
-            <p className="mt-2 text-xs text-destructive">
+            <p className="mt-2 text-xs text-danger">
               Esuate: {result.failed.map((item) => `${item.service_key} (${item.reason})`).join("; ")}
             </p>
           )}
         </div>
       )}
 
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
     </div>
   );
 }

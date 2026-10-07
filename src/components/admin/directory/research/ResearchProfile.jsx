@@ -24,18 +24,18 @@ export default function ResearchProfile({ locationId, onBack, onNavigate }) {
 
   useEffect(() => { load(); }, [load]);
 
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
-  if (!data) return <p className="text-sm text-muted-foreground">Se incarca...</p>;
+  if (error) return <p className="text-sm text-danger">{error}</p>;
+  if (!data) return <p className="text-sm text-muted-foreground">Se încarcă…</p>;
 
   const { location: loc, organization: org, services, evidence, duplicates, checklist, missing_fields } = data;
   const activeEvidence = evidence.filter((e) => e.evidence_status === "active");
-  const warnings = missing_fields.map((k) => `Lipseste: ${MISSING_FIELD_LABELS[k] || k}`);
-  if (services.length === 0) warnings.push("Locatia nu are niciun serviciu inregistrat.");
-  if (activeEvidence.length === 0) warnings.push("Locatia nu are nicio dovada activa.");
+  const warnings = missing_fields.map((k) => `Lipsește: ${MISSING_FIELD_LABELS[k] || k}`);
+  if (services.length === 0) warnings.push("Locația nu are niciun serviciu înregistrat.");
+  if (activeEvidence.length === 0) warnings.push("Locația nu are nicio dovadă activă.");
 
   return (
     <div>
-      <button onClick={onBack} className="text-xs font-semibold text-muted-foreground hover:text-foreground">&larr; Inapoi la coada</button>
+      <button onClick={onBack} className="text-xs font-semibold text-muted-foreground hover:text-foreground">&larr; Înapoi la coada</button>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">{loc.name}</h2>
         <span className="text-xs bg-secondary rounded-full px-2.5 py-1">{PCS_LABELS[loc.profile_control_status || "directory"] || loc.profile_control_status}</span>
@@ -47,7 +47,7 @@ export default function ResearchProfile({ locationId, onBack, onNavigate }) {
 
       {warnings.length > 0 && (
         <div className="mt-4 border border-destructive/40 bg-destructive/5 rounded-xl p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-destructive">Avertismente date lipsa</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-danger">Avertismente date lipsa</p>
           <ul className="mt-1.5 text-sm space-y-0.5">{warnings.map((w) => <li key={w}>{w}</li>)}</ul>
         </div>
       )}
@@ -56,7 +56,7 @@ export default function ResearchProfile({ locationId, onBack, onNavigate }) {
         <div className={box}>
           <h3 className="font-heading font-bold text-sm">A. Date de baza</h3>
           <dl className="mt-3 text-sm space-y-1.5">
-            <div><dt className="inline text-muted-foreground">Adresa: </dt><dd className="inline">{loc.address || "—"}</dd></div>
+            <div><dt className="inline text-muted-foreground">Adresă: </dt><dd className="inline">{loc.address || "—"}</dd></div>
             <div><dt className="inline text-muted-foreground">Telefon public: </dt><dd className="inline">{loc.phone_public || "—"}</dd></div>
             <div><dt className="inline text-muted-foreground">Email public: </dt><dd className="inline">{loc.public_email || "—"}</dd></div>
             <div><dt className="inline text-muted-foreground">Website: </dt><dd className="inline">{loc.website || "—"}</dd></div>
@@ -71,9 +71,9 @@ export default function ResearchProfile({ locationId, onBack, onNavigate }) {
             <div className="mt-3 text-sm space-y-1">
               <div className="break-all"><span className="text-muted-foreground">URL: </span>{loc.source_url}</div>
               <div><span className="text-muted-foreground">Tip: </span>{loc.source_type || "—"} · <span className="text-muted-foreground">Verificat la: </span>{loc.source_checked_at ? loc.source_checked_at.slice(0, 10) : "—"}</div>
-              <div><span className="text-muted-foreground">Incredere: </span>{loc.data_confidence || "—"} · <span className="text-muted-foreground">Colectat de: </span>{loc.collected_by || "—"}</div>
+              <div><span className="text-muted-foreground">Încredere: </span>{loc.data_confidence || "—"} · <span className="text-muted-foreground">Colectat de: </span>{loc.collected_by || "—"}</div>
             </div>
-          ) : <p className="mt-3 text-sm text-muted-foreground">Nicio sursa inregistrata pe profil.</p>}
+          ) : <p className="mt-3 text-sm text-muted-foreground">Nicio sursă înregistrată pe profil.</p>}
         </div>
 
         <div className={box}>
@@ -97,9 +97,9 @@ export default function ResearchProfile({ locationId, onBack, onNavigate }) {
         <ResearchChecklist locationId={loc.id} checklist={checklist} onReload={load} />
 
         <div className={box}>
-          <h3 className="font-heading font-bold text-sm">G. Candidati duplicate</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Detectate dupa nume normalizat, adresa, domeniu website, telefon si organizatie. Nu se face fuziune automata.</p>
-          {duplicates.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Niciun candidat de duplicat gasit.</p> : (
+          <h3 className="font-heading font-bold text-sm">G. Candidați duplicate</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Detectate după nume normalizat, adresă, domeniu website, telefon și organizație. Nu se face fuziune automată.</p>
+          {duplicates.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Niciun candidat de duplicat găsit.</p> : (
             <ul className="mt-3 text-sm space-y-2">
               {duplicates.map((d) => (
                 <li key={d.id}>

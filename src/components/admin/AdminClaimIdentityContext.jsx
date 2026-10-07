@@ -2,8 +2,8 @@ import React from "react";
 
 const parse = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
 const SEVERITY = {
-  strong_duplicate: { label: "Duplicat puternic", cls: "bg-red-100 text-red-800" },
-  possible_duplicate: { label: "Posibil duplicat", cls: "bg-amber-100 text-amber-800" },
+  strong_duplicate: { label: "Duplicat puternic", cls: "bg-danger-soft text-danger" },
+  possible_duplicate: { label: "Posibil duplicat", cls: "bg-warning-soft text-warning" },
   likely_distinct: { label: "Probabil distinct", cls: "bg-secondary text-foreground" },
 };
 
@@ -20,14 +20,14 @@ export default function AdminClaimIdentityContext({ claim }) {
       {snap?.blocking_level && snap.blocking_level !== "none" && (
         <div>
           <span className="font-semibold">Identity Gate:</span>{" "}
-          <span className={`px-2 py-0.5 rounded-full font-semibold ${snap.blocking_level === "strong_duplicate_review_required" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>
+          <span className={`px-2 py-0.5 rounded-full font-semibold ${snap.blocking_level === "strong_duplicate_review_required" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning"}`}>
             {snap.blocking_level === "strong_duplicate_review_required" ? "duplicat puternic — review obligatoriu" : "avertisment posibil duplicat"}
           </span>
         </div>
       )}
       {proposed && (
         <div>
-          <span className="font-semibold">Locatie propusa:</span> {proposed.name} · {proposed.locality_name}{proposed.county_name ? `, ${proposed.county_name}` : ""}{proposed.address ? ` · ${proposed.address}` : ""}
+          <span className="font-semibold">Locație propusă:</span> {proposed.name} · {proposed.locality_name}{proposed.county_name ? `, ${proposed.county_name}` : ""}{proposed.address ? ` · ${proposed.address}` : ""}
         </div>
       )}
       {(snap?.candidates || []).map((c) => (
@@ -43,7 +43,7 @@ export default function AdminClaimIdentityContext({ claim }) {
       ))}
       {note && (
         <div>
-          <span className="font-semibold">Explicatia furnizorului:</span> {note}
+          <span className="font-semibold">Explicația furnizorului:</span> {note}
         </div>
       )}
     </div>

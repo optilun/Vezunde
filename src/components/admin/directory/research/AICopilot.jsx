@@ -12,8 +12,8 @@ import EmptyState from "@/components/admin/ui/EmptyState";
 // AI drafts only — never provider records. The only exit is prefilling the
 // canonical "Adauga locatie" form.
 
-const SRC_STATUS = { pending: "In asteptare", fetched: "Preluat", blocked: "Blocat", failed: "Esuat", manual: "Text manual" };
-const DRAFT_STATUS = { draft: "Draft", in_review: "In review", ready_to_transfer: "Gata de transfer", rejected: "Respins", transferred: "Transferat" };
+const SRC_STATUS = { pending: "În așteptare", fetched: "Preluat", blocked: "Blocat", failed: "Eșuat", manual: "Text manual" };
+const DRAFT_STATUS = { draft: "Draft", in_review: "În review", ready_to_transfer: "Gata de transfer", rejected: "Respins", transferred: "Transferat" };
 
 export default function AICopilot({ onNavigate }) {
   const [sources, setSources] = useState(null);
@@ -56,13 +56,13 @@ export default function AICopilot({ onNavigate }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-heading font-bold text-sm">AI Copilot — research asistat</h2>
-            <p className="text-xs text-muted-foreground mt-1">Genereaza doar drafturi de research. Nu creeaza profiluri, nu publica si nu verifica nimic — singura iesire este pre-completarea formularului &quot;Adauga locatie&quot;.</p>
+            <p className="text-xs text-muted-foreground mt-1">Generează doar drafturi de research. Nu creează profiluri, nu publică și nu verifică nimic — singura ieșire este pre-completarea formularului „Adaugă locație”.</p>
           </div>
           <button onClick={() => setShowForm(!showForm)} className="shrink-0 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold">
-            {showForm ? "Inchide" : "Adauga sursa"}
+            {showForm ? "Închide" : "Adaugă sursă"}
           </button>
         </div>
-        {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+        {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       </AdminCard>
 
       {showForm && (
@@ -72,9 +72,9 @@ export default function AICopilot({ onNavigate }) {
       )}
 
       <AdminCard className="p-5">
-        {sources === null && <p className="text-sm text-muted-foreground">Se incarca...</p>}
+        {sources === null && <p className="text-sm text-muted-foreground">Se încarcă…</p>}
         {sources?.length === 0 && (
-          <EmptyState icon={Sparkles} title="Nicio sursa de research inca." subtitle="Adauga un URL public sau un text manual pentru a incepe o analiza AI." />
+          <EmptyState icon={Sparkles} title="Nicio sursă de research încă." subtitle="Adaugă un URL public sau un text manual ca să începi o analiză AI." />
         )}
         <div className="space-y-3">
           {sources?.map((s) => {
@@ -86,14 +86,14 @@ export default function AICopilot({ onNavigate }) {
                     <p className="text-sm font-semibold truncate">{s.source_title || s.source_domain || s.source_url || "Text manual"}</p>
                     {s.source_url && <p className="text-xs text-muted-foreground truncate">{s.source_url}</p>}
                     <p className="text-xs mt-1">
-                      <span className={`font-semibold ${usable(s) ? "text-green-700" : "text-destructive"}`}>{SRC_STATUS[s.fetch_status] || s.fetch_status}</span>
+                      <span className={`font-semibold ${usable(s) ? "text-success" : "text-danger"}`}>{SRC_STATUS[s.fetch_status] || s.fetch_status}</span>
                       {s.extracted_text_length > 0 && <span className="text-muted-foreground"> · {s.extracted_text_length} caractere</span>}
                     </p>
-                    {s.extraction_error && <p className="text-xs text-destructive mt-1">{s.extraction_error}</p>}
+                    {s.extraction_error && <p className="text-xs text-danger mt-1">{s.extraction_error}</p>}
                   </div>
                   {usable(s) && (
                     <button onClick={() => runAnalysis(s.id)} disabled={runningId === s.id} className="shrink-0 px-3 py-1.5 rounded-md bg-foreground text-background text-xs font-semibold disabled:opacity-50">
-                      {runningId === s.id ? <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Se analizeaza...</span> : "Ruleaza analiza"}
+                      {runningId === s.id ? <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Se analizează...</span> : "Rulează analiza"}
                     </button>
                   )}
                 </div>
@@ -105,7 +105,7 @@ export default function AICopilot({ onNavigate }) {
                     {srcDrafts.map((d) => (
                       <button key={d.id} onClick={() => setReviewId(d.id)} className="w-full flex items-center justify-between text-left text-xs px-2 py-1.5 rounded hover:bg-card transition-colors">
                         <span>Draft AI din {new Date(d.created_date).toLocaleString("ro-RO")}</span>
-                        <span className={`font-semibold ${d.status === "ready_to_transfer" ? "text-green-700" : d.status === "transferred" ? "text-muted-foreground" : "text-foreground"}`}>{DRAFT_STATUS[d.status] || d.status}</span>
+                        <span className={`font-semibold ${d.status === "ready_to_transfer" ? "text-success" : d.status === "transferred" ? "text-muted-foreground" : "text-foreground"}`}>{DRAFT_STATUS[d.status] || d.status}</span>
                       </button>
                     ))}
                   </div>

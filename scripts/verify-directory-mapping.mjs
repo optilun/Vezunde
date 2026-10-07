@@ -71,8 +71,8 @@ assert.doesNotMatch(backend, /is_verified:\s*true/);
 assert.doesNotMatch(backend, /verification_state:\s*'verified'/);
 
 assert.match(panel, /directoryMappingOps/);
-assert.match(panel, /Genereaza preview/);
-assert.match(panel, /Nicio decizie nu publica, verifica sau combina automat profiluri/);
+assert.match(panel, /Generează preview/);
+assert.match(panel, /Nicio decizie nu publică, verifică sau combină automat profiluri/);
 assert.match(panel, /same_address_distinct_unit/);
 assert.match(panel, /duplicate_same_entity/);
 assert.match(panel, /rebrand_successor/);

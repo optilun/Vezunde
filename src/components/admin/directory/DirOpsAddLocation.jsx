@@ -112,7 +112,7 @@ export default function DirOpsAddLocation() {
       setForm(EMPTY);
       setMessage({
         ok: true,
-        text: "Locatia a fost creata ca profil directory, fara servicii automate.",
+        text: "Locația a fost creată ca profil din director, fără servicii automate.",
       });
     } catch (error) {
       setMessage({
@@ -135,9 +135,9 @@ export default function DirOpsAddLocation() {
   return (
     <div className="max-w-3xl space-y-5">
       <AdminCard className="p-4 sm:p-5">
-        <h2 className="font-heading text-sm font-bold">Organizatie</h2>
+        <h2 className="font-heading text-sm font-bold">Organizație</h2>
 
-        <label htmlFor="admin-org-name" className={label}>Nume organizatie *</label>
+        <label htmlFor="admin-org-name" className={label}>Nume organizație *</label>
         <input
           id="admin-org-name"
           className={input}
@@ -157,7 +157,7 @@ export default function DirOpsAddLocation() {
             />
           </div>
           <div>
-            <label htmlFor="admin-org-website" className={label}>Website organizatie</label>
+            <label htmlFor="admin-org-website" className={label}>Website organizație</label>
             <input
               id="admin-org-website"
               type="url"
@@ -172,9 +172,9 @@ export default function DirOpsAddLocation() {
       </AdminCard>
 
       <AdminCard className="p-4 sm:p-5">
-        <h2 className="font-heading text-sm font-bold">Locatie</h2>
+        <h2 className="font-heading text-sm font-bold">Locație</h2>
 
-        <label htmlFor="admin-location-name" className={label}>Nume locatie *</label>
+        <label htmlFor="admin-location-name" className={label}>Nume locație *</label>
         <input
           id="admin-location-name"
           className={input}
@@ -208,7 +208,7 @@ export default function DirOpsAddLocation() {
               <option value="">Alege...</option>
               {PROVIDER_PROFILE_TYPES.map((type) => (
                 <option key={type.key} value={type.key}>
-                  {type.label}{type.is_b2b ? " — B2B, invizibil pentru pacienti" : ""}
+                  {type.label}{type.is_b2b ? " — B2B, invizibil pentru pacienți" : ""}
                 </option>
               ))}
             </select>
@@ -230,16 +230,16 @@ export default function DirOpsAddLocation() {
 
         <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
           <div>
-            <label htmlFor="admin-location-city" className={label}>Oras (oglinda)</label>
+            <label htmlFor="admin-location-city" className={label}>Oraș (se completează singur)</label>
             <input id="admin-location-city" className={input} value={form.city} readOnly />
           </div>
           <div>
-            <label htmlFor="admin-location-county" className={label}>Judet (oglinda)</label>
+            <label htmlFor="admin-location-county" className={label}>Județ (se completează singur)</label>
             <input id="admin-location-county" className={input} value={form.county} readOnly />
           </div>
         </div>
 
-        <label htmlFor="admin-location-address" className={label}>Adresa *</label>
+        <label htmlFor="admin-location-address" className={label}>Adresă *</label>
         <input
           id="admin-location-address"
           className={input}
@@ -250,7 +250,7 @@ export default function DirOpsAddLocation() {
       </AdminCard>
 
       <AdminCard className="p-4 sm:p-5">
-        <h2 className="font-heading text-sm font-bold">Date publice si provenienta</h2>
+        <h2 className="font-heading text-sm font-bold">Date publice și proveniența</h2>
 
         <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
           <div>
@@ -279,7 +279,7 @@ export default function DirOpsAddLocation() {
           </div>
         </div>
 
-        <label htmlFor="admin-location-website" className={label}>Website locatie</label>
+        <label htmlFor="admin-location-website" className={label}>Website locație</label>
         <input
           id="admin-location-website"
           type="url"
@@ -352,16 +352,16 @@ export default function DirOpsAddLocation() {
 
           <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="admin-data-confidence" className={label}>Incredere date *</label>
+              <label htmlFor="admin-data-confidence" className={label}>Încredere date *</label>
               <select
                 id="admin-data-confidence"
                 className={input}
                 value={form.data_confidence}
                 onChange={setField("data_confidence")}
               >
-                <option value="low">Scazuta</option>
+                <option value="low">Scăzută</option>
                 <option value="medium">Medie</option>
-                <option value="high">Ridicata</option>
+                <option value="high">Ridicată</option>
               </select>
             </div>
             <div>
@@ -392,7 +392,7 @@ export default function DirOpsAddLocation() {
             className="mt-0.5 h-4 w-4 shrink-0"
           />
           <span className="leading-relaxed">
-            Marcheaza locatia ca activa. Daca nu este bifata, locatia ramane inactiva.
+            Marchează locația ca activă. Dacă nu este bifată, locația rămâne inactivă.
           </span>
         </label>
       </AdminCard>
@@ -414,9 +414,9 @@ export default function DirOpsAddLocation() {
       )}
 
       <AdminCard className="p-4 sm:p-5">
-        <h2 className="mb-3 font-heading text-sm font-bold">Revizuire si actiuni</h2>
+        <h2 className="mb-3 font-heading text-sm font-bold">Revizuire și acțiuni</h2>
         {message && (
-          <p className={`mb-3 rounded-xl px-3 py-2.5 text-sm ${message.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-destructive"}`}>
+          <p className={`mb-3 rounded-xl px-3 py-2.5 text-sm ${message.ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
             {message.text}
           </p>
         )}
@@ -427,12 +427,12 @@ export default function DirOpsAddLocation() {
             disabled={saving || requiredMissing}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-40 sm:w-auto sm:rounded-md"
           >
-            {saving ? "Se salveaza..." : "Creeaza profil directory"}
+            {saving ? "Se salvează..." : "Creează profil din director"}
           </button>
         )}
         {requiredMissing && (
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            Completeaza campurile obligatorii, inclusiv sursa URL si data verificarii sursei.
+            Completează câmpurile obligatorii, inclusiv sursa URL și data verificării sursei.
           </p>
         )}
       </AdminCard>

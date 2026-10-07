@@ -8,7 +8,7 @@ export default function ResearchPipelineCard({ pipeline, onNavigate }) {
   const rows = [
     { label: "Surse", value: pipeline.sources },
     { label: "Drafturi AI", value: pipeline.drafts },
-    { label: "In review", value: pipeline.inReview },
+    { label: "În review", value: pipeline.inReview },
     { label: "Gata de transfer", value: pipeline.readyToTransfer },
     { label: "Respinse", value: pipeline.rejected },
   ];
@@ -25,7 +25,7 @@ export default function ResearchPipelineCard({ pipeline, onNavigate }) {
       </div>
       {total === 0 ? (
         <EmptyState
-          title="Inca nu exista surse sau drafturi de research."
+          title="Încă nu există surse sau drafturi de research."
           ctaLabel="Deschide Research director"
           onCta={() => onNavigate("research")}
           icon={Sparkles}

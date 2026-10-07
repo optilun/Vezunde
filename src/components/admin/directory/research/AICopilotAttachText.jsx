@@ -30,23 +30,23 @@ export default function AICopilotAttachText({ sourceId, onDone }) {
   };
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} className="mt-2 px-3 py-1.5 rounded-md bg-secondary text-xs font-semibold">Adauga text manual pentru analiza</button>;
+    return <button onClick={() => setOpen(true)} className="mt-2 px-3 py-1.5 rounded-md bg-secondary text-xs font-semibold">Adaugă text manual pentru analiză</button>;
   }
 
   return (
     <div className="mt-3 border-t border-border pt-3">
-      <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm bg-card" rows={6} maxLength={60000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Lipeste aici textul relevant de pe pagina sursei (minim 40 caractere)..." />
-      <p className="text-xs text-destructive mt-1 font-semibold">Nu lipi date despre pacienti, credentiale sau corespondenta privata.</p>
+      <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm bg-card" rows={6} maxLength={60000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Lipește aici textul relevant de pe pagina sursei (minim 40 caractere)..." />
+      <p className="text-xs text-danger mt-1 font-semibold">Nu lipi date despre pacienți, credențiale sau corespondență privată.</p>
       <label className="flex items-start gap-2 mt-2 text-xs">
         <input type="checkbox" className="mt-0.5" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
         <span>{CONFIRM_TEXT}</span>
       </label>
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
       <div className="flex gap-2 mt-2">
         <button onClick={submit} disabled={saving || text.trim().length < 40 || !confirmed} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40">
-          {saving ? "Se salveaza..." : "Salveaza textul"}
+          {saving ? "Se salvează..." : "Salvează textul"}
         </button>
-        <button onClick={() => setOpen(false)} className="px-3 py-1.5 rounded-md bg-secondary text-xs">Anuleaza</button>
+        <button onClick={() => setOpen(false)} className="px-3 py-1.5 rounded-md bg-secondary text-xs">Anulează</button>
       </div>
     </div>
   );

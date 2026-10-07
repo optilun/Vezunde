@@ -65,13 +65,13 @@ export default function DirOpsMigrationQueue() {
 
   return (
     <AdminCard className="p-4 sm:p-5">
-      {!items && <p className="text-sm text-muted-foreground">Se incarca...</p>}
+      {!items && <p className="text-sm text-muted-foreground">Se încarcă…</p>}
 
       {items && items.length === 0 && (
         <EmptyState
           icon={ListChecks}
-          title="Nicio inregistrare in coada de review migrare."
-          subtitle="Elementele care necesita confirmare dupa migrare vor aparea aici."
+          title="Nicio înregistrare în coada de review migrare."
+          subtitle="Elementele care cer confirmare după migrare apar aici."
         />
       )}
 
@@ -84,7 +84,7 @@ export default function DirOpsMigrationQueue() {
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1 sm:min-w-[240px]">
                 <div className="text-xs font-semibold uppercase text-muted-foreground">
-                  {item.kind === "location" ? "Locatie" : "Serviciu"}
+                  {item.kind === "location" ? "Locație" : "Serviciu"}
                 </div>
                 <div className="mt-0.5 break-words text-sm font-semibold">
                   {item.kind === "location"
@@ -116,8 +116,8 @@ export default function DirOpsMigrationQueue() {
                     </span>
                   )}
                 </div>
-                <div className="mt-1 text-xs leading-relaxed text-destructive">
-                  Motiv flag: date migrate fara dovada explicita de confirmare
+                <div className="mt-1 text-xs leading-relaxed text-danger">
+                  Motiv: date migrate, fără dovadă explicită de confirmare
                 </div>
               </div>
 
@@ -129,12 +129,12 @@ export default function DirOpsMigrationQueue() {
                       onClick={() => setAction({ item, decision: "keep_directory" })}
                       className="inline-flex min-h-11 items-center justify-center rounded-xl bg-secondary px-3 text-xs font-semibold hover:bg-accent sm:min-h-10 sm:rounded-md"
                     >
-                      Pastreaza directory
+                      Păstrează „din director”
                     </button>
                     <button
                       type="button"
                       onClick={() => setAction({ item, decision: "suspend" })}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-secondary px-3 text-xs font-semibold text-destructive hover:bg-accent sm:min-h-10 sm:rounded-md"
+                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-secondary px-3 text-xs font-semibold text-danger hover:bg-accent sm:min-h-10 sm:rounded-md"
                     >
                       Suspenda
                     </button>
@@ -153,7 +153,7 @@ export default function DirOpsMigrationQueue() {
                       onClick={() => setAction({ item, decision: "keep_not_confirmed" })}
                       className="inline-flex min-h-11 items-center justify-center rounded-xl bg-secondary px-3 text-xs font-semibold hover:bg-accent sm:min-h-10 sm:rounded-md"
                     >
-                      Pastreaza neconfirmat
+                      Păstrează neconfirmat
                     </button>
                     <button
                       type="button"

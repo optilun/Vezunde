@@ -400,7 +400,7 @@ function EmailTemplatesTab() {
                           </div>
                           <div className="m-3 rounded-xl border border-border bg-white p-4 sm:p-5">
                             <p className="text-xs text-slate-500">De la: VIASEE</p>
-                            <p className="mt-1 text-xs text-slate-500">Catre: destinatar@exemplu.ro</p>
+                            <p className="mt-1 text-xs text-slate-500">Către: destinatar@exemplu.ro</p>
                             <p className="mt-3 break-words border-b border-slate-200 pb-3 text-base font-bold text-slate-900">{previewSubject || "Fără subiect"}</p>
                             <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">{previewBody || "Fără conținut"}</div>
                           </div>
