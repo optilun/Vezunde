@@ -1,59 +1,42 @@
-import React, { useState } from "react";
+import React from "react";
+import { Plus } from "lucide-react";
 import DirOpsProfiles from "./DirOpsProfiles";
 import DirOpsMigrationQueue from "./DirOpsMigrationQueue";
-import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminTabs from "@/components/admin/ui/AdminTabs";
+import AdminHint from "@/components/admin/ui/AdminHint";
+import { useAdminSubTab } from "@/components/admin/useAdminRoute";
 
+const TABS = [
+  { key: "profiluri", label: "Toate profilurile" },
+  { key: "migrare", label: "Review migrare" },
+];
+
+// 2026-10-07: fără cardul cu text lung; informația despre cererile furnizorilor stă în ⓘ.
 export default function AdminProfilesSection({ onNavigate }) {
-  const [tab, setTab] = useState("profiluri");
-
-  const tabs = [
-    { key: "profiluri", label: "Toate profilurile" },
-    { key: "migrare", label: "Review migrare" },
-  ];
+  const [tab, setTab] = useAdminSubTab(TABS.map((item) => item.key), "profiluri");
 
   return (
     <div className="space-y-5">
-      <AdminCard className="p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-sm font-bold">Profiluri si locatii publicate</div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Modificarile trimise de furnizori nu mai sunt procesate din campul legacy pending_changes. Ele apar in Coada de verificare, pe infrastructura ProviderWorkspaceSubmission.
-            </p>
-          </div>
-          {onNavigate && (
-            <button
-              type="button"
-              onClick={() => onNavigate("adauga")}
-              className="shrink-0 rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background"
-            >
-              + Adauga locatie
-            </button>
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <AdminTabs tabs={TABS} value={tab} onChange={setTab} label="Profiluri și locații" />
+          <AdminHint label="Unde ajung modificările trimise de furnizori">
+            Modificările trimise de furnizori nu se mai aprobă de aici. Le găsești în <strong>Coada de verificare</strong>.
+          </AdminHint>
         </div>
-      </AdminCard>
-
-      <AdminCard className="inline-flex flex-wrap gap-1 p-2">
-        {tabs.map((item) => (
+        {onNavigate && (
           <button
-            key={item.key}
             type="button"
-            onClick={() => setTab(item.key)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === item.key
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            onClick={() => onNavigate("adauga")}
+            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background"
           >
-            {item.label}
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Adaugă locație
           </button>
-        ))}
-      </AdminCard>
-
-      <div>
-        {tab === "profiluri" && <DirOpsProfiles />}
-        {tab === "migrare" && <DirOpsMigrationQueue />}
+        )}
       </div>
+
+      {tab === "profiluri" && <DirOpsProfiles />}
+      {tab === "migrare" && <DirOpsMigrationQueue />}
     </div>
   );
 }

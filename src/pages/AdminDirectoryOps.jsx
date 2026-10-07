@@ -1,7 +1,12 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import AdminAppShell from "@/components/admin/shell/AdminAppShell";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminTabs from "@/components/admin/ui/AdminTabs";
+import { AdminConfirmProvider } from "@/components/admin/ui/AdminConfirm";
+import { AdminCountsProvider } from "@/components/admin/useAdminCounts";
+import { useAdminRoute, useAdminSubTab } from "@/components/admin/useAdminRoute";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 import "@/styles/admin-mobile.css";
 
@@ -72,61 +77,44 @@ const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBi
 const AdminSearchContacts = lazy(() => import("@/components/admin/patients/AdminSearchContacts"));
 const AdminAnalytics = lazy(() => import("@/components/admin/analytics/AdminAnalytics"));
 
-const SIMPLE_HEADERS = {
-  billing: "Urmărește facturile, încasările și abonamentele Pro ale locațiilor VIASEE.",
-  contacte_pacienti:
-    "Pacienții care și-au lăsat datele la finalul unei căutări, cu acordul lor. Ofertele se trimit doar celor marcați „Poate primi oferte”.",
-  adauga:
-    "Creeaza o organizatie si prima locatie sau adauga manual un profil nou in director, cu provenienta obligatorie.",
-  profiluri:
-    "Gestioneaza locatiile din director, statusul de incredere si eventualele revizuiri de migrare.",
-  mapping:
-    "Clarifica relatiile organizatie-locatie, tipurile canonice, conflictele, dublurile, rebrandingul si unitatile distincte de la aceeasi adresa.",
-  import_directory:
-    "Incarca snapshoturi imuabile, valideaza randurile, genereaza dry-run, executa loturi idempotente si retrage in siguranta modificarile aplicate.",
-  workspace_reviews:
-    "Analizeaza intr-un singur loc cererile trimise de furnizori, locatiile noi si profilurile specialistilor.",
-  corectii:
-    "Verifica sesizarile publice privind date gresite, locatii inchise, duplicate, asocieri incorecte si eliminarea datelor personale.",
-  support_tickets:
-    "Gestioneaza tichetele de suport si feedback-ul trimis din conturile utilizatorilor, din acelasi centru administrativ.",
-  servicii:
-    "Gestioneaza serviciile existente, nivelul de confirmare si eligibilitatea pentru rezultate.",
-  revendicari: "Analizeaza cererile de revendicare a profilurilor.",
-  outreach:
-    "Gestioneaza campaniile, contactele si sabloanele de marketing.",
-  automatic_emails:
-    "Vezi mesajele trimise automat, previzualizeaza-le si editeaza sabloanele controlate de VIASEE.",
-  geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
-  audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
-  data_integrity:
-    "Detecteaza neconcordantele si permite reparatii deterministe individuale sau in lot, fuziuni controlate si operatii de geocodare administrate.",
-  contract_geo:
-    "Verificari de regresie pentru contractul geografic. Instrument intern.",
+// 2026-10-07: subtitlul e o singura linie; explicatiile mai lungi merg in `hint` (ⓘ), deci
+// informatia ramane, dar nu mai ocupa pagina.
+const SECTION_HEADERS = {
+  research: {
+    subtitle: "Colectează, verifică și completează datele directorului.",
+    hint: "AI Copilot face doar drafturi de research. Nu publică și nu verifică nimic automat.",
+  },
+  billing: { subtitle: "Facturi, încasări și abonamente Pro." },
+  contacte_pacienti: {
+    subtitle: "Pacienți care și-au lăsat datele la finalul unei căutări.",
+    hint: "Ofertele se trimit doar celor marcați „Poate primi oferte”, adică cei care au dat un acord separat.",
+  },
+  adauga: { subtitle: "Creează o organizație și prima ei locație, cu sursa obligatorie." },
+  profiluri: { subtitle: "Locațiile din director și starea lor." },
+  import_directory: {
+    subtitle: "Importuri verificate: dry-run, aprobare, execuție și retragere.",
+    hint: "Fiecare import pornește dintr-un snapshot imuabil, se verifică pe rânduri și rulează în loturi idempotente. Modificările aplicate pot fi retrase în siguranță.",
+  },
+  workspace_reviews: { subtitle: "Ce au trimis furnizorii și așteaptă decizia ta." },
+  corectii: { subtitle: "Sesizări publice: date greșite, locații închise, duplicate, date personale." },
+  support_tickets: { subtitle: "Tichete de suport și feedback din conturi." },
+  servicii: {
+    subtitle: "Serviciile fiecărei locații și eligibilitatea pentru rezultate.",
+    hint: "Aici administrezi serviciile unei locații și recalculezi dacă pot intra în recomandări. Serviciile medicale rămân blocate până la verificarea VIASEE.",
+  },
+  revendicari: { subtitle: "Cereri de revendicare a profilurilor." },
+  outreach: { subtitle: "Campanii, contacte și șabloane de marketing." },
+  automatic_emails: { subtitle: "Mesajele automate trimise de VIASEE." },
+  geografie: { subtitle: "Sursa canonică de localități (SIRUTA)." },
+  audit: { subtitle: "Cine a schimbat ce și când." },
+  data_integrity: {
+    subtitle: "Neconcordanțe în date, reparații controlate și poziții pe hartă.",
+    hint: "Verificarea doar citește. Reparațiile și geocodarea sunt acțiuni separate, cu confirmare.",
+  },
 };
 
-const LEGACY_TAB_REDIRECTS = {
-  ai: "research",
-  specialist_reviews: "workspace_reviews",
-  fotografii: "workspace_reviews",
-  setari: "dashboard",
-  // 2026-09-12: Mapare si identitate si Contract geografic au devenit sub-tab-uri
-  // in Import director, respectiv Integritate date - vezi ImportDirectorWorkspace
-  // si DataIntegrityWorkspace mai jos.
-  mapping: "import_directory",
-  contract_geo: "data_integrity",
-};
-
-function SectionLoading() {
-  return (
-    <div
-      className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"
-      role="status"
-    >
-      Se incarca sectiunea...
-    </div>
-  );
-}
+// Secțiunile care au antet comun (restul — Panou, Analytics — își desenează singure antetul).
+const SECTIONS_WITH_HEADER = Object.keys(SECTION_HEADERS);
 
 // Integritate date: fiecare sub-tab are acum si actiuni administrative in lot,
 // pastrand confirmarea explicita si regulile de siguranta specifice tipului de operatie.
@@ -134,29 +122,18 @@ function SectionLoading() {
 // devenit al 5-lea sub-tab de aici - e tot un instrument de sanatate a datelor.
 const DATA_INTEGRITY_SUBTABS = [
   { key: "probleme", label: "Probleme de date" },
-  { key: "organizatii_fragmentate", label: "Organizatii fragmentate" },
-  { key: "reparatii", label: "Reparatii controlate" },
-  { key: "pozitii", label: "Pozitii pe harta" },
+  { key: "organizatii_fragmentate", label: "Organizații fragmentate" },
+  { key: "reparatii", label: "Reparații controlate" },
+  { key: "pozitii", label: "Poziții pe hartă" },
   { key: "contract_geo", label: "Contract geografic" },
 ];
 
 function DataIntegrityWorkspace({ onNavigate }) {
-  const [subTab, setSubTab] = useState("probleme");
+  const [subTab, setSubTab] = useAdminSubTab(DATA_INTEGRITY_SUBTABS.map((item) => item.key), "probleme");
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
-        <div className="flex flex-wrap gap-2">
-          {DATA_INTEGRITY_SUBTABS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setSubTab(item.key)}
-              className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${subTab === item.key ? "bg-foreground text-background" : "border border-border hover:bg-secondary"}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <AdminTabs tabs={DATA_INTEGRITY_SUBTABS} value={subTab} onChange={setSubTab} label="Integritate date" />
         {onNavigate && (
           <button
             type="button"
@@ -182,24 +159,15 @@ function DataIntegrityWorkspace({ onNavigate }) {
 // ambiguitatile de mapare apar direct din procesul de import, e acelasi flux.
 const IMPORT_DIRECTORY_SUBTABS = [
   { key: "import", label: "Import" },
-  { key: "mapping", label: "Mapare si identitate" },
+  { key: "mapping", label: "Mapare și identitate" },
 ];
 
 function ImportDirectorWorkspace() {
-  const [subTab, setSubTab] = useState("import");
+  const [subTab, setSubTab] = useAdminSubTab(IMPORT_DIRECTORY_SUBTABS.map((item) => item.key), "import");
   return (
     <div>
-      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-        {IMPORT_DIRECTORY_SUBTABS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setSubTab(item.key)}
-            className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${subTab === item.key ? "bg-foreground text-background" : "border border-border hover:bg-secondary"}`}
-          >
-            {item.label}
-          </button>
-        ))}
+      <div className="border-b border-border pb-4">
+        <AdminTabs tabs={IMPORT_DIRECTORY_SUBTABS} value={subTab} onChange={setSubTab} label="Import director" />
       </div>
       <div className="mt-5 space-y-5">
         {subTab === "import" && <DirOpsImportPipeline />}
@@ -209,90 +177,67 @@ function ImportDirectorWorkspace() {
   );
 }
 
-export default function AdminDirectoryOps() {
-  const [tab, setTab] = useState("dashboard");
+function AdminWorkspace() {
   const { logout, user } = useAuth();
+  const { section, go } = useAdminRoute();
+  const navigate = (nextSection, nextTab = "") => go(nextSection, nextTab);
+  const firstRender = useRef(true);
 
-  const navigate = (nextTab) =>
-    setTab(LEGACY_TAB_REDIRECTS[nextTab] || nextTab);
-  const simpleTabsWithHeader = [
-    "adauga",
-    "workspace_reviews",
-    "corectii",
-    "support_tickets",
-    "import_directory",
-    "servicii",
-    "revendicari",
-    "geografie",
-    "audit",
-    "data_integrity",
-    "outreach",
-    "automatic_emails",
-    "billing",
-    "contacte_pacienti",
-  ];
+  // Titlul filei urmează secțiunea. La schimbarea secțiunii: sus pe pagină și focus pe conținut
+  // (nu la prima încărcare, ca să nu fure focusul).
+  useEffect(() => {
+    document.title = `${ADMIN_NAV_LABELS[section] || "Administrare"} · Administrare VIASEE`;
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0 });
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+  }, [section]);
+
+  const header = SECTION_HEADERS[section];
 
   return (
-    <AdminAppShell
-      activeKey={tab}
-      onNavigate={navigate}
-      user={user}
-      onLogout={() => logout(true)}
-    >
-      <Suspense fallback={<SectionLoading />}>
-        {tab === "dashboard" && <AdminDashboardHome onNavigate={navigate} />}
+    <AdminAppShell activeKey={section} user={user} onLogout={() => logout(true)}>
+      <Suspense fallback={<AdminLoading label="Se încarcă secțiunea…" />}>
+        {section === "dashboard" && <AdminDashboardHome onNavigate={navigate} />}
 
-        {tab === "research" && (
+        {section === "analytics" && <AdminAnalytics onNavigate={navigate} />}
+
+        {SECTIONS_WITH_HEADER.includes(section) && (
           <div>
-            <AdminPageHeader
-              title="Research director"
-              subtitle="Colecteaza, verifica si completeaza datele directorului. AI Copilot ramane inclus in acest flux si nu publica automat."
-            />
+            <AdminPageHeader title={ADMIN_NAV_LABELS[section]} subtitle={header.subtitle} hint={header.hint} />
             <div className="mt-6">
-              <DirResearch onNavigate={navigate} />
-            </div>
-          </div>
-        )}
-
-        {tab === "analytics" && <AdminAnalytics onNavigate={navigate} />}
-
-        {tab === "profiluri" && (
-          <div>
-            <AdminPageHeader
-              title={ADMIN_NAV_LABELS.profiluri}
-              subtitle={SIMPLE_HEADERS.profiluri}
-            />
-            <div className="mt-6">
-              <AdminProfilesSection onNavigate={navigate} />
-            </div>
-          </div>
-        )}
-
-        {simpleTabsWithHeader.includes(tab) && (
-          <div>
-            <AdminPageHeader
-              title={ADMIN_NAV_LABELS[tab]}
-              subtitle={SIMPLE_HEADERS[tab]}
-            />
-            <div className="mt-6">
-              {tab === "adauga" && <DirOpsAddLocation />}
-              {tab === "workspace_reviews" && <AdminReviewQueue />}
-              {tab === "corectii" && <DirOpsCorrections />}
-              {tab === "support_tickets" && <AdminSupportCenter adminUser={user} />}
-              {tab === "import_directory" && <ImportDirectorWorkspace />}
-              {tab === "servicii" && <DirOpsServices />}
-              {tab === "revendicari" && <DirOpsClaims />}
-              {tab === "outreach" && <OutreachWorkspace />}
-              {tab === "automatic_emails" && <AutomaticEmailWorkspace />}
-              {tab === "billing" && <AdminBillingCenter />}
-              {tab === "contacte_pacienti" && <AdminSearchContacts />}
-              {tab === "geografie" && <GeoImport />}
-              {tab === "audit" && <DirOpsAudit />}
-              {tab === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
+              {section === "research" && <DirResearch onNavigate={navigate} />}
+              {section === "profiluri" && <AdminProfilesSection onNavigate={navigate} />}
+              {section === "adauga" && <DirOpsAddLocation />}
+              {section === "workspace_reviews" && <AdminReviewQueue />}
+              {section === "corectii" && <DirOpsCorrections />}
+              {section === "support_tickets" && <AdminSupportCenter adminUser={user} />}
+              {section === "import_directory" && <ImportDirectorWorkspace />}
+              {section === "servicii" && <DirOpsServices />}
+              {section === "revendicari" && <DirOpsClaims />}
+              {section === "outreach" && <OutreachWorkspace />}
+              {section === "automatic_emails" && <AutomaticEmailWorkspace />}
+              {section === "billing" && <AdminBillingCenter />}
+              {section === "contacte_pacienti" && <AdminSearchContacts />}
+              {section === "geografie" && <GeoImport />}
+              {section === "audit" && <DirOpsAudit />}
+              {section === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
             </div>
           </div>
         )}
       </Suspense>
     </AdminAppShell>
+  );
+}
+
+export default function AdminDirectoryOps() {
+  return (
+    <AdminCountsProvider>
+      <AdminConfirmProvider>
+        <AdminWorkspace />
+      </AdminConfirmProvider>
+    </AdminCountsProvider>
   );
 }

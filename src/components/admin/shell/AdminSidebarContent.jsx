@@ -1,60 +1,80 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
-import { ADMIN_NAV_PRIMARY, ADMIN_NAV_SECONDARY } from "@/lib/adminNavConfig";
+import { ADMIN_NAV_PRIMARY, ADMIN_NAV_SECONDARY, adminHref } from "@/lib/adminNavConfig";
+import { sidebarBadgeFor } from "@/lib/adminCounts";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
+import { cn } from "@/lib/utils";
 
-function NavButton({ item, active, onClick }) {
+// Intrările sunt legături reale (2026-10-07): se pot deschide în alt tab, iar secțiunea activă e
+// marcată pentru cititoarele de ecran. Numărul de pe dreapta = ce așteaptă după tine.
+function NavItem({ item, active, badge, onClick }) {
   const Icon = item.icon;
   return (
-    <button
+    <Link
+      to={adminHref(item.key)}
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-      }`}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors lg:min-h-0",
+        active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+      )}
     >
-      <Icon className="w-4 h-4 shrink-0" />
-      <span className="truncate">{item.label}</span>
-    </button>
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {badge ? (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1.5 text-[11px] font-bold tabular-nums text-background">
+          {badge}
+          <span className="sr-only"> de rezolvat</span>
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
-export default function AdminSidebarContent({ activeKey, onNavigate, user, onLogout }) {
+function NavGroup({ items, activeKey, counts, onItemClick }) {
+  return items.map((item) => (
+    <div key={item.key}>
+      {item.groupLabel && (
+        <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {item.groupLabel}
+        </p>
+      )}
+      <NavItem item={item} active={activeKey === item.key} badge={sidebarBadgeFor(counts, item.key)} onClick={onItemClick} />
+    </div>
+  ));
+}
+
+export default function AdminSidebarContent({ activeKey, user, onLogout, onItemClick }) {
+  const { counts } = useAdminCounts();
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 pt-5 pb-4">
+    <div className="flex h-full flex-col">
+      <div className="px-4 pb-2 pt-4">
         <ViaseeBrand />
-        <p className="text-[11px] text-muted-foreground mt-1 pl-9">Administrare</p>
+        <p className="mt-1 pl-9 text-[11px] text-muted-foreground">Administrare</p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
-        {ADMIN_NAV_PRIMARY.map((item) => (
-          <div key={item.key}>
-            {item.groupLabel && (
-              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {item.groupLabel}
-              </p>
-            )}
-            <NavButton item={item} active={activeKey === item.key} onClick={() => onNavigate(item.key)} />
-          </div>
-        ))}
+      {/* Un singur sector care derulează (2026-10-07): „Sistem” nu mai rămâne fixat sub listă, deci
+          pe un ecran scund nu acoperă ultima intrare din „Clienți și comunicare”. */}
+      <nav aria-label="Administrare" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
+        <NavGroup items={ADMIN_NAV_PRIMARY} activeKey={activeKey} counts={counts} onItemClick={onItemClick} />
+        <NavGroup items={ADMIN_NAV_SECONDARY} activeKey={activeKey} counts={counts} onItemClick={onItemClick} />
       </nav>
 
-      <div className="px-3 py-3 border-t border-border space-y-0.5">
-        {ADMIN_NAV_SECONDARY.map((item) => (
-          <div key={item.key}>
-            {item.groupLabel && <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{item.groupLabel}</p>}
-            <NavButton item={item} active={activeKey === item.key} onClick={() => onNavigate(item.key)} />
-          </div>
-        ))}
-      </div>
-
-      <div className="px-4 py-4 border-t border-border">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold truncate">{user?.full_name || "Administrator"}</p>
-          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+      <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{user?.full_name || "Administrator"}</p>
+          <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
         </div>
-        <button onClick={onLogout} className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
-          <LogOut className="w-4 h-4" /> Deconectare
+        <button
+          type="button"
+          onClick={onLogout}
+          aria-label="Deconectare"
+          title="Deconectare"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground lg:h-9 lg:w-9"
+        >
+          <LogOut className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </div>

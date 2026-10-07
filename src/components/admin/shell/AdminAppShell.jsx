@@ -1,40 +1,35 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, ExternalLink } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import AdminSidebarContent from "./AdminSidebarContent";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 import "@/styles/workspace-mobile.css";
+import "@/styles/admin-surface.css";
 
 // Reusable admin app shell: fixed sidebar on desktop and a touch-friendly
 // drawer plus compact utility bar on smaller screens.
-export default function AdminAppShell({
-  activeKey,
-  onNavigate,
-  user,
-  onLogout,
-  children,
-}) {
+// 2026-10-07: meniul este format din legături (adresă per secțiune), deci shell-ul nu mai primește
+// `onNavigate`; închide doar sertarul de pe telefon după o alegere. Adăugat „Sari la conținut”.
+export default function AdminAppShell({ activeKey, user, onLogout, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const navigate = (key) => {
-    onNavigate(key);
-    setMobileOpen(false);
-  };
+  const closeMobile = () => setMobileOpen(false);
   const initials = (user?.full_name || "A").trim().charAt(0).toUpperCase();
 
   return (
     <div
-      className="flex min-h-screen min-h-dvh overflow-x-hidden bg-background workspace-neutral"
+      className="flex min-h-screen min-h-dvh overflow-x-hidden bg-background admin-surface"
       data-admin-mobile="true"
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-background"
+      >
+        Sari la conținut
+      </a>
+
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-border lg:bg-card">
-        <AdminSidebarContent
-          activeKey={activeKey}
-          onNavigate={navigate}
-          user={user}
-          onLogout={onLogout}
-        />
+        <AdminSidebarContent activeKey={activeKey} user={user} onLogout={onLogout} />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -42,12 +37,9 @@ export default function AdminAppShell({
           side="left"
           className="w-[min(20rem,calc(100vw-1rem))] gap-0 overflow-y-auto p-0 safe-area-bottom safe-area-top [&>button]:z-10"
         >
-          <AdminSidebarContent
-            activeKey={activeKey}
-            onNavigate={navigate}
-            user={user}
-            onLogout={onLogout}
-          />
+          <SheetTitle className="sr-only">Meniu administrare</SheetTitle>
+          <SheetDescription className="sr-only">Alege secțiunea panoului de administrare.</SheetDescription>
+          <AdminSidebarContent activeKey={activeKey} user={user} onLogout={onLogout} onItemClick={closeMobile} />
         </SheetContent>
       </Sheet>
 
@@ -68,7 +60,7 @@ export default function AdminAppShell({
                   Administrare <span className="mx-1 text-border">/</span>
                 </span>
                 <span className="font-medium text-foreground">
-                  {ADMIN_NAV_LABELS[activeKey] || "Panou general"}
+                  {ADMIN_NAV_LABELS[activeKey] || "Panou de azi"}
                 </span>
               </span>
             </div>
