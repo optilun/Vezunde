@@ -975,7 +975,7 @@ assert.match(parser, /crypto\.subtle\.digest\("SHA-256"/);
 // rar - vezi propunerea de simplificare a navigatiei admin), dar ramane o ruta
 // valida cu eticheta proprie, deschisa din dashboard si din alte ecrane conexe.
 assert.match(nav, /import_directory:\s*"Import director"/);
-assert.match(page, /tab === "import_directory"/);
+assert.match(page, /section === "import_directory" && <ImportDirectorWorkspace \/>/);
 assert.match(page, /DirOpsImportPipeline/);
 
 console.log('Directory import pipeline contract verified.');

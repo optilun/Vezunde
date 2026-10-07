@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import { SERVICE_CATALOG_3C } from "@/lib/directoryOpsCatalog";
 
-const input = "w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
+const input = "w-full rounded-xl border border-input bg-card px-3 py-2.5 text-base outline-none focus:border-foreground/40 sm:text-sm";
 
 export default function DirOpsServiceAdd({ location, onAdded }) {
   const [key, setKey] = useState("");
@@ -14,12 +15,13 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
   const [message, setMessage] = useState(null);
 
   const isSpecialized = SERVICE_CATALOG_3C.specialized_medical.some((service) => service.key === key);
+  const missing = [!key && "serviciul", !sourceUrl && "sursa", !confirmedAt && "data verificării"].filter(Boolean);
 
   const submit = async () => {
     setSaving(true);
     setMessage(null);
     try {
-      await base44.functions.invoke("directoryOps", {
+      const response = await base44.functions.invoke("directoryOps", {
         action: "add_service",
         location_id: location.id,
         service_key: key,
@@ -28,12 +30,13 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
         notes,
         set_publicly_listed: publiclyListed,
       });
+      if (response?.data?.error) throw new Error(response.data.error);
       setKey("");
       setSourceUrl("");
       setConfirmedAt("");
       setNotes("");
       setPubliclyListed(false);
-      setMessage({ ok: true, text: "Serviciu adaugat." });
+      setMessage({ ok: true, text: "Serviciu adăugat." });
       onAdded();
     } catch (error) {
       setMessage({ ok: false, text: error.response?.data?.error || error.message });
@@ -42,7 +45,7 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
   };
 
   return (
-    <div className="mt-2 rounded-2xl border border-border bg-card p-4">
+    <div className="mt-4">
       <div>
         <label htmlFor="admin-service-key" className="text-xs font-semibold text-muted-foreground">
           Serviciu din catalog *
@@ -53,7 +56,7 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
           value={key}
           onChange={(event) => setKey(event.target.value)}
         >
-          <option value="">Alege serviciul...</option>
+          <option value="">Alege serviciul…</option>
           <optgroup label="General">
             {SERVICE_CATALOG_3C.general.map((service) => (
               <option key={service.key} value={service.key}>{service.label}</option>
@@ -75,21 +78,21 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="admin-service-source" className="text-xs font-semibold text-muted-foreground">
-            Sursa oficiala a serviciului *
+            Sursa oficială a serviciului *
           </label>
           <input
             id="admin-service-source"
             type="url"
             inputMode="url"
             className={`${input} mt-1.5`}
-            placeholder="https://..."
+            placeholder="https://…"
             value={sourceUrl}
             onChange={(event) => setSourceUrl(event.target.value)}
           />
         </div>
         <div>
           <label htmlFor="admin-service-confirmed-at" className="text-xs font-semibold text-muted-foreground">
-            Data verificarii *
+            Data verificării *
           </label>
           <input
             id="admin-service-confirmed-at"
@@ -107,8 +110,8 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
         </label>
         <textarea
           id="admin-service-notes"
-          className={`${input} mt-1.5 min-h-24 resize-y`}
-          placeholder="Detalii despre sursa sau verificare..."
+          className={`${input} mt-1.5 min-h-20 resize-y`}
+          placeholder="Detalii despre sursă sau verificare…"
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
         />
@@ -122,30 +125,33 @@ export default function DirOpsServiceAdd({ location, onAdded }) {
           className="mt-0.5 h-4 w-4 shrink-0"
         />
         <span className="leading-relaxed">
-          Marcheaza ca listat public. Este necesara o sursa oficiala verificabila.
+          Marchează ca listat public <span className="text-muted-foreground">(cere o sursă oficială verificabilă)</span>
         </span>
       </label>
 
       {isSpecialized && publiclyListed && (
-        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-          Serviciile medicale specializate raman excluse de la matching pana la verificarea VIASEE, chiar daca sunt listate public.
-        </p>
+        <AdminNotice tone="warning" className="mt-3">
+          Serviciile medicale specializate rămân excluse din recomandări până la verificarea VIASEE, chiar dacă sunt listate public.
+        </AdminNotice>
       )}
 
       {message && (
-        <p className={`mt-3 rounded-xl px-3 py-2.5 text-sm ${message.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-destructive"}`}>
-          {message.text}
-        </p>
+        <AdminNotice tone={message.ok ? "success" : "danger"} className="mt-3">{message.text}</AdminNotice>
       )}
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={saving || !key || !sourceUrl || !confirmedAt}
-        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-40 sm:w-auto sm:rounded-md"
-      >
-        {saving ? "Se salveaza..." : "Adauga serviciu"}
-      </button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={saving || missing.length > 0}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-40 sm:w-auto sm:rounded-md"
+        >
+          {saving ? "Se salvează…" : "Adaugă serviciul"}
+        </button>
+        {missing.length > 0 && (
+          <span className="text-xs text-muted-foreground">Completează: {missing.join(", ")}.</span>
+        )}
+      </div>
     </div>
   );
 }

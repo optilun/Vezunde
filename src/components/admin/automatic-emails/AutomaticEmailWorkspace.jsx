@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Check, Eye, Loader2, Pencil, RotateCcw, Save, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import EmailDeliveryLog from "@/components/admin/automatic-emails/EmailDeliveryLog";
+import AdminHint from "@/components/admin/ui/AdminHint";
+import AdminTabs from "@/components/admin/ui/AdminTabs";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { useAdminSubTab } from "@/components/admin/useAdminRoute";
 
 const sourceFilters = [
   { key: "all", label: "Toate" },
@@ -14,37 +19,37 @@ function render(value, variables) {
 }
 
 function readError(error) {
-  return error?.response?.data?.error || error?.message || "Operatia nu a reusit.";
+  return error?.response?.data?.error || error?.message || "Operația nu a reușit.";
 }
 
 function validateDraft(item, draft) {
   if (!item || item.owner !== "viasee") return [];
   const errors = [];
-  if (!draft.subject.trim()) errors.push("Adauga un subiect.");
-  if (draft.subject.length > 180 || /[\r\n]/.test(draft.subject)) errors.push("Subiectul trebuie sa aiba maximum 180 de caractere si o singura linie.");
-  if (!draft.body.trim()) errors.push("Adauga textul emailului.");
-  if (draft.body.length > 6000) errors.push("Textul poate avea maximum 6000 de caractere.");
+  if (!draft.subject.trim()) errors.push("Adaugă un subiect.");
+  if (draft.subject.length > 180 || /[\r\n]/.test(draft.subject)) errors.push("Subiectul poate avea cel mult 180 de caractere, pe o singură linie.");
+  if (!draft.body.trim()) errors.push("Adaugă textul emailului.");
+  if (draft.body.length > 6000) errors.push("Textul poate avea cel mult 6000 de caractere.");
   const combined = draft.subject + "\n" + draft.body;
   const tokens = [...combined.matchAll(/{{\s*([a-z_]+)\s*}}/g)].map((match) => match[1]);
   const unknown = tokens.find((token) => !item.variables.includes(token));
-  if (unknown) errors.push("Variabila necunoscuta: {{" + unknown + "}}.");
-  if (/{{|}}/.test(combined.replace(/{{\s*[a-z_]+\s*}}/g, ""))) errors.push("Verifica variabilele scrise intre acolade.");
+  if (unknown) errors.push("Variabilă necunoscută: {{" + unknown + "}}.");
+  if (/{{|}}/.test(combined.replace(/{{\s*[a-z_]+\s*}}/g, ""))) errors.push("Verifică variabilele scrise între acolade.");
   for (const token of item.required || []) {
     if (!draft.body.match(new RegExp("{{\\s*" + token + "\\s*}}"))) {
-      errors.push("Pastreaza variabila obligatorie {{" + token + "}} in continut.");
+      errors.push("Păstrează variabila obligatorie {{" + token + "}} in continut.");
     }
   }
   return errors;
 }
 
 function status(item, dirty) {
-  if (item.owner !== "viasee") return { label: "Extern", className: "bg-amber-100 text-amber-900" };
-  if (dirty) return { label: "Modificari nesalvate", className: "bg-sky-100 text-sky-900" };
-  if (item.override) return { label: "Personalizat", className: "bg-emerald-100 text-emerald-900" };
+  if (item.owner !== "viasee") return { label: "Extern", className: "bg-warning-soft text-warning" };
+  if (dirty) return { label: "Modificări nesalvate", className: "bg-info-soft text-info" };
+  if (item.override) return { label: "Personalizat", className: "bg-success-soft text-success" };
   return { label: "Standard", className: "bg-secondary text-muted-foreground" };
 }
 
-export default function AutomaticEmailWorkspace() {
+function EmailTemplatesTab() {
   const [templates, setTemplates] = useState([]);
   const [external, setExternal] = useState([]);
   const [variables, setVariables] = useState({});
@@ -88,6 +93,7 @@ export default function AutomaticEmailWorkspace() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
   const all = useMemo(() => [...templates, ...external], [templates, external]);
@@ -168,7 +174,7 @@ export default function AutomaticEmailWorkspace() {
       if (response.data?.error) throw new Error(response.data.error);
       if (await load(selected.key)) {
         setMode("preview");
-        setNotice("Salvat si activat. Urmatoarele emailuri folosesc acest text.");
+        setNotice("Salvat și activat. Următoarele emailuri folosesc acest text.");
       }
     } catch (cause) {
       setError(readError(cause));
@@ -187,7 +193,7 @@ export default function AutomaticEmailWorkspace() {
       if (response.data?.error) throw new Error(response.data.error);
       if (await load(selected.key)) {
         setMode("preview");
-        setNotice("Varianta standard este din nou activa.");
+        setNotice("Varianta standard este din nou activă.");
       }
     } catch (cause) {
       setError(readError(cause));
@@ -216,13 +222,14 @@ export default function AutomaticEmailWorkspace() {
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-        <p className="text-sm text-muted-foreground">
-          Alege un email pentru a vedea cand se trimite si cum arata pentru destinatar. Modificarile devin active numai dupa salvare.
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          Alege un email ca să vezi când se trimite și cum arată.
+          <AdminHint label="Despre modificări">Modificările devin active numai după salvare; emailurile deja trimise nu se schimbă.</AdminHint>
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {[
-            { label: "Emailuri VIASEE", value: templates.length, filter: "viasee", description: "Previzualizare si editare" },
-            { label: "Personalizate", value: customCount, filter: "custom", description: "Sabloane modificate" },
+            { label: "Emailuri VIASEE", value: templates.length, filter: "viasee", description: "Previzualizare și editare" },
+            { label: "Personalizate", value: customCount, filter: "custom", description: "Șabloane modificate" },
             { label: "Gestionate extern", value: external.length, filter: "external", description: "Base44 si Stripe" },
           ].map((item) => (
             <button
@@ -240,20 +247,20 @@ export default function AutomaticEmailWorkspace() {
         </div>
       </div>
 
-      {error && <p role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}
-      {notice && <p role="status" className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><Check className="mt-0.5 h-4 w-4 shrink-0" />{notice}</p>}
-      {loading && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se incarca emailurile...</p>}
+      {error && <p role="alert" className="flex items-start gap-2 rounded-xl border border-danger-border bg-danger-soft p-3 text-sm text-danger"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}
+      {notice && <p role="status" className="flex items-start gap-2 rounded-xl border border-success-border bg-success-soft p-3 text-sm text-success"><Check className="mt-0.5 h-4 w-4 shrink-0" />{notice}</p>}
+      {loading && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă emailurile…</p>}
 
       {!loading && (
         <>
           <div className="flex flex-wrap items-end gap-3">
             <label className="relative min-w-[220px] flex-1">
-              <span className="mb-1 block text-xs font-semibold text-muted-foreground">Cauta mesaj</span>
+              <span className="mb-1 block text-xs font-semibold text-muted-foreground">Caută mesaj</span>
               <Search className="absolute bottom-3 left-3 h-4 w-4 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Ex: verificare, plata, revendicare"
+                placeholder="Ex: verificare, plată, revendicare"
                 className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-sm"
               />
             </label>
@@ -281,9 +288,9 @@ export default function AutomaticEmailWorkspace() {
 
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(230px,300px)_minmax(0,1fr)]">
             <aside className="overflow-hidden rounded-2xl border border-border bg-card">
-              <div className="border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground">{listed.length} mesaje gasite</div>
+              <div className="border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground">{listed.length} mesaje găsite</div>
               <div className="max-h-[min(70vh,720px)] overflow-y-auto p-2">
-                {!listed.length && <p className="p-4 text-sm text-muted-foreground">Nu exista mesaje pentru filtrele alese.</p>}
+                {!listed.length && <p className="p-4 text-sm text-muted-foreground">Niciun mesaj pentru filtrele alese.</p>}
                 {listed.map((item) => {
                   const itemDraft = drafts[item.key];
                   const itemDirty = item.owner === "viasee" && itemDraft && (
@@ -308,7 +315,7 @@ export default function AutomaticEmailWorkspace() {
             </aside>
 
             <section ref={detailRef} className="min-w-0 space-y-4 scroll-mt-20">
-              {!selected && <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Alege un alt filtru pentru a vedea mesaje.</div>}
+              {!selected && <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Alege alt filtru ca să vezi mesaje.</div>}
               {selected && (
                 <>
                   <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
@@ -320,8 +327,8 @@ export default function AutomaticEmailWorkspace() {
                       <span className={"rounded-full px-2.5 py-1 text-xs font-semibold " + badge.className}>{badge.label}</span>
                     </div>
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                      <div><dt className="text-xs font-semibold text-muted-foreground">Cand se trimite</dt><dd className="mt-1 text-foreground">{selected.trigger}</dd></div>
-                      <div><dt className="text-xs font-semibold text-muted-foreground">Catre cine</dt><dd className="mt-1 text-foreground">{selected.recipient}</dd></div>
+                      <div><dt className="text-xs font-semibold text-muted-foreground">Când se trimite</dt><dd className="mt-1 text-foreground">{selected.trigger}</dd></div>
+                      <div><dt className="text-xs font-semibold text-muted-foreground">Către cine</dt><dd className="mt-1 text-foreground">{selected.recipient}</dd></div>
                     </dl>
                     {selected.override && (
                       <p className="mt-4 text-xs text-muted-foreground">
@@ -339,7 +346,7 @@ export default function AutomaticEmailWorkspace() {
                           <Eye className="h-4 w-4" /> Previzualizare
                         </button>
                         <button type="button" onClick={() => setMode("edit")} aria-pressed={mode === "edit"} className={"inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold " + (mode === "edit" ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary")}>
-                          <Pencil className="h-4 w-4" /> Editeaza
+                          <Pencil className="h-4 w-4" /> Editează
                         </button>
                       </div>
 
@@ -347,20 +354,20 @@ export default function AutomaticEmailWorkspace() {
                         {mode === "edit" && (
                           <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
                             <div>
-                              <h3 className="text-sm font-bold text-foreground">Editeaza mesajul</h3>
-                              <p className="mt-1 text-xs text-muted-foreground">Variabilele se completeaza automat la trimitere.</p>
+                              <h3 className="text-sm font-bold text-foreground">Editează mesajul</h3>
+                              <p className="mt-1 text-xs text-muted-foreground">Variabilele se completează automat la trimitere.</p>
                             </div>
                             <label className="block text-sm font-semibold text-foreground">
                               Subiect
                               <input value={draft.subject} onChange={(event) => updateDraft("subject", event.target.value)} maxLength={180} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal" />
                             </label>
                             <label className="block text-sm font-semibold text-foreground">
-                              Continut email
+                              Conținut email
                               <textarea ref={bodyRef} value={draft.body} onChange={(event) => updateDraft("body", event.target.value)} rows={14} maxLength={6000} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs font-normal" />
                             </label>
                             {!!selected.variables?.length && (
                               <div>
-                                <p className="text-xs font-semibold text-muted-foreground">Insereaza o variabila in text</p>
+                                <p className="text-xs font-semibold text-muted-foreground">Inserează o variabilă în text</p>
                                 <div className="mt-2 flex flex-wrap gap-1.5">
                                   {selected.variables.map((token) => (
                                     <button key={token} type="button" onClick={() => insertVariable(token)} className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-secondary">
@@ -371,14 +378,14 @@ export default function AutomaticEmailWorkspace() {
                                 {!!selected.required?.length && <p className="mt-2 text-xs text-muted-foreground">Obligatorii: {selected.required.map((token) => "{{" + token + "}}").join(", ")}</p>}
                               </div>
                             )}
-                            <div role="status" className={"rounded-lg p-2.5 text-xs " + (errors.length ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-800")}>
-                              {errors.length ? errors[0] : "Textul este valid si poate fi salvat."}
+                            <div role="status" className={"rounded-lg p-2.5 text-xs " + (errors.length ? "bg-danger-soft text-danger" : "bg-success-soft text-success")}>
+                              {errors.length ? errors[0] : "Textul este valid și poate fi salvat."}
                             </div>
                             <div className="flex flex-wrap gap-2">
                               <button type="button" onClick={save} disabled={saving || !dirty || !!errors.length} className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-sm font-semibold text-background disabled:opacity-50">
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salveaza si activeaza
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvează și activează
                               </button>
-                              <button type="button" onClick={discard} disabled={!dirty || saving} className="rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">Anuleaza editarea</button>
+                              <button type="button" onClick={discard} disabled={!dirty || saving} className="rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">Anulează editarea</button>
                               <button type="button" onClick={reset} disabled={!selected.override || saving} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
                                 <RotateCcw className="h-4 w-4" /> Revino la standard
                               </button>
@@ -388,24 +395,24 @@ export default function AutomaticEmailWorkspace() {
 
                         <div className="overflow-hidden rounded-2xl border border-border bg-secondary/30">
                           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                            <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Email vazut de destinatar</h3>
+                            <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Email văzut de destinatar</h3>
                             <span className="text-xs text-muted-foreground">Date fictive</span>
                           </div>
                           <div className="m-3 rounded-xl border border-border bg-white p-4 sm:p-5">
                             <p className="text-xs text-slate-500">De la: VIASEE</p>
-                            <p className="mt-1 text-xs text-slate-500">Catre: destinatar@exemplu.ro</p>
-                            <p className="mt-3 break-words border-b border-slate-200 pb-3 text-base font-bold text-slate-900">{previewSubject || "Fara subiect"}</p>
-                            <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">{previewBody || "Fara continut"}</div>
+                            <p className="mt-1 text-xs text-slate-500">Către: destinatar@exemplu.ro</p>
+                            <p className="mt-3 break-words border-b border-slate-200 pb-3 text-base font-bold text-slate-900">{previewSubject || "Fără subiect"}</p>
+                            <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">{previewBody || "Fără conținut"}</div>
                           </div>
-                          {dirty && <p className="px-4 pb-4 text-xs font-semibold text-sky-900">Acesta este un preview al modificarilor nesalvate.</p>}
+                          {dirty && <p className="px-4 pb-4 text-xs font-semibold text-info">Previzualizare a modificărilor nesalvate.</p>}
                         </div>
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                      <h3 className="text-base font-bold text-amber-950">Gestionat de {selected.owner === "stripe" ? "Stripe" : "Base44"}</h3>
-                      <p className="mt-2 text-sm text-amber-900">{selected.note}</p>
-                      <p className="mt-3 text-sm text-amber-900">Continutul exact si activarea se verifica in contul furnizorului. Acest mesaj nu poate fi modificat aici.</p>
+                    <div className="rounded-2xl border border-warning-border bg-warning-soft p-5">
+                      <h3 className="text-base font-bold text-warning">Gestionat de {selected.owner === "stripe" ? "Stripe" : "Base44"}</h3>
+                      <p className="mt-2 text-sm text-warning">{selected.note}</p>
+                      <p className="mt-3 text-sm text-warning">Conținutul exact și activarea se verifică în contul furnizorului; mesajul nu se poate modifica aici.</p>
                     </div>
                   )}
                 </>
@@ -413,10 +420,47 @@ export default function AutomaticEmailWorkspace() {
             </section>
           </div>
           <p className="text-xs text-muted-foreground">
-            VIASEE nu trimite in prezent remindere de programare. Notificarile de plata depind de configuratia Stripe.
+            VIASEE nu trimite în prezent remindere de programare. Notificările de plată depind de configurarea Stripe.
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+// 2026-10-07: ecranul promitea „Vezi mesajele trimise automat”, dar era doar catalogul de șabloane.
+// Acum are două file: „Mesaje” (cum arată și se editează fiecare email) și „Jurnal trimiteri”
+// (ce a plecat, ce a eșuat și de ce). Numărul de pe a doua filă = emailurile eșuate în ultimele 7 zile.
+export default function AutomaticEmailWorkspace() {
+  const { counts } = useAdminCounts();
+  const [view, setView] = useAdminSubTab(["mesaje", "jurnal"], "mesaje");
+  const [titles, setTitles] = useState({});
+
+  // Titlurile mesajelor, ca jurnalul să arate „Cerere nouă pentru furnizor”, nu `provider_lead_available`.
+  useEffect(() => {
+    if (view !== "jurnal") return;
+    let cancelled = false;
+    base44.functions.invoke("automaticEmailOps", { action: "list" })
+      .then((response) => {
+        if (cancelled) return;
+        setTitles(Object.fromEntries((response.data?.templates || []).map((item) => [item.key, item.title])));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [view]);
+
+  return (
+    <div className="space-y-5">
+      <AdminTabs
+        label="Emailuri automate"
+        value={view}
+        onChange={setView}
+        tabs={[
+          { key: "mesaje", label: "Mesaje" },
+          { key: "jurnal", label: "Jurnal trimiteri", count: counts?.email_failures ?? null },
+        ]}
+      />
+      {view === "jurnal" ? <EmailDeliveryLog titles={titles} /> : <EmailTemplatesTab />}
     </div>
   );
 }

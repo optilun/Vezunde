@@ -123,7 +123,7 @@ assert.match(adminQueue, /PatientRequestRecoveryCase/);
 assert.match(adminQueue, /PatientRequest\.get/);
 assert.doesNotMatch(adminQueue, /PatientRequestContact/);
 assert.match(adminQueue, /Mesaj vizibil pacientului/);
-assert.match(adminReview, /Cereri fara rezultate/);
+assert.match(adminReview, /Cereri fără rezultate/);
 assert.match(adminReview, /AdminPatientRequestRecoveryQueue/);
 
 console.log('Patient request recovery checks passed.');

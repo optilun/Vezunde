@@ -1,403 +1,537 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Clock3,
-  Inbox,
-  Loader2,
-  Mail,
-  RefreshCw,
-  Search,
-  Send,
-  UserRound,
-} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Inbox, Loader2, Search, Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import {
+  EmailLink,
+  FilterSelect,
+  RefreshButton,
+  SupportContext,
+  SupportSearchField,
+  useScrollToDetail,
+} from "@/components/admin/support/SupportParts";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminChips from "@/components/admin/ui/AdminChips";
+import AdminHint from "@/components/admin/ui/AdminHint";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { useAdminSelectedId } from "@/components/admin/useAdminRoute";
+import { fullDateTime, plural, relativeTime } from "@/lib/adminFormat";
+import {
+  TICKET_CATEGORY_LABELS,
+  TICKET_PRIORITY_LABELS,
+  TICKET_STATUS_LABELS,
+  ticketCategoryLabel,
+  ticketPriorityLabel,
+  ticketPriorityTone,
+  ticketStatusLabel,
+  ticketStatusTone,
+} from "@/lib/adminLabels";
+import { matchesAllTokens, normalizeSearch, searchTokens } from "@/lib/adminSearch";
+import {
+  ACCOUNT_DELETION_RESPONSE_DAYS,
+  accountDeletionDeadline,
+  buildTicketPayload,
+  isAccountDeletionRequest,
+  isActiveTicket,
+  isClosedTicket,
+  needsAdmin,
+  nextTicketToHandle,
+  sortSupportTickets,
+  ticketStatusOf,
+  ticketUpdateProblem,
+  ticketWaiting,
+} from "@/lib/adminSupportRules";
 
-const ACTIVE_STATUSES = new Set(["open", "in_progress", "waiting_user"]);
+// Tichete de suport (2026-10-07): lista se deschide pe „Active”, în ordinea în care ar trebui rezolvate
+// (termene de ștergere de cont, apoi ce cere răspunsul tău după prioritate și vechime, apoi ce așteaptă
+// utilizatorul). Răspunsul are două butoane clare, „Trimite și rezolvă” și „Trimite și așteaptă
+// utilizatorul”; starea și prioritatea manuale stau în „Alte opțiuni”. Ciorna fiecărui răspuns se păstrează
+// cât timp schimbi tichetul sau actualizezi lista.
+const LOAD_LIMIT = 500;
+const TONE_TEXT = { neutral: "text-muted-foreground", warning: "text-warning", danger: "text-danger" };
 
-const STATUS_OPTIONS = [
-  { value: "open", label: "Deschis" },
-  { value: "in_progress", label: "În lucru" },
-  { value: "waiting_user", label: "Așteaptă utilizatorul" },
-  { value: "resolved", label: "Rezolvat" },
-  { value: "closed", label: "Închis" },
-];
-
-const STATUS_STYLE = {
-  open: ["Deschis", "border-blue-200 bg-blue-50 text-blue-800"],
-  in_progress: ["În lucru", "border-amber-200 bg-amber-50 text-amber-800"],
-  waiting_user: ["Așteaptă utilizatorul", "border-violet-200 bg-violet-50 text-violet-800"],
-  resolved: ["Rezolvat", "border-green-200 bg-green-50 text-green-800"],
-  closed: ["Închis", "border-border bg-secondary text-muted-foreground"],
-};
-
-const PRIORITY_OPTIONS = [
-  { value: "low", label: "Scăzută" },
-  { value: "normal", label: "Normală" },
-  { value: "high", label: "Ridicată" },
-  { value: "urgent", label: "Urgentă" },
-];
-
-const PRIORITY_STYLE = {
-  low: ["Scăzută", "text-muted-foreground"],
-  normal: ["Normală", "text-foreground"],
-  high: ["Ridicată", "text-amber-700"],
-  urgent: ["Urgentă", "font-bold text-red-700"],
-};
-
-const CATEGORY_LABELS = {
-  account: "Cont și autentificare",
-  organization: "Organizație sau locație",
-  professional: "Profil profesional",
-  patient_request: "Solicitări pacienți",
-  technical: "Problemă tehnică",
-  other: "Altă situație",
-};
-
-function formatDate(value) {
-  if (!value) return "—";
-  try {
-    return new Intl.DateTimeFormat("ro-RO", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch (_error) {
-    return value;
-  }
-}
-
-// 2026-10-01: cererile de stergere a contului vin din Setarile contului (getMyAccountDeletionEligibility,
-// action "request") cu aceasta sursa. Termenul de raspuns e de 30 de zile de la cerere, aceeasi
-// valoare ca ACCOUNT_DELETION_RESPONSE_DAYS din backend.
-const ACCOUNT_DELETION_SOURCE = "account_deletion_request";
-const ACCOUNT_DELETION_RESPONSE_DAYS = 30;
-
-function isAccountDeletionRequest(ticket) {
-  return ticket?.source === ACCOUNT_DELETION_SOURCE;
-}
-
-function accountDeletionDeadline(ticket) {
-  if (!isAccountDeletionRequest(ticket) || !ACTIVE_STATUSES.has(ticket.status || "open")) return null;
-  const created = new Date(ticket.created_date);
-  if (Number.isNaN(created.getTime())) return null;
-  const due = new Date(created.getTime() + ACCOUNT_DELETION_RESPONSE_DAYS * 86400000);
-  const daysLeft = Math.ceil((due.getTime() - Date.now()) / 86400000);
-  return { due, daysLeft };
-}
+const draftFrom = (ticket) => ({
+  status: ticketStatusOf(ticket),
+  priority: ticket?.priority || "normal",
+  response: ticket?.support_response || "",
+});
 
 function DeletionDeadlineBadge({ ticket }) {
   const deadline = accountDeletionDeadline(ticket);
   if (!deadline) return null;
-  const late = deadline.daysLeft < 0;
-  const soon = !late && deadline.daysLeft <= 7;
-  const label = late
-    ? `Ștergere cont · termen depășit cu ${Math.abs(deadline.daysLeft)} zile`
-    : `Ștergere cont · ${deadline.daysLeft} ${deadline.daysLeft === 1 ? "zi" : "zile"} rămase`;
-  return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${late ? "border-red-300 bg-red-50 text-red-800" : soon ? "border-amber-300 bg-amber-50 text-amber-800" : "border-border bg-secondary text-foreground"}`}>
-      {label}
-    </span>
-  );
+  return <StatusBadge tone={deadline.tone} label={`Ștergere cont · ${deadline.label}`} />;
 }
 
-function StatusBadge({ status }) {
-  const [label, className] = STATUS_STYLE[status] || STATUS_STYLE.open;
-  return (
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${className}`}>
-      {label}
-    </span>
-  );
+function waitingText(ticket, waiting) {
+  if (!waiting) return "";
+  if (ticketStatusOf(ticket) === "open") return `Primit ${waiting.label}`;
+  return `Actualizat ${waiting.label}`;
 }
 
-function matchesSearch(ticket, query) {
-  if (!query) return true;
-  return [
-    ticket.subject,
-    ticket.description,
-    ticket.requester_name,
-    ticket.requester_email,
-    ticket.category,
-    ticket.source,
-    ticket.page_path,
-  ].some((value) => String(value || "").toLowerCase().includes(query));
-}
-
-function SummaryCard({ icon: Icon, label, value }) {
+function TicketRow({ ticket, selected, onSelect }) {
+  const waiting = ticketWaiting(ticket);
+  const priority = ticket.priority;
   return (
-    <AdminCard className="p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold text-muted-foreground">{label}</div>
-          <div className="mt-1 font-heading text-2xl font-extrabold">{value}</div>
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(ticket.id)}
+        aria-current={selected ? "true" : undefined}
+        className={`block w-full border-l-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+          selected ? "border-foreground bg-secondary/70" : "border-transparent hover:bg-secondary/40"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="line-clamp-2 text-sm font-semibold leading-snug">{ticket.subject}</div>
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+              {ticket.requester_name || "Utilizator VIASEE"}
+              {ticket.requester_email ? ` · ${ticket.requester_email}` : ""}
+            </div>
+          </div>
+          <StatusBadge label={ticketStatusLabel(ticket.status)} tone={ticketStatusTone(ticket.status)} />
         </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-          <Icon className="h-4 w-4" />
-        </span>
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+          <span>{ticketCategoryLabel(ticket.category)}</span>
+          {(priority === "high" || priority === "urgent") && (
+            <StatusBadge label={ticketPriorityLabel(priority)} tone={ticketPriorityTone(priority)} />
+          )}
+          {waiting && (
+            <span className={`ml-auto ${TONE_TEXT[waiting.tone] || TONE_TEXT.neutral}`}>{waitingText(ticket, waiting)}</span>
+          )}
+          {!waiting && (
+            <span className="ml-auto">Încheiat {relativeTime(ticket.updated_date || ticket.created_date)}</span>
+          )}
+        </div>
+        {isAccountDeletionRequest(ticket) && accountDeletionDeadline(ticket) && (
+          <div className="mt-2"><DeletionDeadlineBadge ticket={ticket} /></div>
+        )}
+      </button>
+    </li>
+  );
+}
+
+function TicketReplyForm({ ticket, draft, onChange, saving, error, onSubmit, onDismissError }) {
+  const status = ticketStatusOf(ticket);
+  const active = isActiveTicket(ticket);
+  const busy = (key) => saving === key;
+  const submitButton = (key, nextStatus, label, { primary = false, icon = true } = {}) => (
+    <button
+      type="button"
+      onClick={() => onSubmit(nextStatus, key)}
+      disabled={Boolean(saving)}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors disabled:opacity-50 ${
+        primary ? "bg-foreground text-background hover:bg-foreground/90" : "border border-border bg-card hover:bg-secondary"
+      }`}
+    >
+      {busy(key) ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : icon && <Send className="h-4 w-4" aria-hidden="true" />}
+      {label}
+    </button>
+  );
+
+  return (
+    <section aria-label="Răspuns" className="rounded-2xl border border-border bg-secondary/20 p-4">
+      <label htmlFor="admin-support-response" className="text-sm font-semibold">Răspunsul tău</label>
+      <textarea
+        id="admin-support-response"
+        rows={6}
+        maxLength={5000}
+        value={draft.response}
+        onChange={(event) => {
+          onChange({ response: event.target.value });
+          if (error) onDismissError();
+        }}
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby="admin-support-response-help"
+        placeholder="Scrie răspunsul pentru utilizator…"
+        className="mt-2 min-h-32 w-full resize-y rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-relaxed outline-none focus:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      <div id="admin-support-response-help" className="mt-1 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+        <span>Se publică în contul utilizatorului (Ajutor și suport). Nu se trimite email.</span>
+        <span className="shrink-0 tabular-nums">{draft.response.length}/5000</span>
       </div>
-    </AdminCard>
+
+      {error && <AdminNotice tone="danger" className="mt-3">{error}</AdminNotice>}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {active ? (
+          <>
+            {submitButton("resolved", "resolved", "Trimite și rezolvă", { primary: true })}
+            {submitButton("waiting_user", "waiting_user", "Trimite și așteaptă utilizatorul")}
+            {status === "open" && submitButton("in_progress", "in_progress", "Marchează în lucru", { icon: false })}
+          </>
+        ) : (
+          <>
+            {submitButton("open", "open", "Redeschide tichetul", { primary: true, icon: false })}
+            {submitButton("keep", status, "Salvează răspunsul")}
+          </>
+        )}
+      </div>
+
+      <details className="mt-3 rounded-xl border border-border bg-card px-3 py-2">
+        <summary className="cursor-pointer select-none text-xs font-semibold text-muted-foreground hover:text-foreground">
+          Alte opțiuni: stare și prioritate
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="admin-ticket-status" className="text-xs font-semibold">Stare</label>
+            <select
+              id="admin-ticket-status"
+              value={draft.status}
+              onChange={(event) => onChange({ status: event.target.value })}
+              className="mt-1.5 min-h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {Object.entries(TICKET_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="admin-ticket-priority" className="text-xs font-semibold">Prioritate</label>
+            <select
+              id="admin-ticket-priority"
+              value={draft.priority}
+              onChange={(event) => onChange({ priority: event.target.value })}
+              className="mt-1.5 min-h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {Object.entries(TICKET_PRIORITY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSubmit(draft.status, "options")}
+          disabled={Boolean(saving)}
+          className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
+        >
+          {busy("options") && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+          Salvează starea și prioritatea
+        </button>
+      </details>
+    </section>
+  );
+}
+
+function TicketDetail({ ticket, draft, onChange, saving, error, onSubmit, onDismissError }) {
+  const deadline = accountDeletionDeadline(ticket);
+  const deletion = isAccountDeletionRequest(ticket);
+  const priority = ticket.priority;
+  return (
+    <div className="space-y-4">
+      <div className="border-b border-border pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge label={ticketStatusLabel(ticket.status)} tone={ticketStatusTone(ticket.status)} />
+          <StatusBadge label={ticketCategoryLabel(ticket.category)} />
+          {(priority === "high" || priority === "urgent") && (
+            <StatusBadge label={`Prioritate ${ticketPriorityLabel(priority).toLowerCase()}`} tone={ticketPriorityTone(priority)} />
+          )}
+          <DeletionDeadlineBadge ticket={ticket} />
+        </div>
+        <h2 className="mt-3 break-words font-heading text-xl font-extrabold leading-snug">{ticket.subject}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          <span title={fullDateTime(ticket.created_date)}>Primit {relativeTime(ticket.created_date)}</span>
+          {" · "}
+          <span title={fullDateTime(ticket.updated_date || ticket.created_date)}>actualizat {relativeTime(ticket.updated_date || ticket.created_date)}</span>
+        </p>
+      </div>
+
+      {deletion && (
+        <AdminNotice tone={deadline ? (deadline.tone === "neutral" ? "info" : deadline.tone) : "info"}>
+          <span className="inline-flex flex-wrap items-center gap-1">
+            <span>
+              <span className="font-semibold">Cerere de ștergere a contului.</span>
+              {deadline
+                ? ` Răspunde până la ${deadline.due.toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}.`
+                : " Cererea este încheiată."}
+            </span>
+            <AdminHint label="Despre cererile de ștergere a contului">
+              Cererea nu șterge nimic automat. După ce ștergi contul sau refuzi motivat, scrie-i utilizatorului un răspuns și
+              rezolvă tichetul. Termenul de răspuns este de {ACCOUNT_DELETION_RESPONSE_DAYS} de zile de la cerere.
+            </AdminHint>
+          </span>
+        </AdminNotice>
+      )}
+
+      <div className="grid gap-3 rounded-2xl border border-border bg-secondary/25 p-4 sm:grid-cols-2">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-muted-foreground">De la</div>
+          <div className="mt-1 break-words text-sm font-semibold">{ticket.requester_name || "Utilizator VIASEE"}</div>
+          <div className="mt-0.5 text-xs"><EmailLink email={ticket.requester_email} /></div>
+        </div>
+        <SupportContext
+          source={ticket.source}
+          pagePath={ticket.page_path}
+          organizationId={ticket.organization_id}
+          professionalProfileId={ticket.professional_profile_id}
+          userId={ticket.requester_user_id}
+        />
+      </div>
+
+      <article className="rounded-2xl border border-border bg-background p-4">
+        <div className="text-xs font-semibold text-muted-foreground">Mesajul utilizatorului</div>
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed">{ticket.description}</p>
+      </article>
+
+      <TicketReplyForm
+        ticket={ticket}
+        draft={draft}
+        onChange={onChange}
+        saving={saving}
+        error={error}
+        onSubmit={onSubmit}
+        onDismissError={onDismissError}
+      />
+    </div>
   );
 }
 
 export default function AdminSupportTickets({ adminUser }) {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [tickets, setTickets] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState({
-    status: "open",
-    priority: "normal",
-    response: "",
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [drafts, setDrafts] = useState({});
+  const [saving, setSaving] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [flash, setFlash] = useState("");
+  const [focusId] = useAdminSelectedId();
+  const handledFocus = useRef("");
+  const pendingFocus = useRef("");
+  const loadSeq = useRef(0);
+  const detailRef = useRef(null);
+  const scrollToDetail = useScrollToDetail(detailRef);
 
-  const loadTickets = useCallback(async ({ preserveSelection = true } = {}) => {
+  const loadTickets = useCallback(async () => {
+    const seq = loadSeq.current + 1;
+    loadSeq.current = seq;
     setLoading(true);
-    setError("");
+    setLoadError("");
     try {
-      const rows = await base44.entities.SupportTicket.list("-updated_date", 500);
-      const nextTickets = rows || [];
-      setTickets(nextTickets);
-      setSelectedId((current) => {
-        if (preserveSelection && current && nextTickets.some((ticket) => ticket.id === current)) {
-          return current;
-        }
-        return nextTickets[0]?.id || "";
-      });
+      const rows = (await base44.entities.SupportTicket.list("-updated_date", LOAD_LIMIT)) || [];
+      if (seq === loadSeq.current) setTickets(rows);
+      return rows;
     } catch (requestError) {
-      setTickets([]);
-      setError(
-        requestError?.response?.data?.error
-          || requestError?.message
-          || "Tichetele de suport nu au putut fi încărcate.",
-      );
+      if (seq === loadSeq.current) {
+        setLoadError(requestError?.response?.data?.error || requestError?.message || "Tichetele nu au putut fi încărcate.");
+      }
+      return null;
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadTickets({ preserveSelection: false });
-  }, [loadTickets]);
+  useEffect(() => { loadTickets(); }, [loadTickets]);
+
+  const searchText = useMemo(() => new Map((tickets || []).map((ticket) => [ticket.id, normalizeSearch([
+    ticket.subject,
+    ticket.description,
+    ticket.requester_name,
+    ticket.requester_email,
+    ticketCategoryLabel(ticket.category),
+    ticket.page_path,
+  ].filter(Boolean).join(" "))])), [tickets]);
+
+  const counts = useMemo(() => {
+    const rows = tickets || [];
+    return {
+      active: rows.filter(isActiveTicket).length,
+      resolved: rows.filter(isClosedTicket).length,
+      total: rows.length,
+    };
+  }, [tickets]);
+
+  const visibleTickets = useMemo(() => {
+    const tokens = searchTokens(query);
+    const filtered = (tickets || []).filter((ticket) => {
+      if (statusFilter === "active" && !isActiveTicket(ticket)) return false;
+      if (statusFilter === "resolved" && !isClosedTicket(ticket)) return false;
+      if (categoryFilter !== "all" && ticket.category !== categoryFilter) return false;
+      if (priorityFilter !== "all" && (ticket.priority || "normal") !== priorityFilter) return false;
+      return tokens.length === 0 || matchesAllTokens(searchText.get(ticket.id) || "", tokens);
+    });
+    return sortSupportTickets(filtered);
+  }, [categoryFilter, priorityFilter, query, searchText, statusFilter, tickets]);
 
   const selectedTicket = useMemo(
     () => tickets?.find((ticket) => ticket.id === selectedId) || null,
     [selectedId, tickets],
   );
 
+  // Ajuns din căutarea globală (?id=): deschide tichetul cerut, chiar dacă filtrele curente l-ar ascunde
+  // (o singură dată per tichet căutat, ca să nu te tragă înapoi după fiecare salvare). Selecția propriu-zisă
+  // o face efectul de mai jos, după ce filtrele au fost șterse și tichetul e în listă.
   useEffect(() => {
-    if (!selectedTicket) return;
-    setDraft({
-      status: selectedTicket.status || "open",
-      priority: selectedTicket.priority || "normal",
-      response: selectedTicket.support_response || "",
-    });
-  }, [selectedTicket]);
+    if (!focusId || !tickets || handledFocus.current === focusId) return;
+    handledFocus.current = focusId;
+    if (!tickets.some((ticket) => ticket.id === focusId)) return;
+    pendingFocus.current = focusId;
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setPriorityFilter("all");
+    setQuery("");
+  }, [focusId, tickets]);
 
-  const counts = useMemo(() => {
-    const rows = tickets || [];
-    return {
-      active: rows.filter((ticket) => ACTIVE_STATUSES.has(ticket.status || "open")).length,
-      urgent: rows.filter(
-        (ticket) => ACTIVE_STATUSES.has(ticket.status || "open") && ticket.priority === "urgent",
-      ).length,
-      resolved: rows.filter((ticket) => ["resolved", "closed"].includes(ticket.status)).length,
-      total: rows.length,
-    };
-  }, [tickets]);
-
-  const visibleTickets = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const filtered = (tickets || []).filter((ticket) => {
-      const status = ticket.status || "open";
-      if (statusFilter === "active" && !ACTIVE_STATUSES.has(status)) return false;
-      if (statusFilter === "resolved" && !["resolved", "closed"].includes(status)) return false;
-      if (categoryFilter !== "all" && ticket.category !== categoryFilter) return false;
-      if (priorityFilter !== "all" && ticket.priority !== priorityFilter) return false;
-      return matchesSearch(ticket, normalizedQuery);
-    });
-    // Cererile de stergere active stau primele, cel mai apropiat termen sus; restul isi pastreaza
-    // ordinea (ultima actualizare).
-    const withDeadline = filtered
-      .filter((ticket) => accountDeletionDeadline(ticket))
-      .sort((a, b) => accountDeletionDeadline(a).daysLeft - accountDeletionDeadline(b).daysLeft);
-    return [...withDeadline, ...filtered.filter((ticket) => !accountDeletionDeadline(ticket))];
-  }, [categoryFilter, priorityFilter, query, statusFilter, tickets]);
-
+  // Tichetul deschis rămâne cel ales cât timp e în listă; altfel îl alegem pe primul din ordinea de lucru.
   useEffect(() => {
-    if (visibleTickets.length === 0) {
-      setSelectedId("");
+    if (!tickets) return;
+    const wanted = pendingFocus.current;
+    if (wanted) {
+      if (!visibleTickets.some((ticket) => ticket.id === wanted)) return; // filtrele încă se schimbă
+      pendingFocus.current = "";
+      setSelectedId(wanted);
+      window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
       return;
     }
-    if (!visibleTickets.some((ticket) => ticket.id === selectedId)) {
+    if (visibleTickets.length === 0) {
+      setSelectedId("");
+    } else if (!visibleTickets.some((ticket) => ticket.id === selectedId)) {
       setSelectedId(visibleTickets[0].id);
     }
-  }, [selectedId, visibleTickets]);
+  }, [selectedId, tickets, visibleTickets]);
+
+  // Ciorna: ce ai scris rămâne cât timp tichetul nu s-a schimbat pe server (altfel pornim de la el).
+  const baseDraft = useMemo(() => draftFrom(selectedTicket), [selectedTicket]);
+  const stored = drafts[selectedId];
+  const draft = stored && stored.base === selectedTicket?.updated_date ? stored.value : baseDraft;
+  const updateDraft = (changes) => setDrafts((current) => ({
+    ...current,
+    [selectedId]: { base: selectedTicket?.updated_date, value: { ...draft, ...changes } },
+  }));
 
   const selectTicket = (ticketId) => {
     setSelectedId(ticketId);
-    setError("");
-    setMessage("");
+    setSaveError("");
+    setFlash("");
+    scrollToDetail();
   };
 
-  const saveTicket = async () => {
+  const submit = async (nextStatus, source = nextStatus) => {
     if (!selectedTicket || saving) return;
-
-    const response = draft.response.trim();
-    if (["waiting_user", "resolved", "closed"].includes(draft.status) && !response) {
-      setMessage("");
-      setError("Adaugă un răspuns înainte de a muta tichetul în acest status.");
+    const problem = ticketUpdateProblem({ status: nextStatus, response: draft.response });
+    if (problem) {
+      setSaveError(problem);
       document.getElementById("admin-support-response")?.focus();
       return;
     }
-
-    const previousResponse = String(selectedTicket.support_response || "").trim();
-    const responseChanged = response !== previousResponse;
-    const payload = {
-      status: draft.status,
-      priority: draft.priority,
-      support_response: response,
-      ...(responseChanged && response
-        ? {
-            responded_at: new Date().toISOString(),
-            responded_by_user_id: adminUser?.id || "",
-          }
-        : {}),
-    };
-
-    setSaving(true);
-    setError("");
-    setMessage("");
+    const ticketId = selectedTicket.id;
+    // În lista „Active” trecem la următorul tichet care cere răspuns; în rest rămânem pe cel curent.
+    const advanceTo = statusFilter === "active" && !needsAdmin({ status: nextStatus })
+      ? nextTicketToHandle(visibleTickets, ticketId)
+      : "";
+    const newReply = Boolean(draft.response.trim()) && draft.response.trim() !== String(selectedTicket.support_response || "").trim();
+    setSaving(source);
+    setSaveError("");
+    setFlash("");
     try {
-      await base44.entities.SupportTicket.update(selectedTicket.id, payload);
-      await loadTickets();
-      setMessage(
-        response
-          ? "Tichetul a fost actualizat. Răspunsul este vizibil în contul utilizatorului."
-          : "Statusul și prioritatea tichetului au fost actualizate.",
-      );
+      await base44.entities.SupportTicket.update(ticketId, buildTicketPayload({
+        ticket: selectedTicket,
+        status: nextStatus,
+        priority: draft.priority,
+        response: draft.response,
+        adminId: adminUser?.id,
+      }));
+      setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== ticketId)));
+      const rows = await loadTickets();
+      refreshCounts();
+      const published = newReply ? "Răspunsul a fost publicat. " : "";
+      const outcome = {
+        resolved: "Tichetul este rezolvat.",
+        closed: "Tichetul este închis.",
+        waiting_user: "Tichetul așteaptă utilizatorul.",
+        in_progress: "Tichetul este în lucru.",
+        open: "Tichetul este deschis din nou.",
+      }[nextStatus] || "Modificările au fost salvate.";
+      setFlash(`${published}${outcome}`.trim());
+      if (advanceTo && rows?.some((ticket) => ticket.id === advanceTo)) {
+        setSelectedId(advanceTo);
+        scrollToDetail();
+      }
     } catch (requestError) {
-      setError(
-        requestError?.response?.data?.error
-          || requestError?.message
-          || "Modificările nu au putut fi salvate.",
-      );
+      setSaveError(requestError?.response?.data?.error || requestError?.message || "Modificările nu au putut fi salvate.");
     } finally {
-      setSaving(false);
+      setSaving("");
     }
   };
 
+  const clearFilters = () => {
+    setQuery("");
+    setCategoryFilter("all");
+    setPriorityFilter("all");
+    setStatusFilter("all");
+  };
+
+  const chips = [
+    { key: "active", label: "Active", count: counts.active },
+    { key: "resolved", label: "Rezolvate", count: counts.resolved },
+    { key: "all", label: "Toate", count: counts.total },
+  ];
+  const toHandle = visibleTickets.filter(needsAdmin).length;
+  const filtering = Boolean(query.trim()) || categoryFilter !== "all" || priorityFilter !== "all";
+  const capped = Boolean(tickets) && tickets.length >= LOAD_LIMIT;
+
   return (
     <div className="space-y-4" data-admin-mobile="true">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={Inbox} label="Tichete active" value={counts.active} />
-        <SummaryCard icon={AlertTriangle} label="Urgente active" value={counts.urgent} />
-        <SummaryCard icon={CheckCircle2} label="Rezolvate / închise" value={counts.resolved} />
-        <SummaryCard icon={Mail} label="Total tichete" value={counts.total} />
-      </div>
-
-      <AdminCard className="p-3 sm:p-4">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-center">
-          <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl border border-border bg-background px-3">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Caută după subiect, utilizator, email sau mesaj"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-          </label>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex">
-            {[
-              ["active", `Active (${counts.active})`],
-              ["resolved", `Rezolvate (${counts.resolved})`],
-              ["all", `Toate (${counts.total})`],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${
-                  statusFilter === key
-                    ? "bg-foreground text-background"
-                    : "border border-border bg-background hover:bg-secondary"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => loadTickets()}
-              disabled={loading || saving}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              Actualizează
-            </button>
-          </div>
-
+      <AdminCard className="space-y-3 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <SupportSearchField
+            value={query}
+            onChange={setQuery}
+            label="Caută în tichete"
+            placeholder="Caută după subiect, persoană, email sau mesaj"
+          />
+          <RefreshButton onClick={loadTickets} busy={loading && Boolean(tickets)} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <AdminChips options={chips} value={statusFilter} onChange={setStatusFilter} label="Filtrează tichetele" />
           <div className="grid grid-cols-2 gap-2">
-            <label>
-              <span className="sr-only">Filtru categorie</span>
-              <select
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none"
-              >
-                <option value="all">Toate categoriile</option>
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Filtru prioritate</span>
-              <select
-                value={priorityFilter}
-                onChange={(event) => setPriorityFilter(event.target.value)}
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none"
-              >
-                <option value="all">Toate prioritățile</option>
-                {PRIORITY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </label>
+            <FilterSelect value={categoryFilter} onChange={setCategoryFilter} label="Filtrează după categorie">
+              <option value="all">Toate categoriile</option>
+              {Object.entries(TICKET_CATEGORY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </FilterSelect>
+            <FilterSelect value={priorityFilter} onChange={setPriorityFilter} label="Filtrează după prioritate">
+              <option value="all">Toate prioritățile</option>
+              {Object.entries(TICKET_PRIORITY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </FilterSelect>
           </div>
         </div>
       </AdminCard>
 
-      {error && (
-        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div aria-live="polite" className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          {message}
-        </div>
+      {loadError && <AdminNotice tone="danger">{loadError}</AdminNotice>}
+      {flash && <AdminNotice tone="success" onDismiss={() => setFlash("")}>{flash}</AdminNotice>}
+      {capped && (
+        <AdminNotice tone="warning">
+          Se afișează cele mai recent actualizate {LOAD_LIMIT} de tichete; numerele de pe filtre se referă la ele.
+        </AdminNotice>
       )}
 
-      {loading && !tickets && (
-        <AdminCard className="flex min-h-52 items-center justify-center p-5 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă tichetele...
+      {!tickets && loading && <AdminLoading label="Se încarcă tichetele…" />}
+
+      {!tickets && !loading && loadError && (
+        <AdminCard className="p-5">
+          <EmptyState icon={Inbox} title="Tichetele nu s-au putut încărca." subtitle="Verifică conexiunea și încearcă din nou." ctaLabel="Încearcă din nou" onCta={loadTickets} />
         </AdminCard>
       )}
 
-      {!loading && tickets?.length === 0 && (
+      {tickets && tickets.length === 0 && (
         <AdminCard className="p-5">
           <EmptyState
             icon={Inbox}
-            title="Nu există tichete de suport."
-            subtitle="Solicitările trimise din Ajutor și suport vor apărea automat aici."
+            title="Nu ai niciun tichet."
+            subtitle="Cererile trimise din Ajutor și suport apar aici, singure."
           />
         </AdminCard>
       )}
@@ -406,196 +540,51 @@ export default function AdminSupportTickets({ adminUser }) {
         <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.5fr)]">
           <AdminCard className="overflow-hidden p-0">
             <div className="border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground">
-              {visibleTickets.length} rezultate
+              {plural(visibleTickets.length, "tichet", "tichete")}
+              {toHandle > 0 && <span className="text-foreground"> · {toHandle} {toHandle === 1 ? "cere" : "cer"} răspunsul tău</span>}
             </div>
             {visibleTickets.length === 0 ? (
               <div className="p-5">
-                <EmptyState
-                  icon={Search}
-                  title="Niciun tichet pentru filtrele selectate."
-                  subtitle="Schimbă filtrul sau termenul de căutare."
-                />
+                {statusFilter === "active" && !filtering ? (
+                  <EmptyState
+                    icon={Inbox}
+                    title="Nu ai tichete active."
+                    subtitle="Toate au primit răspuns."
+                    ctaLabel="Vezi toate tichetele"
+                    onCta={() => setStatusFilter("all")}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Search}
+                    title="Niciun tichet pentru filtrele alese."
+                    ctaLabel="Șterge filtrele"
+                    onCta={clearFilters}
+                  />
+                )}
               </div>
             ) : (
-              <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
-                {visibleTickets.map((ticket) => {
-                  const selected = ticket.id === selectedId;
-                  const [priorityLabel, priorityClass] = PRIORITY_STYLE[ticket.priority]
-                    || PRIORITY_STYLE.normal;
-                  return (
-                    <button
-                      key={ticket.id}
-                      type="button"
-                      onClick={() => selectTicket(ticket.id)}
-                      className={`w-full p-4 text-left transition ${
-                        selected ? "bg-secondary/70" : "hover:bg-secondary/35"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="line-clamp-2 text-sm font-bold leading-snug">
-                            {ticket.subject}
-                          </div>
-                          <div className="mt-1 truncate text-xs text-muted-foreground">
-                            {ticket.requester_name || "Utilizator VIASEE"}
-                            {ticket.requester_email ? ` · ${ticket.requester_email}` : ""}
-                          </div>
-                        </div>
-                        <StatusBadge status={ticket.status} />
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                        <span>{CATEGORY_LABELS[ticket.category] || "Suport"}</span>
-                        <span className={priorityClass}>{priorityLabel}</span>
-                      </div>
-                      <div className="mt-1 text-[10px] text-muted-foreground">
-                        Actualizat {formatDate(ticket.updated_date || ticket.created_date)}
-                      </div>
-                      {isAccountDeletionRequest(ticket) && (
-                        <div className="mt-2"><DeletionDeadlineBadge ticket={ticket} /></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <ul aria-label="Tichete" className="max-h-[70vh] divide-y divide-border overflow-y-auto">
+                {visibleTickets.map((ticket) => (
+                  <TicketRow key={ticket.id} ticket={ticket} selected={ticket.id === selectedId} onSelect={selectTicket} />
+                ))}
+              </ul>
             )}
           </AdminCard>
 
           <AdminCard className="p-4 sm:p-5">
+            <div ref={detailRef} className="scroll-mt-20" />
             {!selectedTicket ? (
-              <EmptyState
-                icon={Inbox}
-                title="Selectează un tichet."
-                subtitle="Detaliile și acțiunile administrative vor apărea aici."
-              />
+              <EmptyState icon={Inbox} title="Alege un tichet din listă." subtitle="Mesajul și răspunsul apar aici." />
             ) : (
-              <div className="space-y-5">
-                <div className="border-b border-border pb-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={selectedTicket.status} />
-                    <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
-                      {CATEGORY_LABELS[selectedTicket.category] || "Suport"}
-                    </span>
-                    <DeletionDeadlineBadge ticket={selectedTicket} />
-                  </div>
-                  <h2 className="mt-3 break-words font-heading text-xl font-extrabold leading-snug">
-                    {selectedTicket.subject}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Creat {formatDate(selectedTicket.created_date)} · actualizat {formatDate(selectedTicket.updated_date || selectedTicket.created_date)}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl border border-border bg-secondary/25 p-4">
-                    <div className="flex items-center gap-2 text-xs font-bold">
-                      <UserRound className="h-4 w-4 text-muted-foreground" /> Solicitant
-                    </div>
-                    <div className="mt-3 break-words text-sm font-semibold">
-                      {selectedTicket.requester_name || "Utilizator VIASEE"}
-                    </div>
-                    <div className="mt-1 break-all text-xs text-muted-foreground">
-                      {selectedTicket.requester_email || "Email indisponibil"}
-                    </div>
-                    <div className="mt-2 break-all text-[10px] text-muted-foreground">
-                      User ID: {selectedTicket.requester_user_id}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-secondary/25 p-4">
-                    <div className="flex items-center gap-2 text-xs font-bold">
-                      <Clock3 className="h-4 w-4 text-muted-foreground" /> Context
-                    </div>
-                    <div className="mt-3 space-y-1 break-all text-xs text-muted-foreground">
-                      <div>Sursă: {selectedTicket.source || "—"}</div>
-                      <div>Pagină: {selectedTicket.page_path || "—"}</div>
-                      {selectedTicket.organization_id && (
-                        <div>Organizație: {selectedTicket.organization_id}</div>
-                      )}
-                      {selectedTicket.professional_profile_id && (
-                        <div>Profil profesional: {selectedTicket.professional_profile_id}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <article className="rounded-2xl border border-border bg-background p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    Mesajul utilizatorului
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                    {selectedTicket.description}
-                  </p>
-                </article>
-
-                <div className="rounded-2xl border border-border bg-secondary/20 p-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="admin-ticket-status" className="text-xs font-bold">Status</label>
-                      <select
-                        id="admin-ticket-status"
-                        value={draft.status}
-                        onChange={(event) => setDraft((current) => ({
-                          ...current,
-                          status: event.target.value,
-                        }))}
-                        className="mt-2 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none"
-                      >
-                        {STATUS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="admin-ticket-priority" className="text-xs font-bold">Prioritate</label>
-                      <select
-                        id="admin-ticket-priority"
-                        value={draft.priority}
-                        onChange={(event) => setDraft((current) => ({
-                          ...current,
-                          priority: event.target.value,
-                        }))}
-                        className="mt-2 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none"
-                      >
-                        {PRIORITY_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <label htmlFor="admin-support-response" className="text-xs font-bold">
-                      Răspuns VIASEE
-                    </label>
-                    <textarea
-                      id="admin-support-response"
-                      rows={8}
-                      maxLength={5000}
-                      value={draft.response}
-                      onChange={(event) => setDraft((current) => ({
-                        ...current,
-                        response: event.target.value,
-                      }))}
-                      placeholder="Scrie răspunsul care va fi afișat în contul utilizatorului..."
-                      className="mt-2 min-h-40 w-full resize-y rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-relaxed outline-none focus:border-foreground/40"
-                    />
-                    <div className="mt-1 flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
-                      <span>Răspunsul este vizibil în Ajutor și suport după salvare.</span>
-                      <span>{draft.response.length}/5000</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={saveTicket}
-                    disabled={saving}
-                    className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50 sm:w-auto"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    {saving ? "Se salvează..." : "Salvează și publică răspunsul"}
-                  </button>
-                </div>
-              </div>
+              <TicketDetail
+                ticket={selectedTicket}
+                draft={draft}
+                onChange={updateDraft}
+                saving={saving}
+                error={saveError}
+                onSubmit={submit}
+                onDismissError={() => setSaveError("")}
+              />
             )}
           </AdminCard>
         </div>

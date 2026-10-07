@@ -17,13 +17,13 @@ import {
 // Deschiderile si click-urile nu sunt urmarite.
 
 const OUTCOME_FILTERS = [
-  { value: "all", label: "Toti" },
+  { value: "all", label: "Toți" },
   { value: "delivered", label: "Livrate" },
   { value: "awaiting", label: "Neconfirmate" },
-  { value: "problem", label: "Respinse / reclamatii" },
-  { value: "unsubscribed", label: "Dezabonati" },
+  { value: "problem", label: "Respinse / reclamații" },
+  { value: "unsubscribed", label: "Dezabonați" },
   { value: "not_sent", label: "Netrimise" },
-  { value: "queued", label: "In asteptare" },
+  { value: "queued", label: "În așteptare" },
 ];
 
 function matchesOutcomeFilter(row, filter) {
@@ -93,20 +93,20 @@ export default function OutreachCampaignReport({ campaignId, campaignName }) {
   if (loading && !report) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Se incarca raportul...
+        <Loader2 className="h-4 w-4 animate-spin" /> Se încarcă raportul…
       </div>
     );
   }
-  if (error && !report) return <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>;
+  if (error && !report) return <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>;
 
   const counts = report?.summary?.counts || {};
   const rates = report?.summary?.rates || {};
   const notSent = Object.entries(report?.summary?.not_sent_by_reason || {});
   const sent = counts.sent || 0;
   const bar = sent > 0 ? [
-    { key: "delivered", value: counts.delivered || 0, className: "bg-green-600" },
-    { key: "awaiting", value: counts.awaiting || 0, className: "bg-blue-400" },
-    { key: "bounced", value: (counts.bounced || 0) + (counts.failed || 0), className: "bg-red-500" },
+    { key: "delivered", value: counts.delivered || 0, className: "bg-success" },
+    { key: "awaiting", value: counts.awaiting || 0, className: "bg-info" },
+    { key: "bounced", value: (counts.bounced || 0) + (counts.failed || 0), className: "bg-danger-soft0" },
   ] : [];
 
   return (
@@ -124,28 +124,28 @@ export default function OutreachCampaignReport({ campaignId, campaignName }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Tile label="Destinatari" value={counts.recipients || 0} hint={counts.pending_send ? `${counts.pending_send} inca de trimis` : "toti procesati"} />
+        <Tile label="Destinatari" value={counts.recipients || 0} hint={counts.pending_send ? `${counts.pending_send} încă de trimis` : "toți procesați"} />
         <Tile label="Trimise" value={sent} />
-        <Tile label="Livrate" value={counts.delivered || 0} hint={`${formatPercent(rates.delivered)} din trimise`} tone="text-green-700" />
-        <Tile label="Neconfirmate" value={counts.awaiting || 0} hint="trimise, fara raspuns de la server inca" />
-        <Tile label="Respinse" value={counts.bounced || 0} hint={`${formatPercent(rates.bounced)} din trimise`} tone={(counts.bounced || 0) > 0 ? "text-red-700" : ""} />
-        <Tile label="Reclamatii spam" value={counts.complained || 0} tone={(counts.complained || 0) > 0 ? "text-red-700" : ""} />
-        <Tile label="Dezabonati" value={counts.unsubscribed || 0} hint={`${formatPercent(rates.unsubscribed)} din trimise`} />
-        <Tile label="Au raspuns" value={counts.replied || 0} hint="marcat manual" />
-        <Tile label="Netrimise" value={counts.not_sent || 0} hint="sarite inainte de trimitere" />
+        <Tile label="Livrate" value={counts.delivered || 0} hint={`${formatPercent(rates.delivered)} din trimise`} tone="text-success" />
+        <Tile label="Neconfirmate" value={counts.awaiting || 0} hint="trimise, fără răspuns de la server încă" />
+        <Tile label="Respinse" value={counts.bounced || 0} hint={`${formatPercent(rates.bounced)} din trimise`} tone={(counts.bounced || 0) > 0 ? "text-danger" : ""} />
+        <Tile label="Reclamații spam" value={counts.complained || 0} tone={(counts.complained || 0) > 0 ? "text-danger" : ""} />
+        <Tile label="Dezabonați" value={counts.unsubscribed || 0} hint={`${formatPercent(rates.unsubscribed)} din trimise`} />
+        <Tile label="Au răspuns" value={counts.replied || 0} hint="marcat manual" />
+        <Tile label="Netrimise" value={counts.not_sent || 0} hint="sărite înainte de trimitere" />
       </div>
 
       {bar.length > 0 && (
         <div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary" role="img" aria-label={`Din ${sent} trimise: ${counts.delivered || 0} livrate, ${counts.awaiting || 0} neconfirmate, ${(counts.bounced || 0) + (counts.failed || 0)} respinse sau esuate`}>
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary" role="img" aria-label={`Din ${sent} trimise: ${counts.delivered || 0} livrate, ${counts.awaiting || 0} neconfirmate, ${(counts.bounced || 0) + (counts.failed || 0)} respinse sau eșuate`}>
             {bar.map((part) => part.value > 0 && (
               <div key={part.key} className={part.className} style={{ width: `${(part.value / sent) * 100}%` }} />
             ))}
           </div>
           <p className="mt-1 flex flex-wrap gap-x-4 text-[11px] text-muted-foreground">
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-green-600" />Livrate</span>
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-blue-400" />Neconfirmate</span>
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />Respinse / esuate</span>
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-success" />Livrate</span>
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info" />Neconfirmate</span>
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger-soft0" />Respinse / eșuate</span>
           </p>
         </div>
       )}
@@ -155,7 +155,7 @@ export default function OutreachCampaignReport({ campaignId, campaignName }) {
           Netrimise: {notSent.map(([reason, count]) => `${count} — ${NOT_SENT_REASON_LABELS[reason] || reason}`).join("; ")}.
         </p>
       )}
-      <p className="text-[11px] text-muted-foreground">Deschiderile si click-urile nu sunt urmarite. Raspunsurile ajung la adresa de reply-to; le marchezi aici cu „A raspuns”.</p>
+      <p className="text-[11px] text-muted-foreground">Deschiderile și click-urile nu sunt urmărite. Răspunsurile ajung la adresa de reply-to; le marchezi aici cu „A răspuns”.</p>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
@@ -164,7 +164,7 @@ export default function OutreachCampaignReport({ campaignId, campaignName }) {
             id="outreach-report-search"
             type="text"
             value={search}
-            placeholder="Cauta email, firma, oras..."
+            placeholder="Caută email, firmă, oraș…"
             onChange={(e) => { setSearch(e.target.value); setLimit(200); }}
             className="rounded-lg border border-border py-1.5 pl-8 pr-3 text-xs"
           />
@@ -218,14 +218,14 @@ export default function OutreachCampaignReport({ campaignId, campaignName }) {
               </tr>
             ))}
             {!visibleRows.length && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Nimic in aceasta vedere.</td></tr>
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Nimic în această vedere.</td></tr>
             )}
           </tbody>
         </table>
       </div>
       {visibleRows.length > limit && (
         <button type="button" onClick={() => setLimit((value) => value + 200)} className="rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary">
-          Arata inca {Math.min(200, visibleRows.length - limit)}
+          Arată încă {Math.min(200, visibleRows.length - limit)}
         </button>
       )}
     </div>

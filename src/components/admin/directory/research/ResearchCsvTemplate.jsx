@@ -18,18 +18,18 @@ export default function ResearchCsvTemplate() {
     <div className="max-w-3xl">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="font-heading font-bold">Sablon CSV pentru research</h3>
-          <p className="text-sm text-muted-foreground mt-1">Descarca sablonul gol pentru colectarea datelor din surse publice oficiale. Acest modul NU importa date.</p>
+          <h3 className="font-heading font-bold">Șablon CSV pentru research</h3>
+          <p className="text-sm text-muted-foreground mt-1">Descarcă șablonul gol pentru colectarea datelor din surse publice oficiale. Acest modul NU importă date.</p>
         </div>
-        <button onClick={download} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold shrink-0">Descarca sablon CSV</button>
+        <button onClick={download} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold shrink-0">Descarcă șablon CSV</button>
       </div>
 
       <div className="mt-6 bg-card border border-border rounded-xl p-5">
-        <h4 className="font-heading font-bold text-sm">Documentatia campurilor</h4>
+        <h4 className="font-heading font-bold text-sm">Documentația câmpurilor</h4>
         <table className="mt-3 w-full text-xs">
           <thead>
             <tr className="text-left text-muted-foreground border-b border-border">
-              <th className="py-2 pr-3">Camp</th>
+              <th className="py-2 pr-3">Câmp</th>
               <th className="py-2 pr-3">Obligatoriu</th>
               <th className="py-2">Descriere</th>
             </tr>
@@ -49,13 +49,13 @@ export default function ResearchCsvTemplate() {
       <div className="mt-4 bg-secondary/40 border border-dashed border-border rounded-xl p-5 text-sm">
         <h4 className="font-heading font-bold text-sm">Reguli pentru viitorul import (nu este implementat acum)</h4>
         <ul className="mt-2 list-disc pl-5 space-y-1 text-muted-foreground">
-          <li>Fiecare rand necesita un source_url explicit si data verificarii sursei.</li>
+          <li>Fiecare rând cere un source_url explicit și data verificării sursei.</li>
           <li>Sursele Google Maps / Google Places nu sunt acceptate.</li>
-          <li>Tip furnizor, oras si nume locatie sunt obligatorii.</li>
-          <li>Fiecare rand trece prin verificare de duplicate inainte de scriere.</li>
-          <li>Previzualizare de validare: randurile invalide sunt afisate si respinse inainte de orice scriere.</li>
-          <li>Nicio scriere fara confirmare manuala explicita, rand cu rand sau pe lot revizuit.</li>
-          <li>Importul automat este interzis — datele intra doar prin actiuni de admin autentificate.</li>
+          <li>Tip furnizor, oraș și nume locație sunt obligatorii.</li>
+          <li>Fiecare rând trece prin verificare de duplicate înainte de scriere.</li>
+          <li>Previzualizare de validare: rândurile invalide sunt afișate și respinse înainte de orice scriere.</li>
+          <li>Nicio scriere fără confirmare manuală explicită, rând cu rând sau pe lot revizuit.</li>
+          <li>Importul automat este interzis — datele intră doar prin acțiuni de admin autentificate.</li>
         </ul>
       </div>
     </div>

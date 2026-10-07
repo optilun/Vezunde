@@ -20,7 +20,7 @@ const PROVENANCE = { source_url: "https://contract-check.invalid", source_type: 
 
 const CHECKS = [
   {
-    name: "Fara fallback geografic automat (judet/national/apropiere)",
+    name: "Fără fallback geografic automat (județ / național / apropiere)",
     run: async () => {
       // Verificarea nu mai depinde de un oras gol (directorul are acum locatii peste tot,
       // iar un test bazat pe "zero rezultate" ar trece din motivul gresit). Verificam
@@ -34,7 +34,7 @@ const CHECKS = [
     },
   },
   {
-    name: "Coordonatele/place_id nu influenteaza matching-ul public",
+    name: "Coordonatele/place_id nu influențează matching-ul public",
     run: async () => {
       // Trimitem coordonate explicit si verificam ca (a) nu se scurg in raspuns si
       // (b) nu schimba rezultatele fata de aceeasi cautare fara coordonate.
@@ -48,42 +48,42 @@ const CHECKS = [
     },
   },
   {
-    name: "Creare admin fara SIRUTA este respinsa",
+    name: "Creare admin fără SIRUTA este respinsă",
     run: async () => {
       const r = await invoke("directoryOps", { action: "create_location", organization: { name: "Contract Check" }, location: { name: "Contract Check", provider_type: "optica_medicala", city: "Cluj-Napoca", county: "Cluj", address: "Str. Verificare 1" }, provenance: PROVENANCE });
       return r.status === 400;
     },
   },
   {
-    name: "Creare admin cu SIRUTA invalid/inactiv este respinsa",
+    name: "Creare admin cu SIRUTA invalid sau inactiv este respinsă",
     run: async () => {
       const r = await invoke("directoryOps", { action: "create_location", organization: { name: "Contract Check" }, location: { name: "Contract Check", provider_type: "optica_medicala", locality_siruta_code: "999999", address: "Str. Verificare 1" }, provenance: PROVENANCE });
       return r.status === 400;
     },
   },
   {
-    name: "Oras/judet trimise manual in conflict cu geografia canonica sunt respinse",
+    name: "Oraș și județ trimise manual, în conflict cu geografia canonică, sunt respinse",
     run: async () => {
       const r = await invoke("directoryOps", { action: "create_location", organization: { name: "Contract Check" }, location: { name: "Contract Check", provider_type: "optica_medicala", locality_siruta_code: "54975", city: "Bucuresti", address: "Str. Verificare 1" }, provenance: PROVENANCE });
       return r.status === 400;
     },
   },
   {
-    name: "Onboarding furnizor fara SIRUTA este respins (chiar cu date Google)",
+    name: "Onboarding furnizor fără SIRUTA este respins (chiar cu date Google)",
     run: async () => {
       const r = await invoke("submitProviderClaim", { mode: "new_location", representation_confirmed: true, contact: { contact_name: "Contract Check", email: "contract@check.invalid" }, location: { name: "Contract Check", provider_type: "optica_medicala", city: "Cluj-Napoca", place_id: "google-place-x", lat: 46.77, lng: 23.59 } });
       return r.status === 400;
     },
   },
   {
-    name: "Editarea directa oras/judet de catre furnizor este respinsa",
+    name: "Editarea directă a orașului sau județului de către furnizor este respinsă",
     run: async () => {
       const r = await invoke("updateProviderLocation", { location_id: "contract-check-id", staged: { fields: { city: "Bucuresti" } } });
       return r.status === 400 && /localitat/i.test(r.data.error || "");
     },
   },
   {
-    name: "Schimbarea localitatii cu SIRUTA invalid este respinsa",
+    name: "Schimbarea localității cu SIRUTA invalid este respinsă",
     run: async () => {
       const r = await invoke("updateProviderLocation", { location_id: "contract-check-id", staged: { fields: { locality_siruta_code: "999999" } } });
       return r.status === 400;
@@ -113,25 +113,25 @@ export default function GeoContractChecks() {
   return (
     <div className="max-w-2xl space-y-5">
       <AdminCard className="p-5">
-        <h2 className="font-heading font-bold text-sm">Contract geografic — verificari de regresie</h2>
+        <h2 className="font-heading font-bold text-sm">Contract geografic — verificări de regresie</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Ruleaza doar cai de respingere / rezultate goale — nu creeaza niciun fel de inregistrari. Detalii: GEOGRAPHY_CONTRACT.md.
+          Rulează doar căi de respingere și rezultate goale; nu creează nicio înregistrare. Detalii: GEOGRAPHY_CONTRACT.md.
         </p>
         <button onClick={runAll} disabled={running} className="mt-4 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">
-          {running ? "Se ruleaza..." : "Ruleaza verificarile"}
+          {running ? "Se rulează..." : "Rulează verificările"}
         </button>
         {running && <Loader2 className="mt-4 w-5 h-5 animate-spin text-muted-foreground" />}
       </AdminCard>
 
       {results && (
         <AdminCard className="p-5">
-          <p className={`text-sm font-semibold ${passed === results.length ? "text-green-700" : "text-destructive"}`}>
-            {passed}/{results.length} verificari trecute
+          <p className={`text-sm font-semibold ${passed === results.length ? "text-success" : "text-destructive"}`}>
+            {passed}/{results.length} verificări trecute
           </p>
           <ul className="mt-3 space-y-2">
             {results.map((r) => (
               <li key={r.name} className="flex items-start gap-2 text-sm">
-                {r.pass ? <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
+                {r.pass ? <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
                 <span>{r.name}</span>
               </li>
             ))}

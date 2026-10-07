@@ -46,7 +46,7 @@ export default function ResearchChecklist({ locationId, checklist, onReload }) {
           );
         })}
       </ul>
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
     </div>
   );
 }

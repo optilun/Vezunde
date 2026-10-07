@@ -19,41 +19,41 @@ import { base44 } from "@/api/base44Client";
 
 const QUEUES = [
   { value: "all", label: "Toate" },
-  { value: "organization_conflict", label: "Conflicte organizatie" },
-  { value: "organization_unassigned", label: "Fara organizatie" },
-  { value: "organization_probable", label: "Legaturi probabile" },
+  { value: "organization_conflict", label: "Conflicte organizație" },
+  { value: "organization_unassigned", label: "Fără organizație" },
+  { value: "organization_probable", label: "Legături probabile" },
   { value: "type_needs_mapping", label: "Tip necanonic" },
   { value: "identity_needs_review", label: "Identitate neclarificata" },
-  { value: "same_address_group", label: "Aceeasi adresa" },
+  { value: "same_address_group", label: "Aceeași adresă" },
 ];
 
 const LINK_STATUS_OPTIONS = [
   { value: "confirmed", label: "Confirmata" },
   { value: "probable", label: "Probabila" },
   { value: "conflict", label: "Conflict" },
-  { value: "rejected", label: "Respinsa pentru organizatia selectata" },
-  { value: "unassigned", label: "Fara organizatie" },
+  { value: "rejected", label: "Respinsă pentru organizația aleasă" },
+  { value: "unassigned", label: "Fără organizație" },
 ];
 
 const CONFIDENCE_OPTIONS = [
   { value: "high", label: "Ridicata" },
   { value: "medium", label: "Medie" },
-  { value: "low", label: "Scazuta" },
+  { value: "low", label: "Scăzută" },
 ];
 
 const IDENTITY_OPTIONS = [
-  { value: "duplicate_same_entity", label: "Dublura a aceleiasi entitati" },
-  { value: "same_address_distinct_unit", label: "Unitati distincte la aceeasi adresa" },
-  { value: "rebrand_successor", label: "Aceeasi entitate dupa rebranding" },
-  { value: "unrelated", label: "Fara relatie de identitate" },
+  { value: "duplicate_same_entity", label: "Dublură a aceleiași entități" },
+  { value: "same_address_distinct_unit", label: "Unități distincte la aceeași adresă" },
+  { value: "rebrand_successor", label: "Aceeași entitate după rebranding" },
+  { value: "unrelated", label: "Fără relație de identitate" },
 ];
 
 const FLAG_LABELS = {
-  organization_unassigned: "Fara organizatie",
-  organization_probable: "Legatura probabila",
-  organization_conflict: "Conflict organizatie",
+  organization_unassigned: "Fără organizație",
+  organization_probable: "Legătura probabilă",
+  organization_conflict: "Conflict organizație",
   type_needs_mapping: "Tip necanonic",
-  same_address_group: "Aceeasi adresa",
+  same_address_group: "Aceeași adresă",
   identity_needs_review: "Identitate neclarificata",
   migration_review_required: "Revizuire de migrare",
 };
@@ -95,14 +95,14 @@ function PreviewBox({ preview, onApply, saving, detachConfirmed, onDetachConfirm
       <div className="flex items-start gap-2">
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-bold uppercase tracking-wide">Preview pregatit</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Verifica modificarile si avertismentele. Aplicarea este auditata si nu publica automat profilul.</p>
+          <div className="text-xs font-bold uppercase tracking-wide">Preview pregătit</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Verifică modificările și avertismentele. Aplicarea este auditată și nu publică automat profilul.</p>
         </div>
       </div>
       {preview.warnings?.length > 0 && (
         <div className="mt-3 space-y-2">
           {preview.warnings.map((warning) => (
-            <div key={warning} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div key={warning} className="flex items-start gap-2 rounded-xl border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {warning}
             </div>
           ))}
@@ -111,7 +111,7 @@ function PreviewBox({ preview, onApply, saving, detachConfirmed, onDetachConfirm
       {preview.after?.link_status === "unassigned" && preview.before?.organization_id && (
         <label className="mt-3 flex items-start gap-2 text-xs">
           <input type="checkbox" checked={detachConfirmed} onChange={(event) => onDetachConfirmed(event.target.checked)} className="mt-0.5 h-4 w-4" />
-          <span>Confirm eliminarea asocierii organizationale curente.</span>
+          <span>Confirm eliminarea asocierii organizaționale curente.</span>
         </label>
       )}
       <button
@@ -238,13 +238,13 @@ export default function DirOpsMapping() {
     });
     setSaving(false);
     if (result.error) return setError(result.error);
-    await refreshAfterSave("Relatia organizatie-locatie a fost salvata si auditata.");
+    await refreshAfterSave("Relația organizație–locație a fost salvată și auditată.");
   };
 
   const selectedType = useMemo(() => (data?.canonical_type_options || []).find((option) => typeKey(option) === typeForm.type_key) || null, [data, typeForm.type_key]);
 
   const previewType = async () => {
-    if (!selectedType) return setError("Selecteaza un tip canonic.");
+    if (!selectedType) return setError("Selectează un tip canonic.");
     setError("");
     const result = await invoke({
       action: "preview_canonical_type",
@@ -270,7 +270,7 @@ export default function DirOpsMapping() {
     });
     setSaving(false);
     if (result.error) return setError(result.error);
-    await refreshAfterSave("Tipul canonic al locatiei a fost actualizat fara schimbarea publicarii sau verificarii.");
+    await refreshAfterSave("Tipul canonic al locației a fost actualizat fără schimbarea publicării sau verificării.");
   };
 
   const identityCandidates = useMemo(() => {
@@ -300,7 +300,7 @@ export default function DirOpsMapping() {
     });
     setSaving(false);
     if (result.error) return setError(result.error);
-    await refreshAfterSave("Relatia de identitate dintre locatii a fost inregistrata. Nu s-a facut nicio consolidare automata.");
+    await refreshAfterSave("Relația de identitate dintre locații a fost înregistrată. Nu s-a făcut nicio consolidare automată.");
   };
 
   const summary = data?.summary || {};
@@ -311,8 +311,8 @@ export default function DirOpsMapping() {
       <section className="rounded-3xl border border-border bg-card p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <h2 className="text-base font-bold">Mapare organizatii si locatii</h2>
-            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Clarifica legaturile organizationale, tipurile canonice, dublurile, rebrandingul si unitatile distincte de la aceeasi adresa. Nicio decizie nu publica, verifica sau combina automat profiluri.</p>
+            <h2 className="text-base font-bold">Mapare organizații și locații</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Clarifică legăturile organizaționale, tipurile canonice, dublurile, rebrandingul și unitățile distincte de la aceeași adresă. Nicio decizie nu publică, verifică sau combină automat profiluri.</p>
           </div>
           <button type="button" onClick={load} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Reincarca
@@ -320,12 +320,12 @@ export default function DirOpsMapping() {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4 xl:grid-cols-7">
-          <StatCard icon={Layers3} label="Total locatii" value={summary.total_locations} active={queue === "all"} onClick={() => setQueue("all")} />
+          <StatCard icon={Layers3} label="Total locații" value={summary.total_locations} active={queue === "all"} onClick={() => setQueue("all")} />
           <StatCard icon={AlertTriangle} label="Conflicte" value={summary.organization_conflict} active={queue === "organization_conflict"} onClick={() => setQueue("organization_conflict")} />
-          <StatCard icon={Building2} label="Fara organizatie" value={summary.organization_unassigned} active={queue === "organization_unassigned"} onClick={() => setQueue("organization_unassigned")} />
+          <StatCard icon={Building2} label="Fără organizație" value={summary.organization_unassigned} active={queue === "organization_unassigned"} onClick={() => setQueue("organization_unassigned")} />
           <StatCard icon={Link2} label="Probabile" value={summary.organization_probable} active={queue === "organization_probable"} onClick={() => setQueue("organization_probable")} />
           <StatCard icon={Tags} label="Tip necanonic" value={summary.type_needs_mapping} active={queue === "type_needs_mapping"} onClick={() => setQueue("type_needs_mapping")} />
-          <StatCard icon={MapPin} label="Aceeasi adresa" value={summary.same_address_group} active={queue === "same_address_group"} onClick={() => setQueue("same_address_group")} />
+          <StatCard icon={MapPin} label="Aceeași adresă" value={summary.same_address_group} active={queue === "same_address_group"} onClick={() => setQueue("same_address_group")} />
           <StatCard icon={Split} label="Identitate neclara" value={summary.identity_needs_review} active={queue === "identity_needs_review"} onClick={() => setQueue("identity_needs_review")} />
         </div>
       </section>
@@ -334,7 +334,7 @@ export default function DirOpsMapping() {
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta dupa nume, oras, adresa sau organizatie" className="min-h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută după nume, oraș, adresă sau organizație" className="min-h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm" />
           </label>
           <select value={queue} onChange={(event) => setQueue(event.target.value)} className="min-h-10 rounded-xl border border-border bg-background px-3 text-sm">
             {QUEUES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -343,15 +343,15 @@ export default function DirOpsMapping() {
         <div className="mt-3 text-xs text-muted-foreground">{data?.total_filtered ?? 0} rezultate in coada curenta</div>
       </section>
 
-      {message && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900">{message}</div>}
-      {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
+      {message && <div className="rounded-2xl border border-success-border bg-success-soft px-4 py-3 text-xs text-success">{message}</div>}
+      {error && <div className="rounded-2xl border border-danger-border bg-danger-soft px-4 py-3 text-xs text-danger">{error}</div>}
 
       <div className="grid gap-5 2xl:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.6fr)]">
         <section className="rounded-3xl border border-border bg-card p-3 sm:p-4">
           {loading ? (
-            <div className="flex min-h-56 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca locatiile...</div>
+            <div className="flex min-h-56 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă locațiile…</div>
           ) : !data?.rows?.length ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">Nu exista locatii in aceasta coada.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">Nu există locații în această coadă.</div>
           ) : (
             <div className="max-h-[72vh] space-y-2 overflow-y-auto pr-1">
               {data.rows.map((row) => (
@@ -363,7 +363,7 @@ export default function DirOpsMapping() {
                     </div>
                     <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
-                  <div className="mt-2 text-xs text-muted-foreground">{row.organization?.name || "Fara organizatie"}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">{row.organization?.name || "Fără organizație"}</div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {row.flags.slice(0, 4).map((flag) => <span key={flag} className="rounded-full border border-border bg-card px-2 py-1 text-[10px] font-semibold">{FLAG_LABELS[flag] || flag}</span>)}
                   </div>
@@ -379,25 +379,25 @@ export default function DirOpsMapping() {
               <GitMerge className="mb-3 h-8 w-8" /> Selecteaza o locatie pentru mapare.
             </div>
           ) : contextLoading ? (
-            <div className="flex min-h-72 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca contextul...</div>
+            <div className="flex min-h-72 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă contextul…</div>
           ) : selected ? (
             <div className="space-y-6">
               <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Locatie selectata</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Locație aleasă</div>
                   <h3 className="mt-1 text-lg font-extrabold">{selected.name}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">{displayAddress(selected)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{selected.provider_type || "tip lipsa"} · {selected.provider_profile_type || "profil lipsa"}</p>
                 </div>
-                <button type="button" onClick={() => { setSelectedId(""); setContext(null); }} className="rounded-full border border-border p-2 hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
+                <button type="button" onClick={() => { setSelectedId(""); setContext(null); }} className="rounded-full border border-border p-2 hover:bg-secondary" aria-label="Închide"><X className="h-4 w-4" /></button>
               </div>
 
               <section>
-                <div className="flex items-center gap-2"><Building2 className="h-4 w-4" /><h4 className="text-sm font-bold">Relatie organizatie-locatie</h4></div>
+                <div className="flex items-center gap-2"><Building2 className="h-4 w-4" /><h4 className="text-sm font-bold">Relația organizație–locație</h4></div>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <label className="text-xs font-semibold text-muted-foreground">Organizatie
                     <select value={orgForm.organization_id} disabled={orgForm.link_status === "unassigned"} onChange={(event) => { setOrgForm((current) => ({ ...current, organization_id: event.target.value })); setOrgPreview(null); }} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm disabled:opacity-50">
-                      <option value="">Selecteaza organizatia</option>
+                      <option value="">Selectează organizația</option>
                       {(data?.organizations || []).map((organization) => <option key={organization.id} value={organization.id}>{organization.name} ({organization.location_count})</option>)}
                     </select>
                   </label>
@@ -418,16 +418,16 @@ export default function DirOpsMapping() {
                 <label className="mt-3 block text-xs font-semibold text-muted-foreground">Rezumat dovezi
                   <textarea rows={2} value={orgForm.evidence_summary} onChange={(event) => setOrgForm((current) => ({ ...current, evidence_summary: event.target.value.slice(0, 1600) }))} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
                 </label>
-                <button type="button" onClick={previewOrganization} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-xs font-semibold hover:bg-secondary sm:w-auto"><Link2 className="h-4 w-4" /> Genereaza preview</button>
+                <button type="button" onClick={previewOrganization} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-xs font-semibold hover:bg-secondary sm:w-auto"><Link2 className="h-4 w-4" /> Generează preview</button>
                 <PreviewBox preview={orgPreview} onApply={applyOrganization} saving={saving} detachConfirmed={detachConfirmed} onDetachConfirmed={setDetachConfirmed} />
               </section>
 
               <section className="border-t border-border pt-6">
-                <div className="flex items-center gap-2"><Tags className="h-4 w-4" /><h4 className="text-sm font-bold">Tip canonic al locatiei</h4></div>
+                <div className="flex items-center gap-2"><Tags className="h-4 w-4" /><h4 className="text-sm font-bold">Tip canonic al locației</h4></div>
                 <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   <label className="text-xs font-semibold text-muted-foreground">Tip
                     <select value={typeForm.type_key} onChange={(event) => { setTypeForm((current) => ({ ...current, type_key: event.target.value })); setTypePreview(null); }} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                      <option value="">Selecteaza tipul canonic</option>
+                      <option value="">Selectează tipul canonic</option>
                       {(data?.canonical_type_options || []).map((option) => <option key={typeKey(option)} value={typeKey(option)}>{option.label}</option>)}
                     </select>
                   </label>
@@ -435,14 +435,14 @@ export default function DirOpsMapping() {
                     <input value={typeForm.note} onChange={(event) => setTypeForm((current) => ({ ...current, note: event.target.value.slice(0, 1200) }))} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
                   </label>
                 </div>
-                <button type="button" onClick={previewType} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-xs font-semibold hover:bg-secondary sm:w-auto"><Tags className="h-4 w-4" /> Genereaza preview</button>
+                <button type="button" onClick={previewType} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-xs font-semibold hover:bg-secondary sm:w-auto"><Tags className="h-4 w-4" /> Generează preview</button>
                 <PreviewBox preview={typePreview} onApply={applyType} saving={saving} detachConfirmed={true} onDetachConfirmed={() => {}} />
               </section>
 
               <section className="border-t border-border pt-6">
-                <div className="flex items-center gap-2"><Split className="h-4 w-4" /><h4 className="text-sm font-bold">Identitate, dubluri si unitati distincte</h4></div>
+                <div className="flex items-center gap-2"><Split className="h-4 w-4" /><h4 className="text-sm font-bold">Identitate, dubluri și unități distincte</h4></div>
                 {identityCandidates.length === 0 ? (
-                  <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-5 text-xs text-muted-foreground">Nu exista candidati apropiati dupa nume sau adresa.</p>
+                  <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-5 text-xs text-muted-foreground">Nu există candidați apropiați după nume sau adresă.</p>
                 ) : (
                   <>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -471,12 +471,12 @@ export default function DirOpsMapping() {
                       </label>
                     </div>
                     <label className="mt-3 block text-xs font-semibold text-muted-foreground">Nota administrativa
-                      <textarea rows={3} value={identityForm.note} onChange={(event) => setIdentityForm((current) => ({ ...current, note: event.target.value.slice(0, 1200) }))} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" placeholder="Explica distinctia functionala, dublura sau istoricul rebrandingului" />
+                      <textarea rows={3} value={identityForm.note} onChange={(event) => setIdentityForm((current) => ({ ...current, note: event.target.value.slice(0, 1200) }))} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" placeholder="Explică distincția funcțională, dublura sau istoricul rebrandingului" />
                     </label>
                     <label className="mt-3 block text-xs font-semibold text-muted-foreground">Rezumat dovezi
                       <textarea rows={2} value={identityForm.evidence_summary} onChange={(event) => setIdentityForm((current) => ({ ...current, evidence_summary: event.target.value.slice(0, 1600) }))} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
                     </label>
-                    <button type="button" onClick={previewIdentity} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-xs font-semibold hover:bg-secondary sm:w-auto"><Split className="h-4 w-4" /> Genereaza preview</button>
+                    <button type="button" onClick={previewIdentity} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-xs font-semibold hover:bg-secondary sm:w-auto"><Split className="h-4 w-4" /> Generează preview</button>
                     <PreviewBox preview={identityPreview} onApply={applyIdentity} saving={saving} detachConfirmed={true} onDetachConfirmed={() => {}} />
                   </>
                 )}

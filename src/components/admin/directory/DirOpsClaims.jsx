@@ -1,16 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { FileCheck2, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
 import AdminClaimIdentityContext from "@/components/admin/AdminClaimIdentityContext";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminTabs from "@/components/admin/ui/AdminTabs";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { useAdminRoute, useAdminSubTab } from "@/components/admin/useAdminRoute";
+import { adminHref } from "@/lib/adminNavConfig";
+import {
+  claimRelationshipLabel,
+  claimStatusLabel,
+  claimStatusTone,
+  organizationLinkLabel,
+  selectionRequestLabel,
+  selectionRequestTone,
+} from "@/lib/adminLabels";
+import { fetchByIds, uniqueIds } from "@/lib/adminEntityBatch";
+import { plural, relativeTime } from "@/lib/adminFormat";
 
 // 2026-10-03 (structura conturilor, pasul 3): fara „owner selectiv”. Proprietarul se aproba doar
 // cu toate locatiile organizatiei; altfel serverul refuza si cere Manager locatie.
 const ROLE_OPTIONS = [
-  { value: "organization_owner", label: "Proprietar (toata organizatia)" },
-  { value: "location_manager", label: "Manager locatie" },
+  { value: "organization_owner", label: "Proprietar (toată organizația)" },
+  { value: "location_manager", label: "Manager locație" },
   { value: "location_staff", label: "Membru" },
 ];
 const LOCATION_ROLE_OPTIONS = ROLE_OPTIONS.filter((item) => item.value !== "organization_owner");
@@ -22,9 +39,9 @@ const ROLE_BY_RELATIONSHIP = {
   authorized_staff: "location_staff",
 };
 const SCOPE_LABELS = {
-  location: "o locatie",
-  selected_locations: "mai multe locatii",
-  organization: "organizatie",
+  location: "o locație",
+  selected_locations: "mai multe locații",
+  organization: "organizație",
 };
 const REVIEWABLE_STATUSES = new Set(["in_asteptare", "needs_more_info"]);
 
@@ -78,7 +95,7 @@ function locationSummary(selection, locations) {
   const location = locations[selection.location_id] || {};
   return {
     id: selection.location_id,
-    name: snapshot.name || location.public_display_name || location.name || "Locatie",
+    name: snapshot.name || location.public_display_name || location.name || "Locație",
     city: snapshot.city || location.locality_name || location.city || "",
     address: snapshot.address || location.address || "",
     decision: selection.decision,
@@ -90,21 +107,39 @@ function locationSummary(selection, locations) {
 }
 
 export default function DirOpsClaims() {
+  const { refresh: refreshCounts } = useAdminCounts();
+  const [view, setView] = useAdminSubTab(["de_rezolvat", "istoric"], "de_rezolvat");
+  const { section: routeSection, id: focusId, go } = useAdminRoute();
+  const scrolledTo = useRef("");
+  const [locationsFailed, setLocationsFailed] = useState(false);
   const [claims, setClaims] = useState(null);
   const [locations, setLocations] = useState({});
   const [scopeByClaim, setScopeByClaim] = useState({});
   const [selectionsByClaim, setSelectionsByClaim] = useState({});
   const [action, setAction] = useState(null);
 
+  // 2026-10-07 (audit admin): nu mai citeste primele 1.500 de locatii (directorul are ~1.600, deci
+  // cererile pentru restul apareau cu „locatie noua / necunoscuta”). Se citesc doar locatiile
+  // pomenite de cereri, de selectiile lor si de sugestiile de retea.
   const load = async () => {
-    const [claimRows, locationRows, scopeRows, selectionRows] = await Promise.all([
+    const [claimRows, scopeRows, selectionRows] = await Promise.all([
       base44.entities.ProviderClaimRequest.list("-created_date", 300),
-      base44.entities.ProviderLocation.list(null, 1500),
       base44.entities.ProviderClaimScopeSelection.list("-created_date", 500).catch(() => []),
       base44.entities.ProviderClaimLocationSelection.list("created_date", 3000).catch(() => []),
     ]);
+    const networkIds = claimRows.flatMap((claim) => {
+      const payload = parsePayload(claim.submitted_payload);
+      return payload.network_suggestion_accepted === true && Array.isArray(payload.network_suggested_location_ids)
+        ? payload.network_suggested_location_ids
+        : [];
+    });
+    const { byId, failed } = await fetchByIds(
+      base44.entities.ProviderLocation,
+      uniqueIds(claimRows.map((claim) => claim.location_id), selectionRows.map((selection) => selection.location_id), networkIds),
+    );
     setClaims(claimRows);
-    setLocations(Object.fromEntries(locationRows.map((location) => [location.id, location])));
+    setLocations(byId);
+    setLocationsFailed(failed);
     const nextScopes = {};
     for (const scope of scopeRows) {
       if (scope.selection_status !== "active" || nextScopes[scope.claim_request_id]) continue;
@@ -153,18 +188,63 @@ export default function DirOpsClaims() {
     if (response.data?.error) throw new Error(response.data.error);
     setAction(null);
     await load();
+    refreshCounts();
   };
 
+  // „De rezolvat”: cele in asteptare, cele mai vechi primele (sa nu astepte nimeni mai mult decat
+  // trebuie). „Istoric”: restul, cele mai noi primele.
+  const pendingClaims = (claims || [])
+    .filter((claim) => REVIEWABLE_STATUSES.has(claim.status))
+    .sort((a, b) => (a.status === b.status ? String(a.created_date).localeCompare(String(b.created_date)) : a.status === "in_asteptare" ? -1 : 1));
+  const historyClaims = (claims || []).filter((claim) => !REVIEWABLE_STATUSES.has(claim.status));
+  const shownClaims = view === "istoric" ? historyClaims : pendingClaims;
+  const waitingNow = (claims || []).filter((claim) => claim.status === "in_asteptare").length;
+
+  // Ajuns din căutarea globală (?id=): trece pe fila în care se află revendicarea, o evidențiază și
+  // derulează până la ea.
+  const focusedClaim = focusId && claims ? claims.find((claim) => claim.id === focusId) || null : null;
+  const focusedView = focusedClaim ? (REVIEWABLE_STATUSES.has(focusedClaim.status) ? "de_rezolvat" : "istoric") : null;
+  useEffect(() => {
+    if (focusedView && focusedView !== view) go(routeSection, focusedView === "de_rezolvat" ? "" : focusedView, focusId, { replace: true });
+  }, [focusedView, view, go, routeSection, focusId]);
+  useEffect(() => {
+    if (!focusedClaim || focusedView !== view || scrolledTo.current === focusId) return;
+    const element = document.getElementById(`claim-${focusId}`);
+    if (!element) return;
+    scrolledTo.current = focusId;
+    element.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focusedClaim, focusedView, view, focusId, shownClaims.length]);
+
   return (
-    <div data-admin-mobile="true">
+    <div data-admin-mobile="true" className="space-y-4">
+      {claims && (
+        <AdminTabs
+          label="Revendicări"
+          value={view}
+          onChange={setView}
+          tabs={[
+            { key: "de_rezolvat", label: "De rezolvat", count: waitingNow },
+            { key: "istoric", label: "Istoric" },
+          ]}
+        />
+      )}
+      {locationsFailed && (
+        <p role="alert" className="rounded-xl border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
+          Unele locații nu s-au putut încărca, deci pot apărea cu nume lipsă. Reîncarcă pagina.
+        </p>
+      )}
       <AdminCard className="overflow-hidden p-3 sm:p-5">
-        {!claims && <p className="text-sm text-muted-foreground">Se incarca...</p>}
-        {claims && claims.length === 0 && (
-          <EmptyState icon={FileCheck2} title="Nicio revendicare in asteptare." subtitle="Cererile de revendicare a profilurilor vor aparea aici." />
+        {!claims && <AdminLoading label="Se încarcă revendicările…" />}
+        {claims && shownClaims.length === 0 && (
+          <EmptyState
+            icon={FileCheck2}
+            title={view === "istoric" ? "Nicio revendicare în istoric." : "Nicio revendicare de rezolvat."}
+            subtitle={view === "istoric" ? "" : "Cererile de revendicare a profilurilor vor apărea aici."}
+          />
         )}
-        {claims && claims.length > 0 && (
+        {claims && shownClaims.length > 0 && (
           <div className="space-y-3">
-            {claims.map((claim) => {
+            {shownClaims.map((claim) => {
               const location = locations[claim.location_id];
               const payload = parsePayload(claim.submitted_payload);
               const scope = scopeByClaim[claim.id] || null;
@@ -177,14 +257,16 @@ export default function DirOpsClaims() {
               const scoped = Boolean(scope);
               const claimScope = scope?.claim_scope || (legacyLocationScoped ? "location" : payload.claim_scope || "");
               const modeLabel = isDuplicateReview
-                ? "locatie noua — verificare duplicat"
+                ? "Locație nouă — verificare duplicat"
                 : scoped
-                  ? `revendicare ${SCOPE_LABELS[claimScope] || claimScope}`
+                  ? `Revendicare: ${SCOPE_LABELS[claimScope] || claimScope}`
                   : isAccessRequest
-                    ? "solicitare acces la locatie administrata"
+                    ? "Acces la o locație deja administrată"
                     : legacyLocationScoped
-                      ? "revendicare locatie"
-                      : claim.mode || "claim";
+                      ? "Revendicare de locație"
+                      : claim.mode === "new_location"
+                        ? "Locație nouă"
+                        : "Revendicare";
               const requestedRole = requestedRoleForClaim(claim, scope);
               const approvedRole = scope?.approved_membership_role || payload.approved_membership_role || "";
               const canGrantOwner = ownerRoleAllowed(claim, scope, payload);
@@ -194,34 +276,44 @@ export default function DirOpsClaims() {
               const includedIds = includedSelections.map((item) => item.location_id);
               const summarizedSelections = selections.map((selection) => locationSummary(selection, locations));
               return (
-                <div key={claim.id} className="rounded-2xl border border-border bg-secondary/50 p-3.5 sm:p-4">
+                <div
+                  key={claim.id}
+                  id={`claim-${claim.id}`}
+                  className={`scroll-mt-24 rounded-2xl border bg-secondary/50 p-3.5 sm:p-4 ${claim.id === focusId ? "border-foreground ring-2 ring-foreground/20" : "border-border"}`}
+                >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <div className="min-w-0 flex-1">
-                      <div className="break-words text-sm font-semibold">{claim.business_name || location?.name || "Fara nume"}</div>
+                      <div className="break-words text-sm font-semibold">{claim.business_name || location?.name || "Fără nume"}</div>
                       <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
-                        {location ? `${location.name}, ${location.city}` : isDuplicateReview ? "propunere de locatie (necreata)" : "locatie noua / necunoscuta"} · {claim.contact_name} · {claim.email}{claim.phone ? ` · ${claim.phone}` : ""}
+                        {location ? `${location.name}, ${location.city}` : isDuplicateReview ? "propunere de locație (încă necreată)" : "locație nouă / necunoscută"} · {claim.contact_name} · {claim.email}{claim.phone ? ` · ${claim.phone}` : ""}
                       </div>
                       <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
-                        Mod: {modeLabel} · Relatie: {claim.claimant_relationship || "—"} · Acces solicitat: {ROLE_LABELS[requestedRole] || requestedRole}
+                        {modeLabel} · {claimRelationshipLabel(claim.claimant_relationship)} · Acces cerut: {ROLE_LABELS[requestedRole] || requestedRole}
                       </div>
                       {scoped && (
-                        <div className="mt-1 text-xs font-medium text-amber-800">
-                          {includedSelections.length} {includedSelections.length === 1 ? "locatie solicitata" : "locatii solicitate"} · {excludedSelections.length} excluse explicit. Aprobarea poate fi partiala.
+                        <div className="mt-1 text-xs font-medium text-warning">
+                          {plural(includedSelections.length, "locație cerută", "locații cerute")}
+                          {excludedSelections.length > 0 ? ` · ${excludedSelections.length} excluse de furnizor` : ""} · aprobarea poate fi parțială
                         </div>
                       )}
                       {legacyLocationScoped && !scoped && (
-                        <div className="mt-1 text-xs font-medium text-amber-800">
-                          Cererea este limitata la locatia selectata si nu poate acorda administrarea organizatiei.
+                        <div className="mt-1 text-xs font-medium text-warning">
+                          Limitată la locația selectată; nu poate acorda administrarea organizației.
                         </div>
                       )}
                       {approvedRole && (
-                        <div className="mt-1 text-xs text-muted-foreground">Acces aprobat: {ROLE_LABELS[approvedRole] || approvedRole}{scope ? ` · ${scope.approved_location_count || 0} locatii` : ""}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">Acces aprobat: {ROLE_LABELS[approvedRole] || approvedRole}{scope ? ` · ${plural(scope.approved_location_count || 0, "locație", "locații")}` : ""}</div>
                       )}
-                      {claim.review_notes && <div className="mt-1 break-words text-xs text-muted-foreground">Nota: {claim.review_notes}</div>}
+                      {claim.review_notes && <div className="mt-1 break-words text-xs text-muted-foreground">Notă: {claim.review_notes}</div>}
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-                      <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${claim.status === "aprobata" ? "bg-green-100 text-green-800" : claim.status === "respinsa" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{claim.status}</span>
+                      <StatusBadge label={claimStatusLabel(claim.status)} tone={claimStatusTone(claim.status)} className="w-fit" />
+                      {claim.created_date && (
+                        <span className="text-[11px] text-muted-foreground sm:text-right" title={String(claim.created_date)}>
+                          Trimisă {relativeTime(claim.created_date)}
+                        </span>
+                      )}
                       {canReview && (
                         <div className={`grid w-full gap-2 sm:flex sm:w-auto ${scoped ? "grid-cols-3" : "grid-cols-2"}`}>
                           {!isDuplicateReview && (
@@ -245,7 +337,7 @@ export default function DirOpsClaims() {
                               })}
                               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground sm:min-h-9 sm:rounded-md sm:px-3"
                             >
-                              Aproba
+                              Aprobă
                             </button>
                           )}
                           {isDuplicateReview && (
@@ -263,7 +355,7 @@ export default function DirOpsClaims() {
                               })}
                               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-foreground bg-card px-3 text-xs font-semibold sm:min-h-9 sm:rounded-md"
                             >
-                              Aproba ca locatie distincta
+                              Aprobă ca locație distinctă
                             </button>
                           )}
                           {scoped && (
@@ -294,11 +386,13 @@ export default function DirOpsClaims() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <div className="break-words text-xs font-semibold">{item.name}</div>
-                              <div className="mt-1 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{[item.city, item.address].filter(Boolean).join(", ") || "Adresa indisponibila"}</div>
+                              <div className="mt-1 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{[item.city, item.address].filter(Boolean).join(", ") || "Adresă indisponibilă"}</div>
                             </div>
-                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.decision === "included" ? "bg-green-100 text-green-800" : "bg-secondary text-muted-foreground"}`}>{item.decision === "included" ? item.requestStatus : "exclusa"}</span>
+                            {item.decision === "included"
+                              ? <StatusBadge label={selectionRequestLabel(item.requestStatus)} tone={selectionRequestTone(item.requestStatus)} className="shrink-0" />
+                              : <StatusBadge label="Exclusă" tone="neutral" className="shrink-0" />}
                           </div>
-                          <div className="mt-1 text-[10px] text-muted-foreground">{item.claimAction === "request_access" ? "profil administrat" : "profil director"} · legatura {item.linkStatus || "necunoscuta"}</div>
+                          <div className="mt-1 text-[10px] text-muted-foreground">{item.claimAction === "request_access" ? "profil deja administrat" : "profil din director"} · {organizationLinkLabel(item.linkStatus)}</div>
                         </div>
                       ))}
                     </div>
@@ -309,7 +403,7 @@ export default function DirOpsClaims() {
                       adminul nu le vedea. Raman informative: nu intra in aprobare. */}
                   {payload.network_suggestion_accepted === true && Array.isArray(payload.network_suggested_location_ids) && payload.network_suggested_location_ids.length > 0 && (
                     <div className="mt-3 rounded-lg border border-border bg-background p-3 text-xs">
-                      <div className="font-semibold">Furnizorul a semnalat ca aceste locatii fac parte din aceeasi retea</div>
+                      <div className="font-semibold">Furnizorul spune că aceste locații fac parte din aceeași rețea</div>
                       <ul className="mt-1.5 space-y-1 text-muted-foreground">
                         {payload.network_suggested_location_ids.map((locationId) => {
                           const suggested = locations[locationId] || {};
@@ -321,12 +415,15 @@ export default function DirOpsClaims() {
                           );
                         })}
                       </ul>
-                      <p className="mt-1.5 text-muted-foreground">Nu sunt incluse in aceasta aprobare. Daca relatia se confirma, asociaza-le organizatiei din Directory Ops → Mapare organizatii si locatii.</p>
+                      <p className="mt-1.5 text-muted-foreground">
+                        Nu intră în această aprobare. Dacă legătura se confirmă, asociază-le din{" "}
+                        <Link to={adminHref("import_directory", "mapping")} className="font-medium text-foreground underline underline-offset-2">Import director → Mapare și identitate</Link>.
+                      </p>
                     </div>
                   )}
                   {isDuplicateReview && canReview && (
                     <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                      Nicio locatie nu a fost creata inca. Daca este o locatie diferita, foloseste „Aproba ca locatie distincta”: locatia se creeaza din datele trimise, ca ciorna nepublicata, si furnizorul primeste accesul. Daca este aceeasi locatie, respinge cererea si scrie-i furnizorului ce sa faca.
+                      Nu s-a creat nicio locație încă. Dacă e o locație diferită: „Aprobă ca locație distinctă” (se creează ca ciornă nepublicată, iar furnizorul primește acces). Dacă e aceeași: respinge cererea și spune-i furnizorului ce să facă.
                     </p>
                   )}
                 </div>
@@ -337,7 +434,7 @@ export default function DirOpsClaims() {
 
         {action && (
           <DirOpsActionNote
-            title={action.type === "approve" ? "Aproba solicitarea si accesul" : action.type === "approve_distinct" ? "Aproba ca locatie distincta" : action.type === "request_more_info" ? "Solicita informatii suplimentare" : "Respinge solicitarea"}
+            title={action.type === "approve" ? "Aprobă cererea și accesul" : action.type === "approve_distinct" ? "Aprobă ca locație distinctă" : action.type === "request_more_info" ? "Cere informații suplimentare" : "Respinge cererea"}
             noteOptional={action.type === "approve"}
             onConfirm={run}
             onCancel={() => setAction(null)}
@@ -345,27 +442,27 @@ export default function DirOpsClaims() {
             {action.type === "approve_distinct" && (
               <div>
                 <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  Locatia si organizatia se creeaza din datele trimise de furnizor, ca ciorna nepublicata si neverificata, apoi cererea se aproba ca o locatie noua obisnuita.
-                  <span className="mt-1 block">Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole] || action.requestedRole}</span></span>
-                  <span className="mt-1 block font-medium text-foreground">Scrie mai jos de ce este o locatie diferita (minim 15 caractere). Motivul ramane in istoric.</span>
+                  Locația și organizația se creează din datele trimise, ca ciornă nepublicată și neverificată.
+                  <span className="mt-1 block">Acces cerut: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole] || action.requestedRole}</span></span>
+                  <span className="mt-1 block font-medium text-foreground">Scrie mai jos de ce e o locație diferită (minim 15 caractere). Rămâne în istoric.</span>
                 </div>
 
                 {action.newCandidates?.length > 0 && (
-                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    <div className="font-semibold">Locatii asemanatoare aparute dupa trimiterea cererii</div>
+                  <div className="mt-3 rounded-lg border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
+                    <div className="font-semibold">Locații asemănătoare apărute după trimiterea cererii</div>
                     <ul className="mt-2 space-y-1.5">
                       {action.newCandidates.map((candidate) => (
                         <li key={candidate.location_id}>
-                          <span className="font-semibold">{candidate.name || "Locatie fara nume"}</span>
+                          <span className="font-semibold">{candidate.name || "Locație fără nume"}</span>
                           {[candidate.organization_name, candidate.locality_name, candidate.address].filter(Boolean).length > 0 && ` · ${[candidate.organization_name, candidate.locality_name, candidate.address].filter(Boolean).join(" · ")}`}
-                          {candidate.matched_fields?.length > 0 && <span className="block text-amber-800">Potrivire: {candidate.matched_fields.join(", ")}</span>}
+                          {candidate.matched_fields?.length > 0 && <span className="block text-warning">Potrivire: {candidate.matched_fields.join(", ")}</span>}
                         </li>
                       ))}
                     </ul>
                     <label className="mt-2 flex cursor-pointer items-start gap-2">
                       <input
                         type="checkbox"
-                        className="mt-0.5 h-4 w-4"
+                        className="mt-0.5 h-4 w-4 shrink-0"
                         checked={action.newCandidates.every((candidate) => action.acknowledgedIds?.includes(candidate.location_id))}
                         onChange={(event) => setAction((current) => ({
                           ...current,
@@ -374,12 +471,12 @@ export default function DirOpsClaims() {
                             : (current.acknowledgedIds || []).filter((id) => !current.newCandidates.some((candidate) => candidate.location_id === id)),
                         }))}
                       />
-                      <span>Am verificat: sunt locatii diferite de cea propusa.</span>
+                      <span>Am verificat: sunt locații diferite de cea propusă.</span>
                     </label>
                   </div>
                 )}
 
-                <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
+                <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat după aprobare</label>
                 <select
                   id="approved-role"
                   value={action.approvedRole}
@@ -392,23 +489,23 @@ export default function DirOpsClaims() {
             )}
             {action.type === "reject" && action.duplicateReview && (
               <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                Furnizorul vede motivul in contul lui. Daca este aceeasi locatie, spune-i ce sa faca: sa revendice profilul existent (daca este public) sau ca propunerea existenta este deja in verificare.
+                Furnizorul vede motivul în contul lui. Dacă e aceeași locație, spune-i ce să facă: să revendice profilul existent (dacă e public) sau că propunerea există deja în verificare.
               </div>
             )}
             {action.type === "approve" && (
               <div>
                 <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole]}</span>
-                  {action.isAccessRequest && <span className="mt-1 block">Cel putin un profil este deja administrat; accesul ramane supus verificarii.</span>}
-                  {action.locationScoped && <span className="mt-1 block font-medium text-amber-800">Acest scope nu poate acorda rol de owner al organizatiei.</span>}
+                  Acces cerut: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole] || action.requestedRole}</span>
+                  {action.isAccessRequest && <span className="mt-1 block">Cel puțin un profil e deja administrat; accesul rămâne supus verificării.</span>}
+                  {action.locationScoped && <span className="mt-1 block font-medium text-warning">Cererea e limitată la o locație: nu poate acorda rolul de proprietar al organizației.</span>}
                   {action.claimScope === "organization" && action.excludedCount > 0 && (
-                    <span className="mt-1 block font-medium text-amber-800">Exista locatii excluse. Chiar cu rol de owner, accesul ramane limitat la locatiile aprobate si nu poate fi sincronizat automat la intreaga organizatie.</span>
+                    <span className="mt-1 block font-medium text-warning">Există locații excluse: accesul rămâne limitat la cele aprobate și nu se extinde automat la toată organizația.</span>
                   )}
                 </div>
 
                 {action.scoped && action.includedLocations?.length > 0 && (
                   <div className="mt-3">
-                    <div className="text-xs font-semibold text-muted-foreground">Locatii aprobate</div>
+                    <div className="text-xs font-semibold text-muted-foreground">Locații aprobate</div>
                     <div className="mt-2 space-y-2">
                       {action.includedLocations.map((item) => {
                         const checked = action.approvedLocationIds.includes(item.id);
@@ -425,10 +522,10 @@ export default function DirOpsClaims() {
                                   ? [...new Set([...current.approvedLocationIds, item.id])]
                                   : current.approvedLocationIds.filter((id) => id !== item.id),
                               }))}
-                              className="mt-0.5 h-4 w-4"
+                              className="mt-0.5 h-4 w-4 shrink-0"
                             />
                             <span className="min-w-0 flex-1">
-                              <span className="block break-words font-semibold text-foreground">{item.name}{primary ? " · principala" : ""}</span>
+                              <span className="block break-words font-semibold text-foreground">{item.name}{primary ? " · principală" : ""}</span>
                               <span className="mt-0.5 block break-words text-muted-foreground">{[item.city, item.address].filter(Boolean).join(", ")}</span>
                             </span>
                           </label>
@@ -438,7 +535,7 @@ export default function DirOpsClaims() {
                   </div>
                 )}
 
-                <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
+                <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat după aprobare</label>
                 <select
                   id="approved-role"
                   value={action.approvedRole}
@@ -447,7 +544,7 @@ export default function DirOpsClaims() {
                 >
                   {(action.roleOptions || LOCATION_ROLE_OPTIONS).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul si poate elimina locatii din aprobarea finala. Nu se poate adauga o locatie care nu a fost solicitata.</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Confirmi rolul și poți scoate locații din aprobare. Nu poți adăuga o locație care nu a fost cerută.</p>
               </div>
             )}
           </DirOpsActionNote>

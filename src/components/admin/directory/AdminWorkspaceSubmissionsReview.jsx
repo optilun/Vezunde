@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
   CheckCircle2,
@@ -11,7 +11,16 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminDecisionBar from "@/components/admin/ui/AdminDecisionBar";
+import AdminHint from "@/components/admin/ui/AdminHint";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { mergeWorkspacePending } from "@/lib/adminCounts";
+import { fetchByIds } from "@/lib/adminEntityBatch";
+import { fullDateTime, oldestFirst, plural, waitingInfo } from "@/lib/adminFormat";
 import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 import {
@@ -21,31 +30,31 @@ import {
 } from "@/lib/providerLocationFunctionalUnits";
 
 const SECTION_LABELS = {
-  public_profile: "Profil public organizatie",
-  location_details: "Date locatie",
+  public_profile: "Profil public organizație",
+  location_details: "Date locație",
   operating_hours: "Program",
-  services: "Servicii si structura",
-  team: "Specialisti",
-  media: "Fotografie locatie",
+  services: "Servicii și structură",
+  team: "Specialiști",
+  media: "Fotografie locație",
   article: "Articol",
 };
 
 const LOCATION_FIELDS = [
-  ["public_display_name", "Nume public locatie"],
-  ["address", "Adresa"],
+  ["public_display_name", "Nume public locație"],
+  ["address", "Adresă"],
   ["city", "Localitate"],
   ["county", "Județ"],
   ["locality_siruta_code", "Codul localității"],
-  ["public_phone", "Telefon public locatie"],
-  ["public_email", "Email public locatie"],
+  ["public_phone", "Telefon public locație"],
+  ["public_email", "Email public locație"],
   ["lat", "Latitudine"],
   ["lng", "Longitudine"],
   ["place_id", "Google Place ID"],
-  ["map_precision", "Confirmarea poziției pe hartă"],
+  ["map_precision", "Poziția pe hartă"],
 ];
 
 const PUBLIC_PROFILE_FIELDS = [
-  ["public_display_name", "Nume public organizatie"],
+  ["public_display_name", "Nume public organizație"],
   ["public_description", "Descriere"],
   ["public_phone", "Telefon general"],
   ["public_email", "Email general"],
@@ -55,10 +64,22 @@ const PUBLIC_PROFILE_FIELDS = [
   ["linkedin_url", "LinkedIn"],
 ];
 
+const OPERATING_HOURS_FIELDS = [
+  ["opening_hours", "Program de lucru"],
+  ["saturday_hours", "Program sâmbătă"],
+  ["availability_status", "Disponibilitate"],
+];
+
 const SERVICE_LABELS = Object.values(SERVICE_GROUPS || {}).reduce(
   (accumulator, group) => ({ ...accumulator, ...(group.ids || {}) }),
   {},
 );
+
+const DECISION_FLASH = {
+  approve: "Aprobat",
+  request_more_info: "Cerere de informații trimisă",
+  reject: "Respins",
+};
 
 function parsePayload(raw) {
   try { return JSON.parse(raw || "{}") || {}; } catch { return {}; }
@@ -67,7 +88,7 @@ function parsePayload(raw) {
 function text(value) {
   if (value === "exact") return "Poziție confirmată";
   if (value === "approximate") return "Poziție de confirmat";
-  if (value === null || value === undefined || value === "") return "-";
+  if (value === null || value === undefined || value === "") return "—";
   if (Array.isArray(value)) return `${value.length} elemente`;
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
@@ -91,40 +112,76 @@ function roleLabel(role) {
   return role || "Specialist";
 }
 
+// 2026-10-07: se văd doar câmpurile care chiar se schimbă; restul stau în spatele unui comutator.
+// Pe telefon, fiecare rând devine „Acum / Propus” pe două linii (nu trei coloane înghesuite).
 function FieldComparison({ fields, payload, current }) {
+  const [showAll, setShowAll] = useState(false);
+  const rows = fields.map(([key, label]) => {
+    const proposedGiven = Object.prototype.hasOwnProperty.call(payload, key);
+    const before = text(current?.[key]);
+    const after = proposedGiven ? text(payload[key]) : before;
+    return { key, label, before, after, changed: proposedGiven && after !== before };
+  });
+  const changedRows = rows.filter((row) => row.changed);
+  const unchangedCount = rows.length - changedRows.length;
+  const visibleRows = showAll ? rows : changedRows;
+
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-border">
-      <table className="w-full text-left text-xs">
-        <thead className="bg-secondary/60 text-muted-foreground">
-          <tr><th className="px-3 py-2">Camp</th><th className="px-3 py-2">Publicat acum</th><th className="px-3 py-2">Propus</th></tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {fields.map(([key, label]) => (
-            <tr key={key}>
-              <td className="px-3 py-2 font-semibold">{label}</td>
-              <td className="px-3 py-2 text-muted-foreground">{text(current?.[key])}</td>
-              <td className="px-3 py-2 font-medium">{Object.prototype.hasOwnProperty.call(payload, key) ? text(payload[key]) : "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="mt-3">
+      {changedRows.length === 0 && (
+        <AdminNotice tone="info">Nicio valoare nu diferă de ce e publicat acum.</AdminNotice>
+      )}
+      {visibleRows.length > 0 && (
+        <div className="mt-2 overflow-hidden rounded-xl border border-border">
+          <div className="hidden bg-secondary/60 px-3 py-2 text-xs font-semibold text-muted-foreground sm:grid sm:grid-cols-[11rem_1fr_1fr] sm:gap-3">
+            <span>Câmp</span>
+            <span>Publicat acum</span>
+            <span>Propus</span>
+          </div>
+          <ul className="divide-y divide-border">
+            {visibleRows.map((row) => (
+              <li key={row.key} className="grid gap-0.5 px-3 py-2 text-xs sm:grid-cols-[11rem_1fr_1fr] sm:gap-3">
+                <span className="font-semibold">{row.label}</span>
+                <span className="break-words text-muted-foreground">
+                  <span className="font-medium sm:hidden">Acum: </span>
+                  {row.before}
+                </span>
+                <span className={row.changed ? "break-words font-semibold text-foreground" : "break-words text-muted-foreground"}>
+                  <span className="font-medium text-muted-foreground sm:hidden">Propus: </span>
+                  {row.changed ? row.after : "neschimbat"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {unchangedCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll((value) => !value)}
+          aria-expanded={showAll}
+          className="mt-2 inline-flex min-h-9 items-center rounded-lg px-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          {showAll ? "Ascunde câmpurile neschimbate" : `Arată și câmpurile neschimbate (${unchangedCount})`}
+        </button>
+      )}
     </div>
   );
 }
 
 function MediaImage({ url, label, emptyText, proposed = false }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border ${proposed ? "border-blue-200 bg-blue-50/40" : "border-border bg-card"}`}>
+    <div className={`overflow-hidden rounded-2xl border ${proposed ? "border-info-border bg-info-soft/40" : "border-border bg-card"}`}>
       <div className="flex items-center justify-between gap-3 border-b border-inherit px-3 py-2.5">
         <span className="text-xs font-bold">{label}</span>
-        {proposed && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">Propusa</span>}
+        {proposed && <StatusBadge label="Propusă" tone="info" />}
       </div>
-      <div className="aspect-[4/3] bg-secondary/30">
+      <div className="aspect-[4/3] max-h-64 bg-secondary/30">
         {url ? (
-          <img src={url} alt={label} className="h-full w-full object-cover" />
+          <img src={url} alt={label} className="h-full w-full object-contain" />
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground">
-            <ImageIcon className="h-7 w-7" />
+            <ImageIcon className="h-7 w-7" aria-hidden="true" />
             <p className="mt-2 text-xs">{emptyText}</p>
           </div>
         )}
@@ -139,75 +196,81 @@ function MediaPreview({ payload, current }) {
   const removePhoto = payload.remove_photo === true;
 
   return (
-    <div className="mt-3 rounded-2xl border border-border bg-secondary/20 p-3">
-      <div className="mb-3">
-        <div className="text-xs font-bold">Comparatie fotografie locatie</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Verifica fotografia publicata si fotografia trimisa de furnizor. Codul intern si URL-ul fisierului nu sunt afisate.
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
+    <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <MediaImage
+        url={currentUrl}
+        label="Fotografia publicată acum"
+        emptyText="Locația nu are o fotografie publicată."
+      />
+      {removePhoto ? (
+        <div className="flex aspect-[4/3] max-h-64 flex-col items-center justify-center rounded-2xl border border-danger-border bg-danger-soft px-6 text-center text-danger">
+          <XCircle className="h-8 w-8" aria-hidden="true" />
+          <div className="mt-3 text-sm font-bold">Eliminarea fotografiei</div>
+          <p className="mt-1 text-xs leading-relaxed">Furnizorul cere eliminarea fotografiei publicate.</p>
+        </div>
+      ) : (
         <MediaImage
-          url={currentUrl}
-          label="Fotografie publicata acum"
-          emptyText="Locatia nu are o fotografie publicata."
+          url={proposedUrl}
+          label="Fotografia trimisă spre aprobare"
+          emptyText="Fotografia propusă nu poate fi încărcată."
+          proposed
         />
-        {removePhoto ? (
-          <div className="flex aspect-[4/3] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-6 text-center text-red-900">
-            <XCircle className="h-8 w-8" />
-            <div className="mt-3 text-sm font-bold">Eliminarea fotografiei</div>
-            <p className="mt-1 text-xs leading-relaxed">Furnizorul solicita eliminarea fotografiei publicate.</p>
-          </div>
-        ) : (
-          <MediaImage
-            url={proposedUrl}
-            label="Fotografie trimisa spre aprobare"
-            emptyText="Fotografia propusa nu poate fi incarcata."
-            proposed
-          />
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
+// Casetele goale („Niciun spațiu declarat”) nu mai ocupă loc: se arată doar ce a declarat furnizorul.
 function OperationalContext({ context }) {
   if (!context) return null;
   const units = context.functional_units || [];
   const capabilities = context.capabilities || [];
   const links = context.resource_links || {};
+  const linkCounts = [
+    ["Specialiști", links.professionals?.length || 0],
+    ["Echipamente", links.equipment?.length || 0],
+    ["Facilități", links.facilities?.length || 0],
+  ];
+  const hasLinks = linkCounts.some(([, count]) => count > 0);
+  if (units.length === 0 && capabilities.length === 0 && !hasLinks) return null;
   return (
     <div className="mt-3 grid gap-3 lg:grid-cols-3">
-      <div className="rounded-xl border border-border bg-card p-3">
-        <div className="flex items-center gap-2 text-xs font-bold"><Building2 className="h-4 w-4 text-muted-foreground" /> Spatii declarate</div>
-        <div className="mt-2 space-y-1.5">
-          {units.length > 0 ? units.map((item) => (
-            <div key={item.unit_key} className="rounded-lg bg-secondary/35 px-2.5 py-2 text-[11px]">
-              <strong>{getFunctionalUnitDefinition(item.unit_key)?.title || item.unit_key}</strong>
-              <div className="mt-0.5 text-muted-foreground">{CARE_SETTINGS[item.care_setting]?.label || item.care_setting}</div>
-            </div>
-          )) : <p className="text-[11px] text-muted-foreground">Niciun spatiu declarat.</p>}
+      {units.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="flex items-center gap-2 text-xs font-bold"><Building2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Spații declarate</div>
+          <div className="mt-2 space-y-1.5">
+            {units.map((item) => (
+              <div key={item.unit_key} className="rounded-lg bg-secondary/35 px-2.5 py-2 text-[11px]">
+                <strong>{getFunctionalUnitDefinition(item.unit_key)?.title || item.unit_key}</strong>
+                <div className="mt-0.5 text-muted-foreground">{CARE_SETTINGS[item.care_setting]?.label || item.care_setting}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="rounded-xl border border-border bg-card p-3">
-        <div className="flex items-center gap-2 text-xs font-bold"><PackageOpen className="h-4 w-4 text-muted-foreground" /> Capabilitati</div>
-        <div className="mt-2 space-y-1.5">
-          {capabilities.length > 0 ? capabilities.map((item) => (
-            <div key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-lg bg-secondary/35 px-2.5 py-2 text-[11px]">
-              <strong>{getCapabilityDefinition(item.capability_key)?.title || item.capability_key}</strong>
-              <div className="mt-0.5 text-muted-foreground">in {getFunctionalUnitDefinition(item.parent_unit_key)?.shortTitle || item.parent_unit_key}</div>
-            </div>
-          )) : <p className="text-[11px] text-muted-foreground">Nicio capabilitate declarata.</p>}
+      )}
+      {capabilities.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="flex items-center gap-2 text-xs font-bold"><PackageOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Capabilități</div>
+          <div className="mt-2 space-y-1.5">
+            {capabilities.map((item) => (
+              <div key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-lg bg-secondary/35 px-2.5 py-2 text-[11px]">
+                <strong>{getCapabilityDefinition(item.capability_key)?.title || item.capability_key}</strong>
+                <div className="mt-0.5 text-muted-foreground">în {getFunctionalUnitDefinition(item.parent_unit_key)?.shortTitle || item.parent_unit_key}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="rounded-xl border border-border bg-card p-3">
-        <div className="flex items-center gap-2 text-xs font-bold"><Link2 className="h-4 w-4 text-muted-foreground" /> Resurse asociate</div>
-        <div className="mt-2 space-y-1.5 text-[11px]">
-          <div className="flex justify-between rounded-lg bg-secondary/35 px-2.5 py-2"><span>Specialisti</span><strong>{links.professionals?.length || 0}</strong></div>
-          <div className="flex justify-between rounded-lg bg-secondary/35 px-2.5 py-2"><span>Echipamente</span><strong>{links.equipment?.length || 0}</strong></div>
-          <div className="flex justify-between rounded-lg bg-secondary/35 px-2.5 py-2"><span>Facilitati</span><strong>{links.facilities?.length || 0}</strong></div>
+      )}
+      {hasLinks && (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="flex items-center gap-2 text-xs font-bold"><Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Resurse asociate</div>
+          <div className="mt-2 space-y-1.5 text-[11px]">
+            {linkCounts.map(([label, count]) => (
+              <div key={label} className="flex justify-between rounded-lg bg-secondary/35 px-2.5 py-2"><span>{label}</span><strong>{count}</strong></div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -215,17 +278,24 @@ function OperationalContext({ context }) {
 function ProviderDeclarationNotice({ review }) {
   const selectedCount = review?.summary?.selected_count || review?.services?.length || 0;
   return (
-    <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-blue-950">
-      <div className="flex items-start gap-2">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-        <div>
-          <div className="text-xs font-bold">Servicii declarate de furnizor</div>
-          <p className="mt-1 text-[11px] leading-relaxed">
-            Aprobarea administrativă verifică doar coerența modificării. Nu cerem acte, specialiști, echipamente sau alte dovezi pentru publicarea serviciilor în această etapă.
-          </p>
-          {selectedCount > 0 && <p className="mt-1.5 text-[11px] font-semibold">{selectedCount} opțiuni declarate</p>}
-        </div>
-      </div>
+    <div className="mt-3 flex items-center gap-2 rounded-xl border border-info-border bg-info-soft px-3 py-2 text-xs text-info">
+      <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 flex-1">
+        <strong>Servicii declarate de furnizor.</strong> Aprobarea verifică doar coerența.
+        {selectedCount > 0 && <> {plural(selectedCount, "opțiune declarată", "opțiuni declarate")}.</>}
+      </span>
+      <AdminHint label="Ce verifică aprobarea serviciilor">
+        Nu cerem acte, specialiști, echipamente sau alte dovezi pentru publicarea serviciilor în această etapă.
+      </AdminHint>
+    </div>
+  );
+}
+
+function RemovalChips({ title, children }) {
+  return (
+    <div className="mt-3">
+      <div className="text-[11px] font-semibold text-warning">{title}</div>
+      <div className="mt-1 flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
 }
@@ -234,18 +304,34 @@ function OperationalRemovalPreview({ payload }) {
   const units = payload.removal_unit_keys || [];
   const capabilities = payload.removal_capabilities || [];
   const resources = payload.resource_removals || {};
-  const professionalCount = resources.professionals?.length || 0;
-  const equipmentCount = resources.equipment?.length || 0;
-  const facilityCount = resources.facilities?.length || 0;
-  const total = units.length + capabilities.length + professionalCount + equipmentCount + facilityCount;
+  const counts = [
+    ["Specialiști", resources.professionals?.length || 0],
+    ["Echipamente", resources.equipment?.length || 0],
+    ["Facilități", resources.facilities?.length || 0],
+  ];
+  const total = units.length + capabilities.length + counts.reduce((sum, [, count]) => sum + count, 0);
   if (total === 0) return null;
   return (
-    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-      <div className="text-xs font-bold text-amber-950">Eliminari operationale solicitate</div>
-      <p className="mt-1 text-[11px] leading-relaxed text-amber-900">Elementele raman in registrul aprobat pana la decizie.</p>
-      {units.length > 0 && <div className="mt-3"><div className="text-[11px] font-semibold text-amber-900">Spatii</div><div className="mt-1 flex flex-wrap gap-1.5">{units.map((unitKey) => <span key={unitKey} className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{getFunctionalUnitDefinition(unitKey)?.title || unitKey}</span>)}</div></div>}
-      {capabilities.length > 0 && <div className="mt-3"><div className="text-[11px] font-semibold text-amber-900">Activitati speciale</div><div className="mt-1 flex flex-wrap gap-1.5">{capabilities.map((item) => <span key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{getCapabilityDefinition(item.capability_key)?.title || item.capability_key}</span>)}</div></div>}
-      {(professionalCount + equipmentCount + facilityCount) > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-3"><div className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-amber-900">Specialisti <strong className="float-right">{professionalCount}</strong></div><div className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-amber-900">Echipamente <strong className="float-right">{equipmentCount}</strong></div><div className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-amber-900">Facilitati <strong className="float-right">{facilityCount}</strong></div></div>}
+    <div className="mt-3 rounded-xl border border-warning-border bg-warning-soft p-3">
+      <div className="text-xs font-bold text-warning">Eliminări solicitate</div>
+      <p className="mt-1 text-[11px] leading-relaxed text-warning">Rămân în registrul aprobat până la decizie.</p>
+      {units.length > 0 && (
+        <RemovalChips title="Spații">
+          {units.map((unitKey) => <span key={unitKey} className="rounded-full border border-warning-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground">{getFunctionalUnitDefinition(unitKey)?.title || unitKey}</span>)}
+        </RemovalChips>
+      )}
+      {capabilities.length > 0 && (
+        <RemovalChips title="Activități speciale">
+          {capabilities.map((item) => <span key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-full border border-warning-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground">{getCapabilityDefinition(item.capability_key)?.title || item.capability_key}</span>)}
+        </RemovalChips>
+      )}
+      {counts.some(([, count]) => count > 0) && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {counts.filter(([, count]) => count > 0).map(([label, count]) => (
+            <div key={label} className="rounded-lg bg-card px-2.5 py-2 text-[11px]">{label} <strong className="float-right">{count}</strong></div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -255,6 +341,7 @@ function ServicesPreview({ payload, review }) {
   const removals = payload.removal_ids || {};
   const suggestions = payload.suggestions || payload.custom_requests || [];
   const groups = [...new Set([...Object.keys(selected), ...Object.keys(removals)])];
+  const hasGroups = groups.some((group) => (selected[group] || []).length || (removals[group] || []).length);
   return (
     <>
       <OperationalContext context={review?.operational_context || {
@@ -265,21 +352,38 @@ function ServicesPreview({ payload, review }) {
         resource_links: payload.resource_links,
       }} />
       <OperationalRemovalPreview payload={payload} />
-      <div className="mt-3 space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
-        {groups.map((group) => {
-          const add = selected[group] || [];
-          const remove = removals[group] || [];
-          if (!add.length && !remove.length) return null;
-          return (
-            <div key={group} className="rounded-xl border border-border bg-card p-3">
-              <div className="text-xs font-bold">{SERVICE_GROUPS[group]?.label || group}</div>
-              {add.length > 0 && <div className="mt-2"><div className="text-[11px] font-semibold text-blue-700">De aprobat si adaugat</div><div className="mt-1 flex flex-wrap gap-1.5">{add.map((id) => <span key={id} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">{serviceLabel(id)}</span>)}</div></div>}
-              {remove.length > 0 && <div className="mt-2"><div className="text-[11px] font-semibold text-red-700">De eliminat</div><div className="mt-1 flex flex-wrap gap-1.5">{remove.map((id) => <span key={id} className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-800">{serviceLabel(id)}</span>)}</div></div>}
+      {(hasGroups || suggestions.length > 0) && (
+        <div className="mt-3 space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
+          {groups.map((group) => {
+            const add = selected[group] || [];
+            const remove = removals[group] || [];
+            if (!add.length && !remove.length) return null;
+            return (
+              <div key={group} className="rounded-xl border border-border bg-card p-3">
+                <div className="text-xs font-bold">{SERVICE_GROUPS[group]?.label || group}</div>
+                {add.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-[11px] font-semibold text-info">De aprobat și adăugat</div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">{add.map((id) => <span key={id} className="rounded-full border border-info-border bg-info-soft px-2.5 py-1 text-[11px] font-semibold text-info">{serviceLabel(id)}</span>)}</div>
+                  </div>
+                )}
+                {remove.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-[11px] font-semibold text-danger">De eliminat</div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">{remove.map((id) => <span key={id} className="rounded-full border border-danger-border bg-danger-soft px-2.5 py-1 text-[11px] font-semibold text-danger">{serviceLabel(id)}</span>)}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {suggestions.length > 0 && (
+            <div className="rounded-xl border border-warning-border bg-warning-soft p-3">
+              <div className="text-xs font-bold text-warning">Propuneri pentru catalog</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">{suggestions.map((item, index) => <span key={`${item.label}-${index}`} className="rounded-full border border-warning-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground">{item.label}</span>)}</div>
             </div>
-          );
-        })}
-        {suggestions.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="text-xs font-bold text-amber-900">Propuneri pentru catalog</div><div className="mt-2 flex flex-wrap gap-1.5">{suggestions.map((item, index) => <span key={`${item.label}-${index}`} className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{item.label}</span>)}</div></div>}
-      </div>
+          )}
+        </div>
+      )}
       <ProviderDeclarationNotice review={review} />
     </>
   );
@@ -292,10 +396,10 @@ function TeamPreview({ payload }) {
     <div className="mt-3 space-y-2 rounded-xl border border-border bg-secondary/20 p-3">
       {[...invitations, ...members].length > 0 ? (
         <>
-          {invitations.map((item, index) => <div key={`${item.email}-${index}`} className="text-xs"><strong>{roleLabel(item.professional_role)}</strong> - {item.email}</div>)}
-          {members.map((item, index) => <div key={`${item.full_name}-${index}`} className="text-xs"><strong>{item.full_name}</strong> - {roleLabel(item.professional_type)}</div>)}
+          {invitations.map((item, index) => <div key={`${item.email}-${index}`} className="text-xs"><strong>{roleLabel(item.professional_role)}</strong> · invitat: {item.email}</div>)}
+          {members.map((item, index) => <div key={`${item.full_name}-${index}`} className="text-xs"><strong>{item.full_name}</strong> · {roleLabel(item.professional_type)}</div>)}
         </>
-      ) : <p className="text-xs text-muted-foreground">Nu exista specialisti in payload.</p>}
+      ) : <p className="text-xs text-muted-foreground">Cererea nu conține specialiști.</p>}
     </div>
   );
 }
@@ -304,77 +408,116 @@ function Comparison({ submission, location, organization }) {
   const payload = parsePayload(submission.payload_json);
   if (submission.section === "location_details") return <FieldComparison fields={LOCATION_FIELDS} payload={payload} current={location} />;
   if (submission.section === "public_profile") return <FieldComparison fields={PUBLIC_PROFILE_FIELDS} payload={payload} current={organization} />;
+  if (submission.section === "operating_hours") return <FieldComparison fields={OPERATING_HOURS_FIELDS} payload={payload} current={location} />;
   if (submission.section === "services") return <ServicesPreview payload={payload} review={submission.prerequisite_review} />;
   if (submission.section === "team") return <TeamPreview payload={payload} />;
   if (submission.section === "media" && payload.kind === "location_photo") return <MediaPreview payload={payload} current={location} />;
-  return <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-secondary/40 p-3 text-xs">{JSON.stringify(payload, null, 2)}</pre>;
+  return (
+    <details className="mt-3 rounded-xl border border-border bg-secondary/30 px-3 py-2 text-xs">
+      <summary className="cursor-pointer font-semibold">Datele trimise (format tehnic)</summary>
+      <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap">{JSON.stringify(payload, null, 2)}</pre>
+    </details>
+  );
 }
 
 function SubmissionCard({ submission, location, organization, busy, onDecision }) {
-  const [note, setNote] = useState("");
   const payload = useMemo(() => parsePayload(submission.payload_json), [submission.payload_json]);
-  const locationName = location?.public_display_name || location?.name || "Locatie necunoscuta";
-  const organizationName = organization?.public_display_name || organization?.name || "Organizatie necunoscuta";
+  const locationName = location?.public_display_name || location?.name || "Locație necunoscută";
+  const organizationName = organization?.public_display_name || organization?.name || "Organizație necunoscută";
   const subjectName = submission.section === "public_profile" ? organizationName : locationName;
-  const title = payload.public_display_name || payload.title || subjectName;
+  const title = submission.section === "article" ? payload.title || subjectName : subjectName;
+  const waiting = waitingInfo(submission.submitted_at);
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <article className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-bold">{title}</h3>
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SECTION_LABELS[submission.section] || submission.section}</span>
+            <StatusBadge label={SECTION_LABELS[submission.section] || submission.section} />
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{subjectName} - trimisa {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString("ro-RO") : "la o data necunoscuta"}</p>
+          {submission.section !== "public_profile" && organization && (
+            <p className="mt-1 text-xs text-muted-foreground">{organizationName}</p>
+          )}
         </div>
-        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-800">In verificare</span>
+        {waiting ? (
+          <StatusBadge
+            label={`Trimisă ${waiting.label}`}
+            tone={waiting.tone}
+            className="self-start"
+          />
+        ) : (
+          <StatusBadge label="Dată necunoscută" />
+        )}
       </div>
+      {submission.submitted_at && (
+        <p className="sr-only">Trimisă la {fullDateTime(submission.submitted_at)}</p>
+      )}
       <Comparison submission={submission} location={location} organization={organization} />
-      <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nota admin. Obligatorie pentru respingere sau cerere de informatii." rows={2} className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none" />
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button disabled={busy} onClick={() => onDecision(submission, "approve", note)} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" /> Aproba</button>
-        <button disabled={busy} onClick={() => onDecision(submission, "request_more_info", note)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"><Info className="h-3.5 w-3.5" /> Cere informatii</button>
-        <button disabled={busy} onClick={() => onDecision(submission, "reject", note)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><XCircle className="h-3.5 w-3.5" /> Respinge</button>
-      </div>
-    </div>
+      <AdminDecisionBar
+        className="mt-4"
+        busy={busy}
+        onDecide={(action, note) => onDecision(submission, action, note)}
+        actions={[
+          { key: "approve", label: "Aprobă", icon: CheckCircle2, tone: "primary", note: "optional" },
+          { key: "request_more_info", label: "Cere informații", icon: Info, note: "required", noteLabel: "Ce informații lipsesc?", notePlaceholder: "Furnizorul vede acest mesaj.", noteRequiredMessage: "Scrie ce informații trebuie completate.", confirmLabel: "Trimite cererea" },
+          { key: "reject", label: "Respinge", icon: XCircle, tone: "danger", note: "required", noteLabel: "Motivul respingerii", notePlaceholder: "Furnizorul vede acest motiv.", noteRequiredMessage: "Scrie motivul respingerii.", confirmLabel: "Respinge modificarea" },
+        ]}
+      />
+    </article>
   );
 }
 
 export default function AdminWorkspaceSubmissionsReview() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [submissions, setSubmissions] = useState(null);
   const [locations, setLocations] = useState({});
   const [organizations, setOrganizations] = useState({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [flash, setFlash] = useState("");
 
+  // 2026-10-07 (audit admin): nu mai citeste tot directorul (2 x 5.000 de randuri, la fiecare
+  // deschidere si dupa fiecare decizie) doar pentru cateva nume; se citesc numai locatiile si
+  // organizatiile cererilor in asteptare.
+  // Doar ultima reîncărcare contează (după decizii succesive, una mai veche nu o suprascrie pe cea nouă).
+  const loadSeq = useRef(0);
   const load = async () => {
     setError("");
-    const [pendingResponse, organizationResponse, locationRows, organizationRows] = await Promise.all([
+    const seq = ++loadSeq.current;
+    const [pendingResponse, organizationResponse] = await Promise.all([
       base44.functions.invoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
       base44.functions.invoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
-      base44.entities.ProviderLocation.list("name", 5000).catch(() => []),
-      base44.entities.ProviderOrganization.list("name", 5000).catch(() => []),
     ]);
     const errors = [pendingResponse.data?.error, organizationResponse.data?.error].filter(Boolean);
     if (errors.length > 0) setError(errors.join(" "));
-    const generalPending = (pendingResponse.data?.submissions || []).filter((submission) => !(submission.section === "public_profile" && submission.organization_id));
-    const organizationPending = organizationResponse.data?.submissions || [];
-    const merged = [...generalPending, ...organizationPending].filter((submission, index, rows) => rows.findIndex((item) => item.id === submission.id) === index);
+    const merged = oldestFirst(
+      mergeWorkspacePending(pendingResponse.data?.submissions, organizationResponse.data?.submissions),
+      (submission) => submission.submitted_at || submission.created_date,
+    );
     const enriched = await Promise.all(merged.map(async (submission) => {
       if (submission.section !== "services") return submission;
       const detail = await base44.functions.invoke("adminServiceConfigurationReview", { action: "get", submission_id: submission.id }).catch(() => ({ data: {} }));
       return { ...submission, prerequisite_review: detail.data?.prerequisite_review || null };
     }));
+    const [locationResult, organizationResult] = await Promise.all([
+      fetchByIds(base44.entities.ProviderLocation, merged.map((submission) => submission.location_id)),
+      fetchByIds(base44.entities.ProviderOrganization, merged.map((submission) => submission.organization_id)),
+    ]);
+    if (seq !== loadSeq.current) return;
     setSubmissions(enriched);
-    setLocations(Object.fromEntries(locationRows.map((location) => [location.id, location])));
-    setOrganizations(Object.fromEntries(organizationRows.map((organization) => [organization.id, organization])));
+    setLocations(locationResult.byId);
+    setOrganizations(organizationResult.byId);
+    if (locationResult.failed || organizationResult.failed) {
+      setError((current) => [current, "Unele nume de locații sau organizații nu s-au putut încărca."].filter(Boolean).join(" "));
+    }
   };
 
   useEffect(() => { load(); }, []);
 
+  // Aruncă la eroare: bara de decizie arată mesajul chiar sub butoanele apăsate. După reușită,
+  // elementul dispare imediat din listă (fără să aștepte reîncărcarea) și lista se reîmprospătează în fundal.
   const decide = async (submission, action, note) => {
     setBusy(true);
-    setError("");
     try {
       const payload = parsePayload(submission.payload_json);
       const functionName = submission.section === "public_profile" && submission.organization_id
@@ -384,28 +527,33 @@ export default function AdminWorkspaceSubmissionsReview() {
           : "adminServiceConfigurationReview";
       const response = await base44.functions.invoke(functionName, { action, submission_id: submission.id, note: note || "" });
       if (response.data?.error) throw new Error(response.data.error);
-      await load();
-    } catch (requestError) {
-      setError(requestError.response?.data?.error || requestError.message || "Nu am putut procesa decizia.");
     } finally {
       setBusy(false);
     }
+    const remaining = Math.max(0, (submissions?.length || 1) - 1);
+    setSubmissions((current) => (current || []).filter((item) => item.id !== submission.id));
+    setFlash(`${DECISION_FLASH[action] || "Decizie aplicată"}. ${remaining === 0 ? "Coada e goală." : `Mai ${remaining === 1 ? "e 1" : `sunt ${remaining}`} în coadă.`}`);
+    refreshCounts();
+    load().catch(() => {});
   };
 
-  if (!submissions) return <p className="text-sm text-muted-foreground">Se incarca modificarile workspace...</p>;
+  if (!submissions) return <AdminLoading label="Se încarcă modificările…" />;
   return (
-    <AdminCard className="p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold">Modificari workspace in verificare</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Profilurile organizationale sunt comparate cu ProviderOrganization. Fotografiile sunt afisate vizual, iar serviciile sunt tratate ca informatii declarate de furnizor.</p>
+    <AdminCard className="p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-base font-bold">Modificări în verificare</h2>
+          <AdminHint label="Cum se compară modificările">
+            Se văd doar câmpurile care se schimbă față de ce e publicat acum. Fotografiile se văd direct, iar serviciile sunt informații declarate de furnizor.
+          </AdminHint>
         </div>
-        <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{submissions.length} in asteptare</span>
+        <StatusBadge label={`${submissions.length} în așteptare`} />
       </div>
-      {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+      {error && <AdminNotice tone="danger" className="mt-3">{error}</AdminNotice>}
+      {flash && <AdminNotice tone="success" className="mt-3" onDismiss={() => setFlash("")}>{flash}</AdminNotice>}
       <div className="mt-4 space-y-3">
         {submissions.length === 0 ? (
-          <EmptyState icon={ClipboardCheck} title="Nu exista modificari in verificare." subtitle="Cererile trimise de furnizori vor aparea aici." />
+          <EmptyState icon={ClipboardCheck} title="Nu există modificări în verificare." subtitle="Cererile trimise de furnizori vor apărea aici." />
         ) : submissions.map((submission) => (
           <SubmissionCard
             key={submission.id}

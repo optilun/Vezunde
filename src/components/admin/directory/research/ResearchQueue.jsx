@@ -38,8 +38,8 @@ export default function ResearchQueue({ onOpen }) {
       <AdminCard className="p-5">
         <div className="text-sm font-semibold mb-3">Filtre</div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <input className={input} placeholder="Oras" value={f.city} onChange={set("city")} />
-          <input className={input} placeholder="Judet" value={f.county} onChange={set("county")} />
+          <input className={input} placeholder="Oraș" value={f.city} onChange={set("city")} />
+          <input className={input} placeholder="Județ" value={f.county} onChange={set("county")} />
           <select className={input} value={f.provider_type} onChange={set("provider_type")}>
             <option value="">Tip furnizor</option>
             {PROVIDER_TYPES_3C.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
@@ -54,30 +54,30 @@ export default function ResearchQueue({ onOpen }) {
           </select>
           <select className={input} value={f.source_completeness} onChange={set("source_completeness")}>
             <option value="">Completitudine surse</option>
-            <option value="no_source">Fara sursa pe profil</option>
-            <option value="no_evidence">Fara dovezi active</option>
-            <option value="has_source">Cu sursa sau dovezi</option>
+            <option value="no_source">Fără sursă pe profil</option>
+            <option value="no_evidence">Fără dovezi active</option>
+            <option value="has_source">Cu sursă sau dovezi</option>
           </select>
           <div>
-            <div className="text-[10px] text-muted-foreground mb-0.5">Neverificat dupa</div>
+            <div className="text-[10px] text-muted-foreground mb-0.5">Neverificat după</div>
             <input type="date" className={input + " w-full"} value={f.checked_before} onChange={set("checked_before")} />
           </div>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={f.missing_services} onChange={set("missing_services")} /> Fara servicii</label>
+            <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={f.missing_services} onChange={set("missing_services")} /> Fără servicii</label>
             <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={f.migration_review_required} onChange={set("migration_review_required")} /> Review migrare</label>
           </div>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={() => load(f)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold">Filtreaza</button>
-          <button onClick={() => { setF(EMPTY); load(EMPTY); }} className="px-4 py-2 rounded-lg bg-secondary text-xs font-semibold">Reseteaza</button>
+          <button onClick={() => load(f)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold">Filtrează</button>
+          <button onClick={() => { setF(EMPTY); load(EMPTY); }} className="px-4 py-2 rounded-lg bg-secondary text-xs font-semibold">Resetează</button>
         </div>
       </AdminCard>
 
       <AdminCard className="p-5">
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {loading && <p className="text-sm text-muted-foreground">Se incarca...</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {loading && <p className="text-sm text-muted-foreground">Se încarcă…</p>}
         {!loading && rows && rows.length === 0 && (
-          <EmptyState icon={Search} title="Nu exista locatii care corespund filtrelor." subtitle="Incearca sa relaxezi filtrele sau reseteaza-le pentru a vedea toata coada de research." />
+          <EmptyState icon={Search} title="Nu există locații care corespund filtrelor." subtitle="Încearcă să relaxezi filtrele sau resetează-le pentru a vedea toată coada de research." />
         )}
 
         {!loading && rows && rows.length > 0 && (
@@ -85,15 +85,15 @@ export default function ResearchQueue({ onOpen }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-3">Organizatie</th>
-                  <th className="py-2 pr-3">Locatie</th>
-                  <th className="py-2 pr-3">Oras</th>
+                  <th className="py-2 pr-3">Organizație</th>
+                  <th className="py-2 pr-3">Locație</th>
+                  <th className="py-2 pr-3">Oraș</th>
                   <th className="py-2 pr-3">Tip</th>
                   <th className="py-2 pr-3">Profil</th>
                   <th className="py-2 pr-3">Research</th>
                   <th className="py-2 pr-3">Surse</th>
                   <th className="py-2 pr-3">Ultima verificare</th>
-                  <th className="py-2 pr-3">Campuri lipsa</th>
+                  <th className="py-2 pr-3">Câmpuri lipsa</th>
                   <th className="py-2 pr-3">Responsabil</th>
                   <th className="py-2"></th>
                 </tr>

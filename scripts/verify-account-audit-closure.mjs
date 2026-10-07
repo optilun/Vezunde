@@ -93,7 +93,7 @@ assert.doesNotMatch(scopeStep, /include-le în revendicare și creează organiza
 assert.match(scopeStep, /semnalează-le echipei VIASEE/);
 const claimsUi = await read('src/components/admin/directory/DirOpsClaims.jsx');
 assert.match(claimsUi, /payload\.network_suggestion_accepted === true/);
-assert.match(claimsUi, /Furnizorul a semnalat ca aceste locatii fac parte din aceeasi retea/);
+assert.match(claimsUi, /Furnizorul spune că aceste locații fac parte din aceeași rețea/);
 
 // ---------- Diacritice in formularul de revendicare ----------
 const addOrClaim = await read('src/pages/AddOrClaim.jsx');

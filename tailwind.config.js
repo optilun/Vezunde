@@ -40,6 +40,26 @@ module.exports = {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+  			success: {
+  				DEFAULT: 'hsl(var(--success))',
+  				soft: 'hsl(var(--success-soft))',
+  				border: 'hsl(var(--success-border))'
+  			},
+  			warning: {
+  				DEFAULT: 'hsl(var(--warning))',
+  				soft: 'hsl(var(--warning-soft))',
+  				border: 'hsl(var(--warning-border))'
+  			},
+  			info: {
+  				DEFAULT: 'hsl(var(--info))',
+  				soft: 'hsl(var(--info-soft))',
+  				border: 'hsl(var(--info-border))'
+  			},
+  			danger: {
+  				DEFAULT: 'hsl(var(--danger))',
+  				soft: 'hsl(var(--danger-soft))',
+  				border: 'hsl(var(--danger-border))'
+  			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

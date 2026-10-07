@@ -3,11 +3,11 @@ import React from "react";
 const SEVERITY = {
   strong_duplicate: {
     label: "Duplicat puternic",
-    className: "bg-destructive/10 text-destructive",
+    className: "bg-destructive/10 text-danger",
   },
   possible_duplicate: {
     label: "Posibil duplicat",
-    className: "bg-amber-100 text-amber-800",
+    className: "bg-warning-soft text-warning",
   },
   likely_distinct: {
     label: "Probabil distinct",
@@ -31,7 +31,7 @@ export default function DirOpsIdentityCandidates({
       <p className="text-sm font-semibold leading-relaxed">
         {strong
           ? "Duplicat puternic detectat — crearea normala este blocata."
-          : "Posibile duplicate gasite — continuarea necesita un motiv."}
+          : "Posibile duplicate găsite — continuarea cere un motiv."}
       </p>
 
       <ul className="mt-3 space-y-2">
@@ -74,7 +74,7 @@ export default function DirOpsIdentityCandidates({
           className="mt-1.5 min-h-28 w-full resize-y rounded-xl border border-input bg-card px-3 py-2.5 text-sm outline-none focus:border-foreground/40"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          placeholder="Explica de ce aceasta este o locatie distincta..."
+          placeholder="Explică de ce aceasta este o locație distinctă…"
         />
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           {reason.trim().length}/15 caractere minime
@@ -89,7 +89,7 @@ export default function DirOpsIdentityCandidates({
             disabled={saving || !reasonOk}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-destructive px-4 text-sm font-semibold text-destructive-foreground disabled:opacity-40 sm:w-auto sm:rounded-md"
           >
-            Creeaza totusi ca locatie diferita
+            Creează totuși ca locație diferita
           </button>
         ) : (
           <button
@@ -98,7 +98,7 @@ export default function DirOpsIdentityCandidates({
             disabled={saving || !reasonOk}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-40 sm:w-auto sm:rounded-md"
           >
-            Continua cu motiv
+            Continuă cu motiv
           </button>
         )}
         <button

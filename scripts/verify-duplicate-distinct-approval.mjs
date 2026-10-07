@@ -88,11 +88,11 @@ assert.match(handle, /claim\.mode === 'new_location_duplicate_review'\) \{\s*ret
 // ---------- 5. Panoul admin ----------
 const ui = await read('src/components/admin/directory/DirOpsClaims.jsx');
 assert.match(ui, /type: "approve_distinct"/);
-assert.match(ui, /Aproba ca locatie distincta/);
+assert.match(ui, /Aprobă ca locație distinctă/);
 assert.match(ui, /noteOptional=\{action\.type === "approve"\}/, 'nota e obligatorie la aprobarea ca locatie distincta');
 assert.match(ui, /acknowledged_candidate_ids: action\.acknowledgedIds/);
 assert.match(ui, /data\?\.code === "new_duplicate_candidates"/);
-assert.match(ui, /Am verificat: sunt locatii diferite de cea propusa\./);
+assert.match(ui, /Am verificat: sunt locații diferite de cea propusă\./);
 assert.doesNotMatch(ui, /creeaz-o prin fluxul canonic/, 'textul vechi (creare manuala) a disparut');
 
 console.log('verify-duplicate-distinct-approval: OK');

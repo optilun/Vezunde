@@ -1,312 +1,301 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Archive,
-  CheckCircle2,
-  Clock3,
-  Inbox,
-  Loader2,
-  MessageSquareText,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  Star,
-  UserRound,
-} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Archive, CheckCircle2, Loader2, MessageSquareText, RotateCcw, Search, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import {
+  EmailLink,
+  FilterSelect,
+  RefreshButton,
+  SupportContext,
+  SupportSearchField,
+  useScrollToDetail,
+} from "@/components/admin/support/SupportParts";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminChips from "@/components/admin/ui/AdminChips";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { fullDateTime, plural, relativeTime } from "@/lib/adminFormat";
+import { accountModeLabel, feedbackStatusLabel, feedbackStatusTone } from "@/lib/adminLabels";
+import { matchesAllTokens, normalizeSearch, searchTokens } from "@/lib/adminSearch";
 
-const STATUS_OPTIONS = [
-  { value: "new", label: "Nou" },
-  { value: "reviewed", label: "Revizuit" },
-  { value: "archived", label: "Arhivat" },
-];
-
-const STATUS_STYLE = {
-  new: ["Nou", "border-blue-200 bg-blue-50 text-blue-800"],
-  reviewed: ["Revizuit", "border-green-200 bg-green-50 text-green-800"],
-  archived: ["Arhivat", "border-border bg-secondary text-muted-foreground"],
-};
-
-const ACCOUNT_MODE_LABELS = {
-  personal: "Cont personal",
-  provider: "Organizatie / furnizor",
-  professional: "Profil profesional",
-  applicant: "Solicitant",
-};
-
-function formatDate(value) {
-  if (!value) return "—";
-  try {
-    return new Intl.DateTimeFormat("ro-RO", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch (_error) {
-    return value;
-  }
-}
-
-function StatusBadge({ status }) {
-  const [label, className] = STATUS_STYLE[status] || STATUS_STYLE.new;
-  return (
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${className}`}>
-      {label}
-    </span>
-  );
-}
+// Feedback de la utilizatori (2026-10-07): se deschide pe „Noi”; după ce marchezi un mesaj ca
+// revizuit sau îl arhivezi, trecem singuri la următorul mesaj nou.
+const LOAD_LIMIT = 500;
+const feedbackStatusOf = (item) => item?.status || "new";
 
 function Rating({ value, compact = false }) {
   const normalized = Math.max(1, Math.min(5, Number(value) || 1));
   return (
-    <div className="flex items-center gap-1" aria-label={`Evaluare ${normalized} din 5`}>
+    <div className="flex items-center gap-1" role="img" aria-label={`Evaluare ${normalized} din 5`}>
       {Array.from({ length: 5 }, (_, index) => (
         <Star
           key={index}
-          className={`${compact ? "h-3.5 w-3.5" : "h-4 w-4"} ${
-            index < normalized
-              ? "fill-amber-400 text-amber-500"
-              : "text-border"
-          }`}
+          className={`${compact ? "h-3.5 w-3.5" : "h-4 w-4"} ${index < normalized ? "fill-warning text-warning" : "text-border"}`}
           aria-hidden="true"
         />
       ))}
-      <span className="ml-1 text-[10px] font-semibold text-muted-foreground">
-        {normalized}/5
-      </span>
+      <span className="ml-1 text-[11px] font-semibold text-muted-foreground">{normalized}/5</span>
     </div>
   );
 }
 
-function matchesSearch(item, query) {
-  if (!query) return true;
-  return [
-    item.message,
-    item.user_email,
-    item.user_id,
-    item.account_mode,
-    item.source,
-    item.page_path,
-    item.organization_id,
-    item.professional_profile_id,
-  ].some((value) => String(value || "").toLowerCase().includes(query));
+function FeedbackRow({ item, selected, onSelect }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(item.id)}
+        aria-current={selected ? "true" : undefined}
+        className={`block w-full border-l-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+          selected ? "border-foreground bg-secondary/70" : "border-transparent hover:bg-secondary/40"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <Rating value={item.rating} compact />
+          <StatusBadge label={feedbackStatusLabel(item.status)} tone={feedbackStatusTone(item.status)} />
+        </div>
+        <div className="mt-2 line-clamp-2 text-sm font-semibold leading-snug">
+          {item.message || "Doar evaluare, fără mesaj"}
+        </div>
+        <div className="mt-0.5 truncate text-xs text-muted-foreground">{item.user_email || "Email indisponibil"}</div>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <span>{accountModeLabel(item.account_mode)}</span>
+          <span title={fullDateTime(item.created_date)}>{relativeTime(item.created_date)}</span>
+        </div>
+      </button>
+    </li>
+  );
 }
 
-function SummaryCard({ icon: Icon, label, value }) {
+function FeedbackDetail({ item, saving, onChangeStatus }) {
+  const status = feedbackStatusOf(item);
+  const actionButton = (nextStatus, label, Icon, { primary = false } = {}) => (
+    <button
+      type="button"
+      onClick={() => onChangeStatus(nextStatus)}
+      disabled={Boolean(saving)}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors disabled:opacity-50 ${
+        primary ? "bg-foreground text-background hover:bg-foreground/90" : "border border-border bg-card hover:bg-secondary"
+      }`}
+    >
+      {saving === nextStatus ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Icon className="h-4 w-4" aria-hidden="true" />}
+      {label}
+    </button>
+  );
+
   return (
-    <AdminCard className="p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold text-muted-foreground">{label}</div>
-          <div className="mt-1 font-heading text-2xl font-extrabold">{value}</div>
+    <div className="space-y-4">
+      <div className="border-b border-border pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge label={feedbackStatusLabel(item.status)} tone={feedbackStatusTone(item.status)} />
+            <StatusBadge label={accountModeLabel(item.account_mode)} />
+          </div>
+          <Rating value={item.rating} />
         </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-          <Icon className="h-4 w-4" />
-        </span>
+        <h2 className="mt-3 font-heading text-xl font-extrabold">Feedback de la utilizator</h2>
+        <p className="mt-1 text-xs text-muted-foreground" title={fullDateTime(item.created_date)}>
+          Trimis {relativeTime(item.created_date)}
+        </p>
       </div>
-    </AdminCard>
+
+      <article className="rounded-2xl border border-border bg-background p-4">
+        <div className="text-xs font-semibold text-muted-foreground">Mesajul utilizatorului</div>
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed">
+          {item.message || "Utilizatorul a trimis doar evaluarea numerică."}
+        </p>
+      </article>
+
+      <div className="grid gap-3 rounded-2xl border border-border bg-secondary/25 p-4 sm:grid-cols-2">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-muted-foreground">De la</div>
+          <div className="mt-1 text-sm font-semibold"><EmailLink email={item.user_email} /></div>
+        </div>
+        <SupportContext
+          source={item.source}
+          pagePath={item.page_path}
+          organizationId={item.organization_id}
+          professionalProfileId={item.professional_profile_id}
+          userId={item.user_id}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        {status !== "reviewed" && actionButton("reviewed", "Marchează revizuit", CheckCircle2, { primary: true })}
+        {status !== "archived" && actionButton("archived", "Arhivează", Archive)}
+        {status !== "new" && actionButton("new", "Mută la nou", RotateCcw, { primary: status === "archived" || status === "reviewed" })}
+      </div>
+    </div>
   );
 }
 
 export default function AdminUserFeedback() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [statusFilter, setStatusFilter] = useState("new");
   const [ratingFilter, setRatingFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [flash, setFlash] = useState("");
+  const loadSeq = useRef(0);
+  const detailRef = useRef(null);
+  const scrollToDetail = useScrollToDetail(detailRef);
 
-  const loadFeedback = useCallback(async ({ preserveSelection = true } = {}) => {
+  const loadFeedback = useCallback(async () => {
+    const seq = loadSeq.current + 1;
+    loadSeq.current = seq;
     setLoading(true);
-    setError("");
+    setLoadError("");
     try {
-      const rows = await base44.entities.UserFeedback.list("-created_date", 500);
-      const nextFeedback = rows || [];
-      setFeedback(nextFeedback);
-      setSelectedId((current) => {
-        if (preserveSelection && current && nextFeedback.some((item) => item.id === current)) {
-          return current;
-        }
-        return nextFeedback[0]?.id || "";
-      });
+      const rows = (await base44.entities.UserFeedback.list("-created_date", LOAD_LIMIT)) || [];
+      if (seq === loadSeq.current) setFeedback(rows);
+      return rows;
     } catch (requestError) {
-      setFeedback([]);
-      setError(
-        requestError?.response?.data?.error
-          || requestError?.message
-          || "Feedback-ul nu a putut fi incarcat.",
-      );
+      if (seq === loadSeq.current) {
+        setLoadError(requestError?.response?.data?.error || requestError?.message || "Feedback-ul nu a putut fi încărcat.");
+      }
+      return null;
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadFeedback({ preserveSelection: false });
-  }, [loadFeedback]);
+  useEffect(() => { loadFeedback(); }, [loadFeedback]);
+
+  const searchText = useMemo(() => new Map((feedback || []).map((item) => [item.id, normalizeSearch([
+    item.message,
+    item.user_email,
+    accountModeLabel(item.account_mode),
+    item.page_path,
+  ].filter(Boolean).join(" "))])), [feedback]);
 
   const counts = useMemo(() => {
     const rows = feedback || [];
-    return {
-      new: rows.filter((item) => (item.status || "new") === "new").length,
-      reviewed: rows.filter((item) => item.status === "reviewed").length,
-      archived: rows.filter((item) => item.status === "archived").length,
-      total: rows.length,
-    };
+    const byStatus = (status) => rows.filter((item) => feedbackStatusOf(item) === status).length;
+    return { new: byStatus("new"), reviewed: byStatus("reviewed"), archived: byStatus("archived"), total: rows.length };
   }, [feedback]);
 
   const visibleFeedback = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const tokens = searchTokens(query);
     return (feedback || []).filter((item) => {
-      if (statusFilter !== "all" && (item.status || "new") !== statusFilter) return false;
+      if (statusFilter !== "all" && feedbackStatusOf(item) !== statusFilter) return false;
       if (ratingFilter !== "all" && Number(item.rating) !== Number(ratingFilter)) return false;
-      return matchesSearch(item, normalizedQuery);
+      return tokens.length === 0 || matchesAllTokens(searchText.get(item.id) || "", tokens);
     });
-  }, [feedback, query, ratingFilter, statusFilter]);
+  }, [feedback, query, ratingFilter, searchText, statusFilter]);
 
   useEffect(() => {
+    if (!feedback) return;
     if (visibleFeedback.length === 0) {
       setSelectedId("");
-      return;
-    }
-    if (!visibleFeedback.some((item) => item.id === selectedId)) {
+    } else if (!visibleFeedback.some((item) => item.id === selectedId)) {
       setSelectedId(visibleFeedback[0].id);
     }
-  }, [selectedId, visibleFeedback]);
+  }, [feedback, selectedId, visibleFeedback]);
 
-  const selectedFeedback = useMemo(
+  const selectedItem = useMemo(
     () => feedback?.find((item) => item.id === selectedId) || null,
     [feedback, selectedId],
   );
 
-  const selectFeedback = (feedbackId) => {
-    setSelectedId(feedbackId);
-    setError("");
-    setMessage("");
+  const selectItem = (id) => {
+    setSelectedId(id);
+    setSaveError("");
+    setFlash("");
+    scrollToDetail();
   };
 
   const changeStatus = async (nextStatus) => {
-    if (!selectedFeedback || saving) return;
-    setSaving(true);
-    setError("");
-    setMessage("");
+    if (!selectedItem || saving) return;
+    const itemId = selectedItem.id;
+    // În lista „Noi”, după ce rezolvi un mesaj trecem la următorul nou; în rest rămânem pe cel curent.
+    const advanceTo = statusFilter === "new" && nextStatus !== "new"
+      ? visibleFeedback.find((item) => item.id !== itemId)?.id || ""
+      : "";
+    setSaving(nextStatus);
+    setSaveError("");
+    setFlash("");
     try {
-      await base44.entities.UserFeedback.update(selectedFeedback.id, { status: nextStatus });
-      await loadFeedback();
-      setMessage(
-        nextStatus === "reviewed"
-          ? "Feedback-ul a fost marcat ca revizuit."
-          : nextStatus === "archived"
-            ? "Feedback-ul a fost arhivat."
-            : "Feedback-ul a fost mutat inapoi in lista celor noi.",
-      );
+      await base44.entities.UserFeedback.update(itemId, { status: nextStatus });
+      const rows = await loadFeedback();
+      refreshCounts();
+      setFlash({
+        reviewed: "Mesajul este marcat ca revizuit.",
+        archived: "Mesajul este arhivat.",
+        new: "Mesajul a fost mutat înapoi la cele noi.",
+      }[nextStatus] || "Modificarea a fost salvată.");
+      if (advanceTo && rows?.some((item) => item.id === advanceTo)) {
+        setSelectedId(advanceTo);
+        scrollToDetail();
+      }
     } catch (requestError) {
-      setError(
-        requestError?.response?.data?.error
-          || requestError?.message
-          || "Statusul feedback-ului nu a putut fi actualizat.",
-      );
+      setSaveError(requestError?.response?.data?.error || requestError?.message || "Starea mesajului nu a putut fi schimbată.");
     } finally {
-      setSaving(false);
+      setSaving("");
     }
   };
 
+  const chips = [
+    { key: "new", label: "Noi", count: counts.new },
+    { key: "reviewed", label: "Revizuite", count: counts.reviewed },
+    { key: "archived", label: "Arhivate", count: counts.archived },
+    { key: "all", label: "Toate", count: counts.total },
+  ];
+  const filtering = Boolean(query.trim()) || ratingFilter !== "all";
+  const capped = Boolean(feedback) && feedback.length >= LOAD_LIMIT;
+
   return (
     <div className="space-y-4" data-admin-mobile="true">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={Inbox} label="Feedback nou" value={counts.new} />
-        <SummaryCard icon={CheckCircle2} label="Revizuit" value={counts.reviewed} />
-        <SummaryCard icon={Archive} label="Arhivat" value={counts.archived} />
-        <SummaryCard icon={MessageSquareText} label="Total feedback" value={counts.total} />
-      </div>
-
-      <AdminCard className="p-3 sm:p-4">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-center">
-          <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl border border-border bg-background px-3">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Cauta dupa mesaj, email, utilizator sau pagina"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-          </label>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex">
-            {[
-              ["new", `Noi (${counts.new})`],
-              ["reviewed", `Revizuite (${counts.reviewed})`],
-              ["archived", `Arhivate (${counts.archived})`],
-              ["all", `Toate (${counts.total})`],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${
-                  statusFilter === key
-                    ? "bg-foreground text-background"
-                    : "border border-border bg-background hover:bg-secondary"
-                }`}
-              >
-                {label}
-              </button>
+      <AdminCard className="space-y-3 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <SupportSearchField
+            value={query}
+            onChange={setQuery}
+            label="Caută în feedback"
+            placeholder="Caută după mesaj, email sau pagină"
+          />
+          <RefreshButton onClick={loadFeedback} busy={loading && Boolean(feedback)} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <AdminChips options={chips} value={statusFilter} onChange={setStatusFilter} label="Filtrează feedback-ul" />
+          <FilterSelect value={ratingFilter} onChange={setRatingFilter} label="Filtrează după evaluare">
+            <option value="all">Toate evaluările</option>
+            {[5, 4, 3, 2, 1].map((value) => (
+              <option key={value} value={value}>{value} din 5</option>
             ))}
-          </div>
-
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-            <label>
-              <span className="sr-only">Filtru evaluare</span>
-              <select
-                value={ratingFilter}
-                onChange={(event) => setRatingFilter(event.target.value)}
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none"
-              >
-                <option value="all">Toate evaluarile</option>
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={value}>{value} din 5</option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={() => loadFeedback()}
-              disabled={loading || saving}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              Actualizeaza
-            </button>
-          </div>
+          </FilterSelect>
         </div>
       </AdminCard>
 
-      {error && (
-        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div aria-live="polite" className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          {message}
-        </div>
+      {loadError && <AdminNotice tone="danger">{loadError}</AdminNotice>}
+      {saveError && <AdminNotice tone="danger" onDismiss={() => setSaveError("")}>{saveError}</AdminNotice>}
+      {flash && <AdminNotice tone="success" onDismiss={() => setFlash("")}>{flash}</AdminNotice>}
+      {capped && (
+        <AdminNotice tone="warning">
+          Se afișează cele mai recente {LOAD_LIMIT} de mesaje; numerele de pe filtre se referă la ele.
+        </AdminNotice>
       )}
 
-      {loading && !feedback && (
-        <AdminCard className="flex min-h-52 items-center justify-center p-5 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca feedback-ul...
+      {!feedback && loading && <AdminLoading label="Se încarcă feedback-ul…" />}
+
+      {!feedback && !loading && loadError && (
+        <AdminCard className="p-5">
+          <EmptyState icon={MessageSquareText} title="Feedback-ul nu s-a putut încărca." subtitle="Verifică conexiunea și încearcă din nou." ctaLabel="Încearcă din nou" onCta={loadFeedback} />
         </AdminCard>
       )}
 
-      {!loading && feedback?.length === 0 && (
+      {feedback && feedback.length === 0 && (
         <AdminCard className="p-5">
           <EmptyState
             icon={MessageSquareText}
-            title="Nu exista feedback trimis."
-            subtitle="Evaluarile trimise din conturile utilizatorilor vor aparea automat aici."
+            title="Nu ai primit încă feedback."
+            subtitle="Evaluările trimise din conturile utilizatorilor apar aici, singure."
           />
         </AdminCard>
       )}
@@ -315,152 +304,42 @@ export default function AdminUserFeedback() {
         <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.5fr)]">
           <AdminCard className="overflow-hidden p-0">
             <div className="border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground">
-              {visibleFeedback.length} rezultate
+              {plural(visibleFeedback.length, "mesaj", "mesaje")}
             </div>
             {visibleFeedback.length === 0 ? (
               <div className="p-5">
-                <EmptyState
-                  icon={Search}
-                  title="Niciun feedback pentru filtrele selectate."
-                  subtitle="Schimba filtrul sau termenul de cautare."
-                />
+                {statusFilter === "new" && !filtering ? (
+                  <EmptyState
+                    icon={MessageSquareText}
+                    title="Nu ai mesaje noi."
+                    subtitle="Le-ai citit pe toate."
+                    ctaLabel="Vezi toate mesajele"
+                    onCta={() => setStatusFilter("all")}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Search}
+                    title="Niciun mesaj pentru filtrele alese."
+                    ctaLabel="Șterge filtrele"
+                    onCta={() => { setQuery(""); setRatingFilter("all"); setStatusFilter("all"); }}
+                  />
+                )}
               </div>
             ) : (
-              <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
-                {visibleFeedback.map((item) => {
-                  const selected = item.id === selectedId;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => selectFeedback(item.id)}
-                      className={`w-full p-4 text-left transition ${
-                        selected ? "bg-secondary/70" : "hover:bg-secondary/35"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <Rating value={item.rating} compact />
-                          <div className="mt-2 line-clamp-2 text-sm font-semibold leading-snug">
-                            {item.message || "Feedback fara mesaj"}
-                          </div>
-                          <div className="mt-1 truncate text-xs text-muted-foreground">
-                            {item.user_email || "Email indisponibil"}
-                          </div>
-                        </div>
-                        <StatusBadge status={item.status} />
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                        <span>{ACCOUNT_MODE_LABELS[item.account_mode] || item.account_mode || "Cont"}</span>
-                        <span>{formatDate(item.created_date)}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <ul aria-label="Mesaje de feedback" className="max-h-[70vh] divide-y divide-border overflow-y-auto">
+                {visibleFeedback.map((item) => (
+                  <FeedbackRow key={item.id} item={item} selected={item.id === selectedId} onSelect={selectItem} />
+                ))}
+              </ul>
             )}
           </AdminCard>
 
           <AdminCard className="p-4 sm:p-5">
-            {!selectedFeedback ? (
-              <EmptyState
-                icon={MessageSquareText}
-                title="Selecteaza un feedback."
-                subtitle="Mesajul si contextul utilizatorului vor aparea aici."
-              />
+            <div ref={detailRef} className="scroll-mt-20" />
+            {!selectedItem ? (
+              <EmptyState icon={MessageSquareText} title="Alege un mesaj din listă." subtitle="Mesajul și contextul apar aici." />
             ) : (
-              <div className="space-y-5">
-                <div className="border-b border-border pb-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={selectedFeedback.status} />
-                      <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
-                        {ACCOUNT_MODE_LABELS[selectedFeedback.account_mode]
-                          || selectedFeedback.account_mode
-                          || "Cont"}
-                      </span>
-                    </div>
-                    <Rating value={selectedFeedback.rating} />
-                  </div>
-                  <h2 className="mt-4 font-heading text-xl font-extrabold">Feedback utilizator</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Trimis {formatDate(selectedFeedback.created_date)}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl border border-border bg-secondary/25 p-4">
-                    <div className="flex items-center gap-2 text-xs font-bold">
-                      <UserRound className="h-4 w-4 text-muted-foreground" /> Utilizator
-                    </div>
-                    <div className="mt-3 break-all text-sm font-semibold">
-                      {selectedFeedback.user_email || "Email indisponibil"}
-                    </div>
-                    <div className="mt-2 break-all text-[10px] text-muted-foreground">
-                      User ID: {selectedFeedback.user_id || "—"}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-secondary/25 p-4">
-                    <div className="flex items-center gap-2 text-xs font-bold">
-                      <Clock3 className="h-4 w-4 text-muted-foreground" /> Context
-                    </div>
-                    <div className="mt-3 space-y-1 break-all text-xs text-muted-foreground">
-                      <div>Sursa: {selectedFeedback.source || "—"}</div>
-                      <div>Pagina: {selectedFeedback.page_path || "—"}</div>
-                      {selectedFeedback.organization_id && (
-                        <div>Organizatie: {selectedFeedback.organization_id}</div>
-                      )}
-                      {selectedFeedback.professional_profile_id && (
-                        <div>Profil profesional: {selectedFeedback.professional_profile_id}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <article className="rounded-2xl border border-border bg-background p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    Mesajul utilizatorului
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                    {selectedFeedback.message || "Utilizatorul a trimis doar evaluarea numerica."}
-                  </p>
-                </article>
-
-                <div className="flex flex-col gap-2 rounded-2xl border border-border bg-secondary/20 p-4 sm:flex-row sm:flex-wrap">
-                  {selectedFeedback.status !== "reviewed" && (
-                    <button
-                      type="button"
-                      onClick={() => changeStatus("reviewed")}
-                      disabled={saving}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50"
-                    >
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                      Marcheaza revizuit
-                    </button>
-                  )}
-                  {selectedFeedback.status !== "archived" && (
-                    <button
-                      type="button"
-                      onClick={() => changeStatus("archived")}
-                      disabled={saving}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-semibold disabled:opacity-50"
-                    >
-                      <Archive className="h-4 w-4" /> Arhiveaza
-                    </button>
-                  )}
-                  {selectedFeedback.status !== "new" && (
-                    <button
-                      type="button"
-                      onClick={() => changeStatus("new")}
-                      disabled={saving}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-semibold disabled:opacity-50"
-                    >
-                      <RotateCcw className="h-4 w-4" /> Muta la feedback nou
-                    </button>
-                  )}
-                </div>
-              </div>
+              <FeedbackDetail item={selectedItem} saving={saving} onChangeStatus={changeStatus} />
             )}
           </AdminCard>
         </div>

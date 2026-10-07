@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export default function DirOpsActionNote({
   title,
@@ -12,6 +12,16 @@ export default function DirOpsActionNote({
   const [error, setError] = useState(null);
   const titleId = "directory-action-note-title";
   const noteId = "directory-action-note-value";
+  const dialogRef = useRef(null);
+
+  // Tastatura: focusul intră în fereastră la deschidere și se întoarce la butonul care a deschis-o.
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialogRef.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
+    };
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -52,7 +62,9 @@ export default function DirOpsActionNote({
       }}
     >
       <section
-        className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-5"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl outline-none sm:p-5"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -86,7 +98,7 @@ export default function DirOpsActionNote({
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800">
+          <p role="alert" className="mt-3 rounded-xl border border-danger-border bg-danger-soft px-3 py-2.5 text-xs text-danger">
             {error}
           </p>
         )}

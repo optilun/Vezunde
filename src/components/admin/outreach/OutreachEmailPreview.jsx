@@ -60,14 +60,14 @@ export default function OutreachEmailPreview({ campaignId, draft, onBeforeTest }
     setTestStatus("Se trimite...");
     if (onBeforeTest) {
       const saved = await onBeforeTest();
-      if (saved === false) { setTestStatus("Nu am putut salva ciorna inainte de test."); return; }
+      if (saved === false) { setTestStatus("Nu am putut salva ciorna înainte de test."); return; }
     }
     const data = await callOutreach("outreachSendOps", "send_test_email", {
       campaign_id: campaignId,
       to_email: testEmail.trim(),
       sample_contact_id: contactId || "",
     });
-    setTestStatus(data.error ? `Eroare: ${data.error}` : `Trimis la ${testEmail.trim()}. Verifica si folderul Spam.`);
+    setTestStatus(data.error ? `Eroare: ${data.error}` : `Trimis la ${testEmail.trim()}. Verifica și folderul Spam.`);
   };
 
   const chosen = recipients.find((row) => row.id === contactId);
@@ -83,7 +83,7 @@ export default function OutreachEmailPreview({ campaignId, draft, onBeforeTest }
             onChange={(e) => setContactId(e.target.value)}
             className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
           >
-            <option value="">Un exemplu (Optica Exemplu, Bucuresti)</option>
+            <option value="">Un exemplu (Optica Exemplu, București)</option>
             {recipients.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.company_name || row.email} — {row.email}{row.city ? `, ${row.city}` : ""}
@@ -94,7 +94,7 @@ export default function OutreachEmailPreview({ campaignId, draft, onBeforeTest }
         {chosen && <span className="pb-2 text-[11px] text-muted-foreground">Sursa: {SOURCE_LABELS[chosen.kind]}</span>}
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>}
 
       <div className="rounded-2xl border border-border bg-secondary/40 p-3">
         <p className="px-1 pb-2 text-xs text-muted-foreground">
@@ -109,13 +109,13 @@ export default function OutreachEmailPreview({ campaignId, draft, onBeforeTest }
             className="h-[760px] w-full rounded-xl border border-border bg-white"
           />
         ) : (
-          <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">Se pregateste previzualizarea...</div>
+          <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">Se pregătește previzualizarea...</div>
         )}
       </div>
 
       <div className="space-y-2 rounded-xl border border-dashed border-border p-3">
         <p className="text-xs font-semibold text-foreground">Trimite un test</p>
-        <p className="text-[11px] text-muted-foreground">Pleaca doar la adresa de mai jos, cu datele destinatarului ales mai sus. Ciorna se salveaza inainte.</p>
+        <p className="text-[11px] text-muted-foreground">Pleacă doar la adresa de mai jos, cu datele destinatarului ales mai sus. Ciorna se salvează înainte.</p>
         <div className="flex flex-wrap gap-2">
           <input
             id="outreach-test-email"

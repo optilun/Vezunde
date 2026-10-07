@@ -1,90 +1,59 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { loadDashboardKpis, loadRecentActivity, summarizeCounts } from "@/lib/adminCounts";
+import { plural } from "@/lib/adminFormat";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 import KpiGrid from "./KpiGrid";
 import ActionQueueCard from "./ActionQueueCard";
 import RecentActivityCard from "./RecentActivityCard";
-import QuickActionsGrid from "./QuickActionsGrid";
+import QuickLinks from "./QuickLinks";
 
-// 2026-10-05: panoul "Azi". Toate cifrele se numara pe server (count), fara a
-// descarca mii de inregistrari in browser. Statisticile de director (research,
-// acoperire judete, niveluri de incredere) se muta in ecranul Analytics.
-const safeInvoke = (functionName, payload, fallback) => (
-  base44.functions.invoke(functionName, payload).catch(() => ({ data: fallback }))
-);
-const safeCount = (entity, query) => entity.count(query).catch(() => 0);
-
-function uniqueById(rows = []) {
-  const seen = new Set();
-  return rows.filter((row) => row?.id && !seen.has(row.id) && seen.add(row.id));
-}
-
+// 2026-10-05: panoul "Azi". Toate cifrele se numara pe server (count), fara a descarca mii de
+// inregistrari in browser. Statisticile de director (research, acoperire judete, niveluri de
+// incredere) se muta in ecranul Analytics.
+// 2026-10-07: "De rezolvat acum" citeste aceleasi numaratori ca meniul si taburile Cozii (o singura
+// sursa, reimprospatata singura), si nu mai spune "Totul e la zi" cat timp ceva nu e verificat.
 export default function AdminDashboardHome({ onNavigate }) {
-  const [data, setData] = useState(null);
+  const { user } = useAuth();
+  const { counts, refreshing, refresh } = useAdminCounts();
+  const [kpis, setKpis] = useState(null);
+  const [activity, setActivity] = useState(null);
 
   useEffect(() => {
-    const e = base44.entities;
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    Promise.all([
-      safeCount(e.ProviderLocation, { status: "publicata" }),
-      safeCount(e.ProviderClaimRequest, { status: "in_asteptare" }),
-      safeCount(e.SupportTicket, { status: { $in: ["open", "in_progress", "waiting_user"] } }),
-      safeCount(e.DirectoryCorrectionRequest, { status: { $in: ["submitted", "in_review"] } }),
-      safeCount(e.PatientRequest, { created_date: { $gte: weekAgo } }),
-      safeCount(e.ProviderSubscription, { plan_code: "pro", status: { $in: ["active", "trialing", "grace_period"] } }),
-      safeCount(e.ProviderLocation, { profile_control_status: { $in: ["claimed", "verified"] } }),
-      e.DirectoryAuditRecord.filter({}, { sort: "-created_date", limit: 6 }).then((page) => page.items || []).catch(() => []),
-    ]).then(([published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit]) => {
-      setData((current) => ({ reviewQueue: null, ...current, published, claims, tickets, corrections, patientRequests, proAccounts, claimedProfiles, audit }));
-    });
-    // Listele de verificare sunt cele mai lente; vin separat, ca restul panoului sa apara imediat.
-    Promise.all([
-      safeInvoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }, { submissions: [] }),
-      safeInvoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }, { submissions: [] }),
-      safeInvoke("providerLocationExpansionOps", { action: "admin_list" }, { submissions: [] }),
-      safeInvoke("adminProfessionalProfileReview", { action: "list", status: "pending_review" }, { profiles: [] }),
-    ]).then(([ws, org, newLoc, prof]) => {
-      const general = (ws.data?.submissions || []).filter((s) => !(s.section === "public_profile" && s.organization_id));
-      const reviewQueue = uniqueById([...general, ...(org.data?.submissions || [])]).length
-        + (newLoc.data?.submissions || []).length
-        + (prof.data?.profiles || []).length;
-      setData((current) => ({ ...current, reviewQueue }));
-    });
+    let alive = true;
+    loadDashboardKpis(base44).then((value) => { if (alive) setKpis(value); });
+    loadRecentActivity(base44).then((rows) => { if (alive) setActivity(rows ?? "error"); });
+    return () => { alive = false; };
   }, []);
 
-  if (!data || data.published === undefined) return <p className="text-sm text-muted-foreground">Se încarcă...</p>;
+  const summary = useMemo(() => summarizeCounts(counts), [counts]);
 
-  const actionItems = [
-    { label: "Coada de verificare", count: data.reviewQueue, tab: "workspace_reviews" },
-    { label: "Revendicări noi", count: data.claims, tab: "revendicari" },
-    { label: "Tichete de suport active", count: data.tickets, tab: "support_tickets" },
-    { label: "Sesizări de director deschise", count: data.corrections, tab: "corectii" },
-  ];
+  let subtitle = "Se verifică ce așteaptă…";
+  if (summary.loaded) {
+    if (summary.rows.length > 0) subtitle = `${plural(summary.total, "lucru", "lucruri")} de rezolvat.`;
+    else if (summary.allClear) subtitle = "Totul e la zi.";
+    else subtitle = "Nu am putut verifica tot. Reîncearcă.";
+  }
 
   return (
     <div>
-      <AdminPageHeader
-        title="Azi"
-        subtitle="Ce ai de rezolvat acum și starea pe scurt a platformei."
-        actions={(
-          <button onClick={() => onNavigate("adauga")} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background">
-            Adaugă organizație / locație
-          </button>
-        )}
-      />
+      <AdminPageHeader title="Azi" subtitle={subtitle} />
 
       <div className="mt-6">
-        <ActionQueueCard items={actionItems} onNavigate={onNavigate} />
+        <ActionQueueCard summary={summary} refreshing={refreshing} onRefresh={refresh} onNavigate={onNavigate} />
       </div>
 
-      <KpiGrid stats={data} onNavigate={onNavigate} />
+      <KpiGrid stats={kpis} onNavigate={onNavigate} />
 
       <div className="mt-4">
-        <RecentActivityCard records={data.audit} onNavigate={onNavigate} />
+        <RecentActivityCard records={activity} currentEmail={user?.email} onNavigate={onNavigate} />
       </div>
 
-      <h2 className="mb-3 mt-8 font-heading text-sm font-bold">Acțiuni rapide</h2>
-      <QuickActionsGrid onNavigate={onNavigate} />
+      <div className="mt-8">
+        <QuickLinks onNavigate={onNavigate} />
+      </div>
     </div>
   );
 }

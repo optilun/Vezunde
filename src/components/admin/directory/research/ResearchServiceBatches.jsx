@@ -11,13 +11,13 @@ import ResearchCsvTemplate from "./ResearchCsvTemplate";
 // server. Aici se vad si se confirma.
 
 const STATUS_LABELS = {
-  draft: "In lucru",
+  draft: "În lucru",
   planned: "Planificat",
   approved: "Aprobat",
-  running: "In executie",
+  running: "În execuție",
   completed: "Finalizat",
   completed_with_errors: "Finalizat cu erori",
-  failed: "Esuat",
+  failed: "Eșuat",
   rolling_back: "Se retrage",
   rolled_back: "Retras",
   rollback_failed: "Retragere incompleta",
@@ -100,7 +100,7 @@ export default function ResearchServiceBatches() {
     await load();
   };
 
-  if (!batches) return <p className="text-sm text-muted-foreground">Se incarca loturile...</p>;
+  if (!batches) return <p className="text-sm text-muted-foreground">Se încarcă loturile…</p>;
 
   if (openId && detail) {
     const rollbackToken = `ROLLBACK-SERVICII ${detail.batch_key} ${detail.applied_service_ids.length}`;
@@ -111,7 +111,7 @@ export default function ResearchServiceBatches() {
     return (
       <div className="max-w-3xl">
         <button type="button" onClick={() => { setOpenId(null); setDetail(null); }} className="text-sm underline">
-          Inapoi la loturi
+          Înapoi la loturi
         </button>
 
         <h3 className="mt-3 font-heading text-sm font-bold">
@@ -119,7 +119,7 @@ export default function ResearchServiceBatches() {
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
           {detail.pair_count} perechi · {detail.planned_count} servicii planificate · {detail.created_count} scrise
-          {detail.failed_count > 0 && ` · ${detail.failed_count} esuate`}
+          {detail.failed_count > 0 && ` · ${detail.failed_count} eșuate`}
         </p>
 
         {detail.plan.length > 0 && (
@@ -131,7 +131,7 @@ export default function ResearchServiceBatches() {
                   {entry.location_city && <span className="font-normal text-muted-foreground"> — {entry.location_city}</span>}
                 </p>
                 {entry.error ? (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p className="mt-1 text-xs text-danger">
                     <AlertTriangle className="mr-1 inline h-3 w-3" />{entry.error}
                   </p>
                 ) : (
@@ -188,8 +188,8 @@ export default function ResearchServiceBatches() {
               <RotateCcw className="mr-1 inline h-3 w-3" /> Retrage lotul
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Sterge cele {detail.applied_service_ids.length} servicii scrise de acest lot. Randurile modificate intre timp
-              (confirmate de furnizor sau verificate) sunt pastrate si raportate.
+              Șterge cele {detail.applied_service_ids.length} servicii scrise de acest lot. Rândurile modificate între timp
+              (confirmate de furnizor sau verificate) sunt păstrate și raportate.
             </p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
               <input className={input} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={rollbackToken} aria-label="Confirmare retragere" />
@@ -197,7 +197,7 @@ export default function ResearchServiceBatches() {
                 type="button"
                 onClick={() => act({ action: "rollback", batch_id: openId, confirmation })}
                 disabled={busy || confirmation.trim() !== rollbackToken}
-                className={`${button} border border-destructive text-destructive`}
+                className={`${button} border border-destructive text-danger`}
               >
                 Retrage
               </button>
@@ -212,7 +212,7 @@ export default function ResearchServiceBatches() {
           </p>
         )}
 
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
       </div>
     );
   }
@@ -221,15 +221,15 @@ export default function ResearchServiceBatches() {
     <div className="max-w-3xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          Un lot aplica serviciile aprobate din mai multe drafturi de cercetare, cu o singura aprobare si cu posibilitatea
-          de a retrage tot. Perechile se adauga din ecranul de review al fiecarui draft.
+          Un lot aplica serviciile aprobate din mai multe drafturi de cercetare, cu o singura aprobare și cu posibilitatea
+          de a retrage tot. Perechile se adaugă din ecranul de review al fiecărui draft.
         </p>
         <button
           type="button"
           onClick={() => setShowCsvTemplate((current) => !current)}
           className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
         >
-          {showCsvTemplate ? "Ascunde sablonul CSV" : "Arata sablonul CSV"}
+          {showCsvTemplate ? "Ascunde șablonul CSV" : "Arata șablonul CSV"}
         </button>
       </div>
 
@@ -239,7 +239,7 @@ export default function ResearchServiceBatches() {
         </div>
       )}
 
-      {batches.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Niciun lot inca.</p>}
+      {batches.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Niciun lot încă.</p>}
 
       <div className="mt-4 space-y-2">
         {batches.map((batch) => (
@@ -257,7 +257,7 @@ export default function ResearchServiceBatches() {
         ))}
       </div>
 
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
     </div>
   );
 }

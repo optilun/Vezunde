@@ -3,10 +3,11 @@ import { AlertTriangle, Building2, CheckCircle2, Loader2, RefreshCw } from "luci
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 function scoreTone(score) {
   if (score >= 95) return { label: "Duplicat aproape sigur", className: "bg-destructive/10 text-destructive" };
-  if (score >= 90) return { label: "Foarte probabil duplicat", className: "bg-amber-100 text-amber-800" };
+  if (score >= 90) return { label: "Foarte probabil duplicat", className: "bg-warning-soft text-warning" };
   return { label: "De verificat", className: "bg-secondary text-muted-foreground" };
 }
 
@@ -20,7 +21,7 @@ function OrganizationColumn({ organization }) {
       <div className="flex items-start gap-2">
         <Building2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
-          <div className="break-words text-sm font-bold">{organization.name || "Fara nume"}</div>
+          <div className="break-words text-sm font-bold">{organization.name || "Fără nume"}</div>
           <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{organization.id}</div>
         </div>
       </div>
@@ -53,6 +54,7 @@ function OrganizationColumn({ organization }) {
 }
 
 export default function AdminFragmentedOrganizations() {
+  const confirm = useAdminConfirm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -126,7 +128,12 @@ export default function AdminFragmentedOrganizations() {
       })
       .filter((item) => item.source && item.target);
 
-    const confirmed = window.confirm(`Fuzioneaza ${selected.length} perechi selectate? Pentru fiecare pereche se pastreaza organizatia indicata, iar cealalta devine inactiva dupa mutarea completa a relatiilor.`);
+    const confirmed = await confirm({
+      title: `Fuzionezi ${selected.length} ${selected.length === 1 ? "pereche" : "perechi"}?`,
+      description: "Pentru fiecare pereche rămâne organizația indicată, iar cealaltă devine inactivă după mutarea completă a relațiilor.",
+      confirmLabel: "Fuzionează",
+      tone: "danger",
+    });
     if (!confirmed) return;
 
     setBulkRunning(true);
@@ -152,7 +159,7 @@ export default function AdminFragmentedOrganizations() {
       setBulkProgress({ done: index + 1, total: selected.length, merged, failed });
     }
 
-    setBulkMessage(`Lot finalizat: ${merged} fuziuni complete, ${failed} cazuri nefinalizate. Cazurile nefinalizate au ramas active si pot fi reverificate.`);
+    setBulkMessage(`Lot finalizat: ${merged} fuziuni complete, ${failed} cazuri nefinalizate. Cazurile nefinalizate au rămas active și pot fi reverificate.`);
     setBulkRunning(false);
     await scan();
   };
@@ -161,9 +168,9 @@ export default function AdminFragmentedOrganizations() {
     <AdminCard className="p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-bold">Organizatii fragmentate</h3>
+          <h3 className="text-sm font-bold">Organizații fragmentate</h3>
           <p className="mt-0.5 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Scanarea cauta perechi candidate. Fuziunea in lot este permisa automat doar pentru perechi cu dovada de operator juridic comun sau acelasi brand exact pe acelasi site, fara conflict juridic.
+            Scanarea caută perechi candidate. Fuziunea în lot este permisă automat doar pentru perechi cu dovada de operator juridic comun sau același brand exact pe același site, fără conflict juridic.
           </p>
         </div>
         <button
@@ -173,7 +180,7 @@ export default function AdminFragmentedOrganizations() {
           className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60"
         >
           {loading ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />}
-          {loading ? "Se scaneaza..." : "Scaneaza directorul"}
+          {loading ? "Se scanează..." : "Scanează directorul"}
         </button>
       </div>
 
@@ -184,19 +191,19 @@ export default function AdminFragmentedOrganizations() {
       )}
 
       {mergeResult && (
-        <div role="status" className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-          <div className="text-xs font-semibold text-emerald-900">
-            Fuziune finalizata: {mergeResult.moved_count} {mergeResult.moved_count === 1 ? "locatie mutata" : "locatii mutate"}
+        <div role="status" className="mb-3 rounded-xl border border-success-border bg-success-soft px-3 py-2.5">
+          <div className="text-xs font-semibold text-success">
+            Fuziune finalizată: {mergeResult.moved_count} {mergeResult.moved_count === 1 ? "locație mutată" : "locații mutate"}
             {mergeResult.related_moved?.ProviderMembership > 0 ? `, ${mergeResult.related_moved.ProviderMembership} membri` : ""}
             {mergeResult.related_moved?.ProviderWorkspaceSubmission > 0 ? `, ${mergeResult.related_moved.ProviderWorkspaceSubmission} cereri` : ""}
-            {mergeResult.source_deactivated ? ", organizatia sursa dezactivata" : ""}.
+            {mergeResult.source_deactivated ? ", organizația sursă dezactivată" : ""}.
           </div>
-          {mergeResult.warning && <div className="mt-1 text-[11px] font-semibold text-amber-800">{mergeResult.warning}</div>}
+          {mergeResult.warning && <div className="mt-1 text-[11px] font-semibold text-warning">{mergeResult.warning}</div>}
         </div>
       )}
 
       {!error && !result && !loading && (
-        <EmptyState title="Nicio scanare rulata" subtitle="Apasa Scaneaza directorul pentru a cauta organizatii duplicate." />
+        <EmptyState title="Nicio scanare rulata" subtitle="Apasă „Scanează directorul” ca să cauți organizații duplicate." />
       )}
 
       {result && (
@@ -210,11 +217,11 @@ export default function AdminFragmentedOrganizations() {
                 Selecteaza duplicate sigure ({safePairs.length})
               </button>
               <button type="button" onClick={() => setBulkSelections({})} disabled={bulkRunning || selectedCount === 0} className="h-9 rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
-                Goleste selectia
+                Golește selecția
               </button>
               <button type="button" onClick={runBulkMerges} disabled={bulkRunning || selectedCount === 0} className="inline-flex h-9 items-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50">
                 {bulkRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {bulkRunning ? "Se fuzioneaza..." : `Fuzioneaza selectate (${selectedCount})`}
+                {bulkRunning ? "Se fuzionează..." : `Fuzionează selectate (${selectedCount})`}
               </button>
             </div>
             {bulkProgress && <div className="mt-2 text-xs text-muted-foreground">Procesate {bulkProgress.done}/{bulkProgress.total} · fuzionate {bulkProgress.merged} · nefinalizate {bulkProgress.failed}</div>}
@@ -222,7 +229,7 @@ export default function AdminFragmentedOrganizations() {
           </div>
 
           {result.candidate_pairs.length === 0 ? (
-            <EmptyState title="Nicio pereche gasita" subtitle="Directorul nu contine organizatii duplicate detectabile." />
+            <EmptyState title="Nicio pereche găsită" subtitle="Directorul nu conține organizații duplicate detectabile." />
           ) : (
             <ul className="space-y-3">
               {result.candidate_pairs.map((pair) => {
@@ -245,12 +252,12 @@ export default function AdminFragmentedOrganizations() {
                             return next;
                           })}
                           className="h-4 w-4 rounded border-border"
-                          aria-label="Selecteaza perechea pentru fuziune in lot"
+                          aria-label="Selectează perechea pentru fuziune în lot"
                         />
                       )}
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${tone.className}`}>{tone.label}</span>
                       <span className="text-[11px] text-muted-foreground">{pair.reason}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pair.batch_safe ? "bg-emerald-100 text-emerald-800" : pair.legal_conflict ? "bg-red-100 text-red-800" : "bg-secondary text-muted-foreground"}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pair.batch_safe ? "bg-success-soft text-success" : pair.legal_conflict ? "bg-danger-soft text-danger" : "bg-secondary text-muted-foreground"}`}>
                         {pair.batch_reason}
                       </span>
                     </div>
@@ -261,21 +268,21 @@ export default function AdminFragmentedOrganizations() {
                     </div>
 
                     {pair.shared_addresses?.length > 0 && (
-                      <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
-                        <div className="text-[11px] font-bold text-amber-900">Adresa identica in ambele organizatii - indiciu puternic, dar nu suficient singur pentru lot automat</div>
+                      <div className="mt-2 rounded-xl border border-warning-border bg-warning-soft px-3 py-2">
+                        <div className="text-[11px] font-bold text-warning">Adresă identică în ambele organizații - indiciu puternic, dar nu suficient singur pentru lot automat</div>
                         <ul className="mt-1 space-y-0.5">
-                          {pair.shared_addresses.map((address) => <li key={address} className="break-words text-[11px] text-amber-900/80">{address}</li>)}
+                          {pair.shared_addresses.map((address) => <li key={address} className="break-words text-[11px] text-warning">{address}</li>)}
                         </ul>
                       </div>
                     )}
 
                     {pair.batch_safe && selectedTarget && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                        <span className="text-[11px] font-semibold text-emerald-900">In lot se pastreaza:</span>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-success-border bg-success-soft px-3 py-2">
+                        <span className="text-[11px] font-semibold text-success">În lot se păstrează:</span>
                         <select
                           value={selectedTarget}
                           onChange={(event) => setBulkSelections((current) => ({ ...current, [key]: event.target.value }))}
-                          className="h-8 max-w-full rounded-lg border border-emerald-300 bg-white px-2 text-[11px] font-semibold text-emerald-950"
+                          className="h-8 max-w-full rounded-lg border border-success-border bg-white px-2 text-[11px] font-semibold text-success"
                         >
                           {pair.organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
                         </select>
@@ -283,21 +290,21 @@ export default function AdminFragmentedOrganizations() {
                     )}
 
                     {isPending ? (
-                      <div className="mt-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3">
-                        <p className="text-xs font-semibold text-amber-900">
+                      <div className="mt-2.5 rounded-xl border border-warning-border bg-warning-soft p-3">
+                        <p className="text-xs font-semibold text-warning">
                           Confirmi fuziunea? Locatiile din "{pendingMerge.sourceName}" se muta sub "{pendingMerge.targetName}", iar prima devine inactiva doar daca toate relatiile au fost mutate.
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button type="button" onClick={runMerge} disabled={merging || bulkRunning} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-foreground px-3.5 text-xs font-semibold text-background disabled:opacity-60">
                             {merging ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : null}
-                            {merging ? "Se fuzioneaza..." : "Da, fuzioneaza"}
+                            {merging ? "Se fuzionează..." : "Da, fuzionează"}
                           </button>
-                          <button type="button" onClick={() => setPendingMerge(null)} disabled={merging} className="inline-flex min-h-9 items-center rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">Renunta</button>
+                          <button type="button" onClick={() => setPendingMerge(null)} disabled={merging} className="inline-flex min-h-9 items-center rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">Renunța</button>
                         </div>
                       </div>
                     ) : (
                       <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-semibold text-muted-foreground">Fuziune manuala, pastreaza:</span>
+                        <span className="text-[11px] font-semibold text-muted-foreground">Fuziune manuală, păstrează:</span>
                         {pair.organizations.map((target, index) => {
                           const source = pair.organizations[index === 0 ? 1 : 0];
                           return (

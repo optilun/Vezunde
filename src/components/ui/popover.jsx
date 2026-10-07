@@ -3,13 +3,18 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
 
+// `React.forwardRef` fără tipuri face verificarea JSDoc să deducă props = {} și să respingă orice prop;
+// aici props rămân libere (la rulare nimic nu se schimbă).
+/** @type {any} */
+const forwardRef = React.forwardRef
+
 const Popover = PopoverPrimitive.Root
 
 const PopoverTrigger = PopoverPrimitive.Trigger
 
 const PopoverAnchor = PopoverPrimitive.Anchor
 
-const PopoverContent = React.forwardRef(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+const PopoverContent = forwardRef(({ className, align = /** @type {"center" | "start" | "end"} */ ("center"), sideOffset = 4, ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}

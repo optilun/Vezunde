@@ -4,15 +4,15 @@ import EmptyState from "@/components/admin/ui/EmptyState";
 import { PCS_LABELS } from "@/lib/directoryOpsCatalog";
 
 const ORDER = ["directory", "claimed", "verified", "suspended"];
-const TONE = { directory: "bg-secondary", claimed: "bg-blue-400", verified: "bg-green-500", suspended: "bg-red-400" };
+const TONE = { directory: "bg-secondary", claimed: "bg-info-soft", verified: "bg-success", suspended: "bg-danger-soft" };
 
 // UI-1 PART 3.B — profile status distribution as a segmented bar (real counts only).
 export default function ProfilesTrustCard({ counts, total }) {
   return (
     <AdminCard className="p-5">
-      <h3 className="font-heading font-bold text-sm">Profiluri si incredere</h3>
+      <h3 className="font-heading font-bold text-sm">Profiluri și încredere</h3>
       {total === 0 ? (
-        <EmptyState title="Nu exista inca profiluri de directory." subtitle="Directorul este pregatit pentru primele profiluri reale." />
+        <EmptyState title="Nu există încă profiluri din director." subtitle="Directorul este pregătit pentru primele profiluri reale." />
       ) : (
         <>
           <div className="mt-3 flex h-2.5 rounded-full overflow-hidden bg-secondary">

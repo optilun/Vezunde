@@ -1,23 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  CheckCircle2,
-  ClipboardList,
-  Download,
-  Inbox,
-  Loader2,
-  Mail,
-  Megaphone,
-  Phone,
-  RefreshCw,
-  Search,
-  Trash2,
-  UserRound,
-  Users,
-} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, Download, Loader2, Mail, Megaphone, Phone, Search, Trash2, UserRound, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import AdminCard from "@/components/admin/ui/AdminCard";
-import EmptyState from "@/components/admin/ui/EmptyState";
 import { downloadCsv, formatDateTime } from "@/components/admin/outreach/outreachLabels";
+import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminChips from "@/components/admin/ui/AdminChips";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
+import { AdminRefreshButton, AdminSearchField, useScrollToDetail } from "@/components/admin/ui/AdminListControls";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
+import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { fullDateTime, plural, relativeTime } from "@/lib/adminFormat";
 import {
   SEARCH_CONTACT_CSV_HEADER,
   SEARCH_CONTACT_FOLLOW_UP_OPTIONS,
@@ -30,6 +23,7 @@ import {
   searchContactCsvRows,
   searchContactFollowUp,
   searchContactFollowUpLabel,
+  searchContactFollowUpTone,
   searchContactPlaceLabel,
 } from "@/lib/adminSearchContacts";
 
@@ -37,45 +31,13 @@ import {
 // panoul de admin VIASEE. Entitatea PatientSearchContact e accesibila doar adminilor (RLS), deci
 // citirea si modificarile se fac direct, din contul de admin. Regulile de colectare:
 // shared/patientSearchContact.js.
-
-const FOLLOW_UP_STYLE = {
-  nou: "border-blue-200 bg-blue-50 text-blue-800",
-  contactat: "border-green-200 bg-green-50 text-green-800",
-  fara_raspuns: "border-amber-200 bg-amber-50 text-amber-800",
-  nu_mai_contacta: "border-border bg-secondary text-muted-foreground",
-};
+// 2026-10-07: se deschide pe „Noi”, „Marchează contactat” dintr-un click (apoi trece la următorul),
+// ștergerea și dezabonarea cer confirmare într-un dialog, ciorna notei se păstrează, o listă care nu se
+// încarcă nu mai spune „Încă nu a lăsat nimeni datele”.
+const LOAD_LIMIT = 500;
 
 function FollowUpBadge({ row }) {
-  return (
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${FOLLOW_UP_STYLE[searchContactFollowUp(row)]}`}>
-      {searchContactFollowUpLabel(row)}
-    </span>
-  );
-}
-
-function Tag({ children, tone = "neutral" }) {
-  const tones = {
-    neutral: "bg-secondary text-muted-foreground",
-    green: "bg-green-100 text-green-800",
-    blue: "bg-blue-100 text-blue-800",
-  };
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>{children}</span>;
-}
-
-function SummaryCard({ icon: Icon, label, value }) {
-  return (
-    <AdminCard className="p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold text-muted-foreground">{label}</div>
-          <div className="mt-1 font-heading text-2xl font-extrabold">{value}</div>
-        </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </AdminCard>
-  );
+  return <StatusBadge label={searchContactFollowUpLabel(row)} tone={searchContactFollowUpTone(row)} />;
 }
 
 function DetailRow({ label, children }) {
@@ -91,39 +53,46 @@ function errorText(error, fallback) {
   return error?.response?.data?.error || error?.message || fallback;
 }
 
+const draftFrom = (contact) => ({
+  follow_up_status: searchContactFollowUp(contact),
+  follow_up_note: contact?.follow_up_note || "",
+});
+
 export default function AdminSearchContacts() {
+  const confirm = useAdminConfirm();
   const [contacts, setContacts] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [selectedId, setSelectedId] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("nou");
   const [offersOnly, setOffersOnly] = useState(false);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [draft, setDraft] = useState({ follow_up_status: "nou", follow_up_note: "" });
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [drafts, setDrafts] = useState({});
+  const loadSeq = useRef(0);
+  const detailRef = useRef(null);
+  const scrollToDetail = useScrollToDetail(detailRef);
 
-  const loadContacts = useCallback(async ({ preserveSelection = true } = {}) => {
+  const loadContacts = useCallback(async () => {
+    const seq = loadSeq.current + 1;
+    loadSeq.current = seq;
     setLoading(true);
-    setError("");
+    setLoadError("");
     try {
-      const rows = (await base44.entities.PatientSearchContact.list("-created_date", 500)) || [];
-      setContacts(rows);
-      setSelectedId((current) => (
-        preserveSelection && current && rows.some((row) => row.id === current) ? current : rows[0]?.id || ""
-      ));
+      const rows = (await base44.entities.PatientSearchContact.list("-created_date", LOAD_LIMIT)) || [];
+      if (seq === loadSeq.current) setContacts(rows);
+      return rows;
     } catch (requestError) {
-      setContacts([]);
-      setError(errorText(requestError, "Contactele nu au putut fi încărcate."));
+      if (seq === loadSeq.current) setLoadError(errorText(requestError, "Contactele nu au putut fi încărcate."));
+      return null;
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadContacts({ preserveSelection: false });
-  }, [loadContacts]);
+  useEffect(() => { loadContacts(); }, [loadContacts]);
 
   const counts = useMemo(() => countSearchContacts(contacts), [contacts]);
   const visibleContacts = useMemo(
@@ -132,77 +101,96 @@ export default function AdminSearchContacts() {
   );
 
   useEffect(() => {
-    if (visibleContacts.length === 0) {
-      setSelectedId("");
-      return;
-    }
-    if (!visibleContacts.some((row) => row.id === selectedId)) setSelectedId(visibleContacts[0].id);
-  }, [selectedId, visibleContacts]);
+    if (!contacts) return;
+    if (visibleContacts.length === 0) setSelectedId("");
+    else if (!visibleContacts.some((row) => row.id === selectedId)) setSelectedId(visibleContacts[0].id);
+  }, [contacts, selectedId, visibleContacts]);
 
-  const selected = useMemo(
-    () => contacts?.find((row) => row.id === selectedId) || null,
-    [contacts, selectedId],
-  );
+  const selected = useMemo(() => contacts?.find((row) => row.id === selectedId) || null, [contacts, selectedId]);
 
-  useEffect(() => {
-    setDraft({
-      follow_up_status: searchContactFollowUp(selected),
-      follow_up_note: selected?.follow_up_note || "",
-    });
-    setConfirmDelete(false);
-  }, [selected]);
+  // Ciorna notei rămâne cât timp contactul nu s-a schimbat pe server (altfel pornim de la el).
+  const baseDraft = useMemo(() => draftFrom(selected), [selected]);
+  const stored = drafts[selectedId];
+  const draft = stored && stored.base === (selected?.updated_date || "") ? stored.value : baseDraft;
+  const updateDraft = (changes) => setDrafts((current) => ({
+    ...current,
+    [selectedId]: { base: selected?.updated_date || "", value: { ...draft, ...changes } },
+  }));
 
   const selectContact = (id) => {
     setSelectedId(id);
     setError("");
     setMessage("");
+    scrollToDetail();
   };
 
-  const runUpdate = async (changes, successMessage) => {
+  const runUpdate = async (changes, successMessage, { advance = false, key = "save" } = {}) => {
     if (!selected || saving) return;
-    setSaving(true);
+    const contactId = selected.id;
+    // În lista „Noi”, după ce rezolvi un contact trecem la următorul; în rest rămânem pe cel curent.
+    const advanceTo = advance && statusFilter === "nou" ? visibleContacts.find((row) => row.id !== contactId)?.id || "" : "";
+    setSaving(key);
     setError("");
     setMessage("");
     try {
-      await base44.entities.PatientSearchContact.update(selected.id, changes);
-      await loadContacts();
+      await base44.entities.PatientSearchContact.update(contactId, changes);
+      setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== contactId)));
+      const rows = await loadContacts();
       setMessage(successMessage);
+      if (advanceTo && rows?.some((row) => row.id === advanceTo)) {
+        setSelectedId(advanceTo);
+        scrollToDetail();
+      }
     } catch (requestError) {
       setError(errorText(requestError, "Modificarea nu a putut fi salvată."));
     } finally {
-      setSaving(false);
+      setSaving("");
     }
   };
 
   const saveFollowUp = () => runUpdate({
     follow_up_status: draft.follow_up_status,
     follow_up_note: draft.follow_up_note.trim().slice(0, 2000),
-  }, "Urmărirea a fost salvată.");
+  }, "Urmărirea a fost salvată.", { advance: draft.follow_up_status !== "nou" });
 
-  const unsubscribe = () => runUpdate(
-    { marketing_unsubscribed_at: new Date().toISOString() },
-    "Persoana nu va mai primi oferte.",
-  );
+  // Un click: „Contactat”, cu nota scrisă până acum.
+  const markContacted = () => runUpdate({
+    follow_up_status: "contactat",
+    follow_up_note: draft.follow_up_note.trim().slice(0, 2000),
+  }, "Marcat ca „contactat”.", { advance: true, key: "contacted" });
+
+  const unsubscribe = async () => {
+    const ok = await confirm({
+      title: "Dezabonezi persoana de la oferte?",
+      description: "Nu va mai primi oferte. Datele ei rămân în listă.",
+      confirmLabel: "Dezabonează",
+    });
+    if (!ok) return;
+    await runUpdate({ marketing_unsubscribed_at: new Date().toISOString() }, "Persoana nu va mai primi oferte.", { key: "unsubscribe" });
+  };
 
   // Stergerea e pentru cererile de stergere ale persoanei (GDPR art. 17). Cere confirmare.
   const deleteContact = async () => {
     if (!selected || saving) return;
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-    setSaving(true);
+    const ok = await confirm({
+      title: "Ștergi definitiv datele persoanei?",
+      description: "Datele ei de contact se șterg din VIASEE (la cererea persoanei, GDPR). Nu se mai pot recupera.",
+      confirmLabel: "Șterge definitiv",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setSaving("delete");
     setError("");
     setMessage("");
     try {
       await base44.entities.PatientSearchContact.delete(selected.id);
-      await loadContacts({ preserveSelection: false });
+      setSelectedId("");
+      await loadContacts();
       setMessage("Datele au fost șterse.");
     } catch (requestError) {
       setError(errorText(requestError, "Datele nu au putut fi șterse."));
     } finally {
-      setSaving(false);
-      setConfirmDelete(false);
+      setSaving("");
     }
   };
 
@@ -211,102 +199,71 @@ export default function AdminSearchContacts() {
     downloadCsv(`contacte-cautari-${day}.csv`, [...SEARCH_CONTACT_CSV_HEADER], searchContactCsvRows(visibleContacts));
   };
 
-  const statusChips = [
-    ["all", `Toate (${counts.total})`],
-    ...SEARCH_CONTACT_FOLLOW_UP_OPTIONS.map((option) => [option.value, `${option.label} (${counts[option.value]})`]),
+  const chips = [
+    ...SEARCH_CONTACT_FOLLOW_UP_OPTIONS.map((option) => ({ key: option.value, label: option.value === "nou" ? "Noi" : option.label, count: counts[option.value] })),
+    { key: "all", label: "Toate", count: counts.total },
   ];
+  const filtering = Boolean(query.trim()) || offersOnly;
+  const capped = Boolean(contacts) && contacts.length >= LOAD_LIMIT;
 
   return (
     <div className="space-y-4" data-admin-mobile="true">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={Inbox} label="Contacte noi" value={counts.nou} />
-        <SummaryCard icon={Megaphone} label="Pot primi oferte" value={counts.offers} />
-        <SummaryCard icon={ClipboardList} label="Au salvat o cerere" value={counts.linked} />
-        <SummaryCard icon={Users} label="Total contacte" value={counts.total} />
-      </div>
-
-      <AdminCard className="p-3 sm:p-4">
-        <div className="grid gap-3">
-          <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl border border-border bg-background px-3">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <AdminCard className="space-y-3 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminSearchField
+            value={query}
+            onChange={setQuery}
+            label="Caută în contacte"
+            placeholder="Caută după nume, telefon, email, nevoie sau localitate"
+          />
+          <AdminRefreshButton onClick={loadContacts} busy={loading && Boolean(contacts)} />
+        </div>
+        <AdminChips options={chips} value={statusFilter} onChange={setStatusFilter} label="Filtrează contactele" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="flex min-h-10 cursor-pointer items-center gap-2 text-xs font-semibold">
             <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Caută după nume, telefon, email, nevoie sau localitate"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+              type="checkbox"
+              checked={offersOnly}
+              onChange={(event) => setOffersOnly(event.target.checked)}
+              className="h-4 w-4 rounded border-border"
             />
+            Doar cei care pot primi oferte ({counts.offers})
           </label>
-          <div className="flex flex-wrap items-center gap-2">
-            {statusChips.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${
-                  statusFilter === key ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="flex min-h-10 cursor-pointer items-center gap-2 text-xs font-semibold">
-              <input
-                type="checkbox"
-                checked={offersOnly}
-                onChange={(event) => setOffersOnly(event.target.checked)}
-                className="h-4 w-4 rounded border-border"
-              />
-              Doar cei care pot primi oferte
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={exportVisible}
-                disabled={visibleContacts.length === 0}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Exportă lista ({visibleContacts.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => loadContacts()}
-                disabled={loading || saving}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                Actualizează
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={exportVisible}
+            disabled={visibleContacts.length === 0}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            Exportă lista ({visibleContacts.length})
+          </button>
         </div>
       </AdminCard>
 
-      {error && (
-        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div aria-live="polite" className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          {message}
-        </div>
+      {loadError && <AdminNotice tone="danger">{loadError}</AdminNotice>}
+      {error && <AdminNotice tone="danger" onDismiss={() => setError("")}>{error}</AdminNotice>}
+      {message && <AdminNotice tone="success" onDismiss={() => setMessage("")}>{message}</AdminNotice>}
+      {capped && (
+        <AdminNotice tone="warning">
+          Se afișează cele mai recente {LOAD_LIMIT} de contacte; numerele de pe filtre se referă la ele.
+        </AdminNotice>
       )}
 
-      {loading && !contacts && (
-        <AdminCard className="flex min-h-52 items-center justify-center p-5 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă contactele...
+      {!contacts && loading && <AdminLoading label="Se încarcă contactele…" />}
+
+      {!contacts && !loading && loadError && (
+        <AdminCard className="p-5">
+          <EmptyState icon={Users} title="Contactele nu s-au putut încărca." subtitle="Verifică conexiunea și încearcă din nou." ctaLabel="Încearcă din nou" onCta={loadContacts} />
         </AdminCard>
       )}
 
-      {!loading && contacts?.length === 0 && (
+      {contacts && contacts.length === 0 && (
         <AdminCard className="p-5">
           <EmptyState
             icon={Users}
             title="Încă nu a lăsat nimeni datele de contact."
-            subtitle="Datele lăsate de pacienți la pasul „Date de contact” din căutare apar automat aici."
+            subtitle="Datele lăsate de pacienți la pasul „Date de contact” din căutare apar aici, singure."
           />
         </AdminCard>
       )}
@@ -315,74 +272,90 @@ export default function AdminSearchContacts() {
         <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.5fr)]">
           <AdminCard className="overflow-hidden p-0">
             <div className="border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground">
-              {visibleContacts.length} rezultate
+              {plural(visibleContacts.length, "contact", "contacte")}
             </div>
             {visibleContacts.length === 0 ? (
               <div className="p-5">
-                <EmptyState icon={Search} title="Niciun contact pentru filtrele alese." subtitle="Schimbă filtrul sau căutarea." />
+                {statusFilter === "nou" && !filtering ? (
+                  <EmptyState icon={Users} title="Nu ai contacte noi." subtitle="Le-ai urmărit pe toate." ctaLabel="Vezi toate contactele" onCta={() => setStatusFilter("all")} />
+                ) : (
+                  <EmptyState
+                    icon={Search}
+                    title="Niciun contact pentru filtrele alese."
+                    ctaLabel="Șterge filtrele"
+                    onCta={() => { setQuery(""); setOffersOnly(false); setStatusFilter("all"); }}
+                  />
+                )}
               </div>
             ) : (
-              <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
+              <ul aria-label="Contacte din căutări" className="max-h-[70vh] divide-y divide-border overflow-y-auto">
                 {visibleContacts.map((row) => (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() => selectContact(row.id)}
-                    className={`w-full p-4 text-left transition ${row.id === selectedId ? "bg-secondary/70" : "hover:bg-secondary/35"}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold">{row.contact_name || "Fără nume"}</div>
-                        <div className="mt-1 truncate text-xs text-muted-foreground">
-                          {[row.intent_label, row.city].filter(Boolean).join(" · ") || "Căutare fără detalii"}
+                  <li key={row.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectContact(row.id)}
+                      aria-current={row.id === selectedId ? "true" : undefined}
+                      className={`block w-full border-l-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                        row.id === selectedId ? "border-foreground bg-secondary/70" : "border-transparent hover:bg-secondary/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold">{row.contact_name || "Fără nume"}</div>
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {[row.intent_label, row.city].filter(Boolean).join(" · ") || "Căutare fără detalii"}
+                          </div>
                         </div>
+                        <FollowUpBadge row={row} />
                       </div>
-                      <FollowUpBadge row={row} />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                      <div className="flex flex-wrap gap-1.5">
-                        {canReceiveSearchContactOffers(row) && <Tag tone="green">Oferte</Tag>}
-                        {row.linked_request_id && <Tag tone="blue">Cerere</Tag>}
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                        <div className="flex flex-wrap gap-1.5">
+                          {canReceiveSearchContactOffers(row) && <StatusBadge tone="success" label="Oferte" />}
+                          {row.linked_request_id && <StatusBadge tone="info" label="Cerere" />}
+                        </div>
+                        <span title={fullDateTime(row.created_date)}>{relativeTime(row.created_date)}</span>
                       </div>
-                      <span>{formatDateTime(row.created_date)}</span>
-                    </div>
-                  </button>
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </AdminCard>
 
           <AdminCard className="p-4 sm:p-5">
+            <div ref={detailRef} className="scroll-mt-20" />
             {!selected ? (
-              <EmptyState icon={UserRound} title="Alege un contact." subtitle="Datele și căutarea persoanei apar aici." />
+              <EmptyState icon={UserRound} title="Alege un contact din listă." subtitle="Datele și căutarea persoanei apar aici." />
             ) : (
-              <div className="space-y-5">
-                <div className="border-b border-border pb-5">
+              <div className="space-y-4">
+                <div className="border-b border-border pb-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <FollowUpBadge row={selected} />
-                    {canReceiveSearchContactOffers(selected) && <Tag tone="green">Poate primi oferte</Tag>}
-                    {selected.linked_request_id && <Tag tone="blue">A salvat o cerere</Tag>}
+                    {canReceiveSearchContactOffers(selected) && <StatusBadge tone="success" label="Poate primi oferte" />}
+                    {selected.linked_request_id && <StatusBadge tone="info" label="A salvat o cerere" />}
                   </div>
-                  <h2 className="mt-4 font-heading text-xl font-extrabold">{selected.contact_name || "Fără nume"}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Lăsat pe {formatDateTime(selected.created_date)}</p>
+                  <h2 className="mt-3 font-heading text-xl font-extrabold">{selected.contact_name || "Fără nume"}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground" title={fullDateTime(selected.created_date)}>
+                    Lăsat {relativeTime(selected.created_date)} · {formatDateTime(selected.created_date)}
+                  </p>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-3 rounded-2xl border border-border bg-secondary/25 p-4">
                     <div className="flex items-center gap-2 text-xs font-bold">
-                      <UserRound className="h-4 w-4 text-muted-foreground" /> Contact
+                      <UserRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Contact
                     </div>
                     <DetailRow label="Telefon">
                       {selected.contact_phone ? (
                         <a href={`tel:${selected.contact_phone.replace(/[^0-9+]/g, "")}`} className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4">
-                          <Phone className="h-3.5 w-3.5" /> {selected.contact_phone}
+                          <Phone className="h-3.5 w-3.5" aria-hidden="true" /> {selected.contact_phone}
                         </a>
                       ) : "—"}
                     </DetailRow>
                     <DetailRow label="Email">
                       {selected.contact_email ? (
                         <a href={`mailto:${selected.contact_email}`} className="inline-flex items-center gap-1.5 break-all font-semibold underline underline-offset-4">
-                          <Mail className="h-3.5 w-3.5 shrink-0" /> {selected.contact_email}
+                          <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {selected.contact_email}
                         </a>
                       ) : "—"}
                     </DetailRow>
@@ -391,7 +364,7 @@ export default function AdminSearchContacts() {
 
                   <div className="space-y-3 rounded-2xl border border-border bg-secondary/25 p-4">
                     <div className="flex items-center gap-2 text-xs font-bold">
-                      <Search className="h-4 w-4 text-muted-foreground" /> Ce a căutat
+                      <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Ce a căutat
                     </div>
                     <DetailRow label="Nevoie">{selected.intent_label || "—"}</DetailRow>
                     <DetailRow label="Localitate">{searchContactPlaceLabel(selected)}</DetailRow>
@@ -402,7 +375,7 @@ export default function AdminSearchContacts() {
 
                 <div className="space-y-3 rounded-2xl border border-border p-4">
                   <div className="flex items-center gap-2 text-xs font-bold">
-                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" /> Acorduri și cerere
+                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Acorduri și cerere
                   </div>
                   <DetailRow label="Păstrare și contact">
                     {selected.processing_consent ? `Acordat pe ${formatDateTime(selected.processing_consent_at)}` : "—"}
@@ -419,72 +392,75 @@ export default function AdminSearchContacts() {
                   </DetailRow>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border border-border p-4">
+                <section aria-label="Urmărire" className="space-y-3 rounded-2xl border border-border bg-secondary/20 p-4">
                   <div className="text-xs font-bold">Urmărire</div>
-                  <label className="block text-xs font-semibold text-muted-foreground">
-                    Status
-                    <select
-                      value={draft.follow_up_status}
-                      onChange={(event) => setDraft((current) => ({ ...current, follow_up_status: event.target.value }))}
-                      className="mt-1.5 min-h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none"
-                    >
-                      {SEARCH_CONTACT_FOLLOW_UP_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
                   <label className="block text-xs font-semibold text-muted-foreground">
                     Notă internă
                     <textarea
                       value={draft.follow_up_note}
-                      onChange={(event) => setDraft((current) => ({ ...current, follow_up_note: event.target.value }))}
+                      onChange={(event) => updateDraft({ follow_up_note: event.target.value })}
                       maxLength={2000}
                       rows={3}
                       placeholder="Ex: sunat pe 29.09, revine după salariu"
-                      className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={saveFollowUp}
-                    disabled={saving}
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50"
-                  >
-                    {saving ? "Se salvează..." : "Salvează"}
-                  </button>
-                </div>
+                  <div className="flex flex-wrap items-end gap-2">
+                    {searchContactFollowUp(selected) !== "contactat" && (
+                      <button
+                        type="button"
+                        onClick={markContacted}
+                        disabled={Boolean(saving)}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
+                      >
+                        {saving === "contacted" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+                        Marchează contactat
+                      </button>
+                    )}
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Stare
+                      <select
+                        value={draft.follow_up_status}
+                        onChange={(event) => updateDraft({ follow_up_status: event.target.value })}
+                        className="ml-2 min-h-10 rounded-xl border border-border bg-background px-3 text-sm font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {SEARCH_CONTACT_FOLLOW_UP_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={saveFollowUp}
+                      disabled={Boolean(saving)}
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
+                    >
+                      {saving === "save" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                      Salvează
+                    </button>
+                  </div>
+                </section>
 
                 <div className="flex flex-wrap gap-2 border-t border-border pt-4">
                   {canReceiveSearchContactOffers(selected) && (
                     <button
                       type="button"
                       onClick={unsubscribe}
-                      disabled={saving}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
+                      disabled={Boolean(saving)}
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
                     >
-                      <Megaphone className="h-3.5 w-3.5" /> Dezabonează de la oferte
+                      <Megaphone className="h-3.5 w-3.5" aria-hidden="true" /> Dezabonează de la oferte
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={deleteContact}
-                    disabled={saving}
-                    className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold disabled:opacity-50 ${
-                      confirmDelete ? "bg-red-600 text-white hover:bg-red-700" : "border border-red-200 bg-background text-red-700 hover:bg-red-50"
-                    }`}
+                    disabled={Boolean(saving)}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-danger-border bg-background px-4 text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-50"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    {confirmDelete ? "Confirmă ștergerea definitivă" : "Șterge datele (la cererea persoanei)"}
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    Șterge datele (la cererea persoanei)
                   </button>
-                  {confirmDelete && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(false)}
-                      className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary"
-                    >
-                      Renunță
-                    </button>
-                  )}
                 </div>
               </div>
             )}

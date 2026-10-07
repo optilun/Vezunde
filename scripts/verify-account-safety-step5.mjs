@@ -68,9 +68,11 @@ assert.match(settings, /action: "request"/);
 assert.match(settings, /Da, trimite cererea/, 'trimiterea cere confirmare');
 assert.match(settings, /Cererea de ștergere a fost înregistrată/);
 
+// Din 2026-10-07 regulile tichetelor (sursa și termenul cererii de ștergere) sunt în src/lib/adminSupportRules.js.
 const admin = await read('src/components/admin/support/AdminSupportTickets.jsx');
-assert.match(admin, /ACCOUNT_DELETION_SOURCE = "account_deletion_request"/);
-assert.match(admin, /ACCOUNT_DELETION_RESPONSE_DAYS = 30/);
+const adminRules = await read('src/lib/adminSupportRules.js');
+assert.match(adminRules, /ACCOUNT_DELETION_SOURCE = "account_deletion_request"/);
+assert.match(adminRules, /ACCOUNT_DELETION_RESPONSE_DAYS = 30/);
 assert.match(admin, /function DeletionDeadlineBadge\(/);
 
 console.log('verify-account-safety-step5: ok');

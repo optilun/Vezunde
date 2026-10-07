@@ -21,9 +21,9 @@ const AUDIENCE_KEYS = [
 ];
 
 const VIEW_FILTERS = [
-  { value: "all", label: "Toti" },
+  { value: "all", label: "Toți" },
   { value: "receives", label: "Primesc" },
-  { value: "excluded", label: "Scosi de mine" },
+  { value: "excluded", label: "Scoși de mine" },
   { value: "blocked", label: "Nu pot primi" },
 ];
 
@@ -150,7 +150,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <span className="text-xs font-semibold text-foreground">Cui trimiti</span>
+          <span className="text-xs font-semibold text-foreground">Cui trimiți</span>
           <div className="mt-1 space-y-2">
             {SOURCE_OPTIONS.map((option) => (
               <label key={option.value} className="flex items-start gap-2 text-xs text-foreground">
@@ -176,15 +176,15 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
             <label className="flex items-start gap-2 text-xs text-foreground">
               <input type="radio" name="outreach-audience-mode" disabled={disabled} checked={!manualOnly} onChange={() => onChange({ audience_mode: "filters" })} className="mt-0.5" />
               <span>
-                Dupa filtre
-                <span className="block text-[11px] text-muted-foreground">Toti cei care se potrivesc; poti debifa pe oricine si poti adauga altii de mana.</span>
+                După filtre
+                <span className="block text-[11px] text-muted-foreground">Toți cei care se potrivesc; poți debifa pe oricine și poți adăuga alții de mână.</span>
               </span>
             </label>
             <label className="flex items-start gap-2 text-xs text-foreground">
               <input type="radio" name="outreach-audience-mode" disabled={disabled} checked={manualOnly} onChange={() => onChange({ audience_mode: "manual" })} className="mt-0.5" />
               <span>
-                Doar cei alesi de mine
-                <span className="block text-[11px] text-muted-foreground">Pentru un email catre cateva adrese anume: le cauti si le adaugi mai jos.</span>
+                Doar cei aleși de mine
+                <span className="block text-[11px] text-muted-foreground">Pentru un email către câteva adrese anume: le cauți și le adaugi mai jos.</span>
               </span>
             </label>
           </div>
@@ -202,14 +202,14 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
 
       <div className="rounded-xl border border-border p-3">
         <label htmlFor="outreach-add-contact" className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <UserPlus className="h-3.5 w-3.5" /> Adauga manual
+          <UserPlus className="h-3.5 w-3.5" /> Adaugă manual
         </label>
         <input
           id="outreach-add-contact"
           type="text"
           disabled={disabled}
           value={addQuery}
-          placeholder="Cauta dupa firma, email sau oras..."
+          placeholder="Caută după firmă, email sau oraș…"
           onChange={(e) => setAddQuery(e.target.value)}
           className="mt-2 w-full rounded-lg border border-border px-3 py-2 text-sm"
         />
@@ -229,7 +229,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                     onClick={() => addManually(contact)}
                     className="shrink-0 rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50"
                   >
-                    {already ? "In lista" : "Adauga"}
+                    {already ? "În listă" : "Adaugă"}
                   </button>
                 </li>
               );
@@ -238,15 +238,15 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
         )}
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>}
 
       <div className="rounded-xl bg-secondary/60 px-4 py-3 text-xs text-foreground">
         {counts ? (
           <>
             <p>
-              <strong className="text-base tabular-nums">{counts.eligible}</strong> {counts.eligible === 1 ? "adresa primeste" : "adrese primesc"} emailul
+              <strong className="text-base tabular-nums">{counts.eligible}</strong> {counts.eligible === 1 ? "adresa primește" : "adrese primesc"} emailul
               {counts.excluded > 0 && ` · ${counts.excluded} scoase de tine`}
-              {counts.added_manually > 0 && ` · ${counts.added_manually} adaugate de mana`}
+              {counts.added_manually > 0 && ` · ${counts.added_manually} adăugate de mână`}
               {loading && <Loader2 className="ml-2 inline h-3.5 w-3.5 animate-spin" />}
             </p>
             {blockedEntries.length > 0 && (
@@ -256,7 +256,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
             )}
           </>
         ) : (
-          <span className="inline-flex items-center gap-2 text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Se calculeaza lista...</span>
+          <span className="inline-flex items-center gap-2 text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Se calculează lista...</span>
         )}
       </div>
 
@@ -268,7 +268,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
               id="outreach-recipient-search"
               type="text"
               value={search}
-              placeholder="Cauta in lista..."
+              placeholder="Caută în listă…"
               onChange={(e) => { setSearch(e.target.value); setLimit(PAGE); }}
               className="rounded-lg border border-border py-1.5 pl-8 pr-3 text-xs"
             />
@@ -284,8 +284,8 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
             </button>
           ))}
           <span className="ml-auto flex gap-2">
-            <button type="button" disabled={disabled} onClick={() => setAllVisible(true)} className="rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50">Bifeaza tot</button>
-            <button type="button" disabled={disabled} onClick={() => setAllVisible(false)} className="rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50">Debifeaza tot</button>
+            <button type="button" disabled={disabled} onClick={() => setAllVisible(true)} className="rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50">Bifează tot</button>
+            <button type="button" disabled={disabled} onClick={() => setAllVisible(false)} className="rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50">Debifează tot</button>
           </span>
         </div>
 
@@ -293,7 +293,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
           <table className="w-full text-left text-xs">
             <thead className="bg-secondary/60 text-muted-foreground">
               <tr>
-                <th className="w-10 px-3 py-2"><span className="sr-only">Primeste</span></th>
+                <th className="w-10 px-3 py-2"><span className="sr-only">Primește</span></th>
                 <th className="px-3 py-2">Firma</th>
                 <th className="px-3 py-2">Email</th>
                 <th className="px-3 py-2">Localitate</th>
@@ -311,7 +311,7 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
-                        aria-label={`Trimite catre ${row.email}`}
+                        aria-label={`Trimite către ${row.email}`}
                         disabled={disabled || (!!row.reason && !byAddress)}
                         checked={receives}
                         onChange={(e) => setReceives(row, e.target.checked)}
@@ -326,30 +326,30 @@ export default function OutreachRecipientPicker({ spec, onChange, disabled = fal
                     </td>
                     <td className="px-3 py-2">{row.email}</td>
                     <td className="px-3 py-2">{[row.city, row.county].filter(Boolean).join(", ") || "—"}</td>
-                    <td className="px-3 py-2">{SOURCE_LABELS[row.kind] || row.kind}{row.added_manually ? " · adaugat de mana" : ""}</td>
+                    <td className="px-3 py-2">{SOURCE_LABELS[row.kind] || row.kind}{row.added_manually ? " · adăugat de mână" : ""}</td>
                     <td className="px-3 py-2">
                       {byAddress ? (
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">Scos de tine (aceeasi adresa)</span>
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">Scos de tine (aceeași adresa)</span>
                       ) : row.reason ? (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">{BLOCK_REASON_LABELS[row.reason] || row.reason}</span>
+                        <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-semibold text-warning">{BLOCK_REASON_LABELS[row.reason] || row.reason}</span>
                       ) : out ? (
                         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">Scos de tine</span>
                       ) : (
-                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-800">Primeste</span>
+                        <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-semibold text-success">Primește</span>
                       )}
                     </td>
                   </tr>
                 );
               })}
               {!filteredRows.length && (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">{data ? "Nimeni in aceasta vedere." : "Se incarca..."}</td></tr>
+                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">{data ? "Nimeni în această vedere." : "Se încarcă…"}</td></tr>
               )}
             </tbody>
           </table>
         </div>
         {filteredRows.length > limit && (
           <button type="button" onClick={() => setLimit((value) => value + PAGE)} className="mt-2 rounded-full border border-border px-3 py-1 text-[11px] font-semibold hover:bg-secondary">
-            Arata inca {Math.min(PAGE, filteredRows.length - limit)} din {filteredRows.length - limit}
+            Arată încă {Math.min(PAGE, filteredRows.length - limit)} din {filteredRows.length - limit}
           </button>
         )}
       </div>

@@ -40,7 +40,7 @@ export default function ResearchStatusPanel({ location, onReload }) {
           <option value="">Schimba status...</option>
           {Object.entries(RESEARCH_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <input type="date" className={input} value={recheck} onChange={(e) => setRecheck(e.target.value)} title="Data re-verificare (optional)" />
+        <input type="date" className={input} value={recheck} onChange={(e) => setRecheck(e.target.value)} title="Data re-verificare (opțional)" />
       </div>
       <textarea className={`${input} mt-2`} rows={2} placeholder="Nota (obligatorie pentru respins / re-verificare)" value={note} onChange={(e) => setNote(e.target.value)} />
       <button
@@ -51,7 +51,7 @@ export default function ResearchStatusPanel({ location, onReload }) {
         Aplica status
       </button>
       <p className="mt-1.5 text-[11px] text-muted-foreground">
-        Statusul de research este intern si nu schimba statusul public al profilului.
+        Statusul de research este intern și nu schimbă statusul public al profilului.
       </p>
 
       <div className="mt-4 flex gap-2">
@@ -65,7 +65,7 @@ export default function ResearchStatusPanel({ location, onReload }) {
         </button>
       </div>
 
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
     </div>
   );
 }

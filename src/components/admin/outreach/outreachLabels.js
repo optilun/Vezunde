@@ -10,30 +10,33 @@ export const CATEGORY_OPTIONS = [
   {
     value: "marketing",
     label: "Marketing",
-    description: "Prezentari si invitatii: revendicarea profilului, beneficiile VIASEE, pentru cei care nu folosesc inca platforma.",
+    description: "Prezentări și invitații: revendicarea profilului, beneficiile VIASEE, pentru cei care nu folosesc încă platforma.",
   },
   {
     value: "announcement",
-    label: "Anunturi",
-    description: "Informari despre VIASEE: functii noi, schimbari de reguli, mentenanta. Implicit catre furnizorii cu cont.",
+    label: "Anunțuri",
+    description: "Informări despre VIASEE: funcții noi, schimbări de reguli, mentenanța. Implicit către furnizorii cu cont.",
   },
 ];
 
-export const CATEGORY_LABELS = { marketing: "Marketing", announcement: "Anunt" };
+export const CATEGORY_LABELS = { marketing: "Marketing", announcement: "Anunț" };
 
-export function normalizeCategory(value) {
-  return value === "announcement" ? "announcement" : "marketing";
-}
-
-export function categoryBadgeClass(category) {
-  return normalizeCategory(category) === "announcement"
-    ? "border-sky-200 bg-sky-50 text-sky-800"
-    : "border-violet-200 bg-violet-50 text-violet-800";
-}
+export {
+  CAMPAIGN_STATUS_LABELS,
+  CONTACT_STATUS_LABELS,
+  HEALTH_PAUSE_REASONS,
+  campaignStatusLabel,
+  campaignStatusTone,
+  categoryBadgeClass,
+  contactStatusTone,
+  isAutoPausedCampaign,
+  normalizeCategory,
+  outcomeClass,
+} from "@/lib/adminOutreachLabels";
 
 export const SOURCE_OPTIONS = [
-  { value: "directory", label: "Contacte din director", hint: "Adresele publice ale locatiilor si organizatiilor listate." },
-  { value: "provider_account", label: "Furnizori cu cont", hint: "Utilizatorii care au revendicat sau administreaza un profil." },
+  { value: "directory", label: "Contacte din director", hint: "Adresele publice ale locațiilor și organizațiilor listate." },
+  { value: "provider_account", label: "Furnizori cu cont", hint: "Utilizatorii care au revendicat sau administrează un profil." },
 ];
 
 export const SOURCE_LABELS = { directory: "Director", provider_account: "Cont furnizor" };
@@ -44,44 +47,36 @@ export const PROVIDER_TYPE_LABELS = {
 };
 
 export const BLOCK_REASON_LABELS = {
-  invalid_email: "Adresa invalida",
-  suppressed: "Dezabonat de la tot / respins / reclamatie",
-  unsubscribed_category: "Dezabonat de la aceasta categorie",
+  invalid_email: "Adresă invalidă",
+  suppressed: "Dezabonat de la tot / respins / reclamație",
+  unsubscribed_category: "Dezabonat de la această categorie",
   inactive_account: "Contul nu mai e activ",
-  undeliverable_domain: "Domeniul nu primeste email",
+  undeliverable_domain: "Domeniul nu primește email",
   missing_compliance: "Lipsesc temeiul legal sau sursa",
-  duplicate: "Aceeasi adresa apare deja in lista",
+  duplicate: "Aceeași adresă apare deja în listă",
 };
 
 export const OUTCOME_LABELS = {
-  queued: "In asteptare",
-  awaiting: "Trimis, neconfirmat inca",
+  queued: "În așteptare",
+  awaiting: "Trimis, neconfirmat încă",
   delivered: "Livrat",
-  replied: "Livrat, a raspuns",
+  replied: "Livrat, a răspuns",
   unsubscribed: "Livrat, s-a dezabonat",
   bounced: "Respins",
-  complained: "Reclamatie spam",
-  failed: "Esuat",
+  complained: "Reclamație spam",
+  failed: "Eșuat",
   not_sent: "Netrimis",
 };
 
-export function outcomeClass(outcome) {
-  if (["delivered", "replied"].includes(outcome)) return "bg-green-50 text-green-800";
-  if (outcome === "unsubscribed") return "bg-amber-50 text-amber-800";
-  if (["bounced", "complained", "failed"].includes(outcome)) return "bg-red-50 text-red-800";
-  if (outcome === "awaiting") return "bg-blue-50 text-blue-800";
-  return "bg-secondary text-muted-foreground";
-}
-
 export const NOT_SENT_REASON_LABELS = {
-  duplicate: "Adresa duplicat",
-  undeliverable_domain: "Domeniul nu primeste email",
+  duplicate: "Adresă duplicată",
+  undeliverable_domain: "Domeniul nu primește email",
   domain_dns_error: "Eroare DNS la domeniu",
   suppressed: "Dezabonat / suprimat",
   missing_compliance: "Lipsesc temeiul legal sau sursa",
-  invalid_email: "Adresa invalida",
+  invalid_email: "Adresă invalidă",
   inactive_account: "Contul nu mai e activ",
-  rejected_by_provider: "Adresa refuzata de serviciul de email",
+  rejected_by_provider: "Adresă refuzată de serviciul de email",
   other: "Alt motiv",
 };
 

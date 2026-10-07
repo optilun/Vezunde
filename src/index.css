@@ -43,9 +43,37 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Tonuri semantice pentru stări (2026-10-07, audit admin). Un singur loc pentru succes /
+       avertisment / info / eroare, în loc de clase de culoare scrise de mână în fiecare ecran
+       (565 de utilizări la audit). „info” folosește albastrul-gri al direcției de design. */
+    --success: 143 55% 25%;
+    --success-soft: 138 55% 96%;
+    --success-border: 141 45% 82%;
+    --warning: 28 80% 30%;
+    --warning-soft: 45 100% 95%;
+    --warning-border: 43 90% 78%;
+    --info: 220 27% 32%;
+    --info-soft: 220 35% 96%;
+    --info-border: 220 30% 84%;
+    --danger: 0 62% 36%;
+    --danger-soft: 0 80% 97%;
+    --danger-border: 0 80% 88%;
   }
 
   .dark {
+    --success: 143 45% 68%;
+    --success-soft: 143 30% 14%;
+    --success-border: 143 25% 26%;
+    --warning: 40 90% 68%;
+    --warning-soft: 35 40% 14%;
+    --warning-border: 35 35% 28%;
+    --info: 220 45% 76%;
+    --info-soft: 220 25% 15%;
+    --info-border: 220 22% 28%;
+    --danger: 0 80% 72%;
+    --danger-soft: 0 35% 15%;
+    --danger-border: 0 30% 28%;
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 3.9%;

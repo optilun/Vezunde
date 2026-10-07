@@ -71,8 +71,8 @@ assert.doesNotMatch(backend, /is_verified:\s*true/);
 assert.doesNotMatch(backend, /verification_state:\s*'verified'/);
 
 assert.match(panel, /directoryMappingOps/);
-assert.match(panel, /Genereaza preview/);
-assert.match(panel, /Nicio decizie nu publica, verifica sau combina automat profiluri/);
+assert.match(panel, /Generează preview/);
+assert.match(panel, /Nicio decizie nu publică, verifică sau combină automat profiluri/);
 assert.match(panel, /same_address_distinct_unit/);
 assert.match(panel, /duplicate_same_entity/);
 assert.match(panel, /rebrand_successor/);
@@ -82,7 +82,7 @@ assert.match(panel, /2xl:grid-cols/);
 // sidebar, dar ramane accesibil, cu eticheta proprie pastrata pentru compatibilitate.
 assert.match(page, /DirOpsMapping/);
 assert.match(page, /subTab === "mapping"/);
-assert.match(nav, /mapping:\s*"Mapare si identitate"/);
+assert.match(nav, /mapping:\s*"Mapare și identitate"/);
 
 assert.equal(identitySchema.name, 'DirectoryLocationIdentityLink');
 assert.ok(identitySchema.properties.relationship_type.enum.includes('same_address_distinct_unit'));

@@ -1,72 +1,70 @@
-import React, { useState } from "react";
-import AdminCard from "@/components/admin/ui/AdminCard";
+import React, { useEffect, useRef } from "react";
 import AdminWorkspaceSubmissionsReview from "@/components/admin/directory/AdminWorkspaceSubmissionsReview";
 import AdminNewLocationReview from "@/components/admin/directory/AdminNewLocationReview";
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
 import AdminLocationLifecycleReview from "@/components/admin/directory/AdminLocationLifecycleReview";
 import AdminPhotoCleanupQueue from "@/components/admin/directory/AdminPhotoCleanupQueue";
+import AdminNotice from "@/components/admin/ui/AdminNotice";
+import AdminTabs from "@/components/admin/ui/AdminTabs";
 import AdminPatientRequestRecoveryQueue from "./AdminPatientRequestRecoveryQueue";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { useAdminSubTab } from "@/components/admin/useAdminRoute";
 
+// 2026-10-07: fiecare tab arată câte elemente așteaptă (aceleași numere ca în Panou și în meniu),
+// iar dacă intri în Coadă fără un tab ales și primul e gol, te duce la primul tab unde chiar
+// așteaptă ceva. Descrierile sunt o singură linie scurtă.
 const TABS = [
-  {
-    key: "workspace",
-    label: "Profil si continut",
-    description: "Profil organizational, date locatie, servicii, fotografii, program, echipa si articole.",
-  },
-  {
-    key: "patient_requests",
-    label: "Cereri fara rezultate",
-    description: "Cereri salvate de pacienti dupa o cautare fara rezultate, trimise separat pentru verificarea criteriilor si a datelor directorului.",
-  },
-  {
-    key: "lifecycle",
-    label: "Stare locatii",
-    description: "Ascunderea temporara, republicarea si inchiderea locatiilor.",
-  },
-  {
-    key: "locations",
-    label: "Locatii noi",
-    description: "Puncte de lucru noi, profiluri existente si transferuri intre organizatii.",
-  },
-  {
-    key: "professionals",
-    label: "Specialisti",
-    description: "Profiluri profesionale trimise spre verificare publica.",
-  },
-  {
-    key: "media_cleanup",
-    label: "Curatare media",
-    description: "Fisiere incarcate pentru fotografii, dar retrase sau inlocuite inainte de publicare.",
-  },
+  { key: "workspace", label: "Profil și conținut", description: "Profil, date locație, servicii, fotografii, program, echipă, articole." },
+  { key: "locations", label: "Locații noi", description: "Locații noi, profiluri existente și transferuri între organizații." },
+  { key: "lifecycle", label: "Stare locații", description: "Ascundere temporară, republicare și închidere de locații." },
+  { key: "professionals", label: "Specialiști", description: "Profiluri profesionale trimise spre verificare publică." },
+  { key: "patient_requests", label: "Cereri fără rezultate", description: "Cereri salvate de pacienți după o căutare fără rezultate." },
+  { key: "media_cleanup", label: "Curățare media", description: "Fotografii retrase sau înlocuite, de șters din stocare." },
 ];
+const TAB_KEYS = TABS.map((tab) => tab.key);
 
 export default function AdminReviewQueue() {
-  const [tab, setTab] = useState("workspace");
+  const { counts } = useAdminCounts();
+  const [tab, setTab, { explicit }] = useAdminSubTab(TAB_KEYS, TABS[0].key);
+  const autoPicked = useRef(false);
+
+  useEffect(() => {
+    if (autoPicked.current || explicit || !counts) return;
+    autoPicked.current = true;
+    if (counts.review?.[TABS[0].key] === 0) {
+      const firstWithWork = TABS.find((item) => counts.review?.[item.key] > 0);
+      if (firstWithWork) setTab(firstWithWork.key, { replace: true });
+    }
+  }, [counts, explicit, setTab]);
+
+  const tabs = TABS.map((item) => ({ ...item, count: counts?.review?.[item.key] ?? null }));
   const activeTab = TABS.find((item) => item.key === tab) || TABS[0];
+  // Când termini o coadă, panoul îți arată singur unde mai e de lucru (nu trebuie să cauți printre taburi).
+  const nextWithWork = counts?.review?.[activeTab.key] === 0
+    ? TABS.find((item) => item.key !== activeTab.key && counts?.review?.[item.key] > 0)
+    : null;
 
   return (
     <div className="space-y-5">
-      <AdminCard className="p-2">
-        <div className="flex flex-wrap gap-1">
-          {TABS.map((item) => (
+      <div>
+        <AdminTabs tabs={tabs} value={tab} onChange={setTab} label="Coada de verificare" />
+        <p className="mt-3 text-xs text-muted-foreground">{activeTab.description}</p>
+      </div>
+
+      {nextWithWork && (
+        <AdminNotice tone="success">
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span>Gata aici: „{activeTab.label}” e goală.</span>
             <button
-              key={item.key}
               type="button"
-              onClick={() => setTab(item.key)}
-              className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors ${
-                tab === item.key
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
+              onClick={() => setTab(nextWithWork.key)}
+              className="inline-flex min-h-9 items-center rounded-full border border-success-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-secondary"
             >
-              {item.label}
+              Treci la „{nextWithWork.label}” ({counts.review[nextWithWork.key]})
             </button>
-          ))}
-        </div>
-        <p className="px-2 pb-2 pt-3 text-xs leading-relaxed text-muted-foreground">
-          {activeTab.description}
-        </p>
-      </AdminCard>
+          </span>
+        </AdminNotice>
+      )}
 
       {tab === "workspace" && <AdminWorkspaceSubmissionsReview />}
       {tab === "patient_requests" && <AdminPatientRequestRecoveryQueue />}
