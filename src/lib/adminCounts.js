@@ -83,17 +83,47 @@ async function invokeList(base44, name, payload, pick) {
   }
 }
 
-export async function loadReviewCounts(base44) {
+// Cel mult `limit` cereri în același timp (2026-10-08). O reîmprospătare numără 17 lucruri; pornite toate
+// deodată, platforma răspunde uneori „Rate limit exceeded” (HTTP 500), ca în contul de furnizor (vezi
+// src/lib/focusRefreshGate.js și src/lib/transientRetry.js). În grupuri de câte 4, numerele sosesc în
+// câteva secunde, fără rafală, iar rezultatele rămân aceleași.
+export const COUNT_CONCURRENCY = 4;
+
+export function createLimiter(limit = COUNT_CONCURRENCY) {
+  const max = Math.max(1, Math.floor(Number(limit)) || 1);
+  const waiting = [];
+  let active = 0;
+  const next = () => {
+    if (active >= max || waiting.length === 0) return;
+    active += 1;
+    const { task, resolve, reject } = waiting.shift();
+    Promise.resolve()
+      .then(task)
+      .then(resolve, reject)
+      .finally(() => {
+        active -= 1;
+        next();
+      });
+  };
+  return (task) => new Promise((resolve, reject) => {
+    waiting.push({ task, resolve, reject });
+    next();
+  });
+}
+
+const runNow = (task) => task();
+
+export async function loadReviewCounts(base44, run = runNow) {
   const e = base44.entities;
   const [service, organization, expansion, identity, lifecycle, professionals, photos, recovery] = await Promise.all([
-    invokeList(base44, "adminServiceConfigurationReview", { action: "list", status: "pending_review" }, (d) => d.submissions),
-    invokeList(base44, "adminOrganizationProfileReview", { action: "list", status: "pending_review" }, (d) => d.submissions),
-    invokeList(base44, "providerLocationExpansionOps", { action: "admin_list" }, (d) => d.submissions),
-    invokeList(base44, "providerLocationIdentityResolutionOps", { action: "admin_list" }, (d) => d.submissions),
-    invokeList(base44, "providerLocationLifecycleOps", { action: "admin_list" }, (d) => d.submissions),
-    invokeList(base44, "adminProfessionalProfileReview", { action: "list", status: "pending_review" }, (d) => d.profiles),
-    invokeList(base44, "providerPhotoUploadLifecycleOps", { action: "admin_cleanup_list" }, (d) => d.assets),
-    entityCount(e.PatientRequestRecoveryCase, { status: { $in: [...ACTIVE_RECOVERY_STATUSES] } }),
+    run(() => invokeList(base44, "adminServiceConfigurationReview", { action: "list", status: "pending_review" }, (d) => d.submissions)),
+    run(() => invokeList(base44, "adminOrganizationProfileReview", { action: "list", status: "pending_review" }, (d) => d.submissions)),
+    run(() => invokeList(base44, "providerLocationExpansionOps", { action: "admin_list" }, (d) => d.submissions)),
+    run(() => invokeList(base44, "providerLocationIdentityResolutionOps", { action: "admin_list" }, (d) => d.submissions)),
+    run(() => invokeList(base44, "providerLocationLifecycleOps", { action: "admin_list" }, (d) => d.submissions)),
+    run(() => invokeList(base44, "adminProfessionalProfileReview", { action: "list", status: "pending_review" }, (d) => d.profiles)),
+    run(() => invokeList(base44, "providerPhotoUploadLifecycleOps", { action: "admin_cleanup_list" }, (d) => d.assets)),
+    run(() => entityCount(e.PatientRequestRecoveryCase, { status: { $in: [...ACTIVE_RECOVERY_STATUSES] } })),
   ]);
   return {
     workspace: service && organization ? mergeWorkspacePending(service, organization).length : null,
@@ -105,22 +135,23 @@ export async function loadReviewCounts(base44) {
   };
 }
 
-export async function loadAdminCounts(base44, now = Date.now()) {
+export async function loadAdminCounts(base44, now = Date.now(), { concurrency = COUNT_CONCURRENCY } = {}) {
   const e = base44.entities;
   const since = (days) => new Date(now - days * DAY_MS).toISOString();
+  const run = createLimiter(concurrency);
   const [review, claims, tickets, corrections, feedback, emailFailures, importAttention, campaignsPaused, campaignsFailed, paymentsAttention] = await Promise.all([
-    loadReviewCounts(base44),
-    entityCount(e.ProviderClaimRequest, { status: "in_asteptare" }),
-    entityCount(e.SupportTicket, { status: { $in: [...ACTIVE_TICKET_STATUSES] } }),
-    entityCount(e.DirectoryCorrectionRequest, { status: { $in: [...OPEN_CORRECTION_STATUSES] } }),
-    entityCount(e.UserFeedback, { status: "new" }),
+    loadReviewCounts(base44, run),
+    run(() => entityCount(e.ProviderClaimRequest, { status: "in_asteptare" })),
+    run(() => entityCount(e.SupportTicket, { status: { $in: [...ACTIVE_TICKET_STATUSES] } })),
+    run(() => entityCount(e.DirectoryCorrectionRequest, { status: { $in: [...OPEN_CORRECTION_STATUSES] } })),
+    run(() => entityCount(e.UserFeedback, { status: "new" })),
     // Emailurile care au eșuat în ultima săptămână (jurnalul din „Emailuri automate”).
-    entityCount(e.CommunicationDelivery, { status: "failed", created_date: { $gte: since(7) } }),
-    entityCount(e.DirectoryAutoImportRun, { status: { $in: [...IMPORT_ATTENTION_STATUSES] }, created_date: { $gte: since(30) } }),
+    run(() => entityCount(e.CommunicationDelivery, { status: "failed", created_date: { $gte: since(7) } })),
+    run(() => entityCount(e.DirectoryAutoImportRun, { status: { $in: [...IMPORT_ATTENTION_STATUSES] }, created_date: { $gte: since(30) } })),
     // O campanie oprită de sistem (respingeri multe / reclamații spam) sau eșuată, în ultimele 2 săptămâni.
-    entityCount(e.OutreachCampaign, { status: "paused", pause_reason: { $in: [...HEALTH_PAUSE_REASONS] }, updated_date: { $gte: since(14) } }),
-    entityCount(e.OutreachCampaign, { status: "failed", updated_date: { $gte: since(14) } }),
-    entityCount(e.ProviderSubscription, { status: { $in: [...PAYMENT_ATTENTION_STATUSES] } }),
+    run(() => entityCount(e.OutreachCampaign, { status: "paused", pause_reason: { $in: [...HEALTH_PAUSE_REASONS] }, updated_date: { $gte: since(14) } })),
+    run(() => entityCount(e.OutreachCampaign, { status: "failed", updated_date: { $gte: since(14) } })),
+    run(() => entityCount(e.ProviderSubscription, { status: { $in: [...PAYMENT_ATTENTION_STATUSES] } })),
   ]);
   return {
     review,

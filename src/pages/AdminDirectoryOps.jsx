@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import AdminAppShell from "@/components/admin/shell/AdminAppShell";
+import AdminErrorBoundary from "@/components/admin/shell/AdminErrorBoundary";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import AdminLoading from "@/components/admin/ui/AdminLoading";
 import AdminTabs from "@/components/admin/ui/AdminTabs";
@@ -179,7 +180,7 @@ function ImportDirectorWorkspace() {
 
 function AdminWorkspace() {
   const { logout, user } = useAuth();
-  const { section, go } = useAdminRoute();
+  const { section, tab, go } = useAdminRoute();
   const navigate = (nextSection, nextTab = "") => go(nextSection, nextTab);
   const firstRender = useRef(true);
 
@@ -199,45 +200,50 @@ function AdminWorkspace() {
 
   return (
     <AdminAppShell activeKey={section} user={user} onLogout={() => logout(true)}>
-      <Suspense fallback={<AdminLoading label="Se încarcă secțiunea…" />}>
-        {section === "dashboard" && <AdminDashboardHome onNavigate={navigate} />}
+      {/* O eroare într-un ecran nu mai golește pagina: meniul rămâne, iar la schimbarea secțiunii se reia. */}
+      <AdminErrorBoundary resetKey={`${section}/${tab}`} section={ADMIN_NAV_LABELS[section] || section}>
+        <Suspense fallback={<AdminLoading label="Se încarcă secțiunea…" />}>
+          {section === "dashboard" && <AdminDashboardHome onNavigate={navigate} />}
 
-        {section === "analytics" && <AdminAnalytics onNavigate={navigate} />}
+          {section === "analytics" && <AdminAnalytics onNavigate={navigate} />}
 
-        {SECTIONS_WITH_HEADER.includes(section) && (
-          <div>
-            <AdminPageHeader title={ADMIN_NAV_LABELS[section]} subtitle={header.subtitle} hint={header.hint} />
-            <div className="mt-6">
-              {section === "research" && <DirResearch onNavigate={navigate} />}
-              {section === "profiluri" && <AdminProfilesSection onNavigate={navigate} />}
-              {section === "adauga" && <DirOpsAddLocation />}
-              {section === "workspace_reviews" && <AdminReviewQueue />}
-              {section === "corectii" && <DirOpsCorrections />}
-              {section === "support_tickets" && <AdminSupportCenter adminUser={user} />}
-              {section === "import_directory" && <ImportDirectorWorkspace />}
-              {section === "servicii" && <DirOpsServices />}
-              {section === "revendicari" && <DirOpsClaims />}
-              {section === "outreach" && <OutreachWorkspace />}
-              {section === "automatic_emails" && <AutomaticEmailWorkspace />}
-              {section === "billing" && <AdminBillingCenter />}
-              {section === "contacte_pacienti" && <AdminSearchContacts />}
-              {section === "geografie" && <GeoImport />}
-              {section === "audit" && <DirOpsAudit />}
-              {section === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
+          {SECTIONS_WITH_HEADER.includes(section) && (
+            <div>
+              <AdminPageHeader title={ADMIN_NAV_LABELS[section]} subtitle={header.subtitle} hint={header.hint} />
+              <div className="mt-6">
+                {section === "research" && <DirResearch onNavigate={navigate} />}
+                {section === "profiluri" && <AdminProfilesSection onNavigate={navigate} />}
+                {section === "adauga" && <DirOpsAddLocation />}
+                {section === "workspace_reviews" && <AdminReviewQueue />}
+                {section === "corectii" && <DirOpsCorrections />}
+                {section === "support_tickets" && <AdminSupportCenter adminUser={user} />}
+                {section === "import_directory" && <ImportDirectorWorkspace />}
+                {section === "servicii" && <DirOpsServices />}
+                {section === "revendicari" && <DirOpsClaims />}
+                {section === "outreach" && <OutreachWorkspace />}
+                {section === "automatic_emails" && <AutomaticEmailWorkspace />}
+                {section === "billing" && <AdminBillingCenter />}
+                {section === "contacte_pacienti" && <AdminSearchContacts />}
+                {section === "geografie" && <GeoImport />}
+                {section === "audit" && <DirOpsAudit />}
+                {section === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
+              </div>
             </div>
-          </div>
-        )}
-      </Suspense>
+          )}
+        </Suspense>
+      </AdminErrorBoundary>
     </AdminAppShell>
   );
 }
 
 export default function AdminDirectoryOps() {
   return (
-    <AdminCountsProvider>
-      <AdminConfirmProvider>
-        <AdminWorkspace />
-      </AdminConfirmProvider>
-    </AdminCountsProvider>
+    <AdminErrorBoundary variant="page" section="Administrare">
+      <AdminCountsProvider>
+        <AdminConfirmProvider>
+          <AdminWorkspace />
+        </AdminConfirmProvider>
+      </AdminCountsProvider>
+    </AdminErrorBoundary>
   );
 }

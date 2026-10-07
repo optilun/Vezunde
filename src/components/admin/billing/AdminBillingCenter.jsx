@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Receipt, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { BILLING_STATUSES, money } from "@/components/workspace/provider/leads/ProviderBillingPanel";
+import { BILLING_STATUSES } from "@/components/workspace/provider/leads/ProviderBillingPanel";
+import { money } from "@/lib/billingFormat";
 import AdminEnterpriseOffers from "@/components/admin/billing/AdminEnterpriseOffers";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminHint from "@/components/admin/ui/AdminHint";
@@ -31,7 +32,12 @@ const ATTENTION_FILTER = "attention";
 const BUTTON = "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-semibold transition-colors hover:bg-secondary disabled:opacity-50";
 
 const errorText = (error) => error?.response?.data?.error || error?.message || "Operațiunea nu a reușit.";
-const formatDay = (seconds) => new Date(seconds * 1000).toLocaleDateString("ro-RO");
+// `seconds` = momentul din Stripe, în secunde; lipsă sau nevalid => „—” (nu „Invalid Date”).
+const formatDay = (seconds) => {
+  if (seconds === null || seconds === undefined || seconds === "") return "—";
+  const date = new Date(Number(seconds) * 1000);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("ro-RO");
+};
 
 function SubscriptionSummary({ summary, onShowAttention }) {
   const value = (number) => (Number.isFinite(number) ? number : "—");
