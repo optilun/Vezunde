@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminHint from "@/components/admin/ui/AdminHint";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
+import { mergeWorkspacePending } from "@/lib/adminCounts";
+import { fetchByIds } from "@/lib/adminEntityBatch";
 import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 import {
@@ -341,33 +347,40 @@ function SubmissionCard({ submission, location, organization, busy, onDecision }
 }
 
 export default function AdminWorkspaceSubmissionsReview() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [submissions, setSubmissions] = useState(null);
   const [locations, setLocations] = useState({});
   const [organizations, setOrganizations] = useState({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // 2026-10-07 (audit admin): nu mai citeste tot directorul (2 x 5.000 de randuri, la fiecare
+  // deschidere si dupa fiecare decizie) doar pentru cateva nume; se citesc numai locatiile si
+  // organizatiile cererilor in asteptare.
   const load = async () => {
     setError("");
-    const [pendingResponse, organizationResponse, locationRows, organizationRows] = await Promise.all([
+    const [pendingResponse, organizationResponse] = await Promise.all([
       base44.functions.invoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
       base44.functions.invoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
-      base44.entities.ProviderLocation.list("name", 5000).catch(() => []),
-      base44.entities.ProviderOrganization.list("name", 5000).catch(() => []),
     ]);
     const errors = [pendingResponse.data?.error, organizationResponse.data?.error].filter(Boolean);
     if (errors.length > 0) setError(errors.join(" "));
-    const generalPending = (pendingResponse.data?.submissions || []).filter((submission) => !(submission.section === "public_profile" && submission.organization_id));
-    const organizationPending = organizationResponse.data?.submissions || [];
-    const merged = [...generalPending, ...organizationPending].filter((submission, index, rows) => rows.findIndex((item) => item.id === submission.id) === index);
+    const merged = mergeWorkspacePending(pendingResponse.data?.submissions, organizationResponse.data?.submissions);
     const enriched = await Promise.all(merged.map(async (submission) => {
       if (submission.section !== "services") return submission;
       const detail = await base44.functions.invoke("adminServiceConfigurationReview", { action: "get", submission_id: submission.id }).catch(() => ({ data: {} }));
       return { ...submission, prerequisite_review: detail.data?.prerequisite_review || null };
     }));
+    const [locationResult, organizationResult] = await Promise.all([
+      fetchByIds(base44.entities.ProviderLocation, merged.map((submission) => submission.location_id)),
+      fetchByIds(base44.entities.ProviderOrganization, merged.map((submission) => submission.organization_id)),
+    ]);
     setSubmissions(enriched);
-    setLocations(Object.fromEntries(locationRows.map((location) => [location.id, location])));
-    setOrganizations(Object.fromEntries(organizationRows.map((organization) => [organization.id, organization])));
+    setLocations(locationResult.byId);
+    setOrganizations(organizationResult.byId);
+    if (locationResult.failed || organizationResult.failed) {
+      setError((current) => [current, "Unele nume de locații sau organizații nu s-au putut încărca."].filter(Boolean).join(" "));
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -385,6 +398,7 @@ export default function AdminWorkspaceSubmissionsReview() {
       const response = await base44.functions.invoke(functionName, { action, submission_id: submission.id, note: note || "" });
       if (response.data?.error) throw new Error(response.data.error);
       await load();
+      refreshCounts();
     } catch (requestError) {
       setError(requestError.response?.data?.error || requestError.message || "Nu am putut procesa decizia.");
     } finally {
@@ -392,20 +406,22 @@ export default function AdminWorkspaceSubmissionsReview() {
     }
   };
 
-  if (!submissions) return <p className="text-sm text-muted-foreground">Se incarca modificarile workspace...</p>;
+  if (!submissions) return <AdminLoading label="Se încarcă modificările…" />;
   return (
     <AdminCard className="p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold">Modificari workspace in verificare</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Profilurile organizationale sunt comparate cu ProviderOrganization. Fotografiile sunt afisate vizual, iar serviciile sunt tratate ca informatii declarate de furnizor.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-base font-bold">Modificări în verificare</h2>
+          <AdminHint label="Cum se compară modificările">
+            Profilul organizației se compară cu ce e publicat acum. Fotografiile se văd direct, iar serviciile sunt informații declarate de furnizor.
+          </AdminHint>
         </div>
-        <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{submissions.length} in asteptare</span>
+        <StatusBadge label={`${submissions.length} în așteptare`} />
       </div>
-      {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+      {error && <p role="alert" className="mt-3 rounded-xl border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="mt-4 space-y-3">
         {submissions.length === 0 ? (
-          <EmptyState icon={ClipboardCheck} title="Nu exista modificari in verificare." subtitle="Cererile trimise de furnizori vor aparea aici." />
+          <EmptyState icon={ClipboardCheck} title="Nu există modificări în verificare." subtitle="Cererile trimise de furnizori vor apărea aici." />
         ) : submissions.map((submission) => (
           <SubmissionCard
             key={submission.id}

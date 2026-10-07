@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Archive, CheckCircle2, EyeOff, Info, RotateCcw, TriangleAlert, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { fetchByIds, fetchWhereIn, uniqueIds } from "@/lib/adminEntityBatch";
+import { locationStatusLabel, publicVisibilityLabel } from "@/lib/adminLabels";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminLoading from "@/components/admin/ui/AdminLoading";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 const ACTIONS = {
   hide: {
@@ -34,42 +39,51 @@ function organizationName(organization) {
   return organization?.public_display_name || organization?.name || "Organizație necunoscută";
 }
 
+// `activeLocationCount`: număr, sau null când nu s-a putut afla (atunci cerem verificare manuală, în
+// loc să afirmăm ceva fals despre „ultima locație”).
 function RequestCard({ submission, location, organization, activeLocationCount, busy, onDecision }) {
   const [note, setNote] = useState("");
   const payload = useMemo(() => parsePayload(submission.payload_json), [submission.payload_json]);
-  const definition = ACTIONS[payload.action] || { label: payload.action || "Schimbare stare", description: "Solicitare de schimbare a stării locației.", icon: Info };
+  const definition = ACTIONS[payload.action] || { label: payload.action || "Schimbare de stare", description: "Solicitare de schimbare a stării locației.", icon: Info };
   const Icon = definition.icon;
-  const closesLastLocation = payload.action === "close" && activeLocationCount <= 1;
+  const isClose = payload.action === "close";
+  const countKnown = Number.isFinite(activeLocationCount);
+  const closesLastLocation = isClose && countKnown && activeLocationCount <= 1;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary">
-            <Icon className="h-4 w-4" />
+            <Icon className="h-4 w-4" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold">{definition.label}</h3>
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">Stare locație</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{locationName(location)} · {organizationName(organization)}</p>
             <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">{definition.description}</p>
           </div>
         </div>
-        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-800">În verificare</span>
+        <StatusBadge label="În verificare" tone="info" />
       </div>
 
       <div className="mt-3 grid gap-2 rounded-xl border border-border bg-secondary/25 p-3 text-xs sm:grid-cols-3">
-        <div><span className="text-muted-foreground">Status curent</span><div className="mt-1 font-semibold">{location?.status || "-"}</div></div>
-        <div><span className="text-muted-foreground">Vizibilitate</span><div className="mt-1 font-semibold">{location?.public_visibility_status || "-"}</div></div>
-        <div><span className="text-muted-foreground">Locații active în organizație</span><div className="mt-1 font-semibold">{activeLocationCount}</div></div>
+        <div><span className="text-muted-foreground">Stare curentă</span><div className="mt-1 font-semibold">{locationStatusLabel(location?.status)}</div></div>
+        <div><span className="text-muted-foreground">Vizibilitate</span><div className="mt-1 font-semibold">{publicVisibilityLabel(location?.public_visibility_status)}</div></div>
+        <div><span className="text-muted-foreground">Locații active în organizație</span><div className="mt-1 font-semibold">{countKnown ? activeLocationCount : "—"}</div></div>
       </div>
 
       {closesLastLocation && (
-        <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-warning-border bg-warning-soft p-3 text-xs leading-relaxed text-warning">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Aprobarea va arhiva și profilul public al organizației, deoarece aceasta este ultima locație activă.</span>
+        </div>
+      )}
+      {isClose && !countKnown && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-warning-border bg-warning-soft p-3 text-xs leading-relaxed text-warning">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>Nu am putut număra locațiile active ale organizației. Verifică înainte să aprobi: dacă e ultima, se arhivează și profilul organizației.</span>
         </div>
       )}
 
@@ -77,36 +91,51 @@ function RequestCard({ submission, location, organization, activeLocationCount, 
         value={note}
         onChange={(event) => setNote(event.target.value)}
         placeholder="Notă admin. Obligatorie pentru respingere sau cerere de informații."
+        aria-label="Notă admin"
         rows={2}
         className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
       />
       <div className="mt-3 flex flex-wrap gap-2">
-        <button disabled={busy} onClick={() => onDecision(submission, "approve", note)} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" /> Aprobă</button>
-        <button disabled={busy} onClick={() => onDecision(submission, "request_more_info", note)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"><Info className="h-3.5 w-3.5" /> Cere informații</button>
-        <button disabled={busy} onClick={() => onDecision(submission, "reject", note)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><XCircle className="h-3.5 w-3.5" /> Respinge</button>
+        <button disabled={busy} onClick={() => onDecision(submission, "approve", note)} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Aprobă</button>
+        <button disabled={busy} onClick={() => onDecision(submission, "request_more_info", note)} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"><Info className="h-3.5 w-3.5" aria-hidden="true" /> Cere informații</button>
+        <button disabled={busy} onClick={() => onDecision(submission, "reject", note)} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-danger disabled:opacity-50"><XCircle className="h-3.5 w-3.5" aria-hidden="true" /> Respinge</button>
       </div>
     </div>
   );
 }
 
+// 2026-10-07 (audit admin): nu mai citeste primele 1.000 de locatii dupa nume (directorul are ~1.600,
+// deci numele lipseau si numarul de „locatii active” iesea gresit, cu avertisment fals pentru
+// „ultima locatie”). Se citesc doar locatiile cererilor si cele ale organizatiilor lor.
 export default function AdminLocationLifecycleReview() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [submissions, setSubmissions] = useState(null);
   const [locations, setLocations] = useState({});
   const [organizations, setOrganizations] = useState({});
+  const [siblings, setSiblings] = useState({ rows: [], failed: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const load = async () => {
     setError("");
-    const [response, locationRows, organizationRows] = await Promise.all([
-      base44.functions.invoke("providerLocationLifecycleOps", { action: "admin_list" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
-      base44.entities.ProviderLocation.list("name", 1000).catch(() => []),
-      base44.entities.ProviderOrganization.list("name", 5000).catch(() => []),
-    ]);
+    const response = await base44.functions.invoke("providerLocationLifecycleOps", { action: "admin_list" })
+      .catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } }));
     if (response.data?.error) setError(response.data.error);
-    setSubmissions(response.data?.submissions || []);
-    setLocations(Object.fromEntries(locationRows.map((location) => [location.id, location])));
-    setOrganizations(Object.fromEntries(organizationRows.map((organization) => [organization.id, organization])));
+    const rows = response.data?.submissions || [];
+    setSubmissions(rows);
+
+    const organizationIds = uniqueIds(rows.map((row) => row.organization_id));
+    const [locationResult, organizationResult, siblingResult] = await Promise.all([
+      fetchByIds(base44.entities.ProviderLocation, rows.map((row) => row.location_id)),
+      fetchByIds(base44.entities.ProviderOrganization, organizationIds),
+      fetchWhereIn(base44.entities.ProviderLocation, "organization_id", organizationIds),
+    ]);
+    setLocations(locationResult.byId);
+    setOrganizations(organizationResult.byId);
+    setSiblings({ rows: siblingResult.rows, failed: siblingResult.failed });
+    if (locationResult.failed || organizationResult.failed) {
+      setError((current) => [current, "Unele nume de locații sau organizații nu s-au putut încărca."].filter(Boolean).join(" "));
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -122,6 +151,7 @@ export default function AdminLocationLifecycleReview() {
       });
       if (response.data?.error) throw new Error(response.data.error);
       await load();
+      refreshCounts();
     } catch (requestError) {
       setError(requestError.response?.data?.error || requestError.message || "Nu am putut procesa decizia.");
     } finally {
@@ -129,34 +159,34 @@ export default function AdminLocationLifecycleReview() {
     }
   };
 
-  if (!submissions) return <p className="text-sm text-muted-foreground">Se încarcă solicitările privind starea locațiilor...</p>;
+  const activeCountByOrganization = useMemo(() => {
+    if (siblings.failed) return null;
+    return siblings.rows.reduce((accumulator, location) => {
+      if (!location.organization_id || location.active_status === "inactiva") return accumulator;
+      accumulator[location.organization_id] = (accumulator[location.organization_id] || 0) + 1;
+      return accumulator;
+    }, {});
+  }, [siblings]);
 
-  const activeCountByOrganization = Object.values(locations).reduce((accumulator, location) => {
-    if (!location.organization_id || location.active_status === "inactiva") return accumulator;
-    accumulator[location.organization_id] = (accumulator[location.organization_id] || 0) + 1;
-    return accumulator;
-  }, {});
+  if (!submissions) return <AdminLoading label="Se încarcă solicitările…" />;
 
   return (
     <AdminCard className="p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold">Solicitări privind starea locațiilor</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Aprobă ascunderea temporară, republicarea sau închiderea unei locații. Decizia actualizează datele publice și este păstrată în audit.</p>
-        </div>
-        <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{submissions.length} în așteptare</span>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-base font-bold">Schimbări de stare a locațiilor</h2>
+        <StatusBadge label={`${submissions.length} în așteptare`} />
       </div>
-      {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+      {error && <p role="alert" className="mt-3 rounded-xl border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="mt-4 space-y-3">
         {submissions.length === 0 ? (
-          <EmptyState icon={Archive} title="Nu există solicitări privind starea locațiilor." subtitle="Cererile trimise de owneri vor apărea aici." ctaLabel="" onCta={() => {}} />
+          <EmptyState icon={Archive} title="Nu există solicitări de acest fel." subtitle="Cererile trimise de proprietari vor apărea aici." />
         ) : submissions.map((submission) => (
           <RequestCard
             key={submission.id}
             submission={submission}
             location={locations[submission.location_id]}
             organization={organizations[submission.organization_id]}
-            activeLocationCount={activeCountByOrganization[submission.organization_id] || 0}
+            activeLocationCount={activeCountByOrganization ? (activeCountByOrganization[submission.organization_id] || 0) : null}
             busy={busy}
             onDecision={decide}
           />

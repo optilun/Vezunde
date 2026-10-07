@@ -3,6 +3,7 @@ import { AlertTriangle, Building2, CheckCircle2, Loader2, RefreshCw } from "luci
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 function scoreTone(score) {
   if (score >= 95) return { label: "Duplicat aproape sigur", className: "bg-destructive/10 text-destructive" };
@@ -53,6 +54,7 @@ function OrganizationColumn({ organization }) {
 }
 
 export default function AdminFragmentedOrganizations() {
+  const confirm = useAdminConfirm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -126,7 +128,12 @@ export default function AdminFragmentedOrganizations() {
       })
       .filter((item) => item.source && item.target);
 
-    const confirmed = window.confirm(`Fuzioneaza ${selected.length} perechi selectate? Pentru fiecare pereche se pastreaza organizatia indicata, iar cealalta devine inactiva dupa mutarea completa a relatiilor.`);
+    const confirmed = await confirm({
+      title: `Fuzionezi ${selected.length} ${selected.length === 1 ? "pereche" : "perechi"}?`,
+      description: "Pentru fiecare pereche rămâne organizația indicată, iar cealaltă devine inactivă după mutarea completă a relațiilor.",
+      confirmLabel: "Fuzionează",
+      tone: "danger",
+    });
     if (!confirmed) return;
 
     setBulkRunning(true);

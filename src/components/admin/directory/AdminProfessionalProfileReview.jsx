@@ -13,6 +13,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 import { professionalSpecializationLabel } from "../../../../shared/professionalIdentity.js";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 // 2026-09-03: etichetele veneau din a sasea copie a taxonomiei. Acum din shared/professionalIdentity.js.
 const TYPE_LABELS = PROFESSIONAL_TYPE_LABELS;
@@ -94,6 +95,7 @@ function ContactItem({ label, value }) {
 }
 
 export default function AdminProfessionalProfileReview() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [items, setItems] = useState([]);
   // 2026-09-03: coada nu mai arata doar `pending_review`. Fara filtru, un profil deja aprobat sau
   // arhivat era invizibil pentru admin, deci arhivarea si reactivarea nu aveau de unde sa fie
@@ -161,6 +163,7 @@ export default function AdminProfessionalProfileReview() {
         return next;
       });
       await load();
+      refreshCounts();
     } catch (requestError) {
       setError(
         requestError?.response?.data?.error

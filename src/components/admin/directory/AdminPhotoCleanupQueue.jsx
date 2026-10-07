@@ -3,8 +3,10 @@ import { CheckCircle2, ExternalLink, ImageOff, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 export default function AdminPhotoCleanupQueue() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [assets, setAssets] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -36,6 +38,7 @@ export default function AdminPhotoCleanupQueue() {
       return;
     }
     await load();
+    refreshCounts();
   };
 
   if (!assets) return <p className="text-sm text-muted-foreground">Se incarca fisierele nefolosite...</p>;

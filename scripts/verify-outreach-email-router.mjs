@@ -435,7 +435,7 @@ assert.match(navConfigSource, /key: "outreach"/);
 
 const adminPageSource = source('src/pages/AdminDirectoryOps.jsx');
 assert.match(adminPageSource, /@\/components\/admin\/outreach\/OutreachWorkspace/);
-assert.match(adminPageSource, /tab === "outreach" && <OutreachWorkspace \/>/);
+assert.match(adminPageSource, /section === "outreach" && <OutreachWorkspace \/>/);
 
 for (const componentFile of [
   'src/components/admin/outreach/OutreachCampaignList.jsx',

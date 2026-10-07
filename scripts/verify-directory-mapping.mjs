@@ -82,7 +82,7 @@ assert.match(panel, /2xl:grid-cols/);
 // sidebar, dar ramane accesibil, cu eticheta proprie pastrata pentru compatibilitate.
 assert.match(page, /DirOpsMapping/);
 assert.match(page, /subTab === "mapping"/);
-assert.match(nav, /mapping:\s*"Mapare si identitate"/);
+assert.match(nav, /mapping:\s*"Mapare și identitate"/);
 
 assert.equal(identitySchema.name, 'DirectoryLocationIdentityLink');
 assert.ok(identitySchema.properties.relationship_type.enum.includes('same_address_distinct_unit'));

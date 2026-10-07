@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, Inbox, Loader2, RefreshCw, SearchCheck } from "lu
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 const ACTIVE_STATUSES = new Set(["queued", "in_review"]);
 
@@ -63,6 +64,7 @@ function SummaryCard({ icon: Icon, label, value }) {
 }
 
 export default function AdminPatientRequestRecoveryQueue() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [cases, setCases] = useState(null);
   const [selectedId, setSelectedId] = useState("");
   const [request, setRequest] = useState(null);
@@ -175,6 +177,7 @@ export default function AdminPatientRequestRecoveryQueue() {
         ...(["completed", "closed"].includes(draft.status) ? { completed_at: now } : {}),
       });
       await load();
+      refreshCounts();
       setMessage("Verificarea a fost actualizată. Pacientul vede doar statusul, rezultatul și mesajul public.");
     } catch (saveError) {
       setError(saveError?.message || "Verificarea nu a putut fi actualizată.");

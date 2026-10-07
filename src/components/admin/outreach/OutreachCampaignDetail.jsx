@@ -9,6 +9,7 @@ import {
   normalizeCategory,
   callOutreach,
 } from "./outreachLabels";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 const STATUS_LABELS = {
   draft: "Ciorna",
@@ -102,6 +103,7 @@ function draftFromCampaign(campaign) {
 }
 
 export default function OutreachCampaignDetail({ campaignId, onBack }) {
+  const confirm = useAdminConfirm();
   const [campaign, setCampaign] = useState(null);
   const [sendStats, setSendStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -236,9 +238,13 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
     await load();
   };
 
-  const resumeCampaign = () => {
+  const resumeCampaign = async () => {
     if (HEALTH_PAUSE_REASONS.includes(campaign.pause_reason)) {
-      const ok = window.confirm("Campania a fost oprita automat. Daca o reiei, protectia se calculeaza din nou doar pentru emailurile trimise de acum inainte. Continui?");
+      const ok = await confirm({
+        title: "Reiei o campanie oprită automat?",
+        description: "Protecția se calculează din nou doar pentru emailurile trimise de acum înainte.",
+        confirmLabel: "Reia oricum",
+      });
       if (!ok) return;
     }
     setStatus("resume_campaign");
@@ -291,7 +297,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
             </button>
           )}
           {canCancel && (
-            <button type="button" disabled={busy} onClick={() => { if (window.confirm("Sigur anulezi campania?")) setStatus("cancel_campaign"); }} className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60">
+            <button type="button" disabled={busy} onClick={async () => { if (await confirm({ title: "Anulezi campania?", description: "Nu se mai trimite nimic din ea.", confirmLabel: "Anulează campania", tone: "danger" })) setStatus("cancel_campaign"); }} className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60">
               Anuleaza
             </button>
           )}

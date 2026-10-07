@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Loader2, Search, Send, Upload } from "lucide-react";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 // 2026-10-04 (structura conturilor, pasul 4): ofertele Enterprise. Adminul alege organizația, scrie
 // suma lunară și încarcă contractul PDF. Proprietarul organizației vede oferta în facturare, acceptă
@@ -21,6 +22,7 @@ async function call(payload) {
 }
 
 export default function AdminEnterpriseOffers() {
+  const confirm = useAdminConfirm();
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -81,7 +83,8 @@ export default function AdminEnterpriseOffers() {
   }
 
   async function cancel(offerId) {
-    if (lock.current || !window.confirm("Retragi această ofertă? Proprietarul nu o mai poate accepta.")) return;
+    if (lock.current) return;
+    if (!(await confirm({ title: "Retragi această ofertă?", description: "Proprietarul nu o mai poate accepta.", confirmLabel: "Retrage oferta", tone: "danger" }))) return;
     lock.current = true; setError(""); setNotice("");
     try { await call({ action: "admin_cancel", offer_id: offerId }); setNotice("Oferta a fost retrasă."); await load(); }
     catch (err) { setError(err.message); }

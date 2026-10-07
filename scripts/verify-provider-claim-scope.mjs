@@ -130,7 +130,7 @@ assert.match(addOrClaim, /claimStep === "scope"/);
 assert.match(addOrClaim, /PENDING_CLAIM_SCOPE_KEY/);
 assert.match(adminClaims, /adminProviderScopedClaimReview/);
 assert.match(adminClaims, /approved_location_ids/);
-assert.match(adminClaims, /Aprobarea poate fi partiala/);
+assert.match(adminClaims, /aprobarea poate fi parțială/);
 assert.match(claimStatus, /approved_location_ids/);
 assert.match(claimStatus, /Aprobarea este parțială/);
 

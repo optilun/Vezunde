@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CATEGORY_OPTIONS, CATEGORY_LABELS, categoryBadgeClass, normalizeCategory } from "./outreachLabels";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 // Un sablon descrie emailul complet (categorie, subiect, text, buton, fisa din director), ca o
 // campanie noua sa porneasca direct din el. Sabloanele sunt grupate pe categorii: o campanie de
@@ -41,6 +42,7 @@ function draftFromTemplate(template) {
 }
 
 export default function OutreachTemplateEditor() {
+  const confirm = useAdminConfirm();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -76,7 +78,7 @@ export default function OutreachTemplateEditor() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("Stergi acest sablon? Campaniile pornite din el isi pastreaza textul.")) return;
+    if (!(await confirm({ title: "Ștergi acest șablon?", description: "Campaniile pornite din el își păstrează textul.", confirmLabel: "Șterge", tone: "danger" }))) return;
     await base44.functions.invoke("outreachCampaignOps", { action: "delete_template", id }).catch(() => null);
     load();
   };

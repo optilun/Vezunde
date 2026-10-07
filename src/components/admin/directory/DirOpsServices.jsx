@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import DirOpsServiceAdd from "@/components/admin/directory/DirOpsServiceAdd";
 import DirOpsServiceRow from "@/components/admin/directory/DirOpsServiceRow";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 function SummaryItem({ label, value }) {
   return (
@@ -14,6 +15,7 @@ function SummaryItem({ label, value }) {
 }
 
 export default function DirOpsServices() {
+  const confirm = useAdminConfirm();
   const [locations, setLocations] = useState([]);
   const [locationId, setLocationId] = useState("");
   const [services, setServices] = useState(null);
@@ -75,7 +77,11 @@ export default function DirOpsServices() {
   const applyBackfill = async () => {
     const changeCount = backfillReport?.summary?.changes_required || 0;
     if (!locationId || changeCount === 0) return;
-    const confirmed = window.confirm(`Aplici ${changeCount} modificări pentru serviciile acestei locații? Acțiunea va fi înregistrată în audit.`);
+    const confirmed = await confirm({
+      title: `Aplici ${changeCount} ${changeCount === 1 ? "modificare" : "modificări"}?`,
+      description: "Se schimbă doar eligibilitatea pentru recomandări a serviciilor acestei locații. Acțiunea apare în Istoric audit.",
+      confirmLabel: "Aplică",
+    });
     if (!confirmed) return;
 
     setBackfillBusy(true);

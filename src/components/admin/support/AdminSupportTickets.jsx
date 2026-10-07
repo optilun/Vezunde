@@ -14,6 +14,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 const ACTIVE_STATUSES = new Set(["open", "in_progress", "waiting_user"]);
 
@@ -141,6 +142,7 @@ function SummaryCard({ icon: Icon, label, value }) {
 }
 
 export default function AdminSupportTickets({ adminUser }) {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [tickets, setTickets] = useState(null);
   const [selectedId, setSelectedId] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
@@ -277,6 +279,7 @@ export default function AdminSupportTickets({ adminUser }) {
     try {
       await base44.entities.SupportTicket.update(selectedTicket.id, payload);
       await loadTickets();
+      refreshCounts();
       setMessage(
         response
           ? "Tichetul a fost actualizat. Răspunsul este vizibil în contul utilizatorului."

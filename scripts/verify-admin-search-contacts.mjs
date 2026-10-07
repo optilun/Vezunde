@@ -80,10 +80,10 @@ check('admin navigation and page wiring', () => {
   assert.match(nav, /key: "contacte_pacienti", label: "Contacte din căutări"/);
   const page = source('src/pages/AdminDirectoryOps.jsx');
   assert.match(page, /import\("@\/components\/admin\/patients\/AdminSearchContacts"\)/);
-  assert.match(page, /tab === "contacte_pacienti" && <AdminSearchContacts \/>/);
-  assert.match(page, /contacte_pacienti:\n\s+"Pacienții care și-au lăsat datele/);
-  const simpleTabs = page.slice(page.indexOf('const simpleTabsWithHeader = ['), page.indexOf('];', page.indexOf('const simpleTabsWithHeader = [')));
-  assert.match(simpleTabs, /"contacte_pacienti"/);
+  // 2026-10-07: secțiunea se alege din adresă (?s=contacte_pacienti), iar antetul comun vine din SECTION_HEADERS.
+  assert.match(page, /section === "contacte_pacienti" && <AdminSearchContacts \/>/);
+  assert.match(page, /contacte_pacienti: \{\s+subtitle: "Pacienți care și-au lăsat datele/);
+  assert.match(page, /const SECTIONS_WITH_HEADER = Object\.keys\(SECTION_HEADERS\)/);
   const app = source('src/App.jsx');
   assert.match(app, /<Route element={<RequireAdmin \/>}>/, 'pagina ramane in spatele garzii de admin');
 });

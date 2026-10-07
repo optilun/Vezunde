@@ -3,6 +3,7 @@ import { Building2, CheckCircle2, Info, Link2, MapPin, Plus, RefreshCcw, Triangl
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 function candidateRelation(candidate, organizationId) {
   const candidateOrganizationId = String(candidate?.organization_id || "").trim();
@@ -242,6 +243,7 @@ function ReviewCard({ item, busy, onDecision }) {
 }
 
 export default function AdminNewLocationReview() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [items, setItems] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -286,6 +288,7 @@ export default function AdminNewLocationReview() {
       return;
     }
     await load();
+    refreshCounts();
   };
 
   if (!items) return <p className="text-sm text-muted-foreground">Se incarca solicitarile de locatii...</p>;

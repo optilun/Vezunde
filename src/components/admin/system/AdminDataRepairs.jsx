@@ -12,6 +12,7 @@ import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import RepairIssuesList from "@/components/admin/system/RepairIssuesList";
+import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
 
 const TYPE_LABELS = {
   organization_completeness: "Completitudine organizatie",
@@ -111,6 +112,7 @@ function RepairCard({ repair, expanded, busy, selected, onToggle, onApply, onSel
 }
 
 export default function AdminDataRepairs() {
+  const confirm = useAdminConfirm();
   const [repairs, setRepairs] = useState(null);
   const [expandedId, setExpandedId] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -192,7 +194,11 @@ export default function AdminDataRepairs() {
 
   const applyBulk = async () => {
     if (selectedRepairs.length === 0 || bulkRunning) return;
-    const confirmed = window.confirm(`Aplica ${selectedRepairs.length} reparatii deterministe? Operatia va rula automat in loturi de maximum ${batchSize}.`);
+    const confirmed = await confirm({
+      title: `Aplici ${selectedRepairs.length} reparații?`,
+      description: `Rulează automat, în loturi de cel mult ${batchSize}. Fiecare reparație e reverificată de server înainte de aplicare și apare în Istoric audit.`,
+      confirmLabel: "Aplică reparațiile",
+    });
     if (!confirmed) return;
 
     setBulkRunning(true);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ListChecks } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PCS_LABELS, CONFIRMATION_LABELS } from "@/lib/directoryOpsCatalog";
+import { fetchByIds } from "@/lib/adminEntityBatch";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
@@ -16,8 +17,8 @@ export default function DirOpsMigrationQueue() {
       base44.entities.LocationService.filter({ migration_review_required: true }, null, 500),
       base44.entities.ProviderClaimRequest.list(null, 200),
     ]);
-    const allLocations = await base44.entities.ProviderLocation.list(null, 5000);
-    const locationMap = Object.fromEntries(allLocations.map((location) => [location.id, location]));
+    // 2026-10-07: doar locatiile serviciilor de verificat, nu tot directorul (5.000 de randuri pentru nume).
+    const { byId: locationMap } = await fetchByIds(base44.entities.ProviderLocation, services.map((service) => service.location_id));
     setItems([
       ...locations.map((location) => ({
         kind: "location",

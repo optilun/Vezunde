@@ -15,6 +15,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { useAdminCounts } from "@/components/admin/useAdminCounts";
 
 const STATUS_OPTIONS = [
   { value: "new", label: "Nou" },
@@ -109,6 +110,7 @@ function SummaryCard({ icon: Icon, label, value }) {
 }
 
 export default function AdminUserFeedback() {
+  const { refresh: refreshCounts } = useAdminCounts();
   const [feedback, setFeedback] = useState(null);
   const [selectedId, setSelectedId] = useState("");
   const [statusFilter, setStatusFilter] = useState("new");
@@ -196,6 +198,7 @@ export default function AdminUserFeedback() {
     try {
       await base44.entities.UserFeedback.update(selectedFeedback.id, { status: nextStatus });
       await loadFeedback();
+      refreshCounts();
       setMessage(
         nextStatus === "reviewed"
           ? "Feedback-ul a fost marcat ca revizuit."
