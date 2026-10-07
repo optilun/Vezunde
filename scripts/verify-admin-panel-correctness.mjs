@@ -21,7 +21,10 @@ import {
   deliveryRecipientLabel,
   deliveryStatusLabel,
   deliveryStatusTone,
+  accountModeLabel,
   correctionStatusLabel,
+  feedbackStatusLabel,
+  feedbackStatusTone,
   humanizeCode,
   locationStatusLabel,
   mediaCleanupReasonLabel,
@@ -31,6 +34,12 @@ import {
   selectionRequestLabel,
   serviceNeedLevelLabel,
   selectionRequestTone,
+  supportSourceLabel,
+  ticketCategoryLabel,
+  ticketPriorityLabel,
+  ticketPriorityTone,
+  ticketStatusLabel,
+  ticketStatusTone,
 } from '../src/lib/adminLabels.js';
 import { locationStatusIssues } from '../src/lib/adminLocationStatusRules.js';
 import { chunk, fetchByIds, fetchWhereIn, uniqueIds, ID_CHUNK } from '../src/lib/adminEntityBatch.js';
@@ -57,6 +66,16 @@ import {
   outcomeClass,
 } from '../src/lib/adminOutreachLabels.js';
 import { readdirSync } from 'node:fs';
+import {
+  accountDeletionDeadline,
+  buildTicketPayload,
+  isActiveTicket,
+  needsAdmin,
+  nextTicketToHandle,
+  sortSupportTickets,
+  ticketUpdateProblem,
+  ticketWaiting,
+} from '../src/lib/adminSupportRules.js';
 import {
   ADMIN_NAV_LABELS,
   ADMIN_NAV_PRIMARY,
@@ -908,6 +927,147 @@ await check('modulul de campanii: fără culori scrise de mână și fără text
   const contacts = source(`${dir}/OutreachContactsList.jsx`);
   assert.ok(!/slice\(0, 500\)/.test(contacts), 'lista de contacte nu mai taie tăcut la 500');
   assert.match(contacts, /Arată încă/);
+});
+
+// ---------- Tichete suport și feedback ----------
+const SUPPORT_NOW = Date.parse('2026-10-07T12:00:00Z');
+const supportAgo = (days) => new Date(SUPPORT_NOW - days * 86400000).toISOString();
+const ticket = (id, extra = {}) => ({ id, status: 'open', priority: 'normal', created_date: supportAgo(1), updated_date: supportAgo(1), ...extra });
+
+await check('suport: stări, priorități, categorii și surse în română, fără coduri brute', () => {
+  assert.equal(ticketStatusLabel('open'), 'Deschis');
+  assert.equal(ticketStatusLabel('in_progress'), 'În lucru');
+  assert.equal(ticketStatusLabel('waiting_user'), 'Așteaptă utilizatorul');
+  assert.equal(ticketStatusLabel('resolved'), 'Rezolvat');
+  assert.equal(ticketStatusLabel(undefined), 'Deschis', 'fără stare = deschis');
+  assert.equal(ticketStatusTone('open'), 'info');
+  assert.equal(ticketStatusTone('in_progress'), 'warning');
+  assert.equal(ticketStatusTone('waiting_user'), 'neutral', 'ce așteaptă utilizatorul nu cere nimic de la tine');
+  assert.equal(ticketStatusTone('resolved'), 'success');
+  assert.equal(ticketPriorityLabel('urgent'), 'Urgentă');
+  assert.equal(ticketPriorityLabel('high'), 'Ridicată');
+  assert.equal(ticketPriorityTone('urgent'), 'danger');
+  assert.equal(ticketPriorityTone('high'), 'warning');
+  assert.equal(ticketPriorityTone('normal'), 'neutral');
+  assert.equal(ticketCategoryLabel('account'), 'Cont și autentificare');
+  assert.equal(ticketCategoryLabel('patient_request'), 'Solicitări pacienți');
+  assert.equal(supportSourceLabel('help_center'), 'Ajutor și suport');
+  assert.equal(supportSourceLabel('account_deletion_request'), 'Cerere de ștergere a contului');
+  assert.equal(supportSourceLabel('account_sidebar'), 'Meniul contului');
+  assert.equal(supportSourceLabel(''), '—');
+  assert.equal(feedbackStatusLabel('new'), 'Nou');
+  assert.equal(feedbackStatusLabel('reviewed'), 'Revizuit');
+  assert.equal(feedbackStatusTone('reviewed'), 'success');
+  assert.equal(accountModeLabel('provider'), 'Organizație / furnizor');
+  assert.equal(accountModeLabel('professional'), 'Profil profesional');
+});
+
+await check('suport: „cere acțiune” = deschis sau în lucru; „active” rămâne aceeași definiție ca în meniu', () => {
+  assert.equal(needsAdmin({ status: 'open' }), true);
+  assert.equal(needsAdmin({}), true, 'fără stare = deschis');
+  assert.equal(needsAdmin({ status: 'in_progress' }), true);
+  assert.equal(needsAdmin({ status: 'waiting_user' }), false);
+  assert.equal(needsAdmin({ status: 'resolved' }), false);
+  assert.equal(isActiveTicket({ status: 'waiting_user' }), true, 'numărul din meniu include „Așteaptă utilizatorul”');
+  assert.equal(isActiveTicket({ status: 'closed' }), false);
+});
+
+await check('suport: de cât timp așteaptă un tichet (avertisment de la 3 zile, alertă de la 7)', () => {
+  assert.equal(ticketWaiting(ticket('a', { created_date: supportAgo(1) }), SUPPORT_NOW).tone, 'neutral');
+  assert.equal(ticketWaiting(ticket('b', { created_date: supportAgo(4) }), SUPPORT_NOW).tone, 'warning');
+  assert.equal(ticketWaiting(ticket('c', { created_date: supportAgo(8) }), SUPPORT_NOW).tone, 'danger');
+  assert.equal(ticketWaiting(ticket('c', { created_date: supportAgo(8) }), SUPPORT_NOW).label, 'acum 8 zile');
+  // „În lucru” se măsoară de la ultima modificare, nu de la creare
+  assert.equal(ticketWaiting(ticket('d', { status: 'in_progress', created_date: supportAgo(30), updated_date: supportAgo(1) }), SUPPORT_NOW).tone, 'neutral');
+  // ce așteaptă utilizatorul nu primește alertă, oricât ar sta
+  assert.equal(ticketWaiting(ticket('e', { status: 'waiting_user', updated_date: supportAgo(20) }), SUPPORT_NOW).tone, 'neutral');
+  assert.equal(ticketWaiting(ticket('f', { status: 'resolved' }), SUPPORT_NOW), null, 'un tichet încheiat nu așteaptă nimic');
+});
+
+await check('suport: ordinea de lucru (termene de ștergere, apoi acțiune după prioritate și vechime, apoi utilizatorul, apoi istoric)', () => {
+  const tickets = [
+    ticket('resolved-new', { status: 'resolved', updated_date: supportAgo(0.5) }),
+    ticket('resolved-old', { status: 'closed', updated_date: supportAgo(20) }),
+    ticket('waiting-old', { status: 'waiting_user', updated_date: supportAgo(9) }),
+    ticket('waiting-new', { status: 'waiting_user', updated_date: supportAgo(2) }),
+    ticket('open-1d', { created_date: supportAgo(1) }),
+    ticket('open-6d', { created_date: supportAgo(6) }),
+    ticket('high-progress', { status: 'in_progress', priority: 'high', updated_date: supportAgo(3) }),
+    ticket('urgent-open', { priority: 'urgent', created_date: supportAgo(2) }),
+    ticket('delete-5d', { source: 'account_deletion_request', created_date: supportAgo(5) }),
+    ticket('delete-28d', { source: 'account_deletion_request', status: 'in_progress', created_date: supportAgo(28) }),
+    ticket('delete-done', { source: 'account_deletion_request', status: 'resolved', created_date: supportAgo(40), updated_date: supportAgo(35) }),
+  ];
+  assert.deepEqual(
+    sortSupportTickets(tickets, SUPPORT_NOW).map((item) => item.id),
+    ['delete-28d', 'delete-5d', 'urgent-open', 'high-progress', 'open-6d', 'open-1d', 'waiting-old', 'waiting-new', 'resolved-new', 'resolved-old', 'delete-done'],
+  );
+});
+
+await check('suport: după ce termini un tichet, următorul care cere acțiune', () => {
+  const ordered = sortSupportTickets([
+    ticket('a', { priority: 'urgent' }),
+    ticket('b', { created_date: supportAgo(5) }),
+    ticket('c', { status: 'waiting_user' }),
+  ], SUPPORT_NOW);
+  assert.equal(nextTicketToHandle(ordered, 'a'), 'b');
+  assert.equal(nextTicketToHandle(ordered, 'b'), 'a');
+  assert.equal(nextTicketToHandle([ticket('only')], 'only'), '', 'nu mai e nimic de rezolvat');
+  assert.equal(nextTicketToHandle([ticket('x', { status: 'waiting_user' })], 'y'), '', 'un tichet care așteaptă utilizatorul nu e „următorul”');
+});
+
+await check('suport: termenul de 30 de zile al cererilor de ștergere', () => {
+  const deletion = ticket('d', { source: 'account_deletion_request', created_date: supportAgo(25) });
+  assert.equal(accountDeletionDeadline(deletion, SUPPORT_NOW).daysLeft, 5);
+  assert.equal(accountDeletionDeadline(deletion, SUPPORT_NOW).tone, 'warning');
+  assert.equal(accountDeletionDeadline({ ...deletion, created_date: supportAgo(33) }, SUPPORT_NOW).tone, 'danger');
+  assert.equal(accountDeletionDeadline({ ...deletion, status: 'resolved' }, SUPPORT_NOW), null, 'încheiată: fără termen');
+  assert.equal(accountDeletionDeadline(ticket('x'), SUPPORT_NOW), null, 'un tichet obișnuit nu are termen');
+});
+
+await check('suport: un răspuns scris e obligatoriu când utilizatorul trebuie să afle ce s-a întâmplat', () => {
+  for (const status of ['waiting_user', 'resolved', 'closed']) {
+    assert.notEqual(ticketUpdateProblem({ status, response: '' }), '', status);
+    assert.notEqual(ticketUpdateProblem({ status, response: '   \n ' }), '', `${status}: spațiile nu sunt răspuns`);
+    assert.equal(ticketUpdateProblem({ status, response: 'Am rezolvat.' }), '', status);
+  }
+  for (const status of ['open', 'in_progress']) assert.equal(ticketUpdateProblem({ status, response: '' }), '', status);
+  assert.match(ticketUpdateProblem({ status: 'waiting_user', response: '' }), /ceri utilizatorului/);
+});
+
+await check('suport: ce se salvează pe tichet (data răspunsului se schimbă doar când textul e nou)', () => {
+  const stored = ticket('t', { support_response: 'Răspuns vechi.' });
+  const unchanged = buildTicketPayload({ ticket: stored, status: 'resolved', priority: 'normal', response: ' Răspuns vechi. ', adminId: 'u1', now: SUPPORT_NOW });
+  assert.deepEqual(unchanged, { status: 'resolved', priority: 'normal', support_response: 'Răspuns vechi.' });
+  const changed = buildTicketPayload({ ticket: stored, status: 'waiting_user', priority: 'high', response: 'Ne poți trimite o captură?', adminId: 'u1', now: SUPPORT_NOW });
+  assert.equal(changed.status, 'waiting_user');
+  assert.equal(changed.priority, 'high');
+  assert.equal(changed.responded_at, '2026-10-07T12:00:00.000Z');
+  assert.equal(changed.responded_by_user_id, 'u1');
+  const cleared = buildTicketPayload({ ticket: stored, status: 'in_progress', priority: 'normal', response: '', now: SUPPORT_NOW });
+  assert.equal('responded_at' in cleared, false, 'fără text nou nu se marchează ca răspuns');
+});
+
+await check('ecranele de suport: componente comune, fără culori scrise de mână și fără text vizibil fără diacritice', () => {
+  const dir = 'src/components/admin/support';
+  const files = readdirSync(path.join(root, dir)).filter((name) => /\.(jsx|js)$/.test(name));
+  assert.ok(files.includes('SupportParts.jsx'));
+  for (const name of files) {
+    const text = source(`${dir}/${name}`).replace(/\/\/.*$/gm, '');
+    assert.ok(!/(red|green|amber|blue|sky|violet|emerald)-\d{2,3}/.test(text), `${name}: culori scrise de mână`);
+    assert.ok(!/window\.confirm/.test(text), `${name}: confirmare nativă`);
+    const bad = text.match(/(Actualizeaza|Cauta dupa|Se incarca|Selecteaza|Marcheaza|Arhiveaza|Rezolvate \/ inchise|Organizatie|Raspuns|Schimba filtrul|Utilizator indisponibil)/);
+    assert.ok(!bad, `${name}: text fără diacritice („${bad && bad[0]}”)`);
+  }
+  const tickets = source(`${dir}/AdminSupportTickets.jsx`);
+  for (const needle of ['sortSupportTickets', 'ticketUpdateProblem', 'buildTicketPayload', 'nextTicketToHandle', 'Trimite și rezolvă', 'Trimite și așteaptă utilizatorul', 'Alte opțiuni']) {
+    assert.ok(tickets.includes(needle), `AdminSupportTickets: lipsește ${needle}`);
+  }
+  assert.ok(!/SummaryCard/.test(tickets), 'cardurile-sumar sunt înlocuite de filtrele cu numere');
+  assert.match(tickets, /Nu se trimite email/, 'adminul trebuie să știe că utilizatorul nu primește email');
+  const feedback = source(`${dir}/AdminUserFeedback.jsx`);
+  assert.match(feedback, /Marchează revizuit/);
+  assert.ok(!/SummaryCard/.test(feedback));
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

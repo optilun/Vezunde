@@ -125,6 +125,55 @@ export const deliveryRecipientLabel = (type) => labelFrom(DELIVERY_RECIPIENT_LAB
 export const DELIVERY_CHANNEL_LABELS = Object.freeze({ email: "Email", in_app: "În aplicație" });
 export const deliveryChannelLabel = (channel) => labelFrom(DELIVERY_CHANNEL_LABELS, channel, "Email");
 
+// Suport: tichete (SupportTicket) și feedback (UserFeedback).
+// „Deschis” și „În lucru” cer o acțiune de la tine, „Așteaptă utilizatorul” nu (neutru).
+export const TICKET_STATUS_LABELS = Object.freeze({
+  open: "Deschis",
+  in_progress: "În lucru",
+  waiting_user: "Așteaptă utilizatorul",
+  resolved: "Rezolvat",
+  closed: "Închis",
+});
+const TICKET_STATUS_TONES = { open: "info", in_progress: "warning", waiting_user: "neutral", resolved: "success", closed: "neutral" };
+export const ticketStatusLabel = (status) => labelFrom(TICKET_STATUS_LABELS, status, "Deschis");
+export const ticketStatusTone = (status) => TICKET_STATUS_TONES[status || "open"] || "neutral";
+
+export const TICKET_PRIORITY_LABELS = Object.freeze({ low: "Scăzută", normal: "Normală", high: "Ridicată", urgent: "Urgentă" });
+const TICKET_PRIORITY_TONES = { high: "warning", urgent: "danger" };
+export const ticketPriorityLabel = (priority) => labelFrom(TICKET_PRIORITY_LABELS, priority, "Normală");
+export const ticketPriorityTone = (priority) => TICKET_PRIORITY_TONES[priority] || "neutral";
+
+export const TICKET_CATEGORY_LABELS = Object.freeze({
+  account: "Cont și autentificare",
+  organization: "Organizație sau locație",
+  professional: "Profil profesional",
+  patient_request: "Solicitări pacienți",
+  technical: "Problemă tehnică",
+  other: "Altă situație",
+});
+export const ticketCategoryLabel = (category) => labelFrom(TICKET_CATEGORY_LABELS, category, "Suport");
+
+// De unde a venit mesajul (SupportTicket.source / UserFeedback.source).
+export const SUPPORT_SOURCE_LABELS = Object.freeze({
+  help_center: "Ajutor și suport",
+  account_deletion_request: "Cerere de ștergere a contului",
+  account_sidebar: "Meniul contului",
+});
+export const supportSourceLabel = (source) => labelFrom(SUPPORT_SOURCE_LABELS, source, "—");
+
+export const FEEDBACK_STATUS_LABELS = Object.freeze({ new: "Nou", reviewed: "Revizuit", archived: "Arhivat" });
+const FEEDBACK_STATUS_TONES = { new: "info", reviewed: "success", archived: "neutral" };
+export const feedbackStatusLabel = (status) => labelFrom(FEEDBACK_STATUS_LABELS, status, "Nou");
+export const feedbackStatusTone = (status) => FEEDBACK_STATUS_TONES[status || "new"] || "neutral";
+
+export const ACCOUNT_MODE_LABELS = Object.freeze({
+  personal: "Cont personal",
+  provider: "Organizație / furnizor",
+  professional: "Profil profesional",
+  applicant: "Solicitant",
+});
+export const accountModeLabel = (mode) => labelFrom(ACCOUNT_MODE_LABELS, mode, "Cont");
+
 export const ACTIVE_STATUS_LABELS = Object.freeze({ activa: "Activă", inactiva: "Inactivă" });
 export const activeStatusLabel = (status) => labelFrom(ACTIVE_STATUS_LABELS, status, "Necunoscut");
 
