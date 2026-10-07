@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Archive,
   CheckCircle2,
@@ -117,14 +117,17 @@ export default function AdminProfessionalProfileReview() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const loadSeq = useRef(0);
   const load = async () => {
     setLoading(true);
     setError("");
+    const seq = ++loadSeq.current;
     try {
       const response = await base44.functions.invoke("adminProfessionalProfileReview", {
         action: "list",
         status: statusFilter,
       });
+      if (seq !== loadSeq.current) return;
       setItems(oldestFirst(response.data?.profiles || [], (profile) => profile.submitted_at || profile.created_date));
     } catch (requestError) {
       setError(

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ExternalLink, ImageOff, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -32,8 +32,10 @@ export default function AdminPhotoCleanupQueue() {
   const [error, setError] = useState("");
   const [flash, setFlash] = useState("");
 
+  const loadSeq = useRef(0);
   const load = async () => {
     setError("");
+    const seq = ++loadSeq.current;
     const response = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
       action: "admin_cleanup_list",
     }).catch((requestError) => ({
@@ -42,6 +44,7 @@ export default function AdminPhotoCleanupQueue() {
     if (response.data?.error) setError(response.data.error);
     const rows = oldestFirst(response.data?.assets || [], (asset) => asset.cleanup_requested_at || asset.created_date);
     const { byId } = await fetchByIds(base44.entities.ProviderLocation, rows.map((asset) => asset.location_id));
+    if (seq !== loadSeq.current) return;
     setLocations(byId);
     setAssets(rows);
   };

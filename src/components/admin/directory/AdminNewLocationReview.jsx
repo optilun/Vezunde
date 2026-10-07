@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Building2, CheckCircle2, Info, Link2, MapPin, Plus, RefreshCcw, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -238,8 +238,10 @@ export default function AdminNewLocationReview() {
   const [error, setError] = useState("");
   const [flash, setFlash] = useState("");
 
+  const loadSeq = useRef(0);
   const load = async () => {
     setError("");
+    const seq = ++loadSeq.current;
     const [newLocationsResponse, existingLocationsResponse] = await Promise.all([
       base44.functions.invoke("providerLocationExpansionOps", { action: "admin_list" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
       base44.functions.invoke("providerLocationIdentityResolutionOps", { action: "admin_list" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
@@ -250,6 +252,7 @@ export default function AdminNewLocationReview() {
       ...(newLocationsResponse.data?.submissions || []).map((item) => ({ ...item, item_key: item.item_key || "new_location" })),
       ...(existingLocationsResponse.data?.submissions || []),
     ].filter((item, index, rows) => rows.findIndex((candidate) => candidate.id === item.id) === index);
+    if (seq !== loadSeq.current) return;
     setItems(oldestFirst(merged, (item) => item.submitted_at || item.created_date));
   };
 

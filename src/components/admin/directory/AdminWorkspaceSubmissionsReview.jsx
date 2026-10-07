@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
   CheckCircle2,
@@ -479,8 +479,11 @@ export default function AdminWorkspaceSubmissionsReview() {
   // 2026-10-07 (audit admin): nu mai citeste tot directorul (2 x 5.000 de randuri, la fiecare
   // deschidere si dupa fiecare decizie) doar pentru cateva nume; se citesc numai locatiile si
   // organizatiile cererilor in asteptare.
+  // Doar ultima reîncărcare contează (după decizii succesive, una mai veche nu o suprascrie pe cea nouă).
+  const loadSeq = useRef(0);
   const load = async () => {
     setError("");
+    const seq = ++loadSeq.current;
     const [pendingResponse, organizationResponse] = await Promise.all([
       base44.functions.invoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
       base44.functions.invoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
@@ -500,6 +503,7 @@ export default function AdminWorkspaceSubmissionsReview() {
       fetchByIds(base44.entities.ProviderLocation, merged.map((submission) => submission.location_id)),
       fetchByIds(base44.entities.ProviderOrganization, merged.map((submission) => submission.organization_id)),
     ]);
+    if (seq !== loadSeq.current) return;
     setSubmissions(enriched);
     setLocations(locationResult.byId);
     setOrganizations(organizationResult.byId);

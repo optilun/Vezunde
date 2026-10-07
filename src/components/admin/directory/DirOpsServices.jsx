@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, ExternalLink, Wrench } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -30,11 +30,15 @@ export default function DirOpsServices() {
   const [backfillBusy, setBackfillBusy] = useState(false);
   const [backfillMessage, setBackfillMessage] = useState("");
 
+  // Doar ultimul răspuns contează: dacă schimbi repede locația, un răspuns întârziat nu îl suprascrie pe cel nou.
+  const loadSeq = useRef(0);
   const loadAdminData = useCallback(async (locationId = "") => {
     setError("");
+    const seq = ++loadSeq.current;
     const response = await base44.functions.invoke("getAdminServiceManagementData", {
       location_id: locationId,
     }).catch((requestError) => ({ data: { error: errorOf(requestError) } }));
+    if (seq !== loadSeq.current) return;
 
     if (response.data?.error) {
       setError(response.data.error);
@@ -58,16 +62,15 @@ export default function DirOpsServices() {
     }
   }, []);
 
-  useEffect(() => {
-    loadAdminData();
-    loadCounts();
-  }, [loadAdminData, loadCounts]);
+  useEffect(() => { loadCounts(); }, [loadCounts]);
 
+  // O singură încărcare: lista locațiilor vine la fiecare apel, iar serviciile doar când e aleasă o locație
+  // (înainte, o a doua cerere „fără locație” putea sosi ultima și golea lista de servicii).
   useEffect(() => {
     setBackfillReport(null);
     setBackfillMessage("");
-    if (selectedId) loadAdminData(selectedId);
-    else setServices(null);
+    setServices(null);
+    loadAdminData(selectedId);
   }, [selectedId, loadAdminData]);
 
   const reloadServices = async () => {
