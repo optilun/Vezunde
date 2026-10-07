@@ -19,13 +19,13 @@ const EMPTY_DRAFT = {
 };
 
 const MERGE_FIELDS = [
-  { token: "[NUME]", desc: "Numele de contact (sau al firmei, daca nu exista)" },
+  { token: "[NUME]", desc: "Numele de contact (sau al firmei, dacă nu există)" },
   { token: "[FIRMA]", desc: "Numele firmei/locatiei" },
   { token: "[ORAS]", desc: "Localitatea" },
-  { token: "[LOCATII]", desc: "Cate locatii folosesc adresa: \"o locatie\", \"5 locatii\", \"79 de locatii\"" },
-  { token: "[ORASE]", desc: "Orasul, daca toate locatiile sunt in acelasi oras; altfel \"34 de orase\"" },
-  { token: "[JUDET]", desc: "Judetul" },
-  { token: "[UNSUBSCRIBE_LINK]", desc: "Loc unde apare linkul de dezabonare in corpul mesajului (optional - apare oricum in footer)" },
+  { token: "[LOCATII]", desc: "Cate locații folosesc adresa: \"o locație\", \"5 locații\", \"79 de locații\"" },
+  { token: "[ORASE]", desc: "Orașul, dacă toate locațiile sunt în același oraș; altfel \"34 de orașe\"" },
+  { token: "[JUDET]", desc: "Județul" },
+  { token: "[UNSUBSCRIBE_LINK]", desc: "Loc unde apare linkul de dezabonare în corpul mesajului (opțional - apare oricum în footer)" },
 ];
 
 function draftFromTemplate(template) {
@@ -63,7 +63,7 @@ export default function OutreachTemplateEditor() {
 
   const save = async () => {
     if (!draft.name.trim() || !draft.subject.trim() || !draft.body.trim()) {
-      setError("Nume, subiect si continut sunt obligatorii.");
+      setError("Nume, subiect și conținut sunt obligatorii.");
       return;
     }
     setSaving(true);
@@ -86,10 +86,10 @@ export default function OutreachTemplateEditor() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
       <div className="space-y-4 lg:col-span-2">
-        <h3 className="text-sm font-bold text-foreground">Sabloane existente</h3>
+        <h3 className="text-sm font-bold text-foreground">Șabloane existente</h3>
         {loading && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Se incarca...
+            <Loader2 className="h-4 w-4 animate-spin" /> Se încarcă…
           </div>
         )}
         {CATEGORY_OPTIONS.map((option) => {
@@ -98,7 +98,7 @@ export default function OutreachTemplateEditor() {
             <div key={option.value} className="space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{option.label} ({group.length})</p>
               {!loading && group.length === 0 && (
-                <p className="text-xs text-muted-foreground">Niciun sablon in aceasta categorie.</p>
+                <p className="text-xs text-muted-foreground">Niciun șablon în această categorie.</p>
               )}
               {group.map((template) => (
                 <div key={template.id} className={`rounded-xl border p-3 ${draft.id === template.id ? "border-foreground" : "border-border"}`}>
@@ -119,8 +119,8 @@ export default function OutreachTemplateEditor() {
                       <button
                         type="button"
                         onClick={() => remove(template.id)}
-                        className="rounded-full border border-border p-1.5 text-red-600 hover:bg-red-50"
-                        aria-label="Sterge sablon"
+                        className="rounded-full border border-border p-1.5 text-danger hover:bg-danger-soft"
+                        aria-label="Șterge șablon"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -135,15 +135,15 @@ export default function OutreachTemplateEditor() {
 
       <div className="space-y-3 rounded-2xl border border-border p-5 lg:col-span-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">{draft.id ? "Editeaza sablon" : "Sablon nou"}</h3>
+          <h3 className="text-sm font-bold text-foreground">{draft.id ? "Editează șablon" : "Șablon nou"}</h3>
           {draft.id && (
             <button type="button" onClick={() => setDraft(EMPTY_DRAFT)} className="text-xs font-semibold text-muted-foreground underline">
-              Anuleaza editarea
+              Anulează editarea
             </button>
           )}
         </div>
 
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+        {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>}
 
         <div>
           <span className="text-xs font-semibold text-foreground">Categorie</span>
@@ -187,7 +187,7 @@ export default function OutreachTemplateEditor() {
         </label>
 
         <label className="block">
-          <span className="text-xs font-semibold text-foreground">Continut</span>
+          <span className="text-xs font-semibold text-foreground">Conținut</span>
           <textarea
             id="outreach-template-body"
             value={draft.body}
@@ -199,7 +199,7 @@ export default function OutreachTemplateEditor() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="text-xs font-semibold text-foreground">Text buton (optional)</span>
+            <span className="text-xs font-semibold text-foreground">Text buton (opțional)</span>
             <input
               id="outreach-template-cta-label"
               type="text"
@@ -230,8 +230,8 @@ export default function OutreachTemplateEditor() {
             className="mt-0.5"
           />
           <span className="text-xs text-foreground">
-            Arata fisa destinatarului din director
-            <span className="block text-[11px] text-muted-foreground">Potrivit pentru invitatiile la revendicare; de obicei nu si pentru anunturi.</span>
+            Arată fișa destinatarului din director
+            <span className="block text-[11px] text-muted-foreground">Potrivit pentru invitațiile la revendicare; de obicei nu și pentru anunțuri.</span>
           </span>
         </label>
 
@@ -253,7 +253,7 @@ export default function OutreachTemplateEditor() {
           className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-60"
         >
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          {draft.id ? "Salveaza modificarile" : `Creeaza sablonul (${CATEGORY_LABELS[draft.category]})`}
+          {draft.id ? "Salvează modificările" : `Creează șablonul (${CATEGORY_LABELS[draft.category]})`}
         </button>
       </div>
     </div>

@@ -5,21 +5,15 @@ import OutreachEmailPreview from "./OutreachEmailPreview";
 import OutreachCampaignReport from "./OutreachCampaignReport";
 import {
   CATEGORY_LABELS,
+  HEALTH_PAUSE_REASONS,
+  campaignStatusLabel,
+  campaignStatusTone,
   categoryBadgeClass,
   normalizeCategory,
   callOutreach,
 } from "./outreachLabels";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
 import { useAdminConfirm } from "@/components/admin/ui/AdminConfirm";
-
-const STATUS_LABELS = {
-  draft: "Ciorna",
-  ready: "Pregatita",
-  sending: "Se trimite",
-  sent: "Trimisa",
-  paused: "Pausata",
-  failed: "Esuata",
-  cancelled: "Anulata",
-};
 
 // Aceleasi reguli ca in base44/shared/outreachSendSafety.js (effectiveDailyLimit): limita se
 // dubleaza in fiecare zi de trimitere, pana la 2000. Doar pentru estimarea afisata adminului.
@@ -64,16 +58,14 @@ function SendSchedulePreview({ total, limit, ramp, startDay = 0, sentToday = 0 }
   );
 }
 
-const HEALTH_PAUSE_REASONS = ["bounce_rate", "complaints"];
-
 const STEPS = [
-  { key: 1, label: "Continut" },
+  { key: 1, label: "Conținut" },
   { key: 2, label: "Destinatari" },
-  { key: 3, label: "Previzualizare si test" },
+  { key: 3, label: "Previzualizare și test" },
   { key: 4, label: "Trimitere" },
 ];
 
-const MERGE_FIELDS_HINT = "[FIRMA] numele firmei · [ORAS] · [JUDET] · [LOCATII] „79 de locatii” · [ORASE] „35 de orase” · [NUME] persoana de contact";
+const MERGE_FIELDS_HINT = "[FIRMA] numele firmei · [ORAS] · [JUDET] · [LOCATII] „79 de locații” · [ORASE] „35 de orașe” · [NUME] persoana de contact";
 
 // Campurile ciornei care se salveaza pe campanie. Tot ce e aici trece prin update_campaign.
 function draftFromCampaign(campaign) {
@@ -253,7 +245,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   if (loading || !campaign || !editDraft) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {error ? <span className="text-red-700">{error}</span> : <><Loader2 className="h-4 w-4 animate-spin" /> Se incarca campania...</>}
+        {error ? <span className="text-danger">{error}</span> : <><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă campania…</>}
       </div>
     );
   }
@@ -273,7 +265,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   return (
     <div className="space-y-6">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3.5 w-3.5" /> Inapoi la campanii
+        <ArrowLeft className="h-3.5 w-3.5" /> Înapoi la campanii
       </button>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -281,8 +273,8 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
           <h2 className="text-lg font-bold text-foreground">{campaign.name}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(category)}`}>{CATEGORY_LABELS[category]}</span>
-            <span className="text-xs font-semibold text-muted-foreground">{STATUS_LABELS[campaign.status] || campaign.status}</span>
-            {isDraft && dirty && <span className="text-[11px] text-amber-700">Modificari nesalvate</span>}
+            <StatusBadge label={campaignStatusLabel(campaign.status)} tone={isAutoPaused ? "danger" : campaignStatusTone(campaign.status)} />
+            {isDraft && dirty && <span className="text-[11px] text-warning">Modificări nesalvate</span>}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -297,35 +289,35 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
             </button>
           )}
           {canCancel && (
-            <button type="button" disabled={busy} onClick={async () => { if (await confirm({ title: "Anulezi campania?", description: "Nu se mai trimite nimic din ea.", confirmLabel: "Anulează campania", tone: "danger" })) setStatus("cancel_campaign"); }} className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60">
+            <button type="button" disabled={busy} onClick={async () => { if (await confirm({ title: "Anulezi campania?", description: "Nu se mai trimite nimic din ea.", confirmLabel: "Anulează campania", tone: "danger" })) setStatus("cancel_campaign"); }} className="rounded-full border border-danger-border px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-60">
               Anuleaza
             </button>
           )}
         </div>
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>}
 
       {isAutoPaused && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+        <div className="rounded-lg border border-danger-border bg-danger-soft px-3 py-2 text-xs text-danger">
           <span className="block font-semibold">Campania a fost oprita automat</span>
           <span className="block pt-1">{campaign.failure_message}</span>
-          <span className="block pt-1 text-red-800">
+          <span className="block pt-1 text-danger">
             Protectia exista ca sa nu fie oprit tot contul de email (Resend opreste contul peste 4% emailuri respinse sau 0,08% reclamatii de spam).
-            Uita-te in raport la adresele respinse inainte sa reiei.
+            Uita-te în raport la adresele respinse înainte să reiei.
           </span>
         </div>
       )}
 
       {campaign.failure_message && !isAutoPaused && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="rounded-lg border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
           <span className="font-semibold">
-            {retryingAfterFailure ? "Ultimul lot nu a plecat, se reincearca automat in cateva minute: " : "Motivul opririi trimiterii: "}
+            {retryingAfterFailure ? "Ultimul lot nu a plecat, se reîncearcă automat în câteva minute: " : "Motivul opririi trimiterii: "}
           </span>
           {campaign.failure_message}
           {campaign.status === "failed" && (
-            <span className="block pt-1 text-amber-800">
-              Destinatarii din lotul esuat NU au fost sariti: dupa remedierea cauzei, reia campania si trimiterea continua de unde a ramas.
+            <span className="block pt-1 text-warning">
+              Destinatarii din lotul eșuat NU au fost săriți: după remedierea cauzei, reia campania și trimiterea continuă de unde a rămas.
             </span>
           )}
         </div>
@@ -333,7 +325,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
 
       {isDraft && (
         <>
-          <nav aria-label="Pasii campaniei" className="flex flex-wrap gap-2">
+          <nav aria-label="Pașii campaniei" className="flex flex-wrap gap-2">
             {STEPS.map((item) => (
               <button
                 key={item.key}
@@ -360,44 +352,44 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
                   onChange={(e) => applyTemplate(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
                 >
-                  <option value="">{categoryTemplates.length ? "Alege un sablon…" : "Nu exista sabloane in aceasta categorie"}</option>
+                  <option value="">{categoryTemplates.length ? "Alege un șablon…" : "Nu există șabloane în această categorie"}</option>
                   {categoryTemplates.map((template) => (
                     <option key={template.id} value={template.id}>{template.name}</option>
                   ))}
                 </select>
-                <span className="mt-1 block text-[11px] text-muted-foreground">Completeaza subiectul, textul si butonul. Dupa aceea le poti edita aici fara sa modifici sablonul.</span>
+                <span className="mt-1 block text-[11px] text-muted-foreground">Completează subiectul, textul și butonul. După aceea le poți edita aici fără să modifici șablonul.</span>
               </label>
               <label className="block">
                 <span className="text-xs font-semibold text-foreground">Subiect</span>
                 <input id="outreach-subject" type="text" value={editDraft.subject} onChange={(e) => patchDraft({ subject: e.target.value })} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
               </label>
               <label className="block">
-                <span className="text-xs font-semibold text-foreground">Continut</span>
+                <span className="text-xs font-semibold text-foreground">Conținut</span>
                 <textarea id="outreach-body" value={editDraft.body_html} onChange={(e) => patchDraft({ body_html: e.target.value })} rows={10} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
                 <span className="mt-1 block text-[11px] text-muted-foreground">Campuri completate automat pentru fiecare destinatar: {MERGE_FIELDS_HINT}.</span>
               </label>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="text-xs font-semibold text-foreground">Text buton (optional)</span>
+                  <span className="text-xs font-semibold text-foreground">Text buton (opțional)</span>
                   <input id="outreach-cta-label" type="text" value={editDraft.cta_label} placeholder="Revendica profilul" onChange={(e) => patchDraft({ cta_label: e.target.value })} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold text-foreground">Link buton</span>
                   <input id="outreach-cta-url" type="text" value={editDraft.cta_url} placeholder="https://viasee.ro/adauga-sau-revendica" onChange={(e) => patchDraft({ cta_url: e.target.value })} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
-                  <span className="mt-1 block text-[11px] text-muted-foreground">Butonul apare doar daca linkul e completat (http/https).</span>
+                  <span className="mt-1 block text-[11px] text-muted-foreground">Butonul apare doar dacă linkul e completat (http/https).</span>
                 </label>
               </div>
               <label className="flex items-start gap-2">
                 <input type="checkbox" checked={editDraft.show_listing_preview} onChange={(e) => patchDraft({ show_listing_preview: e.target.checked })} className="mt-0.5" />
                 <span className="text-xs text-foreground">
-                  Arata in email fisa destinatarului din director
+                  Arată în email fișa destinatarului din director
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    Fiecare primeste numele, tipul si orasul lui reale, asa cum apar public pe VIASEE. Debifeaza pentru anunturi si pentru emailuri care nu vorbesc despre profil.
+                    Fiecare primește numele, tipul și orașul lui reale, așa cum apar public pe VIASEE. Debifează pentru anunțuri și pentru emailuri care nu vorbesc despre profil.
                   </span>
                 </span>
               </label>
               <details className="rounded-lg border border-border p-3">
-                <summary className="cursor-pointer text-xs font-semibold text-foreground">Expeditor si raspunsuri</summary>
+                <summary className="cursor-pointer text-xs font-semibold text-foreground">Expeditor și răspunsuri</summary>
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <label className="block">
                     <span className="text-xs font-semibold text-foreground">Nume expeditor</span>
@@ -408,7 +400,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
                     <input type="text" value={editDraft.from_email} onChange={(e) => patchDraft({ from_email: e.target.value })} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
                   </label>
                   <label className="block">
-                    <span className="text-xs font-semibold text-foreground">Raspunsurile ajung la</span>
+                    <span className="text-xs font-semibold text-foreground">Răspunsurile ajung la</span>
                     <input type="text" value={editDraft.reply_to_email} onChange={(e) => patchDraft({ reply_to_email: e.target.value })} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
                   </label>
                 </div>
@@ -436,12 +428,12 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
               <div className="space-y-2 rounded-lg border border-border p-3">
                 <p className="text-xs font-semibold text-foreground">Ritm de trimitere</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Adresa de trimitere e noua: daca pleaca sute de emailuri in aceeasi ora, ajung in Spam.
-                  Campania trimite cel mult atatea emailuri pe zi (ora Romaniei) si continua a doua zi la 09:00.
+                  Adresa de trimitere e nouă: dacă pleacă sute de emailuri în aceeași oră, ajung în Spam.
+                  Campania trimite cel mult atâtea emailuri pe zi (ora României) și continuă a doua zi la 09:00.
                 </p>
                 <div className="flex flex-wrap items-end gap-3">
                   <label className="block">
-                    <span className="text-[11px] font-semibold text-foreground">Emailuri in prima zi</span>
+                    <span className="text-[11px] font-semibold text-foreground">Emailuri în prima zi</span>
                     <input
                       id="outreach-daily-limit-draft"
                       type="number"
@@ -463,12 +455,12 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
               <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-4">
                 <p className="text-xs font-semibold text-foreground">Aprobare pentru trimitere reala</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Trimiterea porneste doar dupa ce tastezi exact fraza de confirmare, cu numarul de destinatari
-                  recalculat in acel moment din lista de la pasul 2.
+                  Trimiterea pornește doar după ce tastezi exact fraza de confirmare, cu numărul de destinatari
+                  recalculat în acel moment din lista de la pasul 2.
                 </p>
                 {!approvalPreview && (
                   <button type="button" disabled={busy} onClick={openApproval} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
-                    Calculeaza destinatarii si pregateste aprobarea
+                    Calculează destinatarii și pregătește aprobarea
                   </button>
                 )}
                 {approvalPreview && (
@@ -493,9 +485,9 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
                       onClick={confirmApproval}
                       className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40"
                     >
-                      Aproba si porneste trimiterea
+                      Aproba și pornește trimiterea
                     </button>
-                    <p className="text-[11px] text-muted-foreground">Ritmul de trimitere ales mai sus se salveaza odata cu aprobarea.</p>
+                    <p className="text-[11px] text-muted-foreground">Ritmul de trimitere ales mai sus se salvează odată cu aprobarea.</p>
                   </div>
                 )}
               </div>
@@ -537,10 +529,10 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
             </label>
             <label className="flex items-center gap-2 pb-1.5 text-xs text-foreground">
               <input type="checkbox" checked={limitDraft.daily_send_ramp} onChange={(e) => setLimitDraft((d) => ({ ...d, daily_send_ramp: e.target.checked }))} />
-              Dubleaza in fiecare zi de trimitere
+              Dublează în fiecare zi de trimitere
             </label>
             <button type="button" disabled={busy} onClick={saveDailyLimit} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
-              Salveaza ritmul
+              Salvează ritmul
             </button>
           </div>
           <SendSchedulePreview
@@ -563,11 +555,11 @@ function StepButtons({ busy, dirty, onSave, onBack, onNext, nextLabel }) {
     <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
       {onBack && (
         <button type="button" disabled={busy} onClick={onBack} className="rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
-          Inapoi
+          Înapoi
         </button>
       )}
       <button type="button" disabled={busy || !dirty} onClick={onSave} className="rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
-        {busy ? "Se salveaza..." : dirty ? "Salveaza" : "Salvat"}
+        {busy ? "Se salvează..." : dirty ? "Salvează" : "Salvat"}
       </button>
       {onNext && (
         <button type="button" disabled={busy} onClick={onNext} className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-60">

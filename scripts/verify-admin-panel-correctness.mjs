@@ -47,6 +47,17 @@ import { sourceHost, validateQuickEdit } from '../src/lib/adminProfileEdit.js';
 import { buildLocationIndex, normalizeSearch, searchLocationIndex, searchTokens } from '../src/lib/adminSearch.js';
 import { ORGANIZATION_ID_PREFIX, buildGlobalIndexes, searchEverything } from '../src/lib/adminGlobalSearch.js';
 import {
+  CAMPAIGN_STATUS_LABELS,
+  CONTACT_STATUS_LABELS,
+  campaignStatusLabel,
+  campaignStatusTone,
+  categoryBadgeClass,
+  contactStatusTone,
+  isAutoPausedCampaign,
+  outcomeClass,
+} from '../src/lib/adminOutreachLabels.js';
+import { readdirSync } from 'node:fs';
+import {
   ADMIN_NAV_LABELS,
   ADMIN_NAV_PRIMARY,
   ADMIN_NAV_SECONDARY,
@@ -847,6 +858,56 @@ await check('jurnalul de trimiteri: stări, destinatari și canale în română'
   const workspace = source('src/components/admin/automatic-emails/AutomaticEmailWorkspace.jsx');
   assert.match(workspace, /Jurnal trimiteri/);
   assert.ok(!/(Operatia nu a reusit|Salveaza si activeaza|Se incarca emailurile|Anuleaza editarea|Editeaza mesajul)/.test(workspace), 'text fără diacritice în ecranul de emailuri');
+});
+
+// ---------- Campanii și marketing ----------
+await check('campanii: stări, tonuri și oprirea automată în română', () => {
+  assert.equal(campaignStatusLabel('draft'), 'Ciornă');
+  assert.equal(campaignStatusLabel('ready'), 'Pregătită');
+  assert.equal(campaignStatusLabel('paused'), 'Pauzată');
+  assert.equal(campaignStatusLabel('failed'), 'Eșuată');
+  assert.equal(campaignStatusLabel('cancelled'), 'Anulată');
+  for (const label of Object.values(CAMPAIGN_STATUS_LABELS)) assert.ok(!/[a-z]_[a-z]/.test(label), label);
+  assert.equal(campaignStatusTone('sent'), 'success');
+  assert.equal(campaignStatusTone('failed'), 'danger');
+  assert.equal(campaignStatusTone('paused'), 'warning');
+  assert.equal(campaignStatusTone('draft'), 'neutral');
+  assert.equal(isAutoPausedCampaign({ status: 'paused', pause_reason: 'bounce_rate' }), true);
+  assert.equal(isAutoPausedCampaign({ status: 'paused', pause_reason: 'complaints' }), true);
+  assert.equal(isAutoPausedCampaign({ status: 'paused', pause_reason: 'manual' }), false, 'o pauză manuală nu e oprire automată');
+  assert.equal(isAutoPausedCampaign({ status: 'sending', pause_reason: 'bounce_rate' }), false);
+  assert.equal(isAutoPausedCampaign(null), false);
+});
+
+await check('contacte: stări în română și tonuri', () => {
+  assert.equal(CONTACT_STATUS_LABELS.replied, 'A răspuns');
+  assert.equal(CONTACT_STATUS_LABELS.complained, 'Plângere spam');
+  assert.equal(contactStatusTone('bounced'), 'danger');
+  assert.equal(contactStatusTone('unsubscribed'), 'danger');
+  assert.equal(contactStatusTone('interested'), 'success');
+  assert.equal(contactStatusTone('contacted'), 'info');
+  assert.equal(contactStatusTone('new'), 'neutral');
+  assert.match(categoryBadgeClass('announcement'), /info/);
+  assert.match(outcomeClass('bounced'), /danger/);
+  assert.match(outcomeClass('delivered'), /success/);
+});
+
+await check('modulul de campanii: fără culori scrise de mână și fără text vizibil fără diacritice', () => {
+  const dir = 'src/components/admin/outreach';
+  const files = readdirSync(path.join(root, dir)).filter((name) => /\.(jsx|js)$/.test(name));
+  assert.ok(files.length >= 8, 'fișierele modulului');
+  for (const name of files) {
+    const text = source(`${dir}/${name}`).replace(/\/\/.*$/gm, '');
+    assert.ok(!/(red|green|amber|blue|sky|violet|emerald)-\d{2,3}/.test(text), `${name}: culori scrise de mână`);
+    const bad = text.match(/(Pregatita|Esuata|Anulata|Pausata|Sabloane|Se incarca|Inapoi|Renunta|Reincarca|Campanie noua|Creeaza si|Aproba si|Salveaza)/);
+    assert.ok(!bad, `${name}: text fără diacritice („${bad && bad[0]}”)`);
+  }
+  const list = source(`${dir}/OutreachCampaignList.jsx`);
+  assert.match(list, /Prima ta campanie/);
+  assert.match(list, /Pornește prima campanie/);
+  const contacts = source(`${dir}/OutreachContactsList.jsx`);
+  assert.ok(!/slice\(0, 500\)/.test(contacts), 'lista de contacte nu mai taie tăcut la 500');
+  assert.match(contacts, /Arată încă/);
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

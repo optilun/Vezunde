@@ -77,7 +77,7 @@ function PickField({ id, label, hint, value, options, labels = {}, onChange, dis
           onChange={(event) => { if (event.target.value) onChange([...selected, event.target.value]); }}
           className="rounded-lg border border-border bg-background px-2 py-1 text-[11px] disabled:opacity-60"
         >
-          <option value="">{selected.length ? "Adauga..." : "Toate — alege pentru a restrange"}</option>
+          <option value="">{selected.length ? "Adaugă…" : "Toate — alege pentru a restrânge"}</option>
           {remaining.map((option) => (
             <option key={option} value={option}>{labels[option] || option}</option>
           ))}
@@ -123,8 +123,8 @@ const CONTROL_STATUS_OPTIONS = [
 ];
 
 const EMAIL_SCOPE_OPTIONS = [
-  { value: "location", label: "Adresa unei locatii" },
-  { value: "organization", label: "Adresa de organizatie" },
+  { value: "location", label: "Adresa unei locații" },
+  { value: "organization", label: "Adresa de organizație" },
 ];
 
 // hideContactOnlyFilters: la sincronizarea din director, tag-urile si tipul adresei inca nu exista
@@ -139,8 +139,8 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled, h
       {counties.length ? (
         <PickField
           id="outreach-filter-counties"
-          label="Judete"
-          hint="Niciunul ales = toate judetele"
+          label="Județe"
+          hint="Niciunul ales = toate județele"
           value={filters.target_counties}
           options={counties}
           onChange={(val) => patch("target_counties", val)}
@@ -148,12 +148,12 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled, h
         />
       ) : (
         <ListField
-          label="Judete tinta"
-          hint="Gol = toate judetele"
+          label="Județe ținta"
+          hint="Gol = toate județele"
           value={filters.target_counties}
           onChange={(val) => patch("target_counties", val)}
           disabled={disabled}
-          placeholder="Bucuresti, Cluj, Timis"
+          placeholder="București, Cluj, Timiș"
         />
       )}
       {providerTypes.length ? (
@@ -167,7 +167,7 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled, h
         />
       ) : (
         <ListField
-          label="Tip furnizor tinta"
+          label="Tip furnizor ținta"
           hint="Gol = toate tipurile"
           value={filters.target_provider_types}
           onChange={(val) => patch("target_provider_types", val)}
@@ -186,7 +186,7 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled, h
       {!hideContactOnlyFilters && (
         <ToggleChips
           label="Tipul adresei"
-          hint="Niciunul ales = ambele. Adresa de organizatie = aceeasi adresa pentru mai multe locatii (de obicei sediul unui lant)."
+          hint="Niciunul ales = ambele. Adresa de organizație = aceeași adresa pentru mai multe locații (de obicei sediul unui lanț)."
           value={filters.target_email_scope}
           options={EMAIL_SCOPE_OPTIONS}
           onChange={(val) => patch("target_email_scope", val)}
@@ -196,7 +196,7 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled, h
       {!hideContactOnlyFilters && (
         <ListField
           label="Etichete contact (tags)"
-          hint="Gol = toate. Ex.: retea:lant, tip:clinica, adresa:organizatie"
+          hint="Gol = toate. Ex.: rețea:lanț, tip:clinica, adresa:organizație"
           value={filters.target_tags}
           onChange={(val) => patch("target_tags", val)}
           disabled={disabled}
