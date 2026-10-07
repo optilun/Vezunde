@@ -7,6 +7,10 @@
 // când lista lentă a Cozii de verificare nu se încărcase încă (AdminDashboardHome / ActionQueueCard).
 // Fără React; clientul Base44 se primește ca parametru, ca să poată fi verificat din scripts/.
 
+import { HEALTH_PAUSE_REASONS } from "./adminOutreachLabels.js";
+
+// `group`: „people” = cere o decizie de la tine; „systems” = un proces care merge singur s-a oprit sau a
+// eșuat. `note` = fereastra de timp, afișată discret lângă etichetă.
 export const REVIEW_PARTS = Object.freeze([
   { key: "workspace", label: "Modificări de profil și conținut", tab: "workspace" },
   { key: "locations", label: "Locații noi sau profiluri existente", tab: "locations" },
@@ -17,15 +21,24 @@ export const REVIEW_PARTS = Object.freeze([
 ]);
 
 export const OTHER_QUEUES = Object.freeze([
-  { key: "claims", label: "Revendicări noi", section: "revendicari" },
-  { key: "tickets", label: "Tichete de suport active", section: "support_tickets" },
-  { key: "corrections", label: "Sesizări de director deschise", section: "corectii" },
-  { key: "email_failures", label: "Emailuri netrimise (ultimele 7 zile)", section: "automatic_emails", tab: "jurnal" },
+  { key: "claims", label: "Revendicări noi", section: "revendicari", group: "people" },
+  { key: "tickets", label: "Tichete de suport active", section: "support_tickets", group: "people" },
+  { key: "corrections", label: "Sesizări de director deschise", section: "corectii", group: "people" },
+  { key: "email_failures", label: "Emailuri netrimise", note: "ultimele 7 zile", section: "automatic_emails", tab: "jurnal", group: "systems" },
+  // Procesele care merg singure: când se opresc, nu te avertizează nimeni dacă nu vezi tu.
+  { key: "import_attention", label: "Import director oprit sau eșuat", note: "ultimele 30 de zile", section: "import_directory", group: "systems" },
+  { key: "campaigns_attention", label: "Campanii oprite sau eșuate", note: "ultimele 14 zile", section: "outreach", group: "systems" },
+  { key: "payments_attention", label: "Abonamente cu plată restantă", section: "billing", group: "systems" },
 ]);
 
 export const ACTIVE_TICKET_STATUSES = Object.freeze(["open", "in_progress", "waiting_user"]);
 export const OPEN_CORRECTION_STATUSES = Object.freeze(["submitted", "in_review"]);
 export const ACTIVE_RECOVERY_STATUSES = Object.freeze(["queued", "in_review"]);
+// Import director: „blocat” (o regulă de siguranță a oprit rularea) și „eșuat” cer o decizie de la tine.
+export const IMPORT_ATTENTION_STATUSES = Object.freeze(["blocked", "failed"]);
+// Plata: Stripe a încercat să încaseze și n-a reușit („past_due”) sau a renunțat („unpaid”).
+export const PAYMENT_ATTENTION_STATUSES = Object.freeze(["past_due", "unpaid"]);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function mergeById(...lists) {
   const seen = new Set();
@@ -94,17 +107,34 @@ export async function loadReviewCounts(base44) {
 
 export async function loadAdminCounts(base44, now = Date.now()) {
   const e = base44.entities;
-  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const [review, claims, tickets, corrections, feedback, emailFailures] = await Promise.all([
+  const since = (days) => new Date(now - days * DAY_MS).toISOString();
+  const [review, claims, tickets, corrections, feedback, emailFailures, importAttention, campaignsPaused, campaignsFailed, paymentsAttention] = await Promise.all([
     loadReviewCounts(base44),
     entityCount(e.ProviderClaimRequest, { status: "in_asteptare" }),
     entityCount(e.SupportTicket, { status: { $in: [...ACTIVE_TICKET_STATUSES] } }),
     entityCount(e.DirectoryCorrectionRequest, { status: { $in: [...OPEN_CORRECTION_STATUSES] } }),
     entityCount(e.UserFeedback, { status: "new" }),
     // Emailurile care au eșuat în ultima săptămână (jurnalul din „Emailuri automate”).
-    entityCount(e.CommunicationDelivery, { status: "failed", created_date: { $gte: weekAgo } }),
+    entityCount(e.CommunicationDelivery, { status: "failed", created_date: { $gte: since(7) } }),
+    entityCount(e.DirectoryAutoImportRun, { status: { $in: [...IMPORT_ATTENTION_STATUSES] }, created_date: { $gte: since(30) } }),
+    // O campanie oprită de sistem (respingeri multe / reclamații spam) sau eșuată, în ultimele 2 săptămâni.
+    entityCount(e.OutreachCampaign, { status: "paused", pause_reason: { $in: [...HEALTH_PAUSE_REASONS] }, updated_date: { $gte: since(14) } }),
+    entityCount(e.OutreachCampaign, { status: "failed", updated_date: { $gte: since(14) } }),
+    entityCount(e.ProviderSubscription, { status: { $in: [...PAYMENT_ATTENTION_STATUSES] } }),
   ]);
-  return { review, claims, tickets, corrections, feedback, email_failures: emailFailures, loadedAt: new Date().toISOString() };
+  return {
+    review,
+    claims,
+    tickets,
+    corrections,
+    feedback,
+    email_failures: emailFailures,
+    import_attention: importAttention,
+    // Dacă una din cele două numărători a eșuat, nu afirmăm un total parțial.
+    campaigns_attention: campaignsPaused === null || campaignsFailed === null ? null : campaignsPaused + campaignsFailed,
+    payments_attention: paymentsAttention,
+    loadedAt: new Date().toISOString(),
+  };
 }
 
 // Cifrele de stare din Panou (nu sunt „de rezolvat”): număr sau null = indisponibil.
@@ -154,12 +184,12 @@ export function summarizeCounts(counts) {
   for (const part of REVIEW_PARTS) {
     const value = counts.review?.[part.key];
     if (value === null || value === undefined) unavailable.push(part.label);
-    else if (value > 0) rows.push({ key: `review:${part.key}`, label: part.label, count: value, section: "workspace_reviews", tab: part.tab });
+    else if (value > 0) rows.push({ key: `review:${part.key}`, label: part.label, count: value, section: "workspace_reviews", tab: part.tab, group: "people" });
   }
   for (const queue of OTHER_QUEUES) {
     const value = counts[queue.key];
     if (value === null || value === undefined) unavailable.push(queue.label);
-    else if (value > 0) rows.push({ key: queue.key, label: queue.label, count: value, section: queue.section, tab: queue.tab || "" });
+    else if (value > 0) rows.push({ key: queue.key, label: queue.label, note: queue.note || "", count: value, section: queue.section, tab: queue.tab || "", group: queue.group });
   }
   const total = rows.reduce((sum, row) => sum + row.count, 0);
   return { loaded: true, rows, unavailable, allClear: unavailable.length === 0 && rows.length === 0, total };
@@ -176,5 +206,7 @@ export function sidebarBadgeFor(counts, sectionKey) {
   else if (sectionKey === "support_tickets") value = counts.tickets;
   else if (sectionKey === "corectii") value = counts.corrections;
   else if (sectionKey === "automatic_emails") value = counts.email_failures;
+  else if (sectionKey === "outreach") value = counts.campaigns_attention;
+  else if (sectionKey === "billing") value = counts.payments_attention;
   return Number.isFinite(value) && value > 0 ? value : null;
 }

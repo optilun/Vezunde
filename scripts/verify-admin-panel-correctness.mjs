@@ -858,7 +858,7 @@ await check('emailurile eșuate din ultimele 7 zile apar în Panou, în meniu ș
   // o sursă indisponibilă nu înseamnă „la zi”
   const down = await loadAdminCounts(fakeClient({ failEntities: ['CommunicationDelivery'] }));
   assert.equal(down.email_failures, null);
-  assert.ok(summarizeCounts(down).unavailable.includes('Emailuri netrimise (ultimele 7 zile)'));
+  assert.ok(summarizeCounts(down).unavailable.includes('Emailuri netrimise'));
 });
 
 await check('jurnalul de trimiteri: stări, destinatari și canale în română', () => {
@@ -1068,6 +1068,70 @@ await check('ecranele de suport: componente comune, fără culori scrise de mân
   const feedback = source(`${dir}/AdminUserFeedback.jsx`);
   assert.match(feedback, /Marchează revizuit/);
   assert.ok(!/SummaryCard/.test(feedback));
+});
+
+// ---------- Procese automate care cer atenție (Panou + meniu) ----------
+await check('import, campanii și plăți care cer atenție apar în Panou și în meniu, cu interogările potrivite', async () => {
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const client = fakeClient({ overrides: { counts: { DirectoryAutoImportRun: 1, OutreachCampaign: 2, ProviderSubscription: 3 } } });
+  const seen = [];
+  const recording = {
+    ...client,
+    entities: new Proxy({}, { get: (_t, name) => ({ count: async (query) => { seen.push({ name, query }); return client.entities[name].count(query); } }) }),
+  };
+  const counts = await loadAdminCounts(recording, now);
+  assert.equal(counts.import_attention, 1);
+  assert.equal(counts.campaigns_attention, 4, 'oprite automat (2) + eșuate (2)');
+  assert.equal(counts.payments_attention, 3);
+
+  const importQuery = seen.find((entry) => entry.name === 'DirectoryAutoImportRun').query;
+  assert.deepEqual(importQuery.status, { $in: ['blocked', 'failed'] });
+  assert.equal(importQuery.created_date.$gte, '2026-09-07T12:00:00.000Z', 'ultimele 30 de zile');
+  const campaignQueries = seen.filter((entry) => entry.name === 'OutreachCampaign').map((entry) => entry.query);
+  assert.equal(campaignQueries.length, 2);
+  const paused = campaignQueries.find((query) => query.status === 'paused');
+  assert.deepEqual(paused.pause_reason, { $in: ['bounce_rate', 'complaints'] }, 'o pauză manuală nu cere atenție');
+  assert.equal(paused.updated_date.$gte, '2026-09-23T12:00:00.000Z', 'ultimele 14 zile');
+  assert.equal(campaignQueries.find((query) => query.status === 'failed').updated_date.$gte, '2026-09-23T12:00:00.000Z');
+  assert.deepEqual(seen.find((entry) => entry.name === 'ProviderSubscription').query, { status: { $in: ['past_due', 'unpaid'] } });
+
+  const rows = summarizeCounts(counts).rows;
+  const pick = (key) => rows.find((row) => row.key === key);
+  assert.deepEqual([pick('import_attention').section, pick('import_attention').count], ['import_directory', 1]);
+  assert.deepEqual([pick('campaigns_attention').section, pick('campaigns_attention').count], ['outreach', 4]);
+  assert.deepEqual([pick('payments_attention').section, pick('payments_attention').count], ['billing', 3]);
+  assert.equal(sidebarBadgeFor(counts, 'outreach'), 4);
+  assert.equal(sidebarBadgeFor(counts, 'billing'), 3);
+  assert.equal(pick('import_attention').note, 'ultimele 30 de zile');
+  assert.equal(pick('campaigns_attention').note, 'ultimele 14 zile');
+  assert.deepEqual(rows.filter((row) => row.group === 'systems').map((row) => row.key), ['import_attention', 'campaigns_attention', 'payments_attention']);
+  assert.ok(rows.filter((row) => row.group === 'people').every((row) => !['import_attention', 'campaigns_attention', 'payments_attention', 'email_failures'].includes(row.key)));
+
+  const clean = await loadAdminCounts(fakeClient(), now);
+  assert.equal(sidebarBadgeFor(clean, 'outreach'), null, '0 nu se afișează');
+  assert.equal(sidebarBadgeFor(clean, 'billing'), null);
+  assert.equal(summarizeCounts(clean).rows.filter((row) => ['import_attention', 'campaigns_attention', 'payments_attention'].includes(row.key)).length, 0);
+});
+
+await check('procese automate: o sursă indisponibilă nu devine 0 și nu lasă „Totul e la zi”', async () => {
+  const brokenImport = await loadAdminCounts(fakeClient({ failEntities: ['DirectoryAutoImportRun'], overrides: { counts: { PatientRequestRecoveryCase: 0 } } }));
+  assert.equal(brokenImport.import_attention, null);
+  const summary = summarizeCounts({ ...brokenImport, review: { workspace: 0, locations: 0, lifecycle: 0, professionals: 0, patient_requests: 0, media_cleanup: 0 } });
+  assert.equal(summary.allClear, false);
+  assert.ok(summary.unavailable.some((label) => /Import director/.test(label)), summary.unavailable.join(' | '));
+
+  // dacă doar una dintre cele două numărători de campanii eșuează, nu afirmăm un total parțial
+  const client = fakeClient();
+  const partial = {
+    ...client,
+    entities: new Proxy({}, { get: (_t, name) => ({ count: async (query) => {
+      if (name === 'OutreachCampaign' && query.status === 'failed') throw new Error('offline');
+      return client.entities[name].count(query);
+    } }) }),
+  };
+  const counts = await loadAdminCounts(partial);
+  assert.equal(counts.campaigns_attention, null);
+  assert.equal(sidebarBadgeFor(counts, 'outreach'), null);
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);
