@@ -464,6 +464,11 @@ export default function ProviderWorkspaceRoot({
     next.set("tab", "billing");
     routerNavigate(providerSectionUrl(next, "settings"));
   };
+  const openRequestSettings = () => {
+    const next = new URLSearchParams(params);
+    next.set("tab", "requests");
+    routerNavigate(providerSectionUrl(next, "settings"));
+  };
 
   const accessForLocation = (locationId) => {
     const targetContext = organizationContexts.find((context) => (
@@ -588,7 +593,7 @@ export default function ProviderWorkspaceRoot({
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
       publicProfileAvailable={selectedLocationPublic}
       modeSwitches={modeSwitches}
-      wideContent={activeLocationModule === "servicii"}
+      wideContent={activeLocationModule === "servicii" || safeSection === "leads"}
       entitlement={entitlement?.location_id === selectedLocationId ? entitlement : null}
       statusBadge={(statusLabel || multiLocation) ? (
         <span className="hidden items-center gap-1.5 sm:inline-flex">
@@ -685,6 +690,7 @@ export default function ProviderWorkspaceRoot({
                 ownerLocations={locations}
                 onSelectLocation={selectLocation}
                 onOpenBilling={canManageSettings ? openBillingSettings : undefined}
+                onOpenRequestSettings={canManageSettings ? openRequestSettings : undefined}
               />
             )}
             {safeSection === "access" && canManageMembers && (

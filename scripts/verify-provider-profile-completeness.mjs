@@ -62,7 +62,7 @@ assert.equal(summary.average_location_percentage, Math.round((completeLocation.p
 
 const endpoint = await readFile(new URL('../base44/functions/getMyProviderWorkspace/getProviderProfileCompleteness.ts', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/components/workspace/provider/ProviderCompletenessPanel.jsx', import.meta.url), 'utf8');
-const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderRequestAccessSettings.jsx', import.meta.url), 'utf8');
 assert.match(endpoint, /computeOrganizationCompleteness/);
 assert.match(endpoint, /computeLocationCompleteness/);
 assert.match(endpoint, /ProviderMembership\.filter/);

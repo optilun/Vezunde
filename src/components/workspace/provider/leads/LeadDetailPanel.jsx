@@ -45,7 +45,7 @@ function Eyebrow({ children }) {
   return <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">{children}</p>;
 }
 
-export default function LeadDetailPanel({ lead, response, locationId, canRespond, canAccessContact, canChat, onMarkViewed, onRespond, marking, responding }) {
+export default function LeadDetailPanel({ lead, response, locationId, canRespond, canAccessContact, canChat, onMarkViewed, onRespond, marking, responding, hideActions = false, hideConversation = false }) {
   const services = lead.matched_service_keys?.length ? lead.matched_service_keys : lead.service_keys;
   const terminal = lead.is_historical === true;
   const closure = CLOSURE_PRESENTATION[lead.closure_reason] || {
@@ -132,7 +132,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
           </div>
         </section>
 
-        {!canRespond && !terminal && (
+        {!hideActions && !canRespond && !terminal && (
           <section className="mt-8 border-t border-border pt-6">
             <Eyebrow>Răspunsul locației</Eyebrow>
             <h3 className="mt-2 font-heading text-xl font-extrabold tracking-[-0.03em]">Ce transmiți clientului</h3>
@@ -147,7 +147,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
           </section>
         )}
 
-        {canRespond && !terminal && (
+        {!hideActions && canRespond && !terminal && (
           <section className="mt-8 border-t border-border pt-6">
             <Eyebrow>Răspunsul locației</Eyebrow>
             <h3 className="mt-2 font-heading text-xl font-extrabold tracking-[-0.03em]">Ce transmiți clientului</h3>
@@ -197,7 +197,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
           </section>
         )}
 
-        <section className="mt-8 border-t border-border pt-6">
+        {!hideConversation && <section className="mt-8 border-t border-border pt-6">
           <Eyebrow>Conversație</Eyebrow>
           <div className="mt-3">
             {chatLocked ? (
@@ -217,7 +217,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
               />
             )}
           </div>
-        </section>
+        </section>}
 
         <p className="mt-8 inline-flex items-start gap-2 border-t border-border pt-5 text-sm leading-relaxed text-muted-foreground">
           <LockKeyhole aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />

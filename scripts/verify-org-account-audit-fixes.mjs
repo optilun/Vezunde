@@ -31,21 +31,22 @@ assert.ok(isTransientInboxError(axios500) && !isTransientInboxError(forbidden));
 assert.doesNotMatch(INBOX_UNAVAILABLE_MESSAGE + INBOX_PLAN_UNKNOWN_MESSAGE, /status code|Free/);
 
 // ---------- 2. planul necunoscut nu devine „Free” ----------
-const [inbox, legacy] = await Promise.all([
+const [inbox, legacy, access] = await Promise.all([
   read('src/components/workspace/provider/ProviderLeadInbox.jsx'),
   read('src/components/workspace/provider/ProviderLeadInboxLegacy.jsx'),
+  read('src/components/workspace/provider/ProviderRequestAccessSettings.jsx'),
 ]);
-assert.match(inbox, /setSnapshot\(\{ locationId, status: "error", entitlement: null, counters: \{\} \}\)/, 'la eroare, planul rămâne necunoscut');
-assert.match(inbox, /\{planReady && \(\s*<ProviderAccessBand/, 'banda de acces apare doar cu planul verificat');
-assert.match(inbox, /\{planReady && \(\s*<ProviderStatusCenter/, 'statusul apare doar cu planul verificat');
-assert.match(inbox, /<PlanUnknownNotice onRetry=\{retryPlan\} \/>/);
-assert.match(inbox, /withTransientRetry\(\(\) => base44\.functions\.invoke\("providerLeadInboxOps"/, 'reîncercare la erori temporare');
-assert.doesNotMatch(inbox, /\.catch\(\(\) => null\);\s*return \(\) => \{ active = false; \};\s*\}, \[locationId, refreshTick\]\);[\s\S]*FREE_ENTITLEMENT, counters: \{\} \}/);
-assert.match(legacy, /const \[entitlement, setEntitlement\] = useState\(null\);/, 'lista nu pornește cu „Free”');
-assert.match(legacy, /\{entitlement && <span/, 'eticheta planului apare doar după răspuns');
-assert.match(legacy, /setError\(inboxErrorMessage\(loadError\)\);/);
+assert.doesNotMatch(inbox, /ProviderAccessBand|ProviderStatusCenter/, 'panourile administrative sunt in Setari');
+assert.match(access, /const \[data, setData\] = useState\(null\);/, 'planul necunoscut nu devine Free');
+assert.match(access, /data \? <ProviderStatusCenter/, 'statusul apare doar dupa verificarea planului');
+assert.match(access, /INBOX_PLAN_UNKNOWN_MESSAGE/);
+assert.match(access, /Reîncearcă/);
+assert.match(access, /withTransientRetry/);
+assert.match(legacy, /const entitlement = current\?\.entitlement;/, 'planul vine numai din raspunsul curent');
+assert.match(legacy, /entitlement\?\.plan_code !== "pro" && current/, 'nota Free apare doar dupa raspuns');
+assert.match(legacy, /setError\(inboxErrorMessage\(cause\)\)/);
 assert.match(legacy, /Reîncearcă/);
-assert.doesNotMatch(legacy, /setError\(loadError\?\.message/);
+assert.doesNotMatch(legacy, /FREE_ENTITLEMENT|setError\(cause\?\.message/);
 
 // ---------- 3. statusul locației, în română ----------
 const status = buildProviderStatusCenter({ location: { status: 'in_verificare' }, entitlement: { plan_code: 'pro', status: 'active', feature_keys: [] } });
@@ -133,10 +134,12 @@ assert.match(src.profile, /location\?\.active_status === "inactiva" && \(/);
 assert.match(teamLinks, /Specialiștii apar public doar la locațiile active/);
 
 // ---------- 8. etapa 3: „Plan și acces”, adresa, numărul de servicii ----------
-assert.match(inbox, /\{ key: "account", label: "Plan și acces" \}/, '#7: sub-tabul are un nume care spune ce conține');
-assert.doesNotMatch(inbox, /<ProviderBillingPanel/, '#7: facturarea nu se mai dublează în Cereri');
-assert.match(inbox, /<BillingShortcut onOpenBilling=\{onOpenBilling\} \/>/);
-assert.match(inbox, /Abonamentul organizației îl administrează proprietarul contului\./, '#7: cine nu are Setări află cine administrează abonamentul');
+assert.doesNotMatch(inbox, /<ProviderBillingPanel/, 'facturarea nu se dubleaza in Cereri');
+assert.match(src.settings, /\["requests", "Plan și acces"\]/, 'Plan si acces este in Setari');
+assert.match(src.settings, /<ProviderRequestAccessSettings/);
+assert.match(access, /<ProviderStatusCenter/);
+assert.match(access, /Deschide facturarea/);
+assert.match(rootSrc, /onOpenRequestSettings=\{canManageSettings \? openRequestSettings : undefined\}/);
 assert.match(rootSrc, /onOpenBilling=\{canManageSettings \? openBillingSettings : undefined\}/);
 assert.match(rootSrc, /next\.set\("tab", "billing"\);\s*routerNavigate\(providerSectionUrl\(next, "settings"\)\);/);
 

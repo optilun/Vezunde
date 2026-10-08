@@ -318,9 +318,10 @@ const inboxSource = await source('../src/components/workspace/provider/ProviderL
 // 2026-10-04 (audit #7): facturarea are un singur loc, Setări → Abonament și facturare.
 // Cereri → „Plan și acces” arată doar starea și un link; o întoarcere veche din Stripe e trimisă în Setări.
 assert.doesNotMatch(inboxSource, /<ProviderBillingPanel/);
-assert.match(inboxSource, /Deschide abonamentul/);
+const accessSource = await source('../src/components/workspace/provider/ProviderRequestAccessSettings.jsx');
+assert.match(accessSource, /Deschide facturarea/);
 assert.match(inboxSource, /if \(billingReturn\) openBillingRef\.current\?\.\(\)/);
-assert.match(inboxSource, /refreshTick/);
+assert.match(accessSource, /tick/);
 const settingsSource = await source('../src/components/workspace/provider/ProviderSettings.jsx');
 assert.match(settingsSource, /<ProviderBillingPanel organizationId=/);
 

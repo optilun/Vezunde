@@ -113,7 +113,7 @@ const patientClient = await readFile(new URL('../src/lib/patientRequestPersisten
 const patientPanel = await readFile(new URL('../src/components/intake2/PatientRequestChat.jsx', import.meta.url), 'utf8');
 const patientStatus = await readFile(new URL('../src/components/intake2/PatientRequestResponseStatus.jsx', import.meta.url), 'utf8');
 const providerPanel = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
-const providerInbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const providerInbox = (await Promise.all(['ProviderLeadInbox.jsx', 'leads/LeadConversationPanel.jsx'].map(file => readFile(new URL('../src/components/workspace/provider/' + file, import.meta.url), 'utf8')))).join('\n');
 
 assert.match(backend, /actor === 'patient'/);
 assert.match(backend, /actor === 'provider'/);
@@ -198,10 +198,12 @@ assert.match(pollingHook, /clearInterval/);
 for (const source of [patientPanel, providerPanel]) {
   assert.match(source, /useChatLivePolling/);
   assert.match(source, /silent: true/);
-  // Polling-ul porneste numai pe conversatii deschise.
+  // Starea de chat deschis ramane distincta de eligibilitate.
   assert.match(source, /status === "open"/);
 }
 // Istoricul (cererile incheiate) nu se reimprospateaza in fundal.
-assert.match(providerPanel, /active: !terminal && conversationOpen/);
+assert.match(providerPanel, /active: !terminal && Boolean\(enabled\) && ELIGIBLE_RESPONSES.has\(responseType\)/);
+assert.match(providerPanel, /markReadOnLoad: false/);
+assert.match(providerPanel, /read_through_message_id: messageId/);
 
 console.log('Controlled Pro chat checks passed.');

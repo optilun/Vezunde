@@ -11,7 +11,7 @@ function mergeLatest(current, next) {
   return { ...next, messages, next_before_message_id: current.next_before_message_id };
 }
 
-export default function useControlledChatSession({ invoke, enabled = true, readOnly = false }) {
+export default function useControlledChatSession({ invoke, enabled = true, readOnly = false, markReadOnLoad = true }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -35,7 +35,7 @@ export default function useControlledChatSession({ invoke, enabled = true, readO
     try {
       let next = await invoke("status");
       if (!current()) return;
-      if (!readOnly && Number(next.chat?.unread_count) > 0) {
+      if (markReadOnLoad && !readOnly && Number(next.chat?.unread_count) > 0) {
         next = await invoke("mark_read");
         if (!current()) return;
       }
@@ -46,7 +46,7 @@ export default function useControlledChatSession({ invoke, enabled = true, readO
     } finally {
       if (current()) setLoading(false);
     }
-  }, [enabled, fail, invoke, readOnly]);
+  }, [enabled, fail, invoke, readOnly, markReadOnLoad]);
 
   useEffect(() => {
     alive.current = true;

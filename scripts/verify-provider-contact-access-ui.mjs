@@ -6,7 +6,7 @@ const panel = await readFile(new URL('../src/components/workspace/provider/Provi
 // entitlement-ul (provider_contact.access_after_consent / provider_chat.access); randarea
 // efectiva a ProviderLeadContactAccess/ProviderLeadChat s-a mutat in leads/LeadDetailPanel.jsx,
 // iar eticheta "Detalii Pro" in leads/LeadFullDetails.jsx. Verificam fiecare in locul lui real.
-const orchestrator = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInboxLegacy.jsx', import.meta.url), 'utf8');
+const orchestrator = (await Promise.all(['ProviderLeadInboxLegacy.jsx', 'leads/LeadConversationPanel.jsx'].map(file => readFile(new URL('../src/components/workspace/provider/' + file, import.meta.url), 'utf8')))).join('\n');
 const detailPanel = await readFile(new URL('../src/components/workspace/provider/leads/LeadDetailPanel.jsx', import.meta.url), 'utf8');
 const fullDetails = await readFile(new URL('../src/components/workspace/provider/leads/LeadFullDetails.jsx', import.meta.url), 'utf8');
 

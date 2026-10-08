@@ -1,3 +1,5 @@
+import { buildProviderInboxPage } from '../../shared/providerInboxConversationPolicy.js';
+import { projectProviderInboxRows, addInboxMessagePreviews } from '../../shared/providerInboxConversations.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   loadOrganizationOwnerScopeResolution,
@@ -99,6 +101,25 @@ export async function handle(req: Request) {
     const projectedLeads = await projectOrganizationLeadExpirations(
       svc, locationData.flatMap((item) => item.leads),
     );
+    if (input.inbox_mode === true) {
+      const safeRows = await projectProviderInboxRows(svc, projectedLeads, entitlementsByLocation);
+      const names = new Map(locations.map(location => [location.id, safeOrganizationLeadLocation(location).name]));
+      const page = buildProviderInboxPage(safeRows.filter(lead => !requestedLocationId || lead.location_id === requestedLocationId)
+        .map(lead => ({ ...lead, location_name: names.get(lead.location_id) })), input);
+      const rawById = new Map(projectedLeads.map(lead => [lead.id, lead]));
+      const groups = new Map();
+      const leads = await addInboxMessagePreviews(svc, page.leads);
+      const grouped = leads.map(lead => {
+        const identity = rawById.get(lead.id)?.request_id || lead.id;
+        if (!groups.has(identity)) groups.set(identity, crypto.randomUUID());
+        return { ...lead, group_key: groups.get(identity) };
+      });
+      return res({
+        contract_version: PROVIDER_ORGANIZATION_LEAD_INBOX_CONTRACT_VERSION,
+        organization_id: organizationId, locations: locations.map(safeOrganizationLeadLocation),
+        entitlements_by_location: entitlementsByLocation, ...page, leads: grouped,
+      });
+    }
     const page = buildOrganizationLeadInboxPage({
       leads: projectedLeads,
       locations,

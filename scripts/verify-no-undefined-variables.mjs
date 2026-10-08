@@ -12,9 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const run = spawnSync(
-  'npx',
-  ['eslint', '--quiet', '--rule', '{"no-undef":"error"}', 'src'],
-  { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' },
+  process.execPath,
+  [path.join(root, 'node_modules/eslint/bin/eslint.js'), '--quiet', '--rule', '{"no-undef":"error"}', 'src'],
+  { cwd: root, encoding: 'utf8', windowsHide: true },
 );
 
 assert.equal(

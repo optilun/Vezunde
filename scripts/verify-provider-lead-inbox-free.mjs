@@ -177,7 +177,7 @@ assert.deepEqual(counters, {
 });
 
 const backend = await readFile(new URL('../base44/functions/providerLeadInboxOps/entry.ts', import.meta.url), 'utf8');
-const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const component = (await Promise.all(['ProviderLeadInbox.jsx', 'ProviderLeadInboxLegacy.jsx', 'leads/LeadDetailPanel.jsx', 'leads/LeadFullDetails.jsx', 'leads/LeadConversationPanel.jsx', 'leads/InboxFilters.jsx'].map(file => readFile(new URL('../src/components/workspace/provider/' + file, import.meta.url), 'utf8')))).join('\n');
 const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
 assert.match(backend, /resolveProviderEntitlement/);
 assert.match(backend, /providerLeadFullDetailsEligibility/);
