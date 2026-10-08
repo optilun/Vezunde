@@ -9,7 +9,7 @@ import {
   billableLocationCount,
   findOrganizationTieredPrice,
   loadActiveManualProRows,
-  loadOpenLegacyLocationSubscriptions,
+  loadLegacyLocationSubscriptionGroups,
   monthlyAmountForLocationCount,
   planTierForLocationCount,
   planTierByKey,
@@ -97,17 +97,21 @@ async function handleOrganization(svc, user, input, action) {
     enterprise_required: activeCount >= ENTERPRISE_MIN_LOCATIONS, enterprise_min_locations: ENTERPRISE_MIN_LOCATIONS,
     issuer_vat_registered: false, fiscal_mode: 'manual',
   };
-  const [manualRows, legacy, offers] = await Promise.all([
+  const [manualRows, legacyGroups, offers] = await Promise.all([
     loadActiveManualProRows(svc, organization.id, authorized.locations),
-    loadOpenLegacyLocationSubscriptions(svc, authorized.locations),
+    loadLegacyLocationSubscriptionGroups(svc, authorized.locations),
     svc.entities.ProviderEnterpriseOffer.filter({ organization_id: organization.id }, '-created_date', 20).catch(() => []),
   ]);
   const now = Date.now();
   const enterpriseOffers = offers.filter(offer => offer.status === 'accepted' || (offer.status === 'sent' && (!offer.expires_at || Date.parse(offer.expires_at) > now))).map(offerView);
+  const legacy = legacyGroups.open;
+  // Abonamentele vechi încheiate: doar locația și data, pentru „Vezi documentele” (portalul Stripe al locației).
+  const legacyDocuments = legacyGroups.closed.map(({ row, location }) => ({ location_id: location.id,
+    location_name: location.public_display_name || location.name || 'Locație', ended_at: row.canceled_at || row.deactivated_at || row.current_period_end || null }));
   const legacySubscriptions = legacy.map(({ row, location }) => ({ location_id: location.id, location_name: location.public_display_name || location.name || 'Locație',
     status: row.status, current_period_end: row.current_period_end || null, cancel_at_period_end: row.cancel_at_period_end === true }));
   const base = { scope: 'organization', organization: { id: organization.id, name: organization.public_display_name || organization.name || 'Organizație' },
-    pricing, manual: manualRows[0] || null, legacy_subscriptions: legacySubscriptions, enterprise_offers: enterpriseOffers };
+    pricing, manual: manualRows[0] || null, legacy_subscriptions: legacySubscriptions, legacy_documents: legacyDocuments, enterprise_offers: enterpriseOffers };
 
   const account = await findOrganizationBillingAccount(svc, organization.id);
   if (!account) return Response.json({ ...base, customer_suggestion: await legacyCustomerSuggestion(svc, stripe, legacy.length ? legacy.map((item) => item.location) : authorized.locations),

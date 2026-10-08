@@ -221,15 +221,28 @@ export async function authorizeOrganizationBillingOwner(svc, user, { organizatio
 }
 
 // Abonamentele vechi, pe locatie, inca deschise in organizatie (nu se cumpara unul nou peste ele).
-export async function loadOpenLegacyLocationSubscriptions(svc, locations = []) {
-  const result = [];
+// 2026-10-08 (audit plan Free, F2): pe lângă abonamentele vechi pe locație încă deschise, întoarcem și
+// locațiile la care abonamentul vechi s-a încheiat. Facturile lor rămân în contul Stripe al locației;
+// fără această listă, după anulare nu se mai vedeau nicăieri în aplicație.
+export async function loadLegacyLocationSubscriptionGroups(svc, locations = []) {
+  const open = [];
+  const closed = [];
   for (const location of locations) {
     const rows = await svc.entities.ProviderSubscription.filter({ location_id: location.id, billing_mode: 'stripe' }, '-created_date', 20);
-    const open = rows.find((row) => row.subscription_scope !== 'organization' && LEGACY_OPEN_STATUSES.has(row.status)
+    const openRow = rows.find((row) => row.subscription_scope !== 'organization' && LEGACY_OPEN_STATUSES.has(row.status)
       && (!row.current_period_end || Date.parse(row.current_period_end) > Date.now()));
-    if (open) result.push({ row: open, location });
+    if (openRow) {
+      open.push({ row: openRow, location });
+      continue;
+    }
+    const latestLegacy = rows.find((row) => row.subscription_scope !== 'organization');
+    if (latestLegacy) closed.push({ row: latestLegacy, location });
   }
-  return result;
+  return { open, closed };
+}
+
+export async function loadOpenLegacyLocationSubscriptions(svc, locations = []) {
+  return (await loadLegacyLocationSubscriptionGroups(svc, locations)).open;
 }
 
 export async function loadActiveManualProRows(svc, organizationId, locations = []) {
