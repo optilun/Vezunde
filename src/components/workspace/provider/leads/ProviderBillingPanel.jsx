@@ -167,6 +167,12 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
   const existing = subscription && !["canceled","incomplete_expired"].includes(subscription.status);
   const manual = !existing && data?.manual;
   const legacy = data?.legacy_subscriptions || [];
+  // 2026-10-08 (audit plan Free, F2): abonamentele vechi pe locație deja încheiate; facturile lor
+  // rămân în Stripe, în contul locației, și se deschid de aici.
+  const legacyDocuments = data?.legacy_documents || [];
+  // F6: fără locații active plata nu poate porni; trimitem la Locații, unde se cere redeschiderea.
+  const noActiveLocations = organizationScope && !existing && !manual && !legacy.length && !activeCount;
+  const locationsHref = (() => { const next = new URLSearchParams(params); next.set("s", "locations"); ["tab", "billing", "session_id"].forEach(key => next.delete(key)); return `/contul-meu?${next.toString()}`; })();
   const pricing = data?.pricing || {};
   const activeCount = pricing.active_location_count || 0;
   const enterpriseRequired = organizationScope && pricing.enterprise_required === true;
@@ -209,6 +215,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
           <p className="mt-2 text-sm text-muted-foreground">{planDescription()}</p>
           {existing && <p className="mt-3 text-sm">{subscription.cancel_at_period_end ? "Acces până la " : "Sfârșitul perioadei curente: "}{date(subscription.end)}{subscription.cancel_at_period_end && ". Reînnoirea este oprită."}</p>}
           {problem && <p className="mt-3 text-sm text-red-800">{subscription?.status === "configuration_review" ? "Configurația abonamentului necesită verificarea VIASEE. Contactează echipa înainte de a încerca o altă plată." : "Abonamentul necesită atenție. Verifică factura restantă și metoda de plată."}</p>}
+          {noActiveLocations && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#d8d2c5] bg-[#f8f4ec] p-3 text-sm"><span>Ca să activezi Pro, organizația are nevoie de cel puțin o locație activă.</span><a className={button} href={locationsHref}>Vezi locațiile</a></div>}
           {organizationScope && !existing && !manual && <PlanTiers pricing={pricing} />}
           {legacy.length > 0 && <div className="mt-4 rounded-2xl border border-[#d8d2c5] bg-[#f8f4ec] p-3 text-sm">
             <p className="font-medium">Abonament plătit pe locație (vechiul mod de plată)</p>
@@ -255,7 +262,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
             <label className="text-sm">Adresă<input required autoComplete="street-address" className={field} value={address.line1} onChange={e => updateAddress("line1",e.target.value)} /></label>
             {[["city","Localitate",true],["state","Județ / Regiune",false],["postal_code","Cod poștal",false],["country","Țară (cod de două litere)",true]].map(([key,label,required]) => <label key={key} className="text-sm">{label}<input required={required} maxLength={key === "country" ? 2 : 150} className={field} value={address[key]} onChange={e => updateAddress(key,e.target.value)} /></label>)}
           </fieldset>
-          {!data.customer && data.customer_suggestion && <p className="text-xs text-muted-foreground">Am completat datele de pe abonamentul plătit pe locație. Verifică-le înainte să le salvezi pentru organizație.</p>}
+          {!data.customer && data.customer_suggestion && <p className="text-xs text-muted-foreground">Am completat datele din vechiul abonament pe locație. Verifică-le înainte să le salvezi pentru organizație.</p>}
           {data.customer?.tax_ids?.length > 0 && <p className="text-xs text-muted-foreground">Coduri fiscale salvate pentru client: {data.customer.tax_ids.map(tax => tax.value).join(", ")}</p>}
           <p className="text-xs leading-relaxed text-muted-foreground">Modificările se aplică facturilor viitoare. Pentru corectarea unei facturi deja emise, contactează VIASEE.</p>
           <div className="flex flex-wrap gap-2"><button type="submit" className={button} disabled={Boolean(busy)}>{busy === "save" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează datele</button>
@@ -268,6 +275,11 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
       <Panel title="Istoric plăți și documente Stripe" icon={FileText} tone="amber">
         <p className="mb-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat. Mai jos găsești documentele Stripe asociate plăților.{legacyOnly ? " Documentele abonamentului plătit pe locație sunt în „Gestionează abonamentul”." : ""}</p>
         <InvoiceTable invoices={data.invoices} />
+        {legacyDocuments.length > 0 && <div className="mt-4 rounded-2xl border border-[#d8d2c5] bg-[#f8f4ec] p-3 text-sm">
+          <p className="font-medium">Documentele vechiului abonament pe locație</p>
+          <ul className="mt-2 space-y-2">{legacyDocuments.map(item => <li key={item.location_id} className="flex flex-wrap items-center justify-between gap-2"><span>{item.location_name}{item.ended_at ? ` · încheiat pe ${date(item.ended_at)}` : ""}</span><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void run("portal", undefined, { legacy_location_id: item.location_id })}>Vezi documentele <ExternalLink className="h-4 w-4" /></button></li>)}</ul>
+          <p className="mt-2 text-xs text-muted-foreground">Se deschid în Stripe, în contul vechiului abonament al locației.</p>
+        </div>}
         {(page > 0 || data.has_more) && <div className="mt-4 flex items-center justify-between gap-2"><button className={button} disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Mai recente</button><span className="text-xs text-muted-foreground">Pagina {page + 1}</span><button className={button} disabled={!data.has_more || loading} onClick={() => { setCursors(c => [...c.slice(0,page + 1), data.next_cursor]); setPage(p => p + 1); }}>Mai vechi</button></div>}
       </Panel>
     </>}
