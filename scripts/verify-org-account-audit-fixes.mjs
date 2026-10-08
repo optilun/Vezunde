@@ -43,7 +43,8 @@ assert.match(access, /INBOX_PLAN_UNKNOWN_MESSAGE/);
 assert.match(access, /Reîncearcă/);
 assert.match(access, /withTransientRetry/);
 assert.match(legacy, /const entitlement = current\?\.entitlement;/, 'planul vine numai din raspunsul curent');
-assert.match(legacy, /entitlement\?\.plan_code !== "pro" && current/, 'nota Free apare doar dupa raspuns');
+// 2026-10-08: PR #297 a schimbat condiția în `=== "free"`; intenția (nota doar după răspuns) e aceeași.
+assert.match(legacy, /entitlement\?\.plan_code === "free" && current/, 'nota Free apare doar dupa raspuns');
 assert.match(legacy, /setError\(inboxErrorMessage\(cause\)\)/);
 assert.match(legacy, /Reîncearcă/);
 assert.doesNotMatch(legacy, /FREE_ENTITLEMENT|setError\(cause\?\.message/);
