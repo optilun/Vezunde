@@ -96,12 +96,12 @@ for (const label of [...src.withPhoto.matchAll(/aside\[aria-label="([^"]+)"\]/g)
 }
 
 // ---------- 6. etapa 2: cifre coerente ----------
-const [overviewBackend, completenessBackend, rootSrc, shellSrc, moduleSrc, teamLinks] = await Promise.all([
+const [overviewBackend, completenessBackend, rootSrc, shellSrc, hoursSrc, teamLinks] = await Promise.all([
   read('base44/functions/getMyProviderWorkspace/getProviderWorkspaceOverview.ts'),
   read('base44/functions/getMyProviderWorkspace/getProviderProfileCompleteness.ts'),
   read('src/components/workspace/provider/ProviderWorkspaceRoot.jsx'),
   read('src/components/provider/shell/ProviderAppShell.jsx'),
-  read('src/components/workspace/provider/ProviderLocationModulePage.jsx'),
+  read('src/components/workspace/provider/ProviderHours.jsx'),
   read('src/components/workspace/provider/ProviderTeamSpecialistsLinks.jsx'),
 ]);
 assert.match(overviewBackend, /computeLocationCompleteness as computeSharedLocationCompleteness/, 'Prezentarea folosește aceeași regulă de completare');
@@ -123,7 +123,10 @@ assert.match(rootSrc, /publicProfileAvailable=\{selectedLocationPublic\}/);
 assert.match(rootSrc, /publicProfileUrl=\{selectedLocationId && selectedLocationPublic \?/);
 assert.match(src.settings, /\{locationClosed && \(\s*<SettingsRow\s*title="Locația este închisă în VIASEE"/, 'zona de pericol nu mai e goală');
 assert.match(src.settings, /Cere redeschiderea/);
-assert.match(moduleSrc, /Locație închisă: nu apare public/);
+// 2026-10-08: eticheta „Locație închisă: nu apare public” era în antetul vechi al modulului Program (audit 2026-10-04, #15).
+// Redesign-ul editorului din 2026-10-05 a înlocuit antetul; același mesaj e acum la pasul „Verifică informațiile afișate clienților”,
+// iar pentru o locație deschisă textul spune „Dacă profilul locației este public, noul program apare imediat.”
+assert.match(hoursSrc, /location\.active_status === "inactiva" \? "Locația este inactivă și nu apare public\."/);
 // 2026-10-08: eticheta „Fotografie aprobată” e acum in legenda imaginii (nu intr-un <span> propriu), din 2026-10-05.
 assert.match(src.photo, /Fotografie aprobată/);
 assert.match(src.profile, /location\?\.active_status === "inactiva" && \(/);
