@@ -8,6 +8,8 @@ import LeadDetailPanel from "./leads/LeadDetailPanel";
 import LeadConversationPanel from "./leads/LeadConversationPanel";
 import InboxFilters from "./leads/InboxFilters";
 import InboxPagination from "./leads/InboxPagination";
+import InboxEmptyState from "./leads/InboxEmptyState";
+import { providerRequestLocationBlocker } from "@/lib/providerLeadAccessPresentation";
 import { mergeFocusedLead } from "@/lib/providerOrganizationInboxView";
 import { withTransientRetry } from "@/lib/transientRetry";
 import { INBOX_RETRY_OPTIONS, inboxErrorMessage } from "@/lib/providerInboxErrors";
@@ -31,7 +33,7 @@ function useMedia(query) {
   }, [query]);
   return matches;
 }
-export default function ProviderLeadInbox({ locationId, location, targetLeadId = "", targetHistory = false, onOpenRequestSettings }) {
+export default function ProviderLeadInbox({ locationId, location, targetLeadId = "", targetHistory = false, onOpenRequestSettings, onOpenLocation = null }) {
   const [data, setData] = useState(null);
   const [filter, setFilter] = useState(targetHistory ? "history" : "active");
   const [status, setStatus] = useState("");
@@ -138,6 +140,8 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
   useEffect(() => { setDetailsOpen(false); void loadDetail(); return () => { detailSequence.current += 1; }; }, [loadDetail]);
   const currentDetail = detail?.detailKey === detailKey ? detail : null;
   const entitlement = current?.entitlement;
+  const currentLocation = { ...location, ...current?.location };
+  const locationBlocker = providerRequestLocationBlocker(currentLocation);
   const fullLead = selected && currentDetail?.lead ? { ...selected, ...currentDetail.lead, access_tier: selected.access_tier, provider_response: selected.provider_response } : selected;
   const chatChanged = useCallback(() => { void load({ silent: true }); }, [load]);
   useChatLivePolling({ active: Boolean(current) && !responding, busy: loading, intervalMs: 20000, onPoll: () => load({ silent: true }) });
@@ -167,19 +171,20 @@ export default function ProviderLeadInbox({ locationId, location, targetLeadId =
     <div className="inbox-detail-heading"><span>Detaliile cererii</span><button type="button" className="inbox-button inbox-close-details" aria-label="Închide detaliile" onClick={() => setDetailsOpen(false)}><X /></button></div>
     {currentDetail?.lead ? <LeadDetailPanel lead={fullLead} response={selected?.provider_response} locationId={locationId}
       canRespond={Boolean(entitlement?.feature_keys?.includes("provider_leads.respond"))} canAccessContact={entitlement?.plan_code === "pro" && entitlement.feature_keys?.includes("provider_contact.access_after_consent")}
+      entitlement={entitlement} onOpenRequestSettings={onOpenRequestSettings}
       canChat={false} onMarkViewed={id => act(id)} onRespond={act} marking={marking} responding={responding} hideActions hideConversation />
       : <div className="inbox-empty" role="status">{detailLoading ? "Se încarcă detaliile…" : "Detaliile nu au putut fi încărcate."}<button type="button" className="inbox-button" onClick={loadDetail}>Reîncearcă</button></div>}
   </aside>;
   return <section className="provider-inbox" data-selected={Boolean(selectedId)}>
-    <header className="inbox-heading"><div><h1>Cereri</h1><p>{location?.public_display_name || location?.name || "Locația selectată"}{current ? ` · ${current.counters?.active || 0} active · ${current.unread_conversations || 0} conversații necitite` : ""}</p></div><div className="inbox-tools"><ProviderNotificationCenter locations={[]} locationId={locationId} onOpenTarget={openNotification} /><button type="button" className="inbox-button" disabled={loading} onClick={() => void load()} aria-label="Actualizează cererile"><RefreshCw /><span className="inbox-refresh-label">Actualizează</span></button></div></header>
+    <header className="inbox-heading"><div><h1>Cereri</h1><p>{location?.public_display_name || location?.name || "Locația selectată"}{current ? ` · ${current.counters?.active || 0} active · ${current.unread_conversations || 0} conversații necitite` : ""}</p></div><div className="inbox-tools"><ProviderNotificationCenter locationId={locationId} onOpenTarget={openNotification} /><button type="button" className="inbox-button" disabled={loading} onClick={() => void load()} aria-label="Actualizează cererile"><RefreshCw /><span className="inbox-refresh-label">Actualizează</span></button></div></header>
     {error && <div role="alert" className="inbox-error">{error} <button type="button" className="inbox-button" onClick={() => { void load(); void loadDetail(); }}>Reîncearcă</button></div>}
-    {entitlement?.plan_code !== "pro" && current && !selectedId && <p className="inbox-access-note">Locația are acces la rezumatele cererilor. {onOpenRequestSettings && <button type="button" onClick={onOpenRequestSettings}>Plan și acces</button>}</p>}
+    {entitlement?.plan_code === "free" && current && !selectedId && !locationBlocker && <p className="inbox-access-note"><span><strong>Free</strong> · Vezi previzualizările anonime. Cu Pro poți răspunde cererilor eligibile și accesa detaliile autorizate.</span>{onOpenRequestSettings && <button type="button" onClick={onOpenRequestSettings}>Vezi beneficiile Pro</button>}</p>}
     <div className="inbox-shell" ref={shellRef}>
       <div className="inbox-list" ref={node => node?.toggleAttribute("inert", detailsOpen && !threeColumns)}><InboxFilters filter={filter} status={status} search={search} onChange={value => { resetSelection(); setFilter(value); setOffset(0); }} onStatus={value => { resetSelection(); setStatus(value); setOffset(0); }} onSearch={value => { resetSelection(); setSearch(value); }} />
-        <div className="inbox-rows" aria-busy={loading}>{!current && loading ? <div className="inbox-empty" role="status"><Loader2 className="mx-auto animate-spin" />Se încarcă cererile…</div> : listedLeads.length ? listedLeads.map(row => <LeadListItem key={row.id} lead={row} selected={row.id === selectedId} onSelect={() => select(row)} />) : <div className="inbox-empty"><strong>{filter === "unread" ? "Nicio conversație necitită" : filter === "history" ? "Nicio cerere încheiată" : "Nicio cerere în această categorie"}</strong>{filter === "unread" ? "Mesajele noi vor apărea aici." : "Cererile eligibile apar după acordul clientului."}</div>}</div>
+        <div className="inbox-rows" aria-busy={loading}>{!current && loading ? <div className="inbox-empty" role="status"><Loader2 className="mx-auto animate-spin" />Se încarcă cererile…</div> : listedLeads.length ? listedLeads.map(row => <LeadListItem key={row.id} lead={row} selected={row.id === selectedId} onSelect={() => select(row)} />) : <InboxEmptyState filter={filter} search={query} status={status} location={currentLocation} entitlement={entitlement} onOpenLocation={onOpenLocation} onOpenRequestSettings={onOpenRequestSettings} />}</div>
         <InboxPagination page={current?.pagination} count={current?.leads?.length || 0} busy={loading} onPage={value => { resetSelection(); setOffset(value); }} />
       </div>
-      <div className="inbox-conversation-slot" ref={node => node?.toggleAttribute("inert", detailsOpen && !threeColumns)}><LeadConversationPanel readVisible={!detailsOpen || threeColumns} lead={fullLead} locationId={locationId} entitlement={entitlement} loading={detailLoading || !currentDetail} responding={responding} onRespond={act} onBack={resetSelection} onDetails={() => setDetailsOpen(true)} onChatChanged={chatChanged} /></div>
+      <div className="inbox-conversation-slot" ref={node => node?.toggleAttribute("inert", detailsOpen && !threeColumns)}><LeadConversationPanel readVisible={!detailsOpen || threeColumns} lead={fullLead} locationId={locationId} entitlement={entitlement} loading={detailLoading || !currentDetail} responding={responding} onRespond={act} onBack={resetSelection} onDetails={() => setDetailsOpen(true)} onChatChanged={chatChanged} onOpenRequestSettings={onOpenRequestSettings} /></div>
       {detailsOpen && !threeColumns && <button type="button" className="inbox-detail-scrim" aria-label="Închide detaliile" onClick={() => setDetailsOpen(false)} />}
       {details}
     </div>

@@ -17,26 +17,21 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { LockKeyhole } from "lucide-react";
 
-export default function LockedPreview({ title, description, children, actionLabel = "Vezi planurile", actionTo = "/plati-si-abonamente" }) {
+export default function LockedPreview({ title, description, children, actionLabel = "", actionTo = "", onAction = null }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-secondary/25">
-      <div aria-hidden="true" className="pointer-events-none select-none blur-[5px] saturate-50 opacity-70">
+    <div className="inbox-locked-preview relative overflow-hidden rounded-2xl border border-border bg-secondary/25">
+      <div aria-hidden="true" className="inbox-locked-decoration pointer-events-none select-none blur-[5px] saturate-50 opacity-70">
         {children}
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-background/70 via-background/85 to-background/95 px-5 py-6 text-center">
+      <div className="inbox-locked-content relative flex items-center justify-center px-5 py-6 text-center">
         <div className="max-w-sm">
           <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card">
             <LockKeyhole aria-hidden="true" className="h-4 w-4 text-foreground" />
           </span>
           <p className="mt-3 font-heading text-[15px] font-extrabold tracking-[-0.02em] text-foreground">{title}</p>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">{description}</p>
-          <Link
-            to={actionTo}
-            className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full bg-foreground px-5 font-heading text-[12px] font-bold text-background transition-opacity hover:opacity-90"
-          >
-            {actionLabel}
-          </Link>
+          {actionLabel && (onAction ? <button type="button" className="inbox-upgrade-button" onClick={onAction}>{actionLabel}</button> : actionTo ? <Link to={actionTo} className="inbox-upgrade-button">{actionLabel}</Link> : null)}
         </div>
       </div>
     </div>

@@ -9,7 +9,7 @@ import { providerInboxRow, buildProviderInboxPage } from '../base44/shared/provi
 import { readAllInboxRows, projectProviderInboxRows, addInboxMessagePreviews } from '../base44/shared/providerInboxConversations.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const lead = { id: 'lead', request_id: 'request', location_id: 'location', intent_label: 'Consultație vedere', preview_summary: 'Vedere la distanță', created_date: '2026-09-26T09:00:00Z', expires_at: '2099-01-01T00:00:00Z', status: 'viewed', delivery_state: 'available', access_tier: 'pro_full', result_bucket_snapshot: 'top3' };
+const lead = { id: 'lead', request_id: 'request', location_id: 'location', intent: 'simptome_oftalmologice', intent_label: 'Consultație vedere', preview_summary: 'Vedere la distanță', created_date: '2026-09-26T09:00:00Z', expires_at: '2099-01-01T00:00:00Z', status: 'viewed', delivery_state: 'available', access_tier: 'pro_full', result_bucket_snapshot: 'top3' };
 const request = { id: 'request', lifecycle_state: 'active', expires_at: lead.expires_at, persistence_state: 'complete', detailed_message: 'Mesaj sintetic' };
 const contact = { id: 'contact', request_id: 'request', status: 'active', provider_request_distribution_consent: true, provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v3', contact_name: 'Client sintetic', contact_email: 'synthetic@example.invalid', contact_phone: 'private' };
 const response = { id: 'response', lead_id: 'lead', location_id: 'location', request_id: 'request', status: 'active', response_type: 'can_help' };

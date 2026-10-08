@@ -7,6 +7,7 @@ import { Archive, CheckCircle2, HelpCircle, Loader2, LockKeyhole, XCircle } from
 import ProviderLeadContactAccess from "../ProviderLeadContactAccess";
 import ProviderLeadChat from "../ProviderLeadChat";
 import LeadFullDetails from "./LeadFullDetails";
+import { providerLeadAccessPresentation } from "@/lib/providerLeadAccessPresentation";
 import LockedPreview, { ActionsSkeleton, ConversationSkeleton, DetailsSkeleton } from "./LockedPreview";
 
 const RESPONSE_OPTIONS = [
@@ -45,7 +46,8 @@ function Eyebrow({ children }) {
   return <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">{children}</p>;
 }
 
-export default function LeadDetailPanel({ lead, response, locationId, canRespond, canAccessContact, canChat, onMarkViewed, onRespond, marking, responding, hideActions = false, hideConversation = false }) {
+export default function LeadDetailPanel({ lead, response, locationId, canRespond, canAccessContact, canChat, onMarkViewed, onRespond, marking, responding, hideActions = false, hideConversation = false, entitlement = null, onOpenRequestSettings = null }) {
+  const access = providerLeadAccessPresentation(lead, entitlement);
   const services = lead.matched_service_keys?.length ? lead.matched_service_keys : lead.service_keys;
   const terminal = lead.is_historical === true;
   const closure = CLOSURE_PRESENTATION[lead.closure_reason] || {
@@ -59,7 +61,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
   const chatEnabled = canChat && lead.access_tier === "pro_full";
   const chatLocked = !terminal && !chatEnabled;
   const detailsLocked = !terminal && (!lead.full_details_status?.available || !lead.full_details);
-  const contactLocked = !terminal && !canAccessContact;
+  const contactLocked = !terminal && (!canAccessContact || !lead.full_details_status?.available);
 
   return (
     <article className="relative overflow-hidden rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] px-6 py-7 shadow-[0_10px_30px_rgba(34,30,24,0.03)]">
@@ -91,9 +93,9 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
             <span className="rounded-full border border-[#e3ddd0] bg-white/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {[lead.city, lead.county].filter(Boolean).join(" · ") || "Localitate indisponibilă"}
             </span>
-            <span className="rounded-full border border-[#e3ddd0] bg-white/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {lead.for_whom && <span className="rounded-full border border-[#e3ddd0] bg-white/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {{ copil: "Pentru copil", other_adult: "Pentru altcineva" }[lead.for_whom] || "Pentru adult"}
-            </span>
+            </span>}
             {!terminal && lead.status === "new" && !response && (
               <button type="button" onClick={() => onMarkViewed(lead.id)} disabled={marking} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-foreground/25 px-3.5 font-heading text-[12px] font-bold text-foreground transition-colors hover:bg-foreground hover:text-background disabled:opacity-60">
                 {marking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Marchează ca văzut
@@ -121,8 +123,10 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
                 reale nu ajung niciodata in pagina fara drept (vezi LockedPreview). */}
             {detailsLocked ? (
               <LockedPreview
-                title="Datele clientului sunt disponibile în Pro"
-                description="Numele, emailul verificat și mesajul detaliat se deblochează pentru locațiile Pro aflate în Top 3, cu acordul activ al clientului."
+                title={access.title}
+                description={access.description}
+                actionLabel={access.upgrade && onOpenRequestSettings ? "Vezi beneficiile Pro" : ""}
+                onAction={onOpenRequestSettings}
               >
                 <DetailsSkeleton />
               </LockedPreview>
@@ -180,8 +184,8 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
             <div className="mt-3">
               {contactLocked ? (
                 <LockedPreview
-                  title="Telefonul aprobat este disponibil în Pro"
-                  description="Numărul se poate solicita separat, doar după ce clientul îl aprobă explicit pentru locația ta. Fiecare accesare rămâne auditată."
+                  title="Telefonul este protejat"
+                  description="Telefonul se aprobă separat de către client pentru locația ta. Accesul necesită Pro și o cerere eligibilă."
                 >
                   <DetailsSkeleton />
                 </LockedPreview>

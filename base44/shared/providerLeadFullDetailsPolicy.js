@@ -79,6 +79,9 @@ export function sanitizeProviderLeadFullDetailsStatus({ eligible, reasons = [] }
   return {
     available: eligible === true,
     contract_version: PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION,
-    reason: eligible === true ? '' : clean(reasons[0] || 'full_details_locked', 120),
+    // A commercial action is appropriate only when the plan is the sole blocker.
+    // Prioritize consent/lifecycle/scope restrictions over the missing plan.
+    reason: eligible === true ? '' : clean(reasons.find(reason => reason !== 'pro_full_details_required') || reasons[0] || 'full_details_locked', 120),
+    upgrade_available: eligible !== true && reasons.length === 1 && reasons[0] === 'pro_full_details_required',
   };
 }

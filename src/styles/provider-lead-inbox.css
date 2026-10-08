@@ -19,3 +19,14 @@
 @media(min-width:1450px){.inbox-conversation-slot{grid-column:2;grid-row:1}}
 @media(max-width:1023px){.inbox-conversation-slot{display:none}.provider-inbox[data-selected=true] .inbox-conversation-slot{display:flex}}
 @media(max-width:600px){.inbox-organization .inbox-filters{grid-template-columns:1fr}.inbox-organization .inbox-rows{max-height:none}}
+
+/* Free previews contain decorative shapes only; the explanation stays readable. */
+.inbox-locked-preview{width:100%;max-width:440px;min-height:240px;border-radius:12px;background:#f7f9fc;border-color:#dfe5ef}
+.inbox-locked-decoration{position:absolute;inset:0;padding:12px;opacity:.35}
+.inbox-locked-content{min-height:240px;background:linear-gradient(180deg,#f7f9fc99,#f7f9fcee);padding:24px 18px}
+.inbox-locked-content p{overflow-wrap:anywhere}.inbox-locked-content>div{max-width:330px}.inbox-locked-content p:first-of-type{font-size:16px;line-height:1.4;font-weight:700}.inbox-locked-content p:nth-of-type(2){font-size:12px;line-height:1.65}
+.inbox-upgrade-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;margin-top:16px;padding:8px 16px;border:0;border-radius:8px;background:#345bc8;color:white;font-size:12px;font-weight:650;cursor:pointer;text-decoration:none}.inbox-upgrade-button:hover{background:#294bab}
+.inbox-gated-conversation{display:flex;flex-direction:column;justify-content:center;align-items:center;width:100%;padding:20px 12px;overflow-y:auto}.inbox-gated-note{max-width:330px;margin:12px 0 0;color:#7b8277;font-size:11px;text-align:center;line-height:1.6}
+.inbox-empty-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;margin:0 auto 14px;border-radius:12px;background:#edf1f7;color:#6d7b94}.inbox-empty-icon svg{width:19px;height:19px}.inbox-empty p{margin:0 0 14px}.inbox-empty .inbox-button{margin-top:6px;font-size:12px;color:#345bc8}.inbox-empty-hint{font-size:11px;color:#7b8277}
+.inbox-access-note strong{color:#45516a}.inbox-access-note button{flex-shrink:0;min-height:36px}.inbox-access-note{flex-wrap:wrap}
+@media(max-width:600px){.inbox-gated-conversation{padding:12px 2px}.inbox-locked-content{padding:20px 14px}.inbox-locked-preview,.inbox-locked-content{min-height:250px}}

@@ -1,20 +1,23 @@
 import React from "react";
 import { ArrowLeft, Info, Loader2 } from "lucide-react";
 import ProviderLeadChat from "../ProviderLeadChat";
+import LockedPreview, { ConversationSkeleton } from "./LockedPreview";
+import { providerLeadAccessPresentation } from "@/lib/providerLeadAccessPresentation";
 
 const RESPONSES = [["can_help", "Putem ajuta"], ["needs_details", "Avem nevoie de detalii"], ["cannot_help", "Nu putem ajuta"]];
 
-export default function LeadConversationPanel({ lead, locationId, entitlement, loading, responding, onRespond, onBack, onDetails, onChatChanged, readVisible = true }) {
+export default function LeadConversationPanel({ lead, locationId, entitlement, loading, responding, onRespond, onBack, onDetails, onChatChanged, readVisible = true, onOpenRequestSettings = null }) {
   if (!lead) return <div className="inbox-conversation"><div className="inbox-empty"><strong>Alege o cerere</strong>Conversația și răspunsul locației apar aici.</div></div>;
+  const access = providerLeadAccessPresentation(lead, entitlement);
   const response = lead.provider_response;
   const terminal = lead.is_historical === true;
   const canRespond = entitlement?.plan_code === "pro" && entitlement.feature_keys?.includes("provider_leads.respond");
-  const canChat = entitlement?.plan_code === "pro" && entitlement.feature_keys?.includes("provider_chat.access") && lead.access_tier === "pro_full";
+  const canChat = entitlement?.plan_code === "pro" && entitlement.feature_keys?.includes("provider_chat.access") && lead.access_tier === "pro_full" && (terminal || Boolean(lead.chat_summary) || lead.full_details_status?.available === true);
   const responseEligible = ["can_help", "needs_details"].includes(response?.response_type);
   return <div className="inbox-conversation" id={`provider-lead-${lead.id}`}>
     <header className="inbox-conversation-header">
       <button type="button" className="inbox-button inbox-back" onClick={onBack} aria-label="Înapoi la cereri"><ArrowLeft /></button>
-      <div className="min-w-0 flex-1"><h2>{lead.intent_label || "Cerere client"}</h2><p>{terminal ? "Cerere încheiată · doar consultare" : response?.response_label || "Așteaptă răspunsul locației"}</p></div>
+      <div className="min-w-0 flex-1"><h2>{lead.intent_label || "Cerere client"}</h2><p>{terminal ? "Cerere încheiată · doar consultare" : response?.response_label || (canRespond ? "Așteaptă răspunsul locației" : "Previzualizare anonimă")}</p></div>
       <button type="button" className="inbox-button inbox-detail-button" onClick={onDetails}><Info /> Detalii</button>
     </header>
     {!terminal && <div className="inbox-response">
@@ -24,7 +27,8 @@ export default function LeadConversationPanel({ lead, locationId, entitlement, l
     <div className="inbox-chat">
       {loading ? <div className="inbox-empty" role="status"><Loader2 className="mx-auto animate-spin" /> Se încarcă cererea…</div>
         : canChat && responseEligible ? <ProviderLeadChat leadId={lead.id} locationId={locationId} enabled={canChat} responseType={response.response_type} terminal={terminal} fullHeight onChanged={onChatChanged} readVisible={readVisible} />
-        : <div className="inbox-empty"><strong>{terminal ? "Istoric cerere" : "Conversația nu este deschisă"}</strong>{canRespond && !responseEligible && !terminal ? "Transmite un răspuns eligibil: Putem ajuta sau Avem nevoie de detalii. Clientul poate apoi deschide conversația." : "Accesul la chat depinde de Pro, Top 3 și acordul activ al clientului. Telefonul se aprobă separat."}</div>}
+        : !terminal && !canChat ? <div className="inbox-gated-conversation"><LockedPreview title={access.title} description={access.description} actionLabel={access.upgrade && onOpenRequestSettings ? "Vezi beneficiile Pro" : ""} onAction={onOpenRequestSettings}><ConversationSkeleton /></LockedPreview><p className="inbox-gated-note">Previzualizare demonstrativă a conversației. Datele clientului sunt protejate.</p></div>
+        : <div className="inbox-empty"><strong>{terminal ? "Istoric cerere" : "Clientul poate deschide conversația"}</strong>{canRespond && !responseEligible && !terminal ? "Transmite un răspuns eligibil: Putem ajuta sau Avem nevoie de detalii. Clientul poate apoi deschide conversația." : "Accesul la chat depinde de Pro, Top 3 și acordul activ al clientului. Telefonul se aprobă separat."}</div>}
     </div>
   </div>;
 }
