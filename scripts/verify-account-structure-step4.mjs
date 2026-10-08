@@ -195,7 +195,7 @@ const profile = { billing_type: 'company', billing_name: 'Retea Mica SRL', billi
   assert.equal(params.client_reference_id, 'O1');
   assert.equal(params.subscription_data.metadata.scope, 'organization');
   assert.equal(params.subscription_data.metadata.plan_tier, 'tiered');
-  assert.ok(params.success_url.startsWith('https://viasee.ro/contul-meu?s=settings&tab=billing&organization=O1'));
+  assert.ok(params.success_url.startsWith('https://viasee.ro/contul-meu?mode=provider&s=settings&tab=billing&organization=O1'));
   assert.equal(params.automatic_tax.enabled, false);
   assert.equal(params.allow_promotion_codes, true);
 

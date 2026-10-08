@@ -46,3 +46,13 @@ assert.match(panel, /Ca să activezi Pro, organizația are nevoie de cel puțin 
 assert.ok(panel.indexOf('const noActiveLocations') > panel.indexOf('const activeCount'), 'F6: declarat după activeCount');
 
 console.log('Billing Free audit: OK');
+
+// Întoarcerea din Stripe (plată, portal, oferta Enterprise) deschide spațiul organizației. Fără
+// `mode=provider`, `s=settings` deschidea setările contului personal, unde panoul de facturare și
+// sincronizarea de la întoarcere nu rulează.
+for (const file of ['createProviderCheckoutSession.ts', 'createProviderBillingPortalSession.ts', 'providerEnterpriseOfferOps.ts']) {
+  const source = await read(`base44/functions/getMyProviderWorkspace/${file}`);
+  assert.doesNotMatch(source, /\/contul-meu\?s=settings/, `${file}: întoarcerea fără mode=provider`);
+  assert.match(source, /\/contul-meu\?mode=provider&s=settings&tab=billing&/);
+}
+console.log('Billing return URLs: OK');

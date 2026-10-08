@@ -109,7 +109,7 @@ for (const status of ['active','trialing','past_due','unpaid','incomplete','paus
   const result = await call('createProviderCheckoutSession', { price: 'price_attacker', return_base_url: 'https://evil.example' });
   assert.equal(result.status, 200);
   assert.equal(s.checkoutCreates[0].params.line_items[0].price, 'price_pro');
-  assert.ok(s.checkoutCreates[0].params.success_url.startsWith('https://viasee.ro/contul-meu?s=settings&tab=billing'));
+  assert.ok(s.checkoutCreates[0].params.success_url.startsWith('https://viasee.ro/contul-meu?mode=provider&s=settings&tab=billing'));
   assert.equal(s.checkoutCreates[0].params.billing_address_collection, 'required');
   assert.equal(s.checkoutCreates[0].params.automatic_tax.enabled, false, 'Do not charge automatic VAT for the non-registered issuer');
   assert.equal(s.checkoutCreates[0].params.payment_method_collection, 'always');
