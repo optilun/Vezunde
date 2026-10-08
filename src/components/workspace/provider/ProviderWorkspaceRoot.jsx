@@ -689,6 +689,7 @@ export default function ProviderWorkspaceRoot({
                 isOrganizationOwner={isOrganizationOwner}
                 ownerLocations={locations}
                 onSelectLocation={selectLocation}
+                onOpenLocation={canManageSettings ? () => goToSection("profile") : undefined}
                 onOpenBilling={canManageSettings ? openBillingSettings : undefined}
                 onOpenRequestSettings={canManageSettings ? openRequestSettings : undefined}
               />

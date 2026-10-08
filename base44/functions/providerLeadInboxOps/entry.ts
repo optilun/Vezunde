@@ -55,6 +55,12 @@ function safeLocation(location) {
     name: location.public_display_name || location.name || 'Locatie',
     city: location.locality_name || location.city || '',
     county: location.county_name || location.county || '',
+    status: location.status || '',
+    is_active: location.is_active,
+    active_status: location.active_status || '',
+    profile_control_status: location.profile_control_status || '',
+    request_intake_status: location.request_intake_status || '',
+    accepts_patients_directly: location.accepts_patients_directly,
   };
 }
 
@@ -136,6 +142,13 @@ async function enrichLeadForInbox(svc, lead, user, entitlement) {
     ...safe,
     access_tier: 'pro_full',
     full_details_status: status,
+    // Additional request metadata is delivered only in the authorized detail branch.
+    intent: lead.intent || safe.intent,
+    intent_label: lead.intent_label || safe.intent_label,
+    service_keys: Array.isArray(lead.service_keys) ? lead.service_keys : [],
+    matched_service_keys: Array.isArray(lead.matched_service_keys) ? lead.matched_service_keys : [],
+    for_whom: lead.for_whom || '',
+    age_group: lead.age_group || '',
     full_details: fullDetails,
   };
 }

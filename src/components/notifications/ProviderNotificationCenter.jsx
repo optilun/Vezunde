@@ -14,7 +14,7 @@ function responseData(response) {
   return data;
 }
 
-export default function ProviderNotificationCenter({ locationId, locations, onOpenTarget }) {
+export default function ProviderNotificationCenter({ locationId = "", locations = null, onOpenTarget = null }) {
   // Fiecare apel pentru "Toate locatiile" este reautorizat de endpointul existent.
   const scopeKey = JSON.stringify(providerNotificationLocationIds(locationId, locations));
   const locationIds = useMemo(() => JSON.parse(scopeKey), [scopeKey]);

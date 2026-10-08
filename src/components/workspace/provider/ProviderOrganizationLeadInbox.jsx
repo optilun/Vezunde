@@ -9,6 +9,7 @@ import { INBOX_RETRY_OPTIONS, inboxErrorMessage } from "@/lib/providerInboxError
 import LeadListItem from "./leads/LeadListItem";
 import InboxFilters from "./leads/InboxFilters";
 import InboxPagination from "./leads/InboxPagination";
+import InboxEmptyState from "./leads/InboxEmptyState";
 import "@/styles/provider-lead-inbox.css";
 
 export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLead }) {
@@ -52,7 +53,7 @@ export default function ProviderOrganizationLeadInbox({ organizationId, onOpenLe
     <div className="inbox-organization">
       <InboxFilters filter={filter} status={status} search={search} onChange={value => { setFilter(value); setOffset(0); }} onSearch={setSearch} onStatus={value => { setStatus(value); setOffset(0); }} />
       <div className="px-4 py-2 border-b border-border"><label className="flex gap-2 items-center text-xs">Locație<select className="inbox-filter-select max-w-xs" value={location} onChange={event => { setLocation(event.target.value); setOffset(0); }}><option value="">Toate locațiile</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label></div>
-      <div className="inbox-rows" aria-busy={loading}>{!current && loading ? <div className="inbox-empty" role="status">Se încarcă cererile…</div> : leads.length ? leads.map(lead => <LeadListItem key={lead.id} lead={lead} locationName={lead.location_name} planLabel={locationPlanLabel(current.entitlements_by_location, lead.location_id)} onSelect={() => { const next = organizationLeadTarget(lead); if (next) onOpenLead?.(next); }} />) : <div className="inbox-empty"><strong>{filter === "unread" ? "Nicio conversație necitită" : "Nicio cerere în această categorie"}</strong>Fiecare locație gestionează cererile pe care le-a primit.</div>}</div>
+      <div className="inbox-rows" aria-busy={loading}>{!current && loading ? <div className="inbox-empty" role="status">Se încarcă cererile…</div> : leads.length ? leads.map(lead => <LeadListItem key={lead.id} lead={lead} locationName={lead.location_name} planLabel={locationPlanLabel(current.entitlements_by_location, lead.location_id)} onSelect={() => { const next = organizationLeadTarget(lead); if (next) onOpenLead?.(next); }} />) : <InboxEmptyState filter={filter} search={query} status={status} />}</div>
       <InboxPagination page={current?.pagination} count={leads.length} busy={loading} onPage={setOffset} />
     </div>
   </section>;

@@ -32,12 +32,6 @@ function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
-function stringArray(value, maxItems = 20) {
-  return Array.isArray(value)
-    ? [...new Set(value.map((item) => clean(item, 120)).filter(Boolean))].slice(0, maxItems)
-    : [];
-}
-
 export function providerLeadIsHistorical(lead) {
   return lead?.delivery_state !== 'available' || TERMINAL_STATUSES.has(lead?.status);
 }
@@ -55,22 +49,36 @@ export function filterProviderLeadInbox(leads, { scope = 'active', status = '', 
     .slice(0, boundedLimit);
 }
 
+// Public preview uses broad, allow-listed categories. Never copy a stored free-text
+// summary, age, recipient or specialized service keys into an anonymous inbox.
+const PREVIEW_CATEGORIES = Object.freeze({
+  control_vedere: ['control_vedere', 'Control de vedere'],
+  control_copil: ['control_vedere', 'Control de vedere'],
+  ochelari_lentile: ['ochelari_lentile', 'Ochelari sau lentile'],
+  lentile_contact: ['lentile_contact', 'Lentile de contact'],
+  reparatii_ochelari: ['reparatii_ochelari', 'Reparații sau reglaje'],
+  simptome_oftalmologice: ['consultatie', 'Consultație oftalmologică'],
+  investigatii: ['consultatie', 'Consultație oftalmologică'],
+});
+const PREVIEW_TIMING = new Set(['cat_mai_repede', 'zilele_urmatoare', 'saptamana_aceasta', 'nu_e_urgent']);
+
 export function sanitizeProviderLeadForFreeInbox(lead) {
   const deliveryState = clean(lead?.delivery_state, 80) || 'available';
   const status = clean(lead?.status, 80) || 'new';
+  const [intent, label] = PREVIEW_CATEGORIES[lead?.intent] || ['unknown', 'Servicii pentru vedere'];
+  const city = clean(lead?.city, 120);
+  const county = clean(lead?.county, 120);
   return {
     id: clean(lead?.id, 120),
     location_id: clean(lead?.location_id, 120),
-    intent: clean(lead?.intent, 120),
-    intent_label: clean(lead?.intent_label, 160),
-    service_keys: stringArray(lead?.service_keys),
-    matched_service_keys: stringArray(lead?.matched_service_keys),
-    city: clean(lead?.city, 120),
-    county: clean(lead?.county, 120),
-    for_whom: clean(lead?.for_whom, 80),
-    age_group: clean(lead?.age_group, 80),
-    timing_key: clean(lead?.timing_key, 120),
-    preview_summary: clean(lead?.preview_summary, 240),
+    intent,
+    intent_label: label,
+    service_keys: [],
+    matched_service_keys: [],
+    city,
+    county,
+    timing_key: PREVIEW_TIMING.has(lead?.timing_key) ? lead.timing_key : '',
+    preview_summary: [label, city || county].filter(Boolean).join(' · '),
     access_tier: 'free_preview',
     contact_access_state: 'hidden',
     conversation_access_state: 'locked',
@@ -100,3 +108,4 @@ export function summarizeProviderLeadInbox(leads) {
     expired: historyRows.filter((lead) => lead?.status === 'expired').length,
   };
 }
+

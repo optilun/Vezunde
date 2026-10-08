@@ -49,6 +49,7 @@ jobs:
       - name: Verify inbox conversations and controlled chat behavior
         run: |
           node scripts/verify-provider-inbox-conversations.mjs
+          node scripts/verify-provider-free-pro-presentation.mjs
           node scripts/verify-controlled-chat-reliability.mjs
           node scripts/verify-provider-organization-inbox-ui.mjs
           node scripts/verify-provider-organization-inbox-integration.mjs
