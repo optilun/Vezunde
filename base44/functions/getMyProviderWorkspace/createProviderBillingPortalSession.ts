@@ -88,8 +88,8 @@ export async function handle(req: Request) {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: organizationId
-        ? `${baseUrl}/contul-meu?s=settings&tab=billing&organization=${encodeURIComponent(organizationId)}&billing=portal_return`
-        : `${baseUrl}/contul-meu?s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
+        ? `${baseUrl}/contul-meu?mode=provider&s=settings&tab=billing&organization=${encodeURIComponent(organizationId)}&billing=portal_return`
+        : `${baseUrl}/contul-meu?mode=provider&s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
       configuration,
       ...(input.flow === 'payment_method_update' ? { flow_data: { type: 'payment_method_update' } } : {}),
     });

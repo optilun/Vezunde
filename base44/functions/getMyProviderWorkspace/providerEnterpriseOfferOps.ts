@@ -55,7 +55,7 @@ async function organizationOwners(svc, organizationId) {
 
 async function notifyOwners(base44, svc, organization, offer, baseUrl) {
   const owners = await organizationOwners(svc, organization.id);
-  const link = `${baseUrl}/contul-meu?s=settings&tab=billing&organization=${encodeURIComponent(organization.id)}`;
+  const link = `${baseUrl}/contul-meu?mode=provider&s=settings&tab=billing&organization=${encodeURIComponent(organization.id)}`;
   const name = organization.public_display_name || organization.name || 'organizatia ta';
   let sent = 0;
   for (const owner of owners) {

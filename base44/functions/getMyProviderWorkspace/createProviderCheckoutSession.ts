@@ -93,7 +93,7 @@ async function organizationCheckout(base44, user, input) {
     app: 'viasee', scope: 'organization', organization_id: organization.id, plan_tier: planTier,
     billed_location_count: String(offer ? 0 : activeCount), ...(offer ? { enterprise_offer_id: offer.id } : {}),
   };
-  const returnPath = baseUrl + '/contul-meu?s=settings&tab=billing&organization=' + encodeURIComponent(organization.id);
+  const returnPath = baseUrl + '/contul-meu?mode=provider&s=settings&tab=billing&organization=' + encodeURIComponent(organization.id);
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription', customer: account.stripe_customer_id, client_reference_id: organization.id,
     line_items: [lineItem], allow_promotion_codes: !offer,
@@ -161,8 +161,8 @@ async function legacyLocationCheckout(base44, user, input) {
     metadata: { app: 'viasee', location_id: locationId },
     subscription_data: { metadata: { location_id: locationId, organization_id: clean(authorized.location.organization_id), app: 'viasee', initiated_by_user_id: clean(user.id) } },
     locale: 'ro',
-    success_url: baseUrl + '/contul-meu?s=settings&tab=billing&location=' + encodeURIComponent(locationId) + '&billing=success&session_id={CHECKOUT_SESSION_ID}',
-    cancel_url: baseUrl + '/contul-meu?s=settings&tab=billing&location=' + encodeURIComponent(locationId) + '&billing=cancelled',
+    success_url: baseUrl + '/contul-meu?mode=provider&s=settings&tab=billing&location=' + encodeURIComponent(locationId) + '&billing=success&session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: baseUrl + '/contul-meu?mode=provider&s=settings&tab=billing&location=' + encodeURIComponent(locationId) + '&billing=cancelled',
   }, { idempotencyKey: 'viasee-checkout-v2-' + account.stripe_customer_id + '-' + (existing.data[0]?.id || 'first') });
   if (!session.url) throw new Error('Missing checkout URL');
   return Response.json({ url: session.url });
