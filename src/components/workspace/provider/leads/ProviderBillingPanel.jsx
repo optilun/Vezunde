@@ -170,14 +170,14 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
   // 2026-10-08 (audit plan Free, F2): abonamentele vechi pe locație deja încheiate; facturile lor
   // rămân în Stripe, în contul locației, și se deschid de aici.
   const legacyDocuments = data?.legacy_documents || [];
-  // F6: fără locații active plata nu poate porni; trimitem la Locații, unde se cere redeschiderea.
-  const noActiveLocations = organizationScope && !existing && !manual && !legacy.length && !activeCount;
-  const locationsHref = (() => { const next = new URLSearchParams(params); next.set("s", "locations"); ["tab", "billing", "session_id"].forEach(key => next.delete(key)); return `/contul-meu?${next.toString()}`; })();
   const pricing = data?.pricing || {};
   const activeCount = pricing.active_location_count || 0;
   const enterpriseRequired = organizationScope && pricing.enterprise_required === true;
   const openOffers = (data?.enterprise_offers || []).filter(offer => offer.status === "sent");
   const canStartCheckout = !existing && !manual && !legacy.length && !enterpriseRequired && (!organizationScope || activeCount > 0);
+  // F6: fără locații active plata nu poate porni; trimitem la Locații, unde se cere redeschiderea.
+  const noActiveLocations = organizationScope && !existing && !manual && !legacy.length && !activeCount;
+  const locationsHref = (() => { const next = new URLSearchParams(params); next.set("s", "locations"); ["tab", "billing", "session_id"].forEach(key => next.delete(key)); return `/contul-meu?${next.toString()}`; })();
   // Cât timp plata se face încă pe locație, cardul, datele și facturile rămân la abonamentul vechi.
   const legacyOnly = organizationScope && legacy.length > 0 && !data?.customer;
   const problem = ["past_due","unpaid","incomplete","paused","configuration_review"].includes(subscription?.status);
