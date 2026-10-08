@@ -7,6 +7,7 @@ import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { sanitizeProviderLeadForFreeInbox } from '../base44/shared/providerLeadInboxPolicy.js';
 import { sanitizeProviderLeadFullDetailsStatus } from '../base44/shared/providerLeadFullDetailsPolicy.js';
+import { sanitizeProviderInAppNotification } from '../base44/shared/inAppNotificationPolicy.js';
 import { providerLeadAccessPresentation, providerRequestLocationBlocker } from '../src/lib/providerLeadAccessPresentation.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,6 +19,9 @@ assert.equal(safe.for_whom, undefined); assert.equal(safe.age_group, undefined);
 assert.deepEqual(safe.service_keys, []); assert.deepEqual(safe.matched_service_keys, []);
 assert.doesNotMatch(JSON.stringify(safe), /PRIVATE|Sensitive|child/);
 assert.equal(sanitizeProviderLeadForFreeInbox({ ...raw, intent: 'unknown-clinical-label' }).intent_label, 'Servicii pentru vedere');
+const notification = sanitizeProviderInAppNotification({ event_key: 'provider_lead_available', title: 'PRIVATE recipient', body: 'PRIVATE clinical category', action_target_id: 'synthetic' }, { id: 'location', name: 'Demo' });
+assert.doesNotMatch(JSON.stringify(notification), /PRIVATE/);
+assert.equal(notification.action_target_id, 'synthetic');
 const free = { plan_code: 'free', feature_keys: [] }, pro = { plan_code: 'pro', feature_keys: ['provider_leads.respond'] };
 const status = reasons => sanitizeProviderLeadFullDetailsStatus({ eligible: false, reasons });
 const eligibleUpgrade = { ...safe, full_details_status: status(['pro_full_details_required']) };

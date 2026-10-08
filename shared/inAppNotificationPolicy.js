@@ -55,6 +55,12 @@ export function sanitizeInAppNotification(row) {
 export function sanitizeProviderInAppNotification(row, authorizedLocation) {
   return {
     ...sanitizeInAppNotification(row),
+    // Old notifications may contain a more specific category. Keep the preview
+    // anonymous regardless of plan, including notifications created before this policy.
+    ...(row?.event_key === IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE ? {
+      title: 'Cerere nouă pentru locația ta',
+      body: 'Vezi previzualizarea anonimă a cererii și accesul disponibil.',
+    } : {}),
     location_id: clean(authorizedLocation?.id, 120),
     location_name: clean(authorizedLocation?.public_display_name || authorizedLocation?.name || 'Locatie', 120),
   };

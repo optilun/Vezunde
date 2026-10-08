@@ -21,6 +21,8 @@ on:
       - "base44/shared/providerInboxConversationPolicy.js"
       - "base44/functions/getMyProviderWorkspace/providerOrganizationLeadInboxOps.ts"
       - "scripts/verify-provider-inbox-conversations.mjs"
+      - "scripts/verify-provider-free-pro-presentation.mjs"
+      - "src/lib/providerLeadAccessPresentation.js"
       - "src/components/workspace/provider/ProviderLeadChat.jsx"
       - "src/components/workspace/provider/ProviderLeadContactAccess.jsx"
       - "src/components/notifications/ProviderNotificationCenter.jsx"
