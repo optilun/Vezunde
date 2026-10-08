@@ -285,7 +285,7 @@ export default function DirOpsClaims() {
                     <div className="min-w-0 flex-1">
                       <div className="break-words text-sm font-semibold">{claim.business_name || location?.name || "Fără nume"}</div>
                       <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
-                        {location ? `${location.name}, ${location.city}` : isDuplicateReview ? "propunere de locație (încă necreată)" : "locație nouă / necunoscută"} · {claim.contact_name} · {claim.email}{claim.phone ? ` · ${claim.phone}` : ""}
+                        {location ? [location.name, location.city].filter(Boolean).join(", ") : isDuplicateReview ? "propunere de locație (încă necreată)" : "locație nouă / necunoscută"} · {claim.contact_name} · {claim.email}{claim.phone ? ` · ${claim.phone}` : ""}
                       </div>
                       <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
                         {modeLabel} · {claimRelationshipLabel(claim.claimant_relationship)} · Acces cerut: {ROLE_LABELS[requestedRole] || requestedRole}

@@ -217,11 +217,17 @@ await scenario("legacy free-text clarification is not used by the wizard", () =>
 
 await scenario("question-only runtime performs no second InvokeLLM", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
-  assert.equal((entry.match(/Core\.InvokeLLM\(/g) || []).length, 1);
+  const engine = source("base44/shared/patientNeedLlmEngine.js");
+  // 2026-10-08: apelul LLM s-a mutat din entry.ts in motorul comun (cache, model rapid, apoi cel puternic
+  // doar la nevoie; commit 4903c3bc). Regula ramane aceeasi: un singur punct de apel LLM, folosit o singura
+  // data de interpretare, iar alegerea intrebarii nu apeleaza LLM.
+  assert.equal((entry.match(/Core\.InvokeLLM\(/g) || []).length, 0);
+  assert.equal((engine.match(/Core\.InvokeLLM\(/g) || []).length, 1);
+  assert.equal((entry.match(/invokePatientNeedLlm\(/g) || []).length, 1);
   const questionOnlyStart = entry.indexOf("function selectPatientGuidanceQuestion");
   const questionOnlyEnd = entry.indexOf("async function interpretPatientNeed", questionOnlyStart);
   assert.ok(questionOnlyStart >= 0 && questionOnlyEnd > questionOnlyStart);
-  assert.doesNotMatch(entry.slice(questionOnlyStart, questionOnlyEnd), /InvokeLLM/);
+  assert.doesNotMatch(entry.slice(questionOnlyStart, questionOnlyEnd), /InvokeLLM|invokePatientNeedLlm/);
 });
 
 await scenario("full planner profile is never exposed to the browser", () => {
@@ -331,7 +337,12 @@ await scenario("ranking and recommendation client remain byte-stable", () => {
   // pentru potrivire (`service_keys`) raman aceleasi.
   // 2026-09-30: o singura reincercare, dupa 1,5 secunde, la 429/500/502/503/504 (varf de trafic);
   // timeout-ul nu se reincearca, iar cererea trimisa ramane aceeasi.
-  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "03824f08");
+  // 2026-10-05 (editorul Base44, commit 1ba86de2) si actualizat aici 2026-10-08: dupa fiecare raspuns de
+  // potrivire se apeleaza `recordSearchEvent(payload, serviceKeys, data)` (cautare anonima pentru Analytics:
+  // judet, serviciu, numar de rezultate, fara date personale). Apelul nu asteapta, prinde orice eroare si nu
+  // primeste si nu schimba raspunsul. Verificat linie cu linie: singura diferenta in aceasta zona sunt cele doua
+  // apeluri noi si lipsa newline-ului final; scorul, ordonarea si selectia Top 3 raman neatinse.
+  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "d4c9e2cc");
 });
 
 await scenario("live result is identical when question selection does not intervene", () => {
@@ -375,7 +386,12 @@ await scenario("physical Base44 function count remains unchanged", () => {
   // 2026-09-30: 50 in loc de 49 - automaticEmailOps (emailuri automate, adaugata pe 2026-09-29) e
   // functie fizica proprie. Verificat pe site: publicata si functionala, iar celelalte functii raspund
   // normal, deci platforma accepta 50. Regula ramane: functiile noi intra in routerele existente.
-  assert.equal(physicalFunctions.length, 50);
+  // 2026-10-08: 52 in loc de 50 - editorul Base44 a adaugat pe 2026-10-05 doua functii fizice:
+  // adminAnalyticsOps (Analytics, acoperire pe judete; commit f0b6b30f) si recordSearchEvent (cautare
+  // anonima pentru Analytics; commit 1ba86de2). Numarul urmeaza depozitul publicat; nu s-a verificat pe
+  // site ca platforma publica toate cele 52 (verificat pana acum: 50). Regula ramane: functiile noi intra
+  // in routerele existente.
+  assert.equal(physicalFunctions.length, 52);
 });
 
 console.log(`Patient guidance adaptive question selection checks passed: ${scenarios.length} scenarios.`);

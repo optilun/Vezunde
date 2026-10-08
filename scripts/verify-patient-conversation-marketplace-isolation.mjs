@@ -36,6 +36,11 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // 2026-09-29: aceeasi cerere trecea dupa cateva secunde). Timeout-ul nu se reincearca; cererea,
     // cheile, scorul si ordinea raman aceleasi.
     '0e41bbd9c917eb5214934d5ebda33c97ae082abb',
+    // 2026-10-05 (editorul Base44, commit 1ba86de2), aprobat aici 2026-10-08: dupa fiecare raspuns de potrivire
+    // clientul apeleaza `recordSearchEvent(payload, serviceKeys, data)` (cautare anonima pentru Analytics: judet,
+    // serviciu, numar de rezultate; fara date personale). Apelul nu asteapta, prinde orice eroare si nu schimba
+    // raspunsul; scorul, ordonarea si selectia Top 3 raman neatinse. Amprenta clientului devine 'd4c9e2cc'.
+    '988af31eab388a1827dbfcba5f466103a1d20e29',
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
@@ -253,6 +258,14 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // (isPediatricOnlyLocation) nu mai intra la cautarile pentru adulti si vin primele in
     // fallbackul structural la cele pentru copii; amprenta ramurii de potrivire devine 'f2f1d8ff'.
     'c625d4ff1ceee0629529977b00c1c48a9b1eb447',
+    // 2026-10-05 (editorul Base44, commit-urile 170452c4, 4903c3bc, 8988557a), inregistrat aici 2026-10-08 ca sa
+    // reflecte codul deja publicat; decizia de produs ramane a proprietarului: (1) apelul LLM trece prin motorul
+    // comun base44/shared/patientNeedLlmEngine.js (cache, model rapid, apoi cel puternic doar la nevoie);
+    // (2) fiecare interpretare scrie o observatie AIGuidanceObservation pentru raportul admin (doar chei si
+    // acorduri, fara textul pacientului; erorile se ignora); (3) detectAnswerContradictions marcheaza in
+    // observatie raspunsurile care contrazic textul. Verificat linie cu linie: nicio schimbare in ramura de
+    // potrivire (amprenta f2f1d8ff ramane), deci scorul, ordonarea si selectia Top 3 sunt neatinse.
+    'd2fdc4a22e800d82cf82ffb6066eb8d7a925bb51',
   ]),
 });
 
@@ -372,6 +385,8 @@ const PR265_PROVIDER_SEMANTIC_BLOBS = Object.freeze([
   '68e528fd27ca1e19f0378b2ff27048c2128f16b3',
   // 2026-09-30: reincercarea la eroare trecatoare de server (vezi blob-ul aprobat mai sus).
   '0e41bbd9c917eb5214934d5ebda33c97ae082abb',
+  // 2026-10-08: inregistrarea anonima a cautarilor pentru Analytics (vezi blob-ul aprobat mai sus).
+  '988af31eab388a1827dbfcba5f466103a1d20e29',
 ]);
 const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
 const providerSemanticComposition = PR265_PROVIDER_SEMANTIC_BLOBS.includes(providerSemanticBlob)

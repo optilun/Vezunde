@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadAdminCounts } from "@/lib/adminCounts";
+import { FOCUS_REFRESH_MIN_INTERVAL_MS } from "@/lib/focusRefreshGate";
 
 // Numărătorile „ce așteaptă după mine” (2026-10-07): o singură încărcare pentru Panou, meniu și
 // taburile Cozii de verificare, reîmprospătată singură (la 60 s și când revii în fereastră).
@@ -9,7 +10,9 @@ import { loadAdminCounts } from "@/lib/adminCounts";
 const CountsContext = createContext({ counts: null, refreshing: false, refresh: () => {} });
 
 const AUTO_REFRESH_MS = 60_000;
-const MIN_GAP_MS = 15_000;
+// Aceeași pauză minimă ca în contul de furnizor (src/lib/focusRefreshGate.js): trecerea repetată între
+// ferestre nu mai pornește câte o rafală de cereri, iar platforma nu mai răspunde „Rate limit exceeded”.
+const MIN_GAP_MS = FOCUS_REFRESH_MIN_INTERVAL_MS;
 
 export function AdminCountsProvider({ children }) {
   const [counts, setCounts] = useState(null);

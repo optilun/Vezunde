@@ -86,7 +86,10 @@ export const PROFESSIONAL_TYPES = Object.freeze([
 
 export const PROFESSIONAL_TYPE_CODES = Object.freeze(PROFESSIONAL_TYPES.map((entry) => entry.code));
 
+// Chei de tip `string` (valoarea vine din date, nu din lista de coduri), ca verificarea de tipuri sa accepte cautarea.
+/** @type {Map<string, (typeof PROFESSIONAL_TYPES)[number]>} */
 const BY_CODE = new Map(PROFESSIONAL_TYPES.map((entry) => [entry.code, entry]));
+/** @type {Map<string, (typeof PROFESSIONAL_TYPES)[number]>} */
 const BY_LEGACY_ROLE = new Map(PROFESSIONAL_TYPES.map((entry) => [entry.legacy_role, entry]));
 
 // Etichetele romanesti ale specializarilor. Cheile sunt globale, nu per tip: `myopia_management`

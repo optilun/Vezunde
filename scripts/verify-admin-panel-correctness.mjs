@@ -48,6 +48,8 @@ import { locationStatusIssues } from '../src/lib/adminLocationStatusRules.js';
 import { chunk, fetchByIds, fetchWhereIn, uniqueIds, ID_CHUNK } from '../src/lib/adminEntityBatch.js';
 import {
   REVIEW_PARTS,
+  COUNT_CONCURRENCY,
+  createLimiter,
   loadAdminCounts,
   loadSubscriptionSummary,
   mergeWorkspacePending,
@@ -1287,6 +1289,137 @@ await check('contacte din căutări: „Nou” cere acțiune (albastru), „Cont
   assert.match(screen, /AdminListControls/);
   assert.match(screen, /Marchează contactat/);
   assert.ok(!/window\.confirm/.test(screen));
+});
+
+// ---------- Plasa de siguranță pentru erori + sume cu monedă lipsă ----------
+const { ADMIN_ERROR_EVENT, CHUNK_RELOAD_GAP_MS, CHUNK_RELOAD_KEY, claimAutoReload, errorEventProperties, errorReport, isChunkLoadError } = await import('../src/lib/adminErrors.js');
+const { money } = await import('../src/lib/billingFormat.js');
+
+await check('erori de afișare: „versiune nouă publicată” se recunoaște, o eroare obișnuită nu', () => {
+  for (const message of [
+    'Failed to fetch dynamically imported module: https://viasee.ro/assets/AdminAnalytics-Cx3.js',
+    'error loading dynamically imported module',
+    'Importing a module script failed.',
+    'Loading chunk 12 failed.',
+    'Loading CSS chunk 7 failed.',
+    'Unable to preload CSS for /assets/index-abc.css',
+  ]) assert.equal(isChunkLoadError(new TypeError(message)), true, message);
+  assert.equal(isChunkLoadError({ name: 'ChunkLoadError', message: 'x' }), true);
+  for (const value of [new Error("Cannot read properties of undefined (reading 'category')"), new RangeError('Invalid currency code : null'), null, undefined, {}, 'text'])
+    assert.equal(isChunkLoadError(value), false, String(value));
+});
+
+await check('reîncărcare automată: o singură dată pe minut, nu într-un ciclu; fără spațiu de stocare = nu reîncărcăm', () => {
+  const store = new Map();
+  const storage = { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) };
+  assert.equal(claimAutoReload(storage, 1_000_000), true, 'prima eroare: reîncărcăm');
+  assert.equal(store.get(CHUNK_RELOAD_KEY), '1000000');
+  assert.equal(claimAutoReload(storage, 1_000_000 + 5_000), false, 'după reîncărcare, aceeași eroare: arătăm butonul, nu reîncărcăm iar');
+  assert.equal(claimAutoReload(storage, 1_000_000 + CHUNK_RELOAD_GAP_MS - 1), false);
+  assert.equal(claimAutoReload(storage, 1_000_000 + CHUNK_RELOAD_GAP_MS + 1), true, 'după un minut, o nouă publicare se poate reîncărca');
+  const broken = { getItem() { throw new Error('blocat'); }, setItem() { throw new Error('blocat'); } };
+  assert.equal(claimAutoReload(broken, 5), false);
+  assert.equal(claimAutoReload(null, 5), false);
+  assert.equal(claimAutoReload(undefined, 5), false);
+});
+
+await check('raportul de eroare: secțiune, eroare, adresă, moment, urmă; nu cade pe valori ciudate', () => {
+  const error = new TypeError("Cannot read properties of null (reading 'category')");
+  const report = errorReport({ error, componentStack: '\n    at OutreachCampaignDetail (x.jsx:10)\n    at div', section: 'Campanii și marketing', href: 'https://viasee.ro/admin/operatiuni?s=outreach', now: Date.UTC(2026, 9, 8, 6, 0, 0) });
+  assert.match(report, /^Secțiune: Campanii și marketing$/m);
+  assert.match(report, /^Eroare: TypeError: Cannot read properties of null \(reading 'category'\)$/m);
+  assert.match(report, /^Adresă: https:\/\/viasee\.ro\/admin\/operatiuni\?s=outreach$/m);
+  assert.match(report, /^Moment: 2026-10-08T06:00:00\.000Z$/m);
+  assert.match(report, /Componente:\n.*OutreachCampaignDetail/s);
+  for (const value of [undefined, null, 'doar text', 42, {}, { message: 'fără nume' }]) {
+    const text = errorReport({ error: value });
+    assert.match(text, /^Eroare: /m);
+    assert.ok(!/undefined|\[object Object\]/.test(text.split('\n').find((line) => line.startsWith('Eroare:')) || ''), String(value));
+  }
+  assert.ok(errorReport().length > 0);
+});
+
+await check('eroarea de afișare se raportează în statistici: doar câmpuri sigure, tăiate; nu cade pe valori ciudate', () => {
+  assert.equal(ADMIN_ERROR_EVENT, 'admin_render_error');
+  const props = errorEventProperties({
+    error: new TypeError(`Cannot read properties of null (reading 'category') ${'x'.repeat(500)}`),
+    componentStack: '\n    at OutreachCampaignDetail (http://x/src/a.jsx?t=1:10:5)\n    at div\n    at OutreachWorkspace (http://x/src/b.jsx:1:1)\n    at Suspense',
+    section: 'Campanii și marketing',
+  });
+  assert.deepEqual(Object.keys(props).sort(), ['auto_reload', 'error_message', 'error_name', 'kind', 'section', 'where']);
+  assert.equal(props.kind, 'randare');
+  assert.equal(props.error_name, 'TypeError');
+  assert.ok(props.error_message.length <= 200);
+  assert.equal(props.where, 'OutreachCampaignDetail > div > OutreachWorkspace');
+  assert.equal(errorEventProperties({ error: new TypeError('Failed to fetch dynamically imported module: x'), reloading: true }).kind, 'versiune_noua');
+  assert.equal(errorEventProperties({ error: new TypeError('Failed to fetch dynamically imported module: x'), reloading: true }).auto_reload, true);
+  for (const value of [undefined, null, 'text', 42, {}]) {
+    const out = errorEventProperties({ error: value });
+    for (const [key, item] of Object.entries(out)) assert.ok(['string', 'boolean'].includes(typeof item), `${key} pentru ${String(value)}`);
+  }
+  assert.ok(errorEventProperties().section === '');
+  assert.match(source('src/components/admin/shell/AdminErrorBoundary.jsx'), /base44\.analytics\.track\(\{\s*eventName: ADMIN_ERROR_EVENT/);
+});
+
+await check('sume Stripe: moneda lipsă sau greșită nu mai aruncă „Invalid currency code”; suma care nu e număr arată „—”', () => {
+  const norm = (text) => text.replace(/\s/g, ' ');
+  assert.match(norm(money(150000, 'ron')), /1\.500,00/);
+  assert.match(norm(money(150000, 'RON')), /1\.500,00/);
+  assert.match(norm(money(19900)), /199,00/, 'fără monedă: RON');
+  for (const currency of [null, '', '   ', undefined]) assert.match(norm(money(19900, currency)), /199,00/, `monedă ${JSON.stringify(currency)}`);
+  assert.doesNotThrow(() => money(19900, 'xx'));
+  assert.doesNotThrow(() => money(19900, 'nu-e-cod'));
+  assert.match(norm(money(19900, 'nu-e-cod')), /199,00 NU-E-COD/);
+  assert.match(norm(money(0, 'eur')), /0,00/);
+  assert.match(norm(money('15000', 'ron')), /150,00/, 'suma ca text numeric');
+  for (const amount of [null, undefined, '', 'abc', NaN, Infinity]) assert.equal(money(amount, 'ron'), '—', String(amount));
+});
+
+await check('numărători: cel mult 4 cereri deodată (fără rafală către platformă), aceleași 17 cereri, același rezultat', async () => {
+  assert.equal(COUNT_CONCURRENCY, 4);
+  let active = 0;
+  let peak = 0;
+  let total = 0;
+  const base = fakeClient();
+  const track = async (work) => {
+    active += 1; total += 1; peak = Math.max(peak, active);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    try { return await work(); } finally { active -= 1; }
+  };
+  const client = {
+    entities: new Proxy({}, { get: (_t, name) => ({ count: (query) => track(() => base.entities[name].count(query)) }) }),
+    functions: { invoke: (name, payload) => track(() => base.functions.invoke(name, payload)) },
+  };
+  const limited = await loadAdminCounts(client);
+  assert.equal(total, 17, 'aceleași 17 cereri ca înainte');
+  assert.ok(peak <= 4, `cel mult 4 deodată, am văzut ${peak}`);
+  assert.ok(peak >= 2, 'totuși în paralel, nu una câte una');
+  assert.deepEqual({ ...limited, loadedAt: 0 }, { ...(await loadAdminCounts(fakeClient())), loadedAt: 0 }, 'același rezultat');
+  // limitatorul: o sarcină care eșuează nu blochează coada
+  const run = createLimiter(1);
+  const order = [];
+  const results = await Promise.allSettled([
+    run(async () => { order.push('a'); throw new Error('x'); }),
+    run(async () => { order.push('b'); return 2; }),
+    run(() => { order.push('c'); return 3; }),
+  ]);
+  assert.deepEqual(order, ['a', 'b', 'c']);
+  assert.deepEqual(results.map((r) => r.status), ['rejected', 'fulfilled', 'fulfilled']);
+  assert.match(source('src/components/admin/useAdminCounts.jsx'), /FOCUS_REFRESH_MIN_INTERVAL_MS/, 'aceeași pauză minimă ca în contul de furnizor');
+});
+
+await check('plasa de siguranță e montată: pagina, secțiunea și căutarea globală; „Plăți” folosește formatul sigur', () => {
+  const page = source('src/pages/AdminDirectoryOps.jsx');
+  assert.match(page, /<AdminErrorBoundary variant="page"/);
+  assert.match(page, /<AdminErrorBoundary resetKey=\{`\$\{section\}\/\$\{tab\}`\}/);
+  assert.match(source('src/components/admin/shell/AdminAppShell.jsx'), /<AdminErrorBoundary variant="silent"/);
+  const boundary = source('src/components/admin/shell/AdminErrorBoundary.jsx');
+  assert.match(boundary, /claimAutoReload/);
+  assert.match(boundary, /Reîncarcă pagina/);
+  assert.match(boundary, /Copiază detaliile/);
+  const billing = source('src/components/admin/billing/AdminBillingCenter.jsx');
+  assert.match(billing, /from "@\/lib\/billingFormat"/);
+  assert.ok(!/toLocaleDateString\("ro-RO"\);\s*$/m.test(billing.split('\n').filter((line) => line.startsWith('const formatDay')).join('\n')), 'formatDay verifică data');
 });
 
 console.log(`Panoul de admin: ${checks} verificări de corectitudine au trecut.`);

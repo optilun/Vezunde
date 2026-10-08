@@ -32,7 +32,9 @@ const settings = read(`${P}ProviderSettings.jsx`);
 assert.match(settings, /const locations = workspace\?\.locations \|\| NO_LOCATIONS;/);
 assert.match(settings, /current_user_role_by_location \|\| NO_ROLES;/);
 
-assert.match(read(`${P}ProviderServicesEditor.jsx`), /useEffect\(\(\) => \{ onDirtyChange\?\.\(m\.dirty\); \}, \[m\.dirty, onDirtyChange\]\);/);
+// 2026-10-08: editorul raporteaza acum si „se salveaza” (m.dirty || m.saving, din 2026-10-05); regula testata
+// ramane aceeasi: tot ce citeste efectul e in lista de dependente.
+assert.match(read(`${P}ProviderServicesEditor.jsx`), /useEffect\(\(\) => \{ onDirtyChange\?\.\(m\.dirty \|\| m\.saving\); \}, \[m\.dirty, m\.saving, onDirtyChange\]\);/);
 assert.match(read('src/components/admin/directory/DirOpsMapping.jsx'), /\}, \[load, query\]\);/);
 
 // Fluxul de cerere (2026-09-29, cerut explicit de Alex: „Ocupa te de restul”). Nicio schimbare in

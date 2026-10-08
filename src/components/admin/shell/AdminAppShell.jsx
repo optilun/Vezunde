@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, ExternalLink, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import AdminErrorBoundary from "./AdminErrorBoundary";
 import AdminSidebarContent from "./AdminSidebarContent";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 import "@/styles/workspace-mobile.css";
@@ -129,9 +130,12 @@ export default function AdminAppShell({ activeKey, user, onLogout, children }) {
           </div>
         </header>
         {searchMounted && (
-          <Suspense fallback={null}>
-            <AdminGlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-          </Suspense>
+          // Căutarea e o scurtătură: dacă nu se poate încărca, se închide fără să strice restul panoului.
+          <AdminErrorBoundary variant="silent" resetKey={searchOpen} onError={() => setSearchOpen(false)}>
+            <Suspense fallback={null}>
+              <AdminGlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+            </Suspense>
+          </AdminErrorBoundary>
         )}
         <main
           id="main-content"

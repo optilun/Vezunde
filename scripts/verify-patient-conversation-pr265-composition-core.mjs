@@ -73,7 +73,10 @@ scenario('question-only and semantic shadow modes coexist', () => {
   assert.match(entry, /payload\.mode === 'question_only'/);
   assert.match(entry, /PATIENT_CONVERSATION_SHADOW_MODE/);
   assert.match(entry, /handlePatientConversationShadowMode/);
-  assert.equal((entry.match(/Core\.InvokeLLM\(/g) || []).length, 1);
+  // 2026-10-08: apelul LLM s-a mutat din entry.ts in motorul comun base44/shared/patientNeedLlmEngine.js (cache, model rapid, apoi cel puternic doar la nevoie; commit 4903c3bc). Regula ramane: un singur punct de apel LLM, folosit o singura data de interpretare; alegerea intrebarii nu apeleaza LLM.
+  assert.equal((entry.match(/Core\.InvokeLLM\(/g) || []).length, 0);
+  assert.equal((source('base44/shared/patientNeedLlmEngine.js').match(/Core\.InvokeLLM\(/g) || []).length, 1);
+  assert.equal((entry.match(/invokePatientNeedLlm\(/g) || []).length, 1);
 });
 
 scenario('question-only route has no model authority', () => {

@@ -69,8 +69,10 @@ const src = Object.fromEntries(await Promise.all(Object.entries(files).map(async
 const expectText = {
   profile: ['Locațiile organizației', 'Editează profilul', 'Renunță', 'Salvează'],
   locations: ['Configurează locația', 'Editează datele', 'Specialiștii afișați, invitațiile și cererile „Lucrez aici”.'],
-  hours: ['Program săptămânal', 'Sâmbătă', 'Închis', 'Salvează programul', 'Cum apare public'],
-  photo: ['Fotografia locației', 'Schimbă fotografia locației'],
+  // 2026-10-08: pasul de verificare al programului (din 2026-10-05) se numeste acum „Verifică informațiile afișate clienților”.
+  hours: ['Program săptămânal', 'Sâmbătă', 'Închis', 'Salvează programul', 'Verifică informațiile afișate clienților'],
+  // 2026-10-08: butonul se numeste „Schimbă fotografia” (fara „locatiei”, din 2026-10-05).
+  photo: ['Fotografia locației', 'Schimbă fotografia'],
   completeness: ['Media locațiilor active', 'Nicio locație activă', 'Compară locațiile (', 'Inactivă'],
   settings: ['Proprietari, administratori, manageri și membri', 'Preferințe pe acest dispozitiv'],
 };
@@ -122,7 +124,8 @@ assert.match(rootSrc, /publicProfileUrl=\{selectedLocationId && selectedLocation
 assert.match(src.settings, /\{locationClosed && \(\s*<SettingsRow\s*title="Locația este închisă în VIASEE"/, 'zona de pericol nu mai e goală');
 assert.match(src.settings, /Cere redeschiderea/);
 assert.match(moduleSrc, /Locație închisă: nu apare public/);
-assert.match(src.photo, />Fotografie aprobată<\/span>/);
+// 2026-10-08: eticheta „Fotografie aprobată” e acum in legenda imaginii (nu intr-un <span> propriu), din 2026-10-05.
+assert.match(src.photo, /Fotografie aprobată/);
 assert.match(src.profile, /location\?\.active_status === "inactiva" && \(/);
 assert.match(teamLinks, /Specialiștii apar public doar la locațiile active/);
 

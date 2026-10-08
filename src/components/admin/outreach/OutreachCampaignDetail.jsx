@@ -118,6 +118,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
     const data = await callOutreach("outreachCampaignOps", "get_campaign", { id: campaignId, log_limit: 1 });
     setLoading(false);
     if (data.error) { setError(data.error); return; }
+    if (!data.campaign) { setError("Campania nu a fost găsită."); return; }
     setCampaign(data.campaign);
     setSendStats(data.send_stats || null);
     const draft = draftFromCampaign(data.campaign);
