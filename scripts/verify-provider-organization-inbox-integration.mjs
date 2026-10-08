@@ -143,6 +143,27 @@ for (const name of ['getProviderEntitlement', 'getProviderProfileCompleteness', 
   reset({ ...owner, organization_wide_access: false });
   assert.equal((await readLocation()).status, 403, name + ' must reject selective owner outside assignment');
 }
+reset();
+const chatLead = { id: 'chat-lead', location_id: 'a', request_id: 'chat-request', status: 'interested', delivery_state: 'available', access_tier: 'pro_full', result_bucket_snapshot: 'top3', intent_label: 'Consultație', created_date: '2026-09-25T10:00:00Z' };
+rows.ProviderLead = [chatLead, { ...chatLead, id: 'free-lead', location_id: 'b' }];
+rows.ProviderSubscription = [{ id: 'pro-a', location_id: 'a', plan_code: 'pro', status: 'active' }];
+rows.PatientRequest = [{ id: 'chat-request', lifecycle_state: 'active', expires_at: '2099-01-01T00:00:00Z' }];
+rows.PatientRequestContact = [{ id: 'chat-contact', request_id: 'chat-request', status: 'active', provider_request_distribution_consent: true, provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v3', contact_name: 'Private', contact_email: 'private@example.test' }];
+rows.ProviderLeadResponse = [{ id: 'chat-response', request_id: 'chat-request', lead_id: 'chat-lead', location_id: 'a', status: 'active', response_type: 'can_help' }];
+rows.PatientRequestConversation = [{ id: 'chat', request_id: 'chat-request', lead_id: 'chat-lead', location_id: 'a', status: 'open', provider_unread_count: 3, last_message_at: '2026-09-26T10:00:00Z' }];
+rows.PatientRequestMessage = [{ id: 'message', conversation_id: 'chat', lead_id: 'chat-lead', location_id: 'a', status: 'active', sender_type: 'patient', body: 'Mesaj sintetic', sent_at: '2026-09-26T10:00:00Z' }, { id: 'foreign-message', conversation_id: 'chat', lead_id: 'chat-lead', location_id: 'foreign', status: 'active', body: 'Foreign private message' }];
+const conversationInbox = await invoke({ inbox_mode: true, unread_only: true });
+assert.equal(conversationInbox.status, 200);
+assert.equal(conversationInbox.data.pagination.total, 1);
+assert.equal(conversationInbox.data.leads[0].id, 'chat-lead');
+assert.equal(conversationInbox.data.leads[0].chat_summary.last_message_preview, 'Mesaj sintetic');
+assert.equal(conversationInbox.data.leads[0].location_name, 'A');
+assert.equal(conversationInbox.data.leads[0].chat_summary.unread_count, 3);
+for (const field of ['request_id', 'contact_name', 'contact_email', 'full_details']) assert.equal(conversationInbox.data.leads[0][field], undefined);
+assert.equal((await invoke({ inbox_mode: true, location_id: 'b', unread_only: true })).data.leads.length, 0);
+assert.equal((await invoke({ inbox_mode: true, location_id: 'foreign' })).status, 403);
+console.log('Organization conversation summary: scoped preview, Pro/Free isolation, unread filter and private-field omission passed.');
+
 delete globalThis.__organizationInboxTestClient;
 delete globalThis.__organizationInboxTestHandler;
 console.log('Organization inbox integration: owner scope, future locations, expiry, isolation and >500 SDK pagination passed.');

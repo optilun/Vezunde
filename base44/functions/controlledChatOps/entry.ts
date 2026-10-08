@@ -512,13 +512,28 @@ async function sendMessage(base44, svc, context, input) {
   }
 }
 
-async function markRead(svc, context) {
+async function markRead(svc, context, input) {
   if (!context.conversation) return { conversation: null };
-  const now = new Date().toISOString();
-  const update = context.actor === 'provider'
-    ? { provider_unread_count: 0, provider_last_read_at: now }
-    : { patient_unread_count: 0, patient_last_read_at: now };
-  return { conversation: await svc.entities.PatientRequestConversation.update(context.conversation.id, update) };
+  const cursor = clean(input.read_through_message_id, 120);
+  const lock = await acquireControlledChatMessageLock(svc, context.conversation.id);
+  if (!lock) return { error: 'Conversatia este actualizata in alta sesiune. Reincearca.', status: 409 };
+  try {
+    const conversation = await svc.entities.PatientRequestConversation.get(context.conversation.id);
+    if (cursor) {
+      const page = await loadChatMessagePage(svc, conversation.id);
+      const latest = page.messages.at(-1);
+      // A newer message may arrive between rendering and this request. Keep unread
+      // state until that newer message is also rendered; never mark unseen arrivals.
+      if (latest?.id !== cursor) return { conversation };
+    }
+    const now = new Date().toISOString();
+    const update = context.actor === 'provider'
+      ? { provider_unread_count: 0, provider_last_read_at: now }
+      : { patient_unread_count: 0, patient_last_read_at: now };
+    return { conversation: await svc.entities.PatientRequestConversation.update(conversation.id, update) };
+  } finally {
+    await releaseControlledChatMessageLock(svc, lock);
+  }
 }
 
 async function closeConversation(svc, context) {
@@ -596,7 +611,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'mark_read') {
-      const marked = await markRead(svc, context);
+      const marked = await markRead(svc, context, input);
+      if (marked.error) return res({ error: marked.error }, marked.status);
       context = { ...context, conversation: marked.conversation };
       return res(await buildStatusPayload(svc, context));
     }

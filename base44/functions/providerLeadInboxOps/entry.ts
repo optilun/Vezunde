@@ -1,3 +1,6 @@
+import { buildProviderInboxPage } from '../../shared/providerInboxConversationPolicy.js';
+import { projectOrganizationLeadExpirations } from '../../shared/providerOrganizationLeadLifecycle.js';
+import { readAllInboxRows, projectProviderInboxRows, addInboxMessagePreviews } from '../../shared/providerInboxConversations.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
@@ -238,14 +241,42 @@ Deno.serve(async (req) => {
       return res({ contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION, lead: sanitizeProviderLeadForFreeInbox(updated) });
     }
 
-    if (action !== 'list') return res({ error: 'Actiune necunoscuta.' }, 400);
+    if (action === 'detail') {
+      const leadId = clean(input.lead_id, 120);
+      let lead = await svc.entities.ProviderLead.get(leadId).catch(() => null);
+      if (!lead || lead.location_id !== locationId) return res({ error: 'Cererea nu a fost gasita.' }, 404);
+      const expiresAt = Date.parse(String(lead.expires_at || ''));
+      if (lead.request_id && lead.delivery_state === 'available' && Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
+        await reconcilePatientRequestExpiration(svc, lead.request_id);
+        lead = await svc.entities.ProviderLead.get(leadId);
+      }
+      const entitlement = await entitlementForLocation(svc, locationId);
+      return res({ lead: await enrichLeadForInbox(svc, lead, user, entitlement), entitlement });
+    }
+    if (action !== 'list' && action !== 'summary') return res({ error: 'Actiune necunoscuta.' }, 400);
     await reconcileLocationExpirations(svc, locationId).catch(() => null);
     const requestedScope = clean(input.scope, 40) === 'history' ? 'history' : 'active';
     const requestedStatus = clean(input.status, 80);
     const [allRows, entitlement] = await Promise.all([
-      svc.entities.ProviderLead.filter({ location_id: locationId }, '-created_date', 500),
+      input.inbox_mode === true || action === 'summary'
+        ? readAllInboxRows(svc.entities.ProviderLead, { location_id: locationId })
+        : svc.entities.ProviderLead.filter({ location_id: locationId }, '-created_date', 500),
       entitlementForLocation(svc, locationId),
     ]);
+    if (input.inbox_mode === true || action === 'summary') {
+      const lifecycleRows = await projectOrganizationLeadExpirations(svc, allRows);
+      if (action === 'summary') return res({ entitlement, counters: summarizeProviderLeadInbox(lifecycleRows) });
+      const projected = await projectProviderInboxRows(svc, lifecycleRows, { [locationId]: entitlement });
+      const page = buildProviderInboxPage(projected, { ...input, scope: requestedScope, status: requestedStatus });
+      const target = projected.find(lead => lead.id === clean(input.lead_id, 120));
+      return res({
+        contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION, scope: requestedScope,
+        entitlement, location: safeLocation(authorized.location),
+        counters: summarizeProviderLeadInbox(lifecycleRows), ...page,
+        leads: await addInboxMessagePreviews(svc, page.leads),
+        target_lead: isProviderLeadInboxTarget(target, locationId, requestedScope, requestedStatus) ? target : null,
+      });
+    }
     const rows = filterProviderLeadInbox(allRows, {
       scope: requestedScope,
       status: requestedStatus,

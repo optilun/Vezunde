@@ -10,6 +10,17 @@ on:
       - "base44/functions/providerLeadResponseOps/entry.ts"
       - "base44/functions/controlledChatOps/entry.ts"
       - "src/components/workspace/provider/ProviderLeadInbox.jsx"
+      - "src/components/workspace/provider/ProviderLeadInboxLegacy.jsx"
+      - "src/components/workspace/provider/ProviderOrganizationLeadInbox.jsx"
+      - "src/components/workspace/provider/ProviderRequestAccessSettings.jsx"
+      - "src/components/workspace/provider/ProviderSettings.jsx"
+      - "src/components/workspace/provider/leads/**"
+      - "src/components/chat/**"
+      - "src/styles/provider-lead-inbox.css"
+      - "base44/shared/providerInboxConversations.js"
+      - "base44/shared/providerInboxConversationPolicy.js"
+      - "base44/functions/getMyProviderWorkspace/providerOrganizationLeadInboxOps.ts"
+      - "scripts/verify-provider-inbox-conversations.mjs"
       - "src/components/workspace/provider/ProviderLeadChat.jsx"
       - "src/components/workspace/provider/ProviderLeadContactAccess.jsx"
       - "src/components/notifications/ProviderNotificationCenter.jsx"
@@ -35,6 +46,12 @@ jobs:
         run: npm ci
       - name: Verify provider inbox lifecycle
         run: node scripts/verify-provider-lead-inbox-free.mjs
+      - name: Verify inbox conversations and controlled chat behavior
+        run: |
+          node scripts/verify-provider-inbox-conversations.mjs
+          node scripts/verify-controlled-chat-reliability.mjs
+          node scripts/verify-provider-organization-inbox-ui.mjs
+          node scripts/verify-provider-organization-inbox-integration.mjs
       - name: Verify existing service regressions
         run: npm run test:services
       - name: Typecheck service scope

@@ -19,7 +19,7 @@ export default function ProviderLeadChat(props) {
   return <ProviderChatSession key={JSON.stringify([leadId, locationId, enabled, responseType, terminal])} {...props} />;
 }
 
-function ProviderChatSession({ leadId, locationId, enabled, responseType, terminal = false }) {
+function ProviderChatSession({ leadId, locationId, enabled, responseType, terminal = false, fullHeight = false, onChanged, readVisible = true }) {
   const invoke = useCallback(async (nextAction, values = {}) => {
     const response = await base44.functions.invoke("controlledChatOps", {
       actor: "provider",
@@ -35,17 +35,26 @@ function ProviderChatSession({ leadId, locationId, enabled, responseType, termin
     invoke,
     enabled: Boolean(enabled) && ELIGIBLE_RESPONSES.has(responseType),
     readOnly: terminal,
+    markReadOnLoad: false,
   });
 
   const conversationOpen = data?.chat?.status === "open";
   useChatLivePolling({
-    active: !terminal && conversationOpen,
+    active: !terminal && Boolean(enabled) && ELIGIBLE_RESPONSES.has(responseType),
     busy: loading || loadingOlder || Boolean(action),
     onPoll: () => load({ silent: true }),
   });
 
-  const send = (message, clientMessageId) => mutate("send", { message, client_message_id: clientMessageId });
-  const close = () => mutate("close");
+  const send = async (message, clientMessageId) => {
+    const success = await mutate("send", { message, client_message_id: clientMessageId });
+    if (success) onChanged?.();
+    return success;
+  };
+  const close = async () => {
+    const success = await mutate("close");
+    if (success) onChanged?.();
+    return success;
+  };
 
   if (!enabled || !ELIGIBLE_RESPONSES.has(responseType)) return null;
 
@@ -54,13 +63,21 @@ function ProviderChatSession({ leadId, locationId, enabled, responseType, termin
   const notOpened = !opened && !closed;
 
   return (
-    <div className="mt-5">
+    <div className={fullHeight ? "flex min-h-0 flex-1" : "mt-5"}>
       <ChatThread
-        title={terminal ? "Istoric chat VIASEE · Pro" : "Chat VIASEE · Pro"}
-        hint={terminal
+        title={fullHeight ? (terminal ? "Istoric conversație" : "Conversație") : terminal ? "Istoric chat VIASEE · Pro" : "Chat VIASEE · Pro"}
+        hint={fullHeight ? "" : terminal
           ? "Conversația este disponibilă numai pentru consultare. Datele de contact rămân blocate."
           : "Clientul deschide conversația. Telefonul, emailurile și linkurile sunt blocate în mesaje."}
         messages={data?.messages || []}
+        fullHeight={fullHeight}
+        unreadCount={data?.chat?.unread_count || 0}
+        onMessagesViewed={readVisible ? async messageId => {
+          if (terminal || !data?.chat?.unread_count) return false;
+          const success = await mutate("mark_read", { read_through_message_id: messageId });
+          if (success) onChanged?.();
+          return success;
+        } : undefined}
         mineSenderType="provider"
         meLabel="Locația"
         otherLabel="Client"

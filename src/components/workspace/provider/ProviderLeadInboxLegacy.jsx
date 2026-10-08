@@ -1,328 +1,187 @@
-// Inboxul de leaduri al locatiei, pe doua coloane (2026-08-18): lista de cereri in stanga,
-// cererea selectata cu raspuns, telefon si conversatie in dreapta. Inainte fiecare lead era
-// un card lung, iar chatul o cutie mica ingropata in josul lui - greu de urmarit cu mai
-// multe cereri active. Apelurile backend (providerLeadInboxOps, providerLeadResponseOps) si
-// regulile de acces rămân identice: s-a schimbat doar prezentarea.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Inbox, Loader2, LockKeyhole, RefreshCw } from "lucide-react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Loader2, RefreshCw, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
+import useChatLivePolling from "@/components/chat/useChatLivePolling";
 import LeadListItem from "./leads/LeadListItem";
 import LeadDetailPanel from "./leads/LeadDetailPanel";
-import ProviderUpgradeSpotlight from "./leads/ProviderUpgradeSpotlight";
-import { openUpgradeSpotlight, setUpgradeSpotlightAvailable } from "@/lib/providerUpgradeSpotlight";
+import LeadConversationPanel from "./leads/LeadConversationPanel";
+import InboxFilters from "./leads/InboxFilters";
+import InboxPagination from "./leads/InboxPagination";
 import { mergeFocusedLead } from "@/lib/providerOrganizationInboxView";
 import { withTransientRetry } from "@/lib/transientRetry";
 import { INBOX_RETRY_OPTIONS, inboxErrorMessage } from "@/lib/providerInboxErrors";
+import "@/styles/provider-lead-inbox.css";
 
-const FILTERS = [
-  { key: "all", label: "Active", scope: "active", status: "" },
-  { key: "new", label: "Noi", scope: "active", status: "new" },
-  { key: "viewed", label: "Văzute", scope: "active", status: "viewed" },
-  { key: "interested", label: "Putem ajuta", scope: "active", status: "interested" },
-  { key: "needs_details", label: "Detalii necesare", scope: "active", status: "needs_details" },
-  { key: "declined", label: "Nu putem ajuta", scope: "active", status: "declined" },
-  { key: "history", label: "Încheiate", scope: "history", status: "" },
-];
-
-const TERMINAL_NOTIFICATION_EVENTS = new Set([
-  "provider_request_resolved",
-  "provider_request_closed",
-  "provider_request_expired",
-]);
-
-const FREE_ENTITLEMENT = { plan_code: "free", status: "free", feature_keys: [] };
-
-function responseData(response) {
+const TERMINAL_EVENTS = new Set(["provider_request_resolved", "provider_request_closed", "provider_request_expired"]);
+function result(response) {
   const data = response?.data || {};
   if (data.error) throw Object.assign(new Error(data.error), { status: response?.status || 0 });
   return data;
 }
-
-export default function ProviderLeadInbox({ locationId, location, targetLeadId = "", targetHistory = false }) {
+function useMedia(query) {
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && Boolean(window.matchMedia?.(query).matches));
+  useEffect(() => {
+    const media = window.matchMedia?.(query);
+    if (!media) return;
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [query]);
+  return matches;
+}
+export default function ProviderLeadInbox({ locationId, location, targetLeadId = "", targetHistory = false, onOpenRequestSettings }) {
   const [data, setData] = useState(null);
-  // 2026-10-04: planul ramane necunoscut (null) pana raspunde serverul. Inainte pornea ca „Free”,
-  // deci la o eroare temporara un client Pro vedea „Plan Free”.
-  const [entitlement, setEntitlement] = useState(null);
-  const [responsesByLead, setResponsesByLead] = useState({});
-  const [filter, setFilter] = useState(targetHistory ? "history" : "all");
-  const [selectedLeadId, setSelectedLeadId] = useState("");
-  const [targetMissing, setTargetMissing] = useState(false);
-  const [notificationTick, setNotificationTick] = useState(0);
-  const targetLeadRef = useRef(targetLeadId);
+  const [filter, setFilter] = useState(targetHistory ? "history" : "active");
+  const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [selectedId, setSelectedId] = useState("");
+  const [detail, setDetail] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
-  const [markingId, setMarkingId] = useState("");
-  const [respondingId, setRespondingId] = useState("");
-
-  const canRespond = entitlement?.plan_code === "pro" && entitlement?.feature_keys?.includes("provider_leads.respond");
-  const canAccessContact = entitlement?.plan_code === "pro" && entitlement?.feature_keys?.includes("provider_contact.access_after_consent");
-  const canChat = entitlement?.plan_code === "pro" && entitlement?.feature_keys?.includes("provider_chat.access");
-
-  const load = useCallback(async () => {
+  const [responding, setResponding] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const [tick, setTick] = useState(0);
+  const target = useRef(targetLeadId);
+  const sequence = useRef(0);
+  const detailSequence = useRef(0);
+  const drawerRef = useRef(null);
+  const shellRef = useRef(null);
+  const wide = useMedia("(min-width: 1024px)");
+  const threeColumns = useMedia("(min-width: 1450px)");
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell?.getBoundingClientRect || typeof document === "undefined") return;
+    const fit = () => {
+      const nav = document.querySelector('[aria-label="Navigare rapidă"]');
+      const navHeight = nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect().height : 0;
+      const viewport = window.visualViewport;
+      const height = Math.max(300, (viewport?.height || window.innerHeight) - shell.getBoundingClientRect().top + (viewport?.offsetTop || 0) - navHeight - 12);
+      shell.style.setProperty("--inbox-height", height + "px");
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    observer?.observe(shell.parentElement);
+    return () => { window.removeEventListener("resize", fit); window.visualViewport?.removeEventListener("resize", fit); observer?.disconnect(); };
+  }, [selectedId, wide, threeColumns, error]);
+  useEffect(() => {
+    if (!detailsOpen || threeColumns) return;
+    const previous = document.activeElement;
+    const drawer = drawerRef.current;
+    drawer?.querySelector("button")?.focus();
+    const keydown = event => {
+      if (event.key === "Escape") { event.preventDefault(); setDetailsOpen(false); }
+      if (event.key !== "Tab" || !drawer) return;
+      const items = Array.from(drawer.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex="0"]'));
+      const first = items[0], last = items.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); if (last instanceof HTMLElement) last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); if (first instanceof HTMLElement) first.focus(); }
+    };
+    document.addEventListener("keydown", keydown);
+    return () => { document.removeEventListener("keydown", keydown); if (previous instanceof HTMLElement) previous.focus(); };
+  }, [detailsOpen, threeColumns]);
+  const queryKey = JSON.stringify([locationId, filter, status, query, offset]);
+  useEffect(() => { const timer = setTimeout(() => { setQuery(search); setOffset(0); }, 250); return () => clearTimeout(timer); }, [search]);
+  const load = useCallback(async ({ silent = false } = {}) => {
     if (!locationId) return;
-    setLoading(true);
-    setError("");
+    const ticket = ++sequence.current;
+    if (!silent) { setLoading(true); setError(""); }
     try {
-      const selectedFilter = FILTERS.find((item) => item.key === filter) || FILTERS[0];
-      // Lista se reincearca doar la erori trecatoare (limita de trafic, 5xx).
-      const inboxData = responseData(await withTransientRetry(() => base44.functions.invoke("providerLeadInboxOps", {
-        action: "list",
-        location_id: locationId,
-        scope: selectedFilter.scope,
-        status: selectedFilter.status,
-        lead_id: targetLeadRef.current || undefined,
-        limit: 100,
+      const next = result(await withTransientRetry(() => base44.functions.invoke("providerLeadInboxOps", {
+        action: "list", inbox_mode: true, location_id: locationId,
+        scope: filter === "history" ? "history" : "active",
+        unread_only: filter === "unread", status: filter === "history" ? "" : status,
+        search: query, lead_id: target.current || undefined, offset, limit: 50,
       }), INBOX_RETRY_OPTIONS));
-      setData(inboxData);
-      const resolvedEntitlement = inboxData.entitlement || FREE_ENTITLEMENT;
-      setEntitlement(resolvedEntitlement);
-
-      if (resolvedEntitlement.plan_code === "pro" && resolvedEntitlement.feature_keys?.includes("provider_leads.respond")) {
-        const responseRows = responseData(await withTransientRetry(() => base44.functions.invoke("providerLeadResponseOps", { action: "list", location_id: locationId }), INBOX_RETRY_OPTIONS)).responses || [];
-        setResponsesByLead(Object.fromEntries(responseRows.map((row) => [row.lead_id, row])));
-      } else {
-        setResponsesByLead({});
-      }
-    } catch (loadError) {
-      setError(inboxErrorMessage(loadError));
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, locationId]);
-
-  useEffect(() => { void load(); }, [load, notificationTick]);
-
-  const leads = useMemo(() => mergeFocusedLead(data?.leads, data?.target_lead), [data]);
-
-  // Pe desktop lista si detaliul stau alaturi, deci prima cerere se deschide singura;
-  // daca selectia nu mai exista in filtrul curent, revenim la prima din lista.
+      if (ticket === sequence.current) { setData({ ...next, queryKey }); setError(""); }
+    } catch (cause) {
+      if (ticket === sequence.current) { setData(null); setError(inboxErrorMessage(cause)); }
+    } finally { if (ticket === sequence.current) setLoading(false); }
+  }, [locationId, filter, status, query, offset, queryKey]);
+  useEffect(() => { void load(); return () => { sequence.current += 1; }; }, [load, tick]);
+  const current = data?.queryKey === queryKey ? data : null;
+  const leads = useMemo(() => mergeFocusedLead(current?.leads, current?.target_lead), [current]);
+  const listedLeads = current?.leads || [];
   useEffect(() => {
-    if (targetLeadRef.current && !loading && data) {
-      const target = leads.find((lead) => lead.id === targetLeadRef.current);
-      if (target) {
-        if (selectedLeadId !== target.id) setSelectedLeadId(target.id);
-        setTargetMissing(false);
-      } else {
-        setSelectedLeadId("");
-        setTargetMissing(true);
-      }
+    if (loading || !current) return;
+    if (target.current) {
+      const found = leads.find(row => row.id === target.current);
+      setSelectedId(found?.id || "");
       return;
     }
-    if (leads.length === 0) {
-      if (selectedLeadId) setSelectedLeadId("");
-      return;
-    }
-    if (leads.some((lead) => lead.id === selectedLeadId)) return;
-    // Pe telefon NU deschidem automat prima cerere: acolo lista e ecranul de start, iar o
-    // selectie automata ar sari peste ea. Selectia stalea se curata insa pe ambele.
-    const wide = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
-    setSelectedLeadId(wide ? leads[0].id : "");
-  }, [data, leads, loading, selectedLeadId]);
-
-  const openNotificationTarget = useCallback((notification) => {
+    if (leads.some(row => row.id === selectedId)) return;
+    setSelectedId(wide ? leads[0]?.id || "" : "");
+  }, [leads, current, loading, selectedId, wide]);
+  const selected = leads.find(row => row.id === selectedId);
+  const detailKey = JSON.stringify([locationId, selectedId]);
+  const loadDetail = useCallback(async () => {
+    const ticket = ++detailSequence.current;
+    if (!selectedId) { setDetail(null); setDetailLoading(false); return; }
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const next = result(await withTransientRetry(() => base44.functions.invoke("providerLeadInboxOps", {
+        action: "detail", location_id: locationId, lead_id: selectedId,
+      }), INBOX_RETRY_OPTIONS));
+      if (ticket === detailSequence.current) setDetail({ ...next, detailKey });
+    } catch (cause) {
+      if (ticket === detailSequence.current) setError(inboxErrorMessage(cause));
+    } finally { if (ticket === detailSequence.current) setDetailLoading(false); }
+  }, [locationId, selectedId, detailKey]);
+  useEffect(() => { setDetailsOpen(false); void loadDetail(); return () => { detailSequence.current += 1; }; }, [loadDetail]);
+  const currentDetail = detail?.detailKey === detailKey ? detail : null;
+  const entitlement = current?.entitlement;
+  const fullLead = selected && currentDetail?.lead ? { ...selected, ...currentDetail.lead, access_tier: selected.access_tier, provider_response: selected.provider_response } : selected;
+  const chatChanged = useCallback(() => { void load({ silent: true }); }, [load]);
+  useChatLivePolling({ active: Boolean(current) && !responding, busy: loading, intervalMs: 20000, onPoll: () => load({ silent: true }) });
+  const resetSelection = () => { target.current = ""; setSelectedId(""); setDetailsOpen(false); };
+  const select = row => { target.current = row.id; setSelectedId(row.id); setDetailsOpen(false); };
+  const openNotification = notification => {
     if (!notification?.action_target_id) return;
-    targetLeadRef.current = notification.action_target_id;
-    setTargetMissing(false);
-    setFilter(TERMINAL_NOTIFICATION_EVENTS.has(notification.event_key) ? "history" : "all");
-    setSelectedLeadId(notification.action_target_id);
-    setNotificationTick((tick) => tick + 1);
-  }, []);
-
-  const markViewed = async (leadId) => {
-    setMarkingId(leadId);
-    setError("");
-    try {
-      await base44.functions.invoke("providerLeadInboxOps", { action: "mark_viewed", location_id: locationId, lead_id: leadId }).then(responseData);
-      await load();
-    } catch (markError) {
-      setError(inboxErrorMessage(markError, "Cererea nu a putut fi actualizată. Încearcă din nou."));
-    } finally {
-      setMarkingId("");
-    }
+    target.current = notification.action_target_id;
+    setFilter(TERMINAL_EVENTS.has(notification.event_key) ? "history" : "active");
+    setStatus(""); setSearch(""); setQuery(""); setOffset(0);
+    setSelectedId(notification.action_target_id); setTick(value => value + 1);
   };
-
-  const submitResponse = async (leadId, responseType) => {
-    setRespondingId(leadId);
-    setError("");
+  const act = async (leadId, responseType) => {
+    const setBusy = responseType ? setResponding : setMarking;
+    setBusy(true); setError("");
     try {
-      await base44.functions.invoke("providerLeadResponseOps", { action: "submit", location_id: locationId, lead_id: leadId, response_type: responseType }).then(responseData);
-      await load();
-    } catch (responseError) {
-      setError(inboxErrorMessage(responseError, "Răspunsul nu a putut fi salvat. Încearcă din nou."));
-    } finally {
-      setRespondingId("");
-    }
+      result(await base44.functions.invoke(responseType ? "providerLeadResponseOps" : "providerLeadInboxOps", {
+        action: responseType ? "submit" : "mark_viewed", location_id: locationId, lead_id: leadId,
+        ...(responseType ? { response_type: responseType } : {}),
+      }));
+      await load(); await loadDetail();
+    } catch (cause) { setError(inboxErrorMessage(cause)); }
+    finally { setBusy(false); }
   };
-
-  const locationName = data?.location?.name || location?.public_display_name || location?.name || "Locația selectată";
-  const historySelected = filter === "history";
-  // Blocul de upgrade apare numai cat timp locatia nu are inca plan Pro activ. Asteptam
-  // raspunsul backendului: altfel, cu planul implicit Free, ar clipi si pentru locatiile Pro.
-  const showUpgradeCard = Boolean(data) && Boolean(entitlement) && entitlement.plan_code !== "pro";
-
-  // Se deschide singur la fiecare intrare in modul si la fiecare reincarcare. Cand pleci din
-  // modul il scoatem din bara de sus, ca butonul "Upgrade" sa nu ramana pe alte sectiuni.
-  useEffect(() => {
-    setUpgradeSpotlightAvailable(showUpgradeCard);
-    if (showUpgradeCard) openUpgradeSpotlight();
-    return () => setUpgradeSpotlightAvailable(false);
-  }, [showUpgradeCard]);
-  const selectedLead = leads.find((lead) => lead.id === selectedLeadId) || null;
-
-  // Coloana din stanga, in tiparul unei aplicatii de mesagerie (2026-08-22): un panou unic
-  // cu filtrele sus, ca bara de segmente, si conversatiile dedesubt, despartite prin linii
-  // subtiri - nu carduri separate, plutind fiecare pe fundal.
-  const listColumn = (
-    <div className="overflow-hidden rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6]">
-      <div className="flex gap-1.5 overflow-x-auto border-b border-[#e3ddd0] px-2.5 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {FILTERS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => { targetLeadRef.current = ""; setTargetMissing(false); setSelectedLeadId(""); setFilter(item.key); }}
-            className={`shrink-0 rounded-full px-3 py-1.5 font-heading text-[11.5px] font-bold tracking-[-0.015em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#fdfbf6] ${filter === item.key ? "bg-[#171717] text-white" : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"}`}
-          >
-            {item.label}
-          </button>
-        ))}
+  const showDetails = Boolean(fullLead) && (threeColumns || detailsOpen);
+  const details = showDetails && <aside ref={drawerRef} className="inbox-details" role={threeColumns ? "complementary" : "dialog"} aria-modal={threeColumns ? undefined : true} aria-label="Detaliile cererii">
+    <div className="inbox-detail-heading"><span>Detaliile cererii</span><button type="button" className="inbox-button inbox-close-details" aria-label="Închide detaliile" onClick={() => setDetailsOpen(false)}><X /></button></div>
+    {currentDetail?.lead ? <LeadDetailPanel lead={fullLead} response={selected?.provider_response} locationId={locationId}
+      canRespond={Boolean(entitlement?.feature_keys?.includes("provider_leads.respond"))} canAccessContact={entitlement?.plan_code === "pro" && entitlement.feature_keys?.includes("provider_contact.access_after_consent")}
+      canChat={false} onMarkViewed={id => act(id)} onRespond={act} marking={marking} responding={responding} hideActions hideConversation />
+      : <div className="inbox-empty" role="status">{detailLoading ? "Se încarcă detaliile…" : "Detaliile nu au putut fi încărcate."}<button type="button" className="inbox-button" onClick={loadDetail}>Reîncearcă</button></div>}
+  </aside>;
+  return <section className="provider-inbox" data-selected={Boolean(selectedId)}>
+    <header className="inbox-heading"><div><h1>Cereri</h1><p>{location?.public_display_name || location?.name || "Locația selectată"}{current ? ` · ${current.counters?.active || 0} active · ${current.unread_conversations || 0} conversații necitite` : ""}</p></div><div className="inbox-tools"><ProviderNotificationCenter locations={[]} locationId={locationId} onOpenTarget={openNotification} /><button type="button" className="inbox-button" disabled={loading} onClick={() => void load()} aria-label="Actualizează cererile"><RefreshCw /><span className="inbox-refresh-label">Actualizează</span></button></div></header>
+    {error && <div role="alert" className="inbox-error">{error} <button type="button" className="inbox-button" onClick={() => { void load(); void loadDetail(); }}>Reîncearcă</button></div>}
+    {entitlement?.plan_code !== "pro" && current && !selectedId && <p className="inbox-access-note">Locația are acces la rezumatele cererilor. {onOpenRequestSettings && <button type="button" onClick={onOpenRequestSettings}>Plan și acces</button>}</p>}
+    <div className="inbox-shell" ref={shellRef}>
+      <div className="inbox-list" ref={node => node?.toggleAttribute("inert", detailsOpen && !threeColumns)}><InboxFilters filter={filter} status={status} search={search} onChange={value => { resetSelection(); setFilter(value); setOffset(0); }} onStatus={value => { resetSelection(); setStatus(value); setOffset(0); }} onSearch={value => { resetSelection(); setSearch(value); }} />
+        <div className="inbox-rows" aria-busy={loading}>{!current && loading ? <div className="inbox-empty" role="status"><Loader2 className="mx-auto animate-spin" />Se încarcă cererile…</div> : listedLeads.length ? listedLeads.map(row => <LeadListItem key={row.id} lead={row} selected={row.id === selectedId} onSelect={() => select(row)} />) : <div className="inbox-empty"><strong>{filter === "unread" ? "Nicio conversație necitită" : filter === "history" ? "Nicio cerere încheiată" : "Nicio cerere în această categorie"}</strong>{filter === "unread" ? "Mesajele noi vor apărea aici." : "Cererile eligibile apar după acordul clientului."}</div>}</div>
+        <InboxPagination page={current?.pagination} count={current?.leads?.length || 0} busy={loading} onPage={value => { resetSelection(); setOffset(value); }} />
       </div>
-
-      {loading ? (
-        <div className="flex min-h-40 items-center justify-center font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă cererile</div>
-      ) : leads.length === 0 ? (
-        <div className="px-6 py-12 text-center">
-          <span
-            aria-hidden="true"
-            style={{ borderColor: historySelected ? "#dac69b" : "#ccd2ba", backgroundColor: historySelected ? "#eadcba" : "#dfe3d2" }}
-            className="relative mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border"
-          >
-            <span className="absolute inset-0 opacity-30 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
-            <Inbox className="relative z-10 h-5 w-5 text-black/55" />
-          </span>
-          <p className="mt-4 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere</p>
-          <h2 className="mt-2 font-heading text-xl font-extrabold leading-[1.08] tracking-[-0.035em]">{historySelected ? "Nu există cereri încheiate" : "Nu există cereri în această categorie"}</h2>
-          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{historySelected ? "Cererile rezolvate, închise sau expirate apar aici." : "Cererile eligibile apar aici după acordul clientului."}</p>
-        </div>
-      ) : (
-        <div className="divide-y divide-[#e3ddd0] p-1.5">
-          {leads.map((lead) => (
-            <LeadListItem
-              key={lead.id}
-              lead={lead}
-              response={responsesByLead[lead.id] || null}
-              selected={lead.id === selectedLeadId}
-              onSelect={() => { targetLeadRef.current = lead.id; setTargetMissing(false); setSelectedLeadId(lead.id); }}
-            />
-          ))}
-        </div>
-      )}
+      <div className="inbox-conversation-slot" ref={node => node?.toggleAttribute("inert", detailsOpen && !threeColumns)}><LeadConversationPanel readVisible={!detailsOpen || threeColumns} lead={fullLead} locationId={locationId} entitlement={entitlement} loading={detailLoading || !currentDetail} responding={responding} onRespond={act} onBack={resetSelection} onDetails={() => setDetailsOpen(true)} onChatChanged={chatChanged} /></div>
+      {detailsOpen && !threeColumns && <button type="button" className="inbox-detail-scrim" aria-label="Închide detaliile" onClick={() => setDetailsOpen(false)} />}
+      {details}
     </div>
-  );
-
-  const detailColumn = selectedLead ? (
-    <LeadDetailPanel
-      lead={selectedLead}
-      response={responsesByLead[selectedLead.id] || null}
-      locationId={locationId}
-      canRespond={canRespond}
-      canAccessContact={canAccessContact}
-      canChat={canChat}
-      onMarkViewed={markViewed}
-      onRespond={submitResponse}
-      marking={markingId === selectedLead.id}
-      responding={respondingId === selectedLead.id}
-    />
-  ) : (
-    <div className="flex min-h-72 flex-col justify-center rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] px-8 py-10">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere selectată</p>
-      <h2 className="mt-3 max-w-md font-heading text-[2rem] font-extrabold leading-[1.02] tracking-[-0.045em]">Alege o cerere din listă.</h2>
-      <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">Detaliile clientului, răspunsul locației și conversația apar aici.</p>
-    </div>
-  );
-
-  return (
-    <section className="space-y-5">
-      {/* Antet editorial (2026-08-19): acelasi registru ca homepage - eyebrow mono, titlu mare
-          strans, banda subtire cu jaloane si contoare in placi tonale din paleta de categorii.
-          Valorile contoarelor vin neschimbate din providerLeadInboxOps. */}
-      <header>
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
-              Cereri primite · {locationName}
-            </p>
-            <h1 className="mt-4 max-w-3xl font-heading text-[2.6rem] font-extrabold leading-[0.98] tracking-[-0.055em] sm:text-[3.4rem]">
-              <span className="block">Cererile clienților tăi.</span>
-              <span className="block">Într-un singur loc.</span>
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Cererile active și cele încheiate sunt păstrate separat.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            {entitlement && <span className={`rounded-full px-3.5 py-1.5 font-heading text-[12px] font-bold tracking-[-0.015em] ${entitlement.plan_code === "pro" ? "bg-[#171717] text-white" : "border border-foreground/15 bg-white/70 text-foreground"}`}>Plan {entitlement.plan_code === "pro" ? "Pro" : "Free"}</span>}
-            <ProviderNotificationCenter locationId={locationId} onOpenTarget={openNotificationTarget} />
-            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45 disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
-          </div>
-        </div>
-
-        <div className="relative mt-9 h-px bg-[#9a8668]/45">
-          {[16, 50, 84].map((position) => (
-            <span key={position} aria-hidden="true" className="absolute -top-1 h-[9px] w-[9px] -translate-x-1/2 rounded-full border border-[#8d7658] bg-[#f8f4ec]" style={{ left: `${position}%` }} />
-          ))}
-        </div>
-
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
-          {[
-            { value: data?.counters?.new || 0, label: "Cereri noi", border: "#ccd2ba", bg: "#dfe3d2" },
-            { value: data?.counters?.active || 0, label: "În lucru", border: "#c6d3da", bg: "#dce5e9" },
-            { value: data?.counters?.history || 0, label: "În istoric", border: "#dac69b", bg: "#eadcba" },
-          ].map((item) => (
-            <div key={item.label} style={{ borderColor: item.border, backgroundColor: item.bg }} className="relative overflow-hidden rounded-[1.4rem] border px-5 py-4 shadow-[0_10px_30px_rgba(34,30,24,0.028)]">
-              <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
-              <p className="relative z-10 font-heading text-[2.4rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{item.value}</p>
-              <p className="relative z-10 mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/55">{item.label}</p>
-            </div>
-          ))}
-        </div>
-      </header>
-
-      <div className="flex items-start gap-2.5 border-y border-border py-4 text-sm leading-relaxed text-muted-foreground">
-        <LockKeyhole aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-        <p><strong className="font-heading font-bold text-foreground">Acces controlat.</strong> Free vede rezumatul anonim. Pro primește detaliile și chatul numai în Top 3. După încheiere, datele private și acțiunile sunt retrase.</p>
-      </div>
-
-      {error && (
-        <div role="alert" className="flex flex-col gap-3 rounded-[1.4rem] border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
-          <span>{error}</span>
-          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-destructive/30 bg-white/80 px-4 font-heading text-[12px] font-bold text-destructive hover:bg-white disabled:opacity-60">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Reîncearcă
-          </button>
-        </div>
-      )}
-      {targetMissing && !loading && !error && <p role="status" className="rounded-[1.4rem] border border-[#dac69b] bg-[#eadcba] p-4 text-sm text-foreground">Cererea aleasă nu a putut fi deschisă în acest filtru. Alege o cerere din listă sau actualizează pagina.</p>}
-
-      {/* Pe telefon lista si detaliul nu incap alaturi, deci lista e "acasa" si intri in
-          cerere, cu buton de intoarcere - acelasi tipar ca in spatiul cererii pacientului. */}
-      <div className="lg:hidden">
-        {selectedLead ? (
-          <div className="space-y-3">
-            <button type="button" onClick={() => setSelectedLeadId("")} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45">
-              <ArrowLeft className="h-3.5 w-3.5" /> Toate cererile
-            </button>
-            {detailColumn}
-          </div>
-        ) : listColumn}
-      </div>
-
-      <div className="hidden gap-5 lg:grid lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-        <aside className="min-w-0">{listColumn}</aside>
-        <main className="min-w-0">{detailColumn}</main>
-      </div>
-
-      {/* Blocul de upgrade sta peste continut, nu in coloane: acolo se pierdea. */}
-      <ProviderUpgradeSpotlight />
-    </section>
-  );
+  </section>;
 }

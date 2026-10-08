@@ -1,7 +1,7 @@
 // Panoul de conversatie, comun pacientului si locatiei. Primeste TOTUL prin proprietati:
 // nu cheama backendul si nu decide eligibilitatea - acelea rămân in ProviderLeadChat /
 // PatientRequestChat, care vorbesc cu controlledChatOps. Asa arata identic pe ambele parti.
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Loader2, LockKeyhole, MessageCircle, RefreshCw } from "lucide-react";
 import ChatMessageBubble from "./ChatMessageBubble";
 import ChatComposer from "./ChatComposer";
@@ -28,12 +28,38 @@ export default function ChatThread({
   onClose,
   onRefresh,
   headerAction = null,
+  fullHeight = false,
+  unreadCount = 0,
+  onMessagesViewed = null,
 }) {
   const listRef = useRef(null);
+  const latestRef = useRef(null);
+  const viewed = useRef(onMessagesViewed);
+  viewed.current = onMessagesViewed;
+  const pendingRead = useRef(false);
   const position = useRef({ first: null, last: null, height: 0, top: 0, nearBottom: true });
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const firstId = messages[0]?.id;
   const lastId = messages[messages.length - 1]?.id;
+  const canConfirmRead = Boolean(onMessagesViewed);
+  useEffect(() => {
+    if (!lastId || !unreadCount || !canConfirmRead || typeof IntersectionObserver === "undefined") return;
+    const latest = latestRef.current;
+    if (!latest) return;
+    let visible = false;
+    let active = true;
+    const confirm = async () => {
+      if (!active || !visible || document.visibilityState !== "visible" || pendingRead.current) return;
+      pendingRead.current = true;
+      try { await viewed.current?.(lastId); } finally { pendingRead.current = false; }
+    };
+    // The end of the latest message must intersect both the scroll area and the viewport.
+    const observer = new IntersectionObserver(entries => { visible = entries[0]?.isIntersecting; void confirm(); }, { threshold: 1 });
+    observer.observe(latest);
+    const visibility = () => { void confirm(); };
+    document.addEventListener("visibilitychange", visibility);
+    return () => { active = false; observer.disconnect(); document.removeEventListener("visibilitychange", visibility); };
+  }, [lastId, unreadCount, canConfirmRead]);
   useLayoutEffect(() => {
     const node = listRef.current;
     if (!node) return;
@@ -96,7 +122,7 @@ export default function ChatThread({
           {loadingOlder ? "Se încarcă istoricul..." : "Încarcă mesaje mai vechi"}
         </button>
       )}
-      <div ref={listRef} role="log" aria-label={title} aria-live="polite" aria-relevant="additions" aria-busy={loading || loadingOlder} tabIndex={0} onScroll={trackScroll} className="min-h-40 flex-1 space-y-2.5 overflow-y-auto px-4 py-4" style={{ maxHeight: "26rem" }}>
+      <div ref={listRef} role="log" aria-label={title} aria-live="polite" aria-relevant="additions" aria-busy={loading || loadingOlder} tabIndex={0} onScroll={trackScroll} className="min-h-40 flex-1 space-y-2.5 overflow-y-auto px-4 py-4" style={fullHeight ? undefined : { maxHeight: "26rem" }}>
         {loading && messages.length === 0 ? (
           <p className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se incarca conversatia...</p>
         ) : lockedNote ? (
@@ -115,7 +141,7 @@ export default function ChatThread({
             </React.Fragment>
           ))
         )}
-
+        <div ref={latestRef} aria-hidden="true" style={{ height: 1 }} />
       </div>
 
       {hasNewMessages && <button type="button" className="min-h-10 border-t border-border text-xs font-bold" onClick={() => { listRef.current.scrollTop = listRef.current.scrollHeight; trackScroll(); }}>Mesaje noi · Mergi la final</button>}

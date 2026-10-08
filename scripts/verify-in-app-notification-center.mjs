@@ -120,7 +120,7 @@ const phoneBackend = await readFile(new URL('../base44/functions/managePatientCo
 const center = await readFile(new URL('../src/components/notifications/NotificationCenter.jsx', import.meta.url), 'utf8');
 const providerCenter = await readFile(new URL('../src/components/notifications/ProviderNotificationCenter.jsx', import.meta.url), 'utf8');
 const patientCenter = await readFile(new URL('../src/components/notifications/PatientNotificationCenter.jsx', import.meta.url), 'utf8');
-const providerInbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const providerInbox = (await Promise.all(['ProviderLeadInboxLegacy.jsx', 'leads/LeadConversationPanel.jsx'].map(file => readFile(new URL('../src/components/workspace/provider/' + file, import.meta.url), 'utf8')))).join('\n');
 const patientStatus = await readFile(new URL('../src/components/intake2/PatientRequestResponseStatus.jsx', import.meta.url), 'utf8');
 
 assert.match(providerBackend, /base44\.auth\.me\(\)/);

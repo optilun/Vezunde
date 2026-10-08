@@ -42,12 +42,12 @@ assert.equal(suspended.capabilities.find((item) => item.key === 'directory_visib
 
 const policy = await readFile(new URL('../shared/providerStatusCenter.js', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/components/workspace/provider/ProviderStatusCenter.jsx', import.meta.url), 'utf8');
-const wrapper = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const wrapper = await readFile(new URL('../src/components/workspace/provider/ProviderRequestAccessSettings.jsx', import.meta.url), 'utf8');
 const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInboxLegacy.jsx', import.meta.url), 'utf8');
 
 assert.match(panel, /Nu modifică planul, eligibilitatea Top 3, acordul clientului sau starea profilului/);
 assert.match(wrapper, /ProviderStatusCenter/);
-assert.match(wrapper, /ProviderLeadInboxLegacy/);
+assert.match(await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8'), /ProviderLeadInboxLegacy/);
 assert.match(wrapper, /providerLeadInboxOps/);
 assert.match(inbox, /providerLeadResponseOps/);
 assert.match(inbox, /ProviderNotificationCenter/);
@@ -55,9 +55,9 @@ assert.match(inbox, /ProviderNotificationCenter/);
 // prin id (`provider-lead-${lead.id}` a disparut din randare, LeadListItem.jsx nu-l mai
 // seteaza) - in schimb ProviderLeadInboxLegacy.jsx primeste notificarea direct prin
 // onOpenTarget si schimba filtrul + selectia din stare React, mecanism mai robust.
-assert.match(inbox, /onOpenTarget=\{openNotificationTarget\}/);
-assert.match(inbox, /const openNotificationTarget = useCallback/);
-assert.match(inbox, /setSelectedLeadId\(notification\.action_target_id\)/);
+assert.match(inbox, /onOpenTarget=\{openNotification\}/);
+assert.match(inbox, /const openNotification = notification/);
+assert.match(inbox, /setSelectedId\(notification\.action_target_id\)/);
 assert.doesNotMatch(policy, /recommendation_score|bucket_rank|paid_visibility|ranking/);
 
 console.log('Provider status center verified.');

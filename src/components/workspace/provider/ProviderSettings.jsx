@@ -14,6 +14,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { useSearchParams } from "react-router-dom";
 import ProviderBillingPanel from "./leads/ProviderBillingPanel";
+import ProviderRequestAccessSettings from "./ProviderRequestAccessSettings";
 import { SETTINGS_GRAIN, SETTINGS_TONES } from "./settingsVisuals";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
@@ -200,6 +201,8 @@ function ConfirmationModal({ action, location, isLastActiveLocation, submitting,
 export default function ProviderSettings({ user, workspace, overview, selectedLocationId, onSelectLocation, onSwitchMode, onNavigate, onBillingSynced }) {
   const [settingsParams, setSettingsParams] = useSearchParams();
   const billingTab = settingsParams.get("tab") === "billing";
+  const requestsTab = settingsParams.get("tab") === "requests";
+  const settingsTab = billingTab ? "billing" : requestsTab ? "requests" : "general";
   const [preferences, setPreferences] = useState(() => readAccountPreferences(user?.id));
   const [pendingAction, setPendingAction] = useState(null);
   const [lifecycleSubmission, setLifecycleSubmission] = useState(null);
@@ -259,9 +262,9 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   }, [selectedLocation?.id]);
 
   useEffect(() => {
-    if (!billingTab && selectedRole === "organization_owner") void loadLifecycle();
+    if (!billingTab && !requestsTab && selectedRole === "organization_owner") void loadLifecycle();
     return () => { lifecycleRequestRef.current += 1; };
-  }, [loadLifecycle, billingTab, selectedRole]);
+  }, [loadLifecycle, billingTab, requestsTab, selectedRole]);
 
   const fixedLocationId = locations.some((location) => location.id === preferences.fixedProviderLocationId)
     ? preferences.fixedProviderLocationId
@@ -367,9 +370,9 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
       </div>
 
       <nav aria-label="Secțiuni setări" className="flex flex-wrap gap-2">
-        {[["general", "General"], ["billing", "Abonament și facturare"]].map(([key, label]) => <button key={key} type="button" aria-current={(billingTab ? "billing" : "general") === key ? "page" : undefined} onClick={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", key); return next; })} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3559c7] focus-visible:ring-offset-2 ${(billingTab ? "billing" : "general") === key ? "border-[#20221c] bg-[#20221c] text-[#fdfbf6]" : "border-[#d8d2c5] bg-[#fdfbf6] hover:bg-[#eee9de]"}`}>{label}</button>)}
+        {[["general", "General"], ["requests", "Plan și acces"], ["billing", "Abonament și facturare"]].map(([key, label]) => <button key={key} type="button" aria-current={settingsTab === key ? "page" : undefined} onClick={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", key); return next; })} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3559c7] focus-visible:ring-offset-2 ${settingsTab === key ? "border-[#20221c] bg-[#20221c] text-[#fdfbf6]" : "border-[#d8d2c5] bg-[#fdfbf6] hover:bg-[#eee9de]"}`}>{label}</button>)}
       </nav>
-      {billingTab ? <ProviderBillingPanel organizationId={selectedLocation.organization_id || ""} locationId={selectedLocation.id} onSynced={onBillingSynced} /> : <>
+      {billingTab ? <ProviderBillingPanel organizationId={selectedLocation.organization_id || ""} locationId={selectedLocation.id} onSynced={onBillingSynced} /> : requestsTab ? <ProviderRequestAccessSettings key={selectedLocation.id} locationId={selectedLocation.id} location={selectedLocation} onOpenBilling={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", "billing"); return next; })} /> : <>
       <SettingsSection title="Organizație" tone="green">
         <SettingsRow
           title="Organizație"

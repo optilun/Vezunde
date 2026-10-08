@@ -3,8 +3,8 @@
 // VIASEE nu are (inca) un canal push real, iar pana acum conversatia se reimprospata doar
 // manual, din butonul "Actualizeaza": daca celalalt scria, nu vedeai nimic pana nu apasai tu.
 // Aici facem un polling scurt, dar disciplinat:
-//   - numai cat timp conversatia e efectiv deschisa (nu pe istoric, nu pe conversatii inchise
-//     si nu pe cele nedeschise inca - acolo nu se poate schimba nimic fara o actiune explicita);
+//   - numai pentru panourile active; furnizorul verifica si cand asteapta deschiderea de
+//     catre client. Inboxul foloseste un interval mai mare decat conversatia selectata;
 //   - numai cat timp fila e vizibila, ca sa nu batem backendul pentru taburi uitate deschise;
 //   - niciodata peste o actiune in curs (trimitere / inchidere / deschidere), ca sa nu suprascriem
 //     raspunsul actiunii cu un status mai vechi;
@@ -17,7 +17,7 @@ import { useEffect, useRef } from "react";
 
 export const CHAT_POLL_INTERVAL_MS = 8000;
 
-export default function useChatLivePolling({ active, busy, onPoll }) {
+export default function useChatLivePolling({ active, busy, onPoll, intervalMs = CHAT_POLL_INTERVAL_MS }) {
   const onPollRef = useRef(onPoll);
   const busyRef = useRef(busy);
   const inFlightRef = useRef(false);
@@ -47,7 +47,7 @@ export default function useChatLivePolling({ active, busy, onPoll }) {
       }
     };
 
-    const timer = window.setInterval(() => void tick(), CHAT_POLL_INTERVAL_MS);
+    const timer = window.setInterval(() => void tick(), Math.max(CHAT_POLL_INTERVAL_MS, intervalMs));
     // La revenirea pe fila aducem imediat ce s-a schimbat cat timp utilizatorul a lipsit,
     // fara sa mai asteptam urmatorul ciclu.
     const handleVisibility = () => { if (document.visibilityState === "visible") void tick(); };
@@ -58,5 +58,5 @@ export default function useChatLivePolling({ active, busy, onPoll }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [active]);
+  }, [active, intervalMs]);
 }
