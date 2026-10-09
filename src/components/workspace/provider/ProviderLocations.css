@@ -1,7 +1,7 @@
 .provider-locations-page .location-contact-grid > div { min-width: 0; }
 /* The location details panel owns its layout, independently of the page summary. */
 .provider-locations-page > .location-details-editor-overlay { margin:0 !important; background:#1b201d40; backdrop-filter:blur(3px); }
-.location-details-editor { display:flex; flex-direction:column; width:100%; max-width:700px; min-height:0; background:#f8f6f0; color:#191a17; border-left:1px solid #dedcd5; box-shadow:-16px 0 64px #181c1826; }
+.location-details-editor { display:flex; flex-direction:column; width:100%; max-width:580px; min-height:0; background:#f8f6f0; color:#191a17; border-left:1px solid #dedcd5; box-shadow:-16px 0 64px #181c1826; }
 .location-details-editor * { box-sizing:border-box; }
 .location-details-editor__header { flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:24px 28px 20px; border-bottom:1px solid #dedcd5; background:#fdfbf6; }
 .location-details-editor__eyebrow { margin:0; font-family:monospace; font-size:10px; line-height:1.5; letter-spacing:.14em; text-transform:uppercase; color:#6c7164; }
