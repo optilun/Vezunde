@@ -1,0 +1,35 @@
+.provider-locations-page .location-contact-grid > div { min-width: 0; }
+.provider-locations-page .location-contact-grid > div > div { padding-top: 12px; padding-bottom: 12px; }
+.provider-locations-page .location-contact-grid a { overflow-wrap: anywhere; }
+.provider-locations-page .location-summary-statuses { max-width: 100%; }
+.provider-locations-page .location-summary-statuses span { line-height: 1.5; }
+.provider-locations-page .location-module-summary { line-height: 1.45; }
+.provider-locations-page .location-module-pending { color: #5b4723; line-height: 1.45; }
+.provider-locations-page .location-module-description { min-height: 0 !important; }
+.provider-locations-page .location-visibility-note { grid-column: 1 !important; }
+.provider-locations-page .vezunde-location-summary > .vezunde-location-map > div { height: 232px !important; }
+.provider-locations-page .location-configure-section .vezunde-location-modules { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.provider-locations-page .location-configure-section .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 24px; }
+.provider-locations-page .location-configure-section .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
+.provider-locations-page .location-configure-section .vezunde-location-modules > button > div > div:last-child > div:last-child { padding-top: 16px; }
+.location-map-compact .viasee-marker-name { max-width: 150px; }
+.location-map-compact .maplibregl-ctrl-attrib { max-width: calc(100% - 16px); box-sizing: border-box; font-size: 10px; line-height: 1.4; }
+.location-map-compact .maplibregl-ctrl-attrib-inner { max-width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere; }
+.location-map-compact .maplibregl-ctrl-attrib.maplibregl-compact-show { height: auto; }
+.location-map-compact .maplibregl-ctrl-group button { width: 36px; height: 36px; }
+.location-map-compact .maplibregl-ctrl-bottom-right { max-width: 100%; }
+.location-map-compact .leaflet-control-attribution { max-width: calc(100% - 8px); box-sizing: border-box; font-size: 10px; white-space: normal; }
+@media (min-width: 1024px) {
+  .provider-locations-page .vezunde-location-summary { grid-template-columns: minmax(0, 1fr) 280px; gap: 0 20px; }
+  .provider-locations-page .vezunde-location-summary > .vezunde-location-map { grid-row: 1 / span 6; }
+}
+@media (min-width: 1400px) {
+  .provider-locations-page .vezunde-location-summary { grid-template-columns: minmax(0, 1fr) 320px; }
+  .provider-locations-page .location-configure-section .vezunde-location-modules { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 639px) {
+  .provider-locations-page .location-configure-section .vezunde-location-modules { grid-template-columns: minmax(0, 1fr) !important; }
+  .provider-locations-page .location-configure-section .vezunde-location-modules > button { padding: 14px; }
+  .provider-locations-page .vezunde-location-summary > .vezunde-location-map > div { height: 220px !important; }
+  .provider-locations-page .location-map-actions { gap: 6px 8px; }
+}
