@@ -278,7 +278,7 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // muta doar eticheta „top3” pe primele trei locatii confirmate care pot primi cererea prin VIASEE
     // (markRequestReadyResults -> loadRequestReadiness). Scorul si ordinea raman cele de pana acum;
     // planul platit nu intra in decizie. Amprenta ramurii de potrivire devine '4eb620e2'.
-    '79e12d674584836df8679447a484c1d9823294df',
+    '48bdcee52c23c932ecfaada8e586dc774c91fcaa',
   ]),
 });
 
