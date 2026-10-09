@@ -56,3 +56,22 @@ for (const file of ['createProviderCheckoutSession.ts', 'createProviderBillingPo
   assert.match(source, /\/contul-meu\?mode=provider&s=settings&tab=billing&/);
 }
 console.log('Billing return URLs: OK');
+
+// 2026-10-09: restul auditului Free (F1, F4, F5) și cele două detalii de facturare.
+const root = await read('src/components/workspace/provider/ProviderWorkspaceRoot.jsx');
+assert.match(root, /setEntitlement\(data\.entitlement \? \{ \.\.\.data\.entitlement, location_id: data\.location\?\.id \|\| selectedLocationId \} : null\)/, 'F1: planul ajunge la meniu cu locația');
+assert.match(root, /entitlement=\{entitlement\?\.location_id === selectedLocationId \? entitlement : null\}/, 'F1: verificarea din meniu rămâne aceeași');
+const sidebar = await read('src/components/provider/shell/ProviderSidebarContent.jsx');
+assert.match(sidebar, />de la 49 RON\/lună · cereri complete</, 'F1: prețul cardului ține cont de pachete');
+const settings = await read('src/components/workspace/provider/ProviderSettings.jsx');
+assert.match(settings, /Acces proprietar/, 'F4');
+assert.doesNotMatch(settings, /Acces owner/);
+const access = await read('src/components/workspace/provider/ProviderRequestAccessSettings.jsx');
+assert.match(access, /data\?\.entitlement\?\.plan_code === "free" \?/, 'F5: îndemnul apare doar pe Free');
+assert.match(access, /Pachetele pornesc de la 49 RON\/lună pentru o locație\./);
+assert.match(access, /onClick=\{onOpenBilling\}>Vezi pachetele Pro</);
+assert.match(access, /Deschide facturarea/, 'pe Pro rămâne drumul spre facturare');
+assert.match(panel === undefined ? '' : await read('src/components/workspace/provider/leads/ProviderBillingPanel.jsx'), /Ai revenit din Stripe\. Datele de facturare sunt la zi\./);
+const portal = await read('base44/functions/getMyProviderWorkspace/createProviderBillingPortalSession.ts');
+assert.match(portal, /locale: 'ro',/, 'portalul Stripe în română');
+console.log('Free audit rest: OK');
