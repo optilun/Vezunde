@@ -129,7 +129,7 @@ export default function ProviderSidebarContent({
             <button
               type="button"
               className="mt-2 flex min-h-14 w-full items-center gap-2.5 rounded-2xl border border-border bg-background px-2.5 py-2 text-left shadow-sm transition hover:bg-secondary/45 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              aria-label="Schimba spatiul contului"
+              aria-label="Schimbă spațiul contului"
             >
               <WorkspaceAvatar item={activeWorkspace} user={user} />
               <span className="min-w-0 flex-1">

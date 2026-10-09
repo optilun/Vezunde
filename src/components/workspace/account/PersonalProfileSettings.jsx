@@ -35,7 +35,7 @@ function readImage(file) {
     };
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("Imaginea nu poate fi citita."));
+      reject(new Error("Imaginea nu poate fi citită."));
     };
     image.src = objectUrl;
   });
@@ -54,7 +54,7 @@ async function makeSafePhotoDataUrl(file) {
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   let dataUrl = canvas.toDataURL("image/webp", 0.82);
   if (dataUrl.length > PHOTO_MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-  if (dataUrl.length > PHOTO_MAX_DATA_URL_LENGTH) throw new Error("Fotografia este prea mare dupa optimizare.");
+  if (dataUrl.length > PHOTO_MAX_DATA_URL_LENGTH) throw new Error("Fotografia este prea mare după optimizare.");
   return dataUrl;
 }
 
@@ -81,15 +81,15 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
       return;
     }
     if (file.size > PHOTO_MAX_BYTES) {
-      setError("Fotografia trebuie sa aiba maximum 4 MB inainte de optimizare.");
+      setError("Fotografia trebuie să aibă maximum 4 MB înainte de optimizare.");
       return;
     }
     setUploading(true);
     try {
       setField("profile_photo_url", await makeSafePhotoDataUrl(file));
-      setMessage("Fotografia este pregatita. Apasa Salveaza profilul pentru a o pastra.");
+      setMessage("Fotografia este pregătită. Apasă „Salvează profilul” ca s-o păstrezi.");
     } catch (photoError) {
-      setError(photoError.message || "Fotografia nu a putut fi pregatita.");
+      setError(photoError.message || "Fotografia nu a putut fi pregătită.");
     } finally {
       setUploading(false);
     }
@@ -102,7 +102,7 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
     const fullName = values.full_name.trim();
     const personalBio = values.personal_bio.trim();
     if (fullName.length < 3 || fullName.length > 120) {
-      setError("Numele trebuie sa aiba intre 3 si 120 de caractere.");
+      setError("Numele trebuie să aibă între 3 și 120 de caractere.");
       return;
     }
     if (personalBio.length > 500) {
@@ -137,11 +137,11 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold">Fotografie de profil</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Este folosita in contul tau VIASEE. Nu devine automat fotografie profesionala publica.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Este folosită în contul tău VIASEE. Nu devine automat fotografie profesională publică.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary">
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              {values.profile_photo_url ? "Schimba fotografia" : "Adauga fotografia"}
+              {values.profile_photo_url ? "Schimbă fotografia" : "Adaugă fotografia"}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -155,7 +155,7 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
             </label>
             {values.profile_photo_url && (
               <button type="button" onClick={() => setField("profile_photo_url", "")} disabled={saving} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-xs font-semibold text-destructive hover:bg-secondary disabled:opacity-50">
-                <Trash2 className="h-4 w-4" /> Elimina
+                <Trash2 className="h-4 w-4" /> Elimină
               </button>
             )}
           </div>
@@ -182,7 +182,7 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
 
       <div>
         <div className="flex items-center justify-between gap-3">
-          <label htmlFor="personal-bio" className="text-xs font-semibold text-muted-foreground">Descriere scurta</label>
+          <label htmlFor="personal-bio" className="text-xs font-semibold text-muted-foreground">Descriere scurtă</label>
           <span className="text-[11px] text-muted-foreground">{values.personal_bio.length}/500</span>
         </div>
         <textarea
@@ -192,7 +192,7 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
           maxLength={500}
           rows={4}
           className={`mt-1.5 resize-y ${inputClass}`}
-          placeholder="Spune pe scurt cateva lucruri despre tine. Acest text ramane in zona personala."
+          placeholder="Spune pe scurt câteva lucruri despre tine. Textul rămâne în contul personal."
         />
       </div>
 
@@ -202,7 +202,7 @@ export default function PersonalProfileSettings({ user, onRefresh }) {
       <div className="flex justify-end">
         <button type="submit" disabled={saving || uploading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50 sm:w-auto">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Salveaza profilul
+          Salvează profilul
         </button>
       </div>
     </form>
