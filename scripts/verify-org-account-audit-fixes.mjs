@@ -84,7 +84,8 @@ for (const [key, texts] of Object.entries(expectText)) {
 assert.doesNotMatch(src.settings, /ownerii|Preferințe workspace|workspace-ului/);
 assert.doesNotMatch(src.overview, /label: "Articole"/, 'pătratul „Articole” a ieșit');
 assert.match(src.overview, /value === 1 \? "1 imagine aprobată"/);
-assert.match(src.withPhoto, /selectedLocation\.photo_url\s*\?\s*"Schimbă fotografia principală/);
+// PR #299 (2026-10-09) a adăugat și `profile_photo_url` în condiție; regula rămâne aceeași.
+assert.match(src.withPhoto, /selectedLocation\.photo_url(?:\s*\|\|\s*selectedLocation\.profile_photo_url)?\s*\?\s*"Schimbă fotografia principală/);
 
 // ---------- 5. ce nu are voie să se schimbe odată cu textele ----------
 assert.match(src.completeness, /`\/contul-meu\/locatii\/\$\{locationId\}\/specialisti`/, 'rutele modulelor rămân aceleași');
