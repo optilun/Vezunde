@@ -247,31 +247,22 @@ function DetailLine({ icon: Icon, label, value, href = "" }) {
   );
 }
 
-// Tonurile din paleta de categorii: fiecare modul isi are culoarea lui, ca sa se distinga
-// dintr-o privire in loc sa fie patru carduri albe identice.
-export const CONFIGURE_TONES = {
-  servicii: { border: "#ccd2ba", bg: "#dfe3d2" },
-  program: { border: "#dac69b", bg: "#eadcba" },
-  specialisti: { border: "#d4c6d8", bg: "#e8e0ea" },
-  fotografie: { border: "#e1bda8", bg: "#efd5c5" },
+// All configuration modules share the neutral surface used by the service editor.
+export const CONFIGURE_CARD_STYLE = {
+  borderColor: "#dedcd5",
+  backgroundColor: "#fff",
 };
 
-const CONFIGURE_GRAIN = {
-  backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
-  backgroundSize: "180px 180px",
-};
-
-function ConfigureCard({ icon: Icon, title, text, onClick, tone, summary, action }) {
+function ConfigureCard({ icon: Icon, title, text, onClick, summary, action }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      style={tone ? { borderColor: tone.border, backgroundColor: tone.bg } : undefined}
+      style={CONFIGURE_CARD_STYLE}
       className="location-module-card relative min-h-28 overflow-hidden rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
     >
-      <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={CONFIGURE_GRAIN} />
       <div className="relative z-10 flex h-full items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/70">
+        <div className="location-module-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full border">
           <Icon className="h-4 w-4" />
         </div>
         <div className="flex h-full min-w-0 flex-1 flex-col">
@@ -871,7 +862,6 @@ export default function ProviderLocations({
               {canManageLocationContent && (
                 <ConfigureCard
                   icon={Wrench}
-                  tone={CONFIGURE_TONES.servicii}
                   title="Servicii"
                   text="Alege serviciile disponibile în această locație."
                   summary={modules.services}
@@ -884,7 +874,6 @@ export default function ProviderLocations({
               {canManageOperationalStatus && (
                 <ConfigureCard
                   icon={Clock}
-                  tone={CONFIGURE_TONES.program}
                   title="Program"
                   text="Setează programul acestui punct de lucru."
                   summary={modules.hours}
@@ -895,7 +884,6 @@ export default function ProviderLocations({
               {canManageSpecialists && (
                 <ConfigureCard
                   icon={Users}
-                  tone={CONFIGURE_TONES.specialisti}
                   title="Specialiști"
                   text="Specialiștii afișați, invitațiile și cererile „Lucrez aici”."
                   summary={modules.specialists}
