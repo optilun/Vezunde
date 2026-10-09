@@ -429,7 +429,10 @@ export default function ProviderWorkspaceRoot({
     let active = true;
     base44.functions.invoke("getProviderEntitlement", { location_id: selectedLocationId })
       .then((response) => response?.data || {})
-      .then((data) => { if (active) setEntitlement(data.entitlement || null); })
+      // 2026-10-09 (audit plan Free, F1): răspunsul are locația separat de plan. Fără `location_id`
+      // pe plan, verificarea de mai jos (entitlement.location_id === selectedLocationId) nu trecea
+      // niciodată și cardul „Treci la Pro” din meniu nu mai apărea din 2026-09-16.
+      .then((data) => { if (active) setEntitlement(data.entitlement ? { ...data.entitlement, location_id: data.location?.id || selectedLocationId } : null); })
       .catch(() => { if (active) setEntitlement(null); });
     return () => { active = false; };
   }, [selectedLocationId, canManageRequests, entitlementRefreshTick]);

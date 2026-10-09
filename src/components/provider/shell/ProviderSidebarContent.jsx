@@ -197,7 +197,7 @@ export default function ProviderSidebarContent({
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate font-heading text-[13px] font-extrabold tracking-[-0.02em] text-foreground">Treci la Pro</span>
-              <span className="mt-0.5 block truncate text-[11.5px] leading-relaxed text-muted-foreground">49 RON/lună · cereri complete</span>
+              <span className="mt-0.5 block truncate text-[11.5px] leading-relaxed text-muted-foreground">de la 49 RON/lună · cereri complete</span>
             </span>
             <span
               aria-hidden="true"

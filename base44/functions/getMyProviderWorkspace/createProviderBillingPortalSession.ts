@@ -91,6 +91,8 @@ export async function handle(req: Request) {
         ? `${baseUrl}/contul-meu?mode=provider&s=settings&tab=billing&organization=${encodeURIComponent(organizationId)}&billing=portal_return`
         : `${baseUrl}/contul-meu?mode=provider&s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
       configuration,
+      // 2026-10-09 (audit plan Free): portalul în română, ca pagina de plată (Checkout are deja locale 'ro').
+      locale: 'ro',
       ...(input.flow === 'payment_method_update' ? { flow_data: { type: 'payment_method_update' } } : {}),
     });
 

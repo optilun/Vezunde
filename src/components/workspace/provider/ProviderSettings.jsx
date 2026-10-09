@@ -337,7 +337,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-heading text-[1.75rem] font-extrabold leading-tight tracking-[-0.035em]">Setări</h1>
             <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
-              <ShieldCheck className="h-3.5 w-3.5" /> Acces owner
+              <ShieldCheck className="h-3.5 w-3.5" /> Acces proprietar
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">

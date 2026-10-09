@@ -125,7 +125,7 @@ function BillingCenter({ organizationId, locationId, onSynced }) {
       if (!profileInitialized.current) { setProfile(profileFrom(result.customer || result.customer_suggestion)); setEditingDetails(!result.customer?.name); profileInitialized.current = true; }
       synced.current?.();
       if (billing === "success" || billing === "portal_return") {
-        setNotice(billing === "success" ? "Starea abonamentului a fost verificată cu Stripe." : "Datele de plată au fost actualizate.");
+        setNotice(billing === "success" ? "Starea abonamentului a fost verificată cu Stripe." : "Ai revenit din Stripe. Datele de facturare sunt la zi.");
         // Keep return parameters until both confirmation and reload have succeeded.
         setParams(current => { const next = new URLSearchParams(current); next.delete("billing"); next.delete("session_id"); return next; }, { replace: true });
       } else if (billing === "cancelled") {
