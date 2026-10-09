@@ -14,7 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
+import { LEAD_EMAIL_FOCUS_KEY, readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import PersonalProfileSettings from "./PersonalProfileSettings";
 
 const MODE_LABELS = {
@@ -23,8 +23,6 @@ const MODE_LABELS = {
   professional: "Cont profesional",
   applicant: "Pregătire profil",
 };
-
-export const LEAD_EMAIL_FOCUS_KEY = "viasee:account-settings-focus";
 
 // 2026-10-09 (audit Setări, S5; Alex: „Fiecare își alege”): emailul la cereri noi, pe fiecare
 // locație unde ești proprietar sau manager. Implicit pornit. Fără astfel de locații, secțiunea lipsește.

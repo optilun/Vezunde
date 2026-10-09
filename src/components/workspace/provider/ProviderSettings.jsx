@@ -16,7 +16,7 @@ import { useSearchParams } from "react-router-dom";
 import ProviderBillingPanel from "./leads/ProviderBillingPanel";
 import ProviderRequestAccessSettings from "./ProviderRequestAccessSettings";
 import { SETTINGS_GRAIN, SETTINGS_TONES } from "./settingsVisuals";
-import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
+import { LEAD_EMAIL_FOCUS_KEY, readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { isLocationClosed, isLocationPubliclyVisible } from "@/lib/providerLocationVisibility";
 

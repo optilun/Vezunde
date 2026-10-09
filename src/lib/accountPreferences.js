@@ -69,3 +69,7 @@ export function rememberProviderLocation(userId, locationId) {
   if (current.providerLocationMode !== "last") return current;
   return saveAccountPreferences(userId, { lastProviderLocationId: String(locationId || "").trim() });
 }
+
+// 2026-10-09: „Setează notificările” (Setările organizației) deschide Setările contului la secțiunea
+// „Notificări pe email”. Cheie de o singură folosință în sessionStorage.
+export const LEAD_EMAIL_FOCUS_KEY = "viasee:account-settings-focus";
