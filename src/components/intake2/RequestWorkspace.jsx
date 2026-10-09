@@ -226,6 +226,7 @@ function UrgencyInterruptionSlot({ requestDraft }) {
 function SelectedLocationPanel({
   location,
   response,
+  delivered = undefined,
   requestId,
   accessToken,
   status,
@@ -296,8 +297,8 @@ function SelectedLocationPanel({
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/5 text-primary"><PresentationIcon className="h-4.5 w-4.5" /></span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Răspunsul locației</p>
-            <h3 className="mt-1 text-base font-extrabold text-foreground">{presentation?.title || "Cerere trimisă"}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation?.description || "Locația este inclusă în cerere. Nu a trimis încă un răspuns."}</p>
+            <h3 className="mt-1 text-base font-extrabold text-foreground">{presentation?.title || (delivered === false ? "Cererea nu a ajuns aici" : "Cerere trimisă")}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation?.description || (delivered === false ? "Această locație nu primește încă cereri prin VIASEE. O poți contacta direct, de pe profilul ei." : "Locația este inclusă în cerere. Nu a trimis încă un răspuns.")}</p>
             {response?.submitted_at && <p className="mt-2 text-[10px] text-muted-foreground">Actualizat la {formatDate(response.submitted_at, true)}</p>}
           </div>
         </div>
@@ -332,8 +333,12 @@ function SelectedLocationPanel({
   );
 }
 
-function LocationRail({ locations, responses, selectedLocationId, unreadByLocation, requestTerminal, onSelect }) {
+function LocationRail({ locations, responses, deliveredIds = null, selectedLocationId, unreadByLocation, requestTerminal, onSelect }) {
   const responseByLocation = new Map((responses || []).map((response) => [response.location_id, response]));
+  // 2026-10-09 (audit Top 3, T3): unde a ajuns efectiv cererea. Fara raspunsul serverului (null),
+  // cardurile raman ca inainte.
+  const deliveredFor = (location) => (deliveredIds ? deliveredIds.has(locationId(location)) : undefined);
+  const deliveredCount = deliveredIds ? locations.filter((location) => deliveredIds.has(locationId(location))).length : null;
   const top3 = locations.filter((location) => location.result_bucket === "top3");
   const additional = locations.filter((location) => location.result_bucket !== "top3" && location.result_bucket !== "excluded" && location.result_bucket !== "response_only");
   const responders = locations.filter((location) => location.result_bucket === "response_only");
@@ -344,6 +349,13 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
         <div>
           <h2 className="font-heading text-lg font-extrabold text-foreground">Locații pentru cererea ta</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectate pe baza criteriilor cererii, nu a planului comercial.</p>
+          {deliveredCount !== null && !requestTerminal && (
+            <p className="mt-2 text-xs font-semibold leading-relaxed text-foreground">
+              {deliveredCount > 0
+                ? `Cererea a ajuns la ${deliveredCount === 1 ? "o locație" : `${deliveredCount} locații`}.`
+                : "Cererea nu a ajuns încă la nicio locație: cele de mai jos nu primesc cereri prin VIASEE. Le poți contacta direct, de pe profil."}
+            </p>
+          )}
         </div>
         <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-secondary px-2.5 py-1 text-xs font-extrabold text-foreground">{locations.length}</span>
       </div>
@@ -359,6 +371,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
               selected={selectedLocationId === locationId(location)}
               unread={unreadByLocation[locationId(location)] || 0}
               requestTerminal={requestTerminal}
+              delivered={deliveredFor(location)}
               onSelect={() => onSelect(locationId(location))}
             />
           ))}
@@ -373,7 +386,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
               response={responseByLocation.get(locationId(location))}
               selected={selectedLocationId === locationId(location)}
               unread={unreadByLocation[locationId(location)] || 0}
-              requestTerminal={requestTerminal} onSelect={() => onSelect(locationId(location))} />
+              requestTerminal={requestTerminal} delivered={deliveredFor(location)} onSelect={() => onSelect(locationId(location))} />
           ))}
         </div>
       )}
@@ -391,6 +404,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
               selected={selectedLocationId === locationId(location)}
               unread={unreadByLocation[locationId(location)] || 0}
               requestTerminal={requestTerminal}
+              delivered={deliveredFor(location)}
               onSelect={() => onSelect(locationId(location))}
             />
           ))}
@@ -492,6 +506,11 @@ export default function RequestWorkspace({
   const responses = useMemo(() => status?.responses || [], [status?.responses]);
   const locations = useMemo(() => mergeLocations(results, responses), [responses, results]);
   const responseByLocation = useMemo(() => new Map(responses.map((response) => [response.location_id, response])), [responses]);
+  const deliveredIds = useMemo(
+    () => (Array.isArray(status?.delivered_location_ids) ? new Set(status.delivered_location_ids) : null),
+    [status?.delivered_location_ids],
+  );
+  const selectedDelivered = selectedLocationId && deliveredIds ? deliveredIds.has(selectedLocationId) : undefined;
   const selectedLocation = locations.find((location) => locationId(location) === selectedLocationId) || null;
   const selectedResponse = selectedLocationId ? responseByLocation.get(selectedLocationId) : null;
   const unreadByLocation = useMemo(() => {
@@ -586,14 +605,14 @@ export default function RequestWorkspace({
           )}
           {mobileTab === "locations" && (
             selectedLocation ? (
-              <SelectedLocationPanel location={selectedLocation} response={selectedResponse} requestId={requestId} accessToken={accessToken} status={status} updatingLocationId={updatingLocationId} onPhoneShare={updatePhoneShare} onBack={() => setSelectedLocationId("")} />
+              <SelectedLocationPanel location={selectedLocation} response={selectedResponse} delivered={selectedDelivered} requestId={requestId} accessToken={accessToken} status={status} updatingLocationId={updatingLocationId} onPhoneShare={updatePhoneShare} onBack={() => setSelectedLocationId("")} />
             ) : (
-              <LocationRail locations={locations} responses={responses} selectedLocationId={selectedLocationId} unreadByLocation={unreadByLocation} requestTerminal={requestTerminal} onSelect={(id) => selectLocation(id, "locations")} />
+              <LocationRail locations={locations} responses={responses} deliveredIds={deliveredIds} selectedLocationId={selectedLocationId} unreadByLocation={unreadByLocation} requestTerminal={requestTerminal} onSelect={(id) => selectLocation(id, "locations")} />
             )
           )}
           {mobileTab === "messages" && (
             selectedLocation ? (
-              <SelectedLocationPanel location={selectedLocation} response={selectedResponse} requestId={requestId} accessToken={accessToken} status={status} updatingLocationId={updatingLocationId} onPhoneShare={updatePhoneShare} onBack={() => setSelectedLocationId("")} />
+              <SelectedLocationPanel location={selectedLocation} response={selectedResponse} delivered={selectedDelivered} requestId={requestId} accessToken={accessToken} status={status} updatingLocationId={updatingLocationId} onPhoneShare={updatePhoneShare} onBack={() => setSelectedLocationId("")} />
             ) : (
               <MessagesList responses={responses} locations={locations} unreadByLocation={unreadByLocation} selectedLocationId={selectedLocationId} onSelect={(id) => selectLocation(id, "messages")} />
             )
@@ -604,7 +623,7 @@ export default function RequestWorkspace({
       <div className="mt-4 hidden gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <main className="min-w-0">
           {selectedLocation ? (
-            <SelectedLocationPanel location={selectedLocation} response={selectedResponse} requestId={requestId} accessToken={accessToken} status={status} updatingLocationId={updatingLocationId} onPhoneShare={updatePhoneShare} onBack={() => setSelectedLocationId("")} />
+            <SelectedLocationPanel location={selectedLocation} response={selectedResponse} delivered={selectedDelivered} requestId={requestId} accessToken={accessToken} status={status} updatingLocationId={updatingLocationId} onPhoneShare={updatePhoneShare} onBack={() => setSelectedLocationId("")} />
           ) : (
             <div className="space-y-4">
               <UrgencyInterruptionSlot requestDraft={requestDraft} />
@@ -615,7 +634,7 @@ export default function RequestWorkspace({
         </main>
         <aside className="min-w-0">
           <div className="sticky top-24 rounded-2xl border border-border bg-card p-4 sm:p-5">
-            <LocationRail locations={locations} responses={responses} selectedLocationId={selectedLocationId} unreadByLocation={unreadByLocation} requestTerminal={requestTerminal} onSelect={(id) => selectLocation(id, "locations")} />
+            <LocationRail locations={locations} responses={responses} deliveredIds={deliveredIds} selectedLocationId={selectedLocationId} unreadByLocation={unreadByLocation} requestTerminal={requestTerminal} onSelect={(id) => selectLocation(id, "locations")} />
           </div>
         </aside>
       </div>

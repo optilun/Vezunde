@@ -38,6 +38,7 @@ export default function RequestWorkspaceLocationCard({
   selected = false,
   unread = 0,
   requestTerminal = false,
+  delivered = undefined,
   onSelect,
 }) {
   const services = location?.matched_public_services?.length
@@ -48,9 +49,12 @@ export default function RequestWorkspaceLocationCard({
     .map(cleanExplanation)
     .filter(Boolean)
     .slice(0, 2);
+  // 2026-10-09 (audit Top 3, T3): „Cerere trimisă” doar unde cererea a ajuns efectiv
+  // (`delivered` vine de la server; necunoscut = comportamentul de dinainte).
   const responseLabel = requestTerminal
     ? "Cerere finalizată"
-    : (RESPONSE_LABELS[response?.response_type] || "Cerere trimisă");
+    : (RESPONSE_LABELS[response?.response_type]
+      || (delivered === false ? "Nu primește cereri prin VIASEE încă" : "Cerere trimisă"));
   const trust = TRUST_LABELS[location?.profile_control_status] || "Listată";
   const profileAvailable = response ? response.profile_available !== false : true;
 
@@ -81,7 +85,7 @@ export default function RequestWorkspaceLocationCard({
           <span className="rounded-full border border-border bg-background px-2 py-0.5">{trust}</span>
         </div>
 
-        <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-foreground">
+        <p className={`mt-3 inline-flex items-center gap-1.5 text-xs font-bold ${delivered === false && !response?.response_type ? "text-muted-foreground" : "text-foreground"}`}>
           {response?.response_type ? <MessageCircle className="h-3.5 w-3.5 text-primary" /> : <Store className="h-3.5 w-3.5 text-muted-foreground" />}
           {responseLabel}
         </p>
