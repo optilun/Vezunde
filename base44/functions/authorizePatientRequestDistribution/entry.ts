@@ -14,6 +14,7 @@ import {
 } from '../../shared/providerLeadEligibility.js';
 import { notifyProviderLeadAvailable } from '../../shared/leadCommunicationNotifications.js';
 import { notifyPatientRequestDistributed } from '../../shared/patientCommunicationNotifications.js';
+import { locationHasActiveLeadMember } from '../../shared/providerRequestIntake.js';
 
 function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
@@ -42,6 +43,9 @@ async function eligibleLeadPlans(svc, request) {
     const services = await svc.entities.LocationService.filter({ location_id: location.id }, null, 500);
     const eligibility = evaluateProviderLeadEligibility({ request, match, location, services });
     if (!eligibility.eligible) continue;
+    // 2026-10-09 (audit Top 3, T7): cererea ajunge doar unde o poate citi cineva din echipa
+    // locatiei. Altfel pacientul ar astepta un raspuns de la o locatie fara administrator.
+    if (!(await locationHasActiveLeadMember(svc, location).catch(() => false))) continue;
     plans.push({ match, location, eligibility });
   }
   return plans;
