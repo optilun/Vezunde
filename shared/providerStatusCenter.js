@@ -54,6 +54,11 @@ export function buildProviderStatusCenter(input = {}) {
   const verified = location.profile_control_status === 'verified' || location.verification_state === 'verified';
   const pro = entitlement.plan_code === 'pro' && ['active', 'trialing'].includes(clean(entitlement.status));
   const activeLeadCount = Number(counters.active) || 0;
+  // 2026-10-09 (audit Top 3, T1): comutatorul „Primesc cereri de la clienți”. Oprit doar cand
+  // locatia spune explicit asta; fara campuri (date vechi sau partiale) nu blocam nimic.
+  const intakeOff = (location.request_intake_status !== undefined && location.request_intake_status !== null
+    && clean(location.request_intake_status) !== 'active')
+    || location.accepts_patients_directly === false;
 
   const capabilities = [
     {
@@ -69,10 +74,12 @@ export function buildProviderStatusCenter(input = {}) {
     {
       key: 'lead_preview',
       label: 'Rezumatul cererilor',
-      state: published && !suspended ? 'active' : 'blocked',
-      detail: published && !suspended
-        ? 'Rezumatul anonim al cererilor eligibile este disponibil.'
-        : 'Cererile nu sunt disponibile cât timp locația nu este publică.',
+      state: published && !suspended && !intakeOff ? 'active' : 'blocked',
+      detail: !published || suspended
+        ? 'Cererile nu sunt disponibile cât timp locația nu este publică.'
+        : intakeOff
+          ? 'Primirea cererilor este oprită. O pornești din „Primesc cereri de la clienți”.'
+          : 'Rezumatul anonim al cererilor eligibile este disponibil.',
     },
     {
       key: 'lead_response',
@@ -112,6 +119,7 @@ export function buildProviderStatusCenter(input = {}) {
   if (!published) blockers.push('Locația nu este publicată.');
   if (suspended) blockers.push('Profilul este suspendat.');
   if (!controlled) blockers.push('Profilul nu este încă revendicat sau verificat.');
+  if (intakeOff) blockers.push('Primirea cererilor este oprită.');
   if (!pro) blockers.push('Planul curent este Free.');
 
   return {

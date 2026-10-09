@@ -135,6 +135,7 @@ function sanitizeLocation(location, organizationName) {
     saturday_hours: location.saturday_hours || '',
     availability_status: location.availability_status || 'necunoscuta',
     request_intake_status: location.request_intake_status || 'inactive',
+    accepts_patients_directly: location.accepts_patients_directly === true,
     status: location.status || 'draft',
     active_status: location.active_status || 'activa',
     public_visibility_status: location.public_visibility_status || 'draft',
