@@ -8,6 +8,13 @@ import {
 } from '../../shared/patientRequestPersistence.js';
 import { notifyPatientRequestReceived } from '../../shared/patientCommunicationNotifications.js';
 import {
+  REQUEST_READY_POLICY_VERSION,
+  TOP3_LIMIT,
+  loadRequestReadiness,
+  serverNeedLevel,
+  stricterNeedLevel,
+} from '../../shared/requestReadyRecommendation.js';
+import {
   PATIENT_SEARCH_CONTACT_MODE,
   PATIENT_SEARCH_CONTACT_RETENTION_POLICY_KEY,
   PatientSearchContactValidationError,
@@ -176,9 +183,72 @@ async function validatePublishedMatches(svc, matches) {
     const location = await svc.entities.ProviderLocation.get(match.location_id).catch(() => null);
     if (!location) return null;
     if (location.status !== 'publicata' || location.is_active === false || location.profile_control_status === 'suspended') return null;
-    return match;
+    return { match, location };
   }));
   return resolved.filter(Boolean);
+}
+
+function withReason(match, reason) {
+  return [...new Set([...(Array.isArray(match.exclusion_reasons) ? match.exclusion_reasons : []), reason])].slice(0, 20);
+}
+
+// 2026-10-09 (audit Top 3, T5; Alex: „Începe”). Clasamentul vine din browser, deci serverul îl
+// verifică înainte să-l salveze (detaliile complete merg doar la Top 3):
+//  - cel mult TOP3_LIMIT locații rămân „top3”, în ordinea primită;
+//  - fiecare „top3” trebuie să poată primi cererea (aceeași regulă ca la căutare și la trimitere);
+//  - „top3” / „extended_confirmed” cer profil revendicat sau verificat (verificat la nevoi medicale
+//    specializate), cu nivelul nevoii calculat pe server;
+//  - ce nu trece coboară o treaptă și rămâne notat în `exclusion_reasons`.
+// Ordinea și scorurile primite nu se schimbă.
+async function validateRecommendationBuckets(svc, resolved, request) {
+  const needLevel = request.matching_need_level || '';
+  const top3Candidates = resolved.filter(({ match }) => match.result_bucket === 'top3').slice(0, TOP3_LIMIT);
+  const servicesByLocation = new Map(await Promise.all(top3Candidates.map(async ({ location }) => [
+    location.id,
+    await svc.entities.LocationService.filter({ location_id: location.id }, null, 500).catch(() => []),
+  ])));
+  const readiness = await loadRequestReadiness(svc, top3Candidates.map(({ location }) => ({
+    location,
+    services: servicesByLocation.get(location.id) || [],
+    requestedKeys: request.service_keys || [],
+  })), needLevel);
+
+  let top3Count = 0;
+  return resolved.map(({ match, location }) => {
+    let bucket = match.result_bucket;
+    let reasons = Array.isArray(match.exclusion_reasons) ? match.exclusion_reasons : [];
+    const control = String(location.profile_control_status || '');
+    if (bucket === 'top3' || bucket === 'extended_confirmed') {
+      const controlled = ['claimed', 'verified'].includes(control)
+        && (needLevel !== 'specialized_medical' || control === 'verified');
+      if (!controlled) {
+        bucket = control === 'directory' ? 'extended_directory' : 'excluded';
+        reasons = withReason({ exclusion_reasons: reasons }, 'server_validation:profile_not_eligible');
+      }
+    }
+    if (bucket === 'top3') {
+      const check = readiness.get(location.id);
+      if (top3Count >= TOP3_LIMIT) {
+        bucket = 'extended_confirmed';
+        reasons = withReason({ exclusion_reasons: reasons }, 'server_validation:top3_limit');
+      } else if (!check?.ready) {
+        bucket = 'extended_confirmed';
+        reasons = withReason({ exclusion_reasons: reasons }, `server_validation:not_request_ready:${(check?.reasons || ['unknown']).join(',')}`);
+      } else {
+        top3Count += 1;
+      }
+    }
+    return {
+      ...match,
+      result_bucket: bucket,
+      bucket_rank: bucket === 'top3' ? top3Count : match.bucket_rank,
+      is_top3_eligible: bucket === 'top3',
+      need_level_snapshot: needLevel || match.need_level_snapshot || null,
+      snapshot_source: 'client_confirmed_search_server_validated',
+      recommendation_contract_version: `${match.recommendation_contract_version || ''}|${REQUEST_READY_POLICY_VERSION}`.slice(0, 100),
+      exclusion_reasons: reasons,
+    };
+  });
 }
 
 Deno.serve(async (request) => {
@@ -189,6 +259,12 @@ Deno.serve(async (request) => {
     const input = await request.json().catch(() => ({}));
     if (input?.mode === PATIENT_SEARCH_CONTACT_MODE) return await saveSearchContact(base44, svc, input);
     const submission = sanitizePatientRequestSubmission(input);
+    // 2026-10-09 (audit Top 3, T5): nivelul nevoii nu mai vine doar din browser. Se păstrează cel mai
+    // strict dintre cel calculat pe server din serviciile cererii și cel primit.
+    submission.request.matching_need_level = stricterNeedLevel(
+      serverNeedLevel(submission.request.service_keys),
+      submission.request.matching_need_level,
+    ) || submission.request.matching_need_level || '';
     const user = await optionalUser(base44);
     const now = new Date();
     const nowIso = now.toISOString();
@@ -273,7 +349,11 @@ Deno.serve(async (request) => {
       );
     }
 
-    const validMatches = await validatePublishedMatches(svc, submission.matches);
+    const validMatches = await validateRecommendationBuckets(
+      svc,
+      await validatePublishedMatches(svc, submission.matches),
+      submission.request,
+    );
     if (validMatches.length > 0) {
       await svc.entities.RequestMatch.bulkCreate(
         validMatches.map((match) => ({ request_id: requestRecord.id, ...match })),
