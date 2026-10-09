@@ -112,5 +112,9 @@ assert.match(account, /title="Notificări pe email"/);
 assert.match(account, /if \(state\.status === "ready" && state\.items\.length === 0\) return null;/, 'fără locații, secțiunea lipsește');
 const settings = await readFile(path.join(root, 'src/components/workspace/provider/ProviderSettings.jsx'), 'utf8');
 assert.match(settings, /title="Notificări pe email"/);
+// „Setează notificările” deschide Setările contului direct la secțiune (verificare live 2026-10-09).
+assert.match(settings, /sessionStorage\.setItem\(LEAD_EMAIL_FOCUS_KEY, "lead-email"\)/);
+assert.match(account, /id="notificari-email"/);
+assert.match(account, /scrollIntoView/);
 
 console.log('Lead email preferences: OK');
