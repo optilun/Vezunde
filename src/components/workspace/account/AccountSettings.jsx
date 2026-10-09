@@ -186,7 +186,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
             <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-background p-4">
               <span>
                 <span className="block text-sm font-bold">Locația deschisă în organizație</span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Alegi ultima locație folosită sau o locație fixă din Setările organizației → General.</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Dacă organizația are mai multe locații, alegi din Setările organizației → General ce locație se deschide prima.</span>
               </span>
               {onSwitchMode && (
                 <button type="button" onClick={() => onSwitchMode("provider")} className="inline-flex h-10 w-fit items-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-semibold hover:bg-secondary">

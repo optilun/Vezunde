@@ -18,6 +18,7 @@ import ProviderRequestAccessSettings from "./ProviderRequestAccessSettings";
 import { SETTINGS_GRAIN, SETTINGS_TONES } from "./settingsVisuals";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
+import { isLocationClosed, isLocationPubliclyVisible } from "@/lib/providerLocationVisibility";
 
 const NO_LOCATIONS = [];
 const NO_ROLES = {};
@@ -84,14 +85,16 @@ function organizationVisibility(organization) {
   return { label: "Profil în pregătire", className: "bg-secondary text-muted-foreground" };
 }
 
+// 2026-10-09 (audit Setări, S16): „Publică” și „Închisă” folosesc aceeași regulă ca antetul și
+// Prezentarea (src/lib/providerLocationVisibility.js), ca să nu se contrazică.
 function locationVisibility(location) {
-  if (location?.active_status === "inactiva") return { label: "Închisă", className: "bg-red-100 text-red-800" };
+  if (isLocationClosed(location)) return { label: "Închisă", className: "bg-red-100 text-red-800" };
   if (location?.public_visibility_status === "archived") return { label: "Ascunsă", className: "bg-secondary text-muted-foreground" };
   if (location?.profile_control_status === "suspended" || location?.status === "suspendata") return { label: "Suspendată", className: "bg-red-100 text-red-800" };
+  if (isLocationPubliclyVisible(location)) return { label: "Publică", className: "bg-green-100 text-green-800" };
   const visibility = String(location?.public_visibility_status || "").toLowerCase();
-  if (["public", "published", "publicata", "visible", "approved"].includes(visibility) || location?.status === "publicata") return { label: "Publică", className: "bg-green-100 text-green-800" };
-  if (["pending_review", "in_review", "in_verificare"].includes(visibility)) return { label: "În verificare", className: "bg-amber-100 text-amber-800" };
-  return { label: "Draft", className: "bg-secondary text-muted-foreground" };
+  if (["pending_review", "in_review", "in_verificare"].includes(visibility) || location?.status === "in_verificare") return { label: "În verificare", className: "bg-amber-100 text-amber-800" };
+  return { label: "Nepublicată", className: "bg-secondary text-muted-foreground" };
 }
 
 // 2026-10-09 (audit Setări, S7): „Cere redeschiderea” deschide un tichet completat, nu o pagină goală.
@@ -248,7 +251,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   const orgVisibility = organizationVisibility(organization);
   const controlLabel = PROFILE_CONTROL_LABELS[selectedLocation?.profile_control_status] || selectedLocation?.profile_control_status || "În director";
   const locationHidden = selectedLocation?.public_visibility_status === "archived" && selectedLocation?.active_status !== "inactiva";
-  const locationClosed = selectedLocation?.active_status === "inactiva";
+  const locationClosed = isLocationClosed(selectedLocation);
   const lifecycleActive = ["pending_review", "needs_more_info"].includes(lifecycleSubmission?.status);
 
   const loadLifecycle = useCallback(async () => {

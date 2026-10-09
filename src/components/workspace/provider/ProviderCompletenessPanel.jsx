@@ -127,7 +127,8 @@ export default function ProviderCompletenessPanel({ data }) {
           >
             <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
             <div className="relative z-10 font-heading text-[2.4rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{data.summary.overall_percentage}%</div>
-            <div className="relative z-10 mt-2 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">completare generală</div>
+            {/* 2026-10-09 (audit Setări, S13): fără locații active, cifra e doar a organizației. */}
+            <div className="relative z-10 mt-2 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">{Number(data.summary.active_location_count || 0) > 0 ? "completare generală" : "doar organizația"}</div>
           </div>
         </div>
 

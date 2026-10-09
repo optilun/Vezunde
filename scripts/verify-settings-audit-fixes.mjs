@@ -65,4 +65,11 @@ for (const text of ['Ajutor și suport VIASEE', 'Solicitările mele', 'Nu exist�
 assert.match(sidebar, /"Schimbă spațiul contului"/);
 assert.match(sidebar, /<span>Ajutor și suport<\/span>/);
 
+// S13, S16 și textul din Setările contului care trimite la preferință.
+const completeness = await read('src/components/workspace/provider/ProviderCompletenessPanel.jsx');
+assert.match(completeness, /\? "completare generală" : "doar organizația"/, 'S13');
+assert.match(settings, /if \(isLocationPubliclyVisible\(location\)\) return \{ label: "Publică"/, 'S16');
+assert.match(settings, /const locationClosed = isLocationClosed\(selectedLocation\);/);
+assert.match(account, /Dacă organizația are mai multe locații, alegi din Setările organizației → General/);
+
 console.log('Settings audit fixes: OK');
