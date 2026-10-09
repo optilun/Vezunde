@@ -5,6 +5,7 @@ import { handle as openMyPatientRequestHandle } from './openMyPatientRequest.ts'
 import { handle as myPatientNotificationsOpsHandle } from './myPatientNotificationsOps.ts';
 import { handle as mySavedItemsOpsHandle } from './mySavedItemsOps.ts';
 import { handle as myNotificationPreferencesOpsHandle } from './myNotificationPreferencesOps.ts';
+import { handle as providerRequestIntakeOpsHandle } from './providerRequestIntakeOps.ts';
 import { handle as getMyProviderMembersHandle } from './getMyProviderMembers.ts';
 import { handle as getMyProviderOnboardingWorkspaceHandle } from './getMyProviderOnboardingWorkspace.ts';
 import { handle as getProviderEntitlementHandle } from './getProviderEntitlement.ts';
@@ -32,6 +33,7 @@ export const PROVIDER_WORKSPACE_FUNCTION_HANDLERS: Record<string, ProviderWorksp
   myPatientNotificationsOps: myPatientNotificationsOpsHandle,
   mySavedItemsOps: mySavedItemsOpsHandle,
   myNotificationPreferencesOps: myNotificationPreferencesOpsHandle,
+  providerRequestIntakeOps: providerRequestIntakeOpsHandle,
   getMyProviderMembers: getMyProviderMembersHandle,
   getMyProviderOnboardingWorkspace: getMyProviderOnboardingWorkspaceHandle,
   getProviderEntitlement: getProviderEntitlementHandle,
