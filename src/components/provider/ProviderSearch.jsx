@@ -8,8 +8,10 @@ import { standaloneClaimLocations } from "@/lib/claimSearchResults";
 
 const GooglePlacesResults = lazy(() => import("@/components/provider/GooglePlacesResults"));
 
-export default function ProviderSearch({ onClaim, onNew }) {
-  const [query, setQuery] = useState("");
+// 2026-10-09: `initialQuery` vine din căutarea „Caută-ți locația” de pe pagina principală (ProCta),
+// ca furnizorul să nu scrie numele a doua oară. Căutarea pornește singură, ca la tastare.
+export default function ProviderSearch({ onClaim, onNew, initialQuery = "" }) {
+  const [query, setQuery] = useState(() => String(initialQuery || "").slice(0, 120));
   const [results, setResults] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
