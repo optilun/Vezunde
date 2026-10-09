@@ -480,6 +480,12 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
           description={user?.email || "Cont autentificat"}
           action={<CompactButton onClick={() => onSwitchMode?.("personal")}>Setările contului <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
         />
+        {/* 2026-10-09 (audit Setări, S5): fiecare își alege emailurile pentru cereri noi. */}
+        <SettingsRow
+          title="Notificări pe email"
+          description="Fiecare proprietar și manager alege, din Setările contului, dacă primește email la cererile noi ale fiecărei locații."
+          action={<CompactButton onClick={() => onSwitchMode?.("personal")}>Setează notificările <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
+        />
       </SettingsSection>
 
       <SettingsSection title="Zona de pericol" description={`Acțiunile se aplică locației ${locationLabel(selectedLocation)}, nu contului personal VIASEE.`} danger>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  BellRing,
   CheckCircle2,
   ChevronRight,
   Loader2,
@@ -22,6 +23,70 @@ const MODE_LABELS = {
   professional: "Cont profesional",
   applicant: "Pregătire profil",
 };
+
+// 2026-10-09 (audit Setări, S5; Alex: „Fiecare își alege”): emailul la cereri noi, pe fiecare
+// locație unde ești proprietar sau manager. Implicit pornit. Fără astfel de locații, secțiunea lipsește.
+function LeadEmailPreferences() {
+  const [state, setState] = useState({ status: "loading", items: [], error: "" });
+  const [savingId, setSavingId] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    base44.functions.invoke("myNotificationPreferencesOps", { action: "list" })
+      .then((response) => { if (!cancelled) setState({ status: "ready", items: response.data?.items || [], error: "" }); })
+      .catch(() => { if (!cancelled) setState({ status: "error", items: [], error: "Preferințele de notificare nu au putut fi încărcate." }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const toggle = async (item, enabled) => {
+    setSavingId(item.location_id);
+    setState((current) => ({ ...current, error: "", items: current.items.map((row) => row.location_id === item.location_id ? { ...row, lead_email_enabled: enabled } : row) }));
+    try {
+      const response = await base44.functions.invoke("myNotificationPreferencesOps", { action: "set", location_id: item.location_id, lead_email_enabled: enabled });
+      if (response.data?.error) throw new Error(response.data.error);
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        error: error?.response?.data?.error || error?.message || "Preferința nu a putut fi salvată. Încearcă din nou.",
+        items: current.items.map((row) => row.location_id === item.location_id ? { ...row, lead_email_enabled: !enabled } : row),
+      }));
+    } finally {
+      setSavingId("");
+    }
+  };
+
+  if (state.status === "ready" && state.items.length === 0) return null;
+  return (
+    <SectionCard icon={BellRing} title="Notificări pe email" description="Alegi pentru tine, pe fiecare locație, dacă primești email la fiecare cerere nouă. Notificările din aplicație rămân active.">
+      {state.status === "loading" && <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă locațiile…</p>}
+      {state.items.length > 0 && (
+        <ul className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border">
+          {state.items.map((item) => (
+            <li key={item.location_id} className="flex flex-col gap-3 bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold">{item.location_name}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">{[item.city, item.role_label].filter(Boolean).join(" · ")}</span>
+              </span>
+              <label htmlFor={`lead-email-${item.location_id}`} className="flex shrink-0 cursor-pointer items-center gap-2.5 text-xs font-semibold">
+                <input
+                  id={`lead-email-${item.location_id}`}
+                  type="checkbox"
+                  checked={item.lead_email_enabled}
+                  disabled={savingId === item.location_id}
+                  onChange={(event) => void toggle(item, event.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                Email la fiecare cerere nouă
+                {savingId === item.location_id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {state.error && <p role="alert" className="mt-3 text-xs font-semibold text-red-800">{state.error}</p>}
+    </SectionCard>
+  );
+}
 
 function SectionCard({ icon: Icon, title, description, children, danger = false }) {
   return (
@@ -200,6 +265,8 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
           <CheckCircle2 className="h-3.5 w-3.5" /> Preferințele se salvează automat.
         </div>
       </SectionCard>
+
+      <LeadEmailPreferences />
 
       <SectionCard icon={LockKeyhole} title="Securitate" description="Autentificarea și parolele sunt gestionate prin sistemul securizat de autentificare al VIASEE.">
         <div className="divide-y divide-border/70">
