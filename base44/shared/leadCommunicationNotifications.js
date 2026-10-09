@@ -13,6 +13,7 @@ import {
   notifyProviderUsersInApp,
 } from './inAppNotificationDelivery.js';
 import { IN_APP_NOTIFICATION_EVENT_KEYS } from './inAppNotificationPolicy.js';
+import { usersWithLeadEmailOff } from './providerLeadEmailPreference.js';
 
 const MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS = 20;
 
@@ -42,7 +43,12 @@ export async function notifyProviderLeadAvailable({ base44, svc, lead, location 
     location_id: location.id,
     status: 'active',
   }, '-created_date', 500);
-  const recipients = uniqueProviderRecipients(memberships).slice(0, MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS);
+  const eligibleRecipients = uniqueProviderRecipients(memberships);
+  // 2026-10-09 (audit Setări, S5): cine a oprit emailul pentru locație nu-l mai primește. Notificarea
+  // din aplicație de mai jos rămâne pentru toți.
+  const emailOff = eligibleRecipients.length ? await usersWithLeadEmailOff(svc, location.id) : new Set();
+  const optedOut = eligibleRecipients.filter((membership) => emailOff.has(membership.user_id));
+  const recipients = eligibleRecipients.filter((membership) => !emailOff.has(membership.user_id)).slice(0, MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS);
   const email = buildProviderLeadAvailableEmail({
     locationName: location.public_display_name || location.name || 'Locatia ta',
     city: lead.city || location.locality_name || location.city || '',
@@ -63,6 +69,25 @@ export async function notifyProviderLeadAvailable({ base44, svc, lead, location 
     actionKind: 'lead',
     actionTargetId: lead.id,
   }).catch(() => []);
+
+  for (const membership of optedOut) {
+    await recordSkippedCommunication({
+      svc,
+      eventKey: COMMUNICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE,
+      recipientType: 'provider_user',
+      recipientRefId: membership.user_id,
+      sourceEntityType: 'ProviderLead',
+      sourceEntityId: lead.id,
+      requestId: lead.request_id || '',
+      leadId: lead.id,
+      organizationId: lead.organization_id || location.organization_id || '',
+      locationId: location.id,
+      reason: 'email_turned_off_by_user',
+      subject: email.subject,
+    }).catch(() => null);
+  }
+
+  if (recipients.length === 0 && optedOut.length > 0) return { sent: 0, failed: 0, skipped: optedOut.length };
 
   if (recipients.length === 0) {
     await recordSkippedCommunication({
@@ -112,7 +137,7 @@ export async function notifyProviderLeadAvailable({ base44, svc, lead, location 
   return {
     sent: results.filter((result) => result.status === 'sent').length,
     failed: results.filter((result) => result.status === 'failed').length,
-    skipped: results.filter((result) => result.status === 'skipped').length,
+    skipped: results.filter((result) => result.status === 'skipped').length + optedOut.length,
   };
 }
 

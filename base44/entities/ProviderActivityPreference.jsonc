@@ -11,6 +11,11 @@
     "weekly_enabled": {
       "type": "boolean",
       "default": true
+    },
+    "lead_email_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "2026-10-09: emailul la fiecare cerere noua pentru aceasta locatie. Lipsa campului = pornit."
     }
   },
   "required": [
