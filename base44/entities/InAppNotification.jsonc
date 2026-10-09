@@ -6,6 +6,7 @@
     "event_key": {
       "type": "string",
       "enum": [
+        "provider_local_interest_weekly",
         "provider_lead_available",
         "patient_provider_response_received",
         "provider_chat_opened",
@@ -32,7 +33,7 @@
     "body": { "type": "string" },
     "action_kind": {
       "type": "string",
-      "enum": ["lead", "chat", "request", "contact"]
+      "enum": ["lead", "chat", "request", "contact", "activity"]
     },
     "action_target_id": { "type": "string" },
     "variant": { "type": "string" },

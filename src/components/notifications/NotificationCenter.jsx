@@ -19,14 +19,16 @@ export default function NotificationCenter({
   markNotificationRead,
   markAllNotificationsRead,
   onOpenTarget,
-  onDataChange,
+  onDataChange = null,
   refreshIntervalMs = 60000,
+  showActivityFilters = false,
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ notifications: [], counters: { total: 0, unread: 0 }, warning: "" });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState("");
   const [error, setError] = useState("");
+  const [category, setCategory] = useState("all");
   const loadingRef = useRef(false);
   const lastLoadedAtRef = useRef(0);
 
@@ -106,6 +108,8 @@ export default function NotificationCenter({
   };
 
   const unread = Number(data.counters?.unread || 0);
+  const visibleNotifications = data.notifications.filter(notification => category === "all"
+    || (category === "activity" ? notification.action_kind === "activity" : notification.action_kind !== "activity"));
 
   return (
     <div className="relative">
@@ -147,15 +151,16 @@ export default function NotificationCenter({
 
           {error && <p role="alert" className="m-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
           {data.warning && <p role="status" className="m-3 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-xs text-amber-900">{data.warning}</p>}
+          {showActivityFilters && <div className="flex flex-wrap gap-1 border-b border-border p-2" role="group" aria-label="Tip notificări">{[["all", "Toate"], ["requests", "Cereri și mesaje"], ["activity", "Activitate în zonă"]].map(([key, text]) => <button key={key} type="button" onClick={() => setCategory(key)} aria-pressed={category === key} className={`rounded-full px-3 py-2 text-xs font-semibold ${category === key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>{text}</button>)}</div>}
 
           <div className="max-h-[420px] overflow-y-auto p-2">
             {loading && data.notifications.length === 0 ? (
               <div className="flex min-h-28 items-center justify-center text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...</div>
-            ) : data.notifications.length === 0 ? (
+            ) : visibleNotifications.length === 0 ? (
               <div className="p-6 text-center"><Bell className="mx-auto h-6 w-6 text-muted-foreground" /><p className="mt-2 text-sm font-semibold text-foreground">Nu ai notificări</p></div>
             ) : (
               <div className="space-y-1">
-                {data.notifications.map((notification) => {
+                {visibleNotifications.map((notification) => {
                   const isUnread = notification.status === "unread";
                   return (
                     <button

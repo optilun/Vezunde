@@ -4,6 +4,8 @@
     "noEmit": true
   },
   "include": [
+    "shared/providerLocalInterestPolicy.js",
+    "base44/shared/providerLocalInterestOps.js",
     "shared/canonicalServiceRegistry.js",
     "shared/canonicalServiceRegistryExtended.js",
     "shared/communicationEventCatalog.js",

@@ -22,6 +22,14 @@ on:
       - "base44/functions/getMyProviderWorkspace/providerOrganizationLeadInboxOps.ts"
       - "scripts/verify-provider-inbox-conversations.mjs"
       - "scripts/verify-provider-free-pro-presentation.mjs"
+      - "scripts/verify-provider-local-interest.mjs"
+      - "shared/providerLocalInterest*.js"
+      - "base44/shared/providerLocalInterest*.js"
+      - "base44/entities/PatientSearchEvent.jsonc"
+      - "base44/entities/ProviderActivityPreference.jsonc"
+      - "base44/functions/recordSearchEvent/**"
+      - "src/components/notifications/**"
+      - "src/lib/recordSearchEvent.js"
       - "src/lib/providerLeadAccessPresentation.js"
       - "src/components/workspace/provider/ProviderLeadChat.jsx"
       - "src/components/workspace/provider/ProviderLeadContactAccess.jsx"
@@ -52,6 +60,7 @@ jobs:
         run: |
           node scripts/verify-provider-inbox-conversations.mjs
           node scripts/verify-provider-free-pro-presentation.mjs
+          node scripts/verify-provider-local-interest.mjs
           node scripts/verify-controlled-chat-reliability.mjs
           node scripts/verify-provider-organization-inbox-ui.mjs
           node scripts/verify-provider-organization-inbox-integration.mjs
