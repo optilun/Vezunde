@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  Info,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -27,6 +28,8 @@ import {
 } from "@/lib/providerWorkspaceState";
 import { hasPublishedSectionChanges, sameSubmissionPayload } from "../../../../shared/providerWorkspaceSubmissionComparison.js";
 import { formatStreetAddress } from "@/lib/addressDisplay";
+import { locationModulePresentation, locationVisibilityPresentation } from "@/lib/providerLocationPresentation";
+import "./ProviderLocations.css";
 
 const inputCls =
   "w-full rounded-xl border border-foreground/15 bg-background px-4 py-3 text-[16px] outline-none transition-colors focus:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
@@ -215,7 +218,7 @@ function LocationCard({ location, active, onSelect }) {
   );
 }
 
-function DetailLine({ icon: Icon, label, value, href }) {
+function DetailLine({ icon: Icon, label, value, href = "" }) {
   const content = value || "Lipsește";
   return (
     <div className="min-w-0 py-4">
@@ -226,7 +229,7 @@ function DetailLine({ icon: Icon, label, value, href }) {
       {href && value ? (
         <a
           href={href}
-          className="mt-1.5 block truncate text-sm font-bold text-foreground underline decoration-foreground/25 underline-offset-4"
+          className="mt-1.5 block break-words text-sm font-bold leading-relaxed text-foreground underline decoration-foreground/25 underline-offset-4 [overflow-wrap:anywhere]"
         >
           {content}
         </a>
@@ -257,13 +260,13 @@ const CONFIGURE_GRAIN = {
   backgroundSize: "180px 180px",
 };
 
-function ConfigureCard({ icon: Icon, title, text, onClick, tone }) {
+function ConfigureCard({ icon: Icon, title, text, onClick, tone, summary, action }) {
   return (
     <button
       type="button"
       onClick={onClick}
       style={tone ? { borderColor: tone.border, backgroundColor: tone.bg } : undefined}
-      className="relative min-h-28 overflow-hidden rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none"
+      className="location-module-card relative min-h-28 overflow-hidden rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
     >
       <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={CONFIGURE_GRAIN} />
       <div className="relative z-10 flex h-full items-start gap-3">
@@ -275,11 +278,13 @@ function ConfigureCard({ icon: Icon, title, text, onClick, tone }) {
             <div className="text-sm font-bold">{title}</div>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          <div className="location-module-summary mt-2 text-sm font-semibold">{summary.label}</div>
+          {summary.pending && <span className="location-module-pending mt-1 text-xs">{summary.pending}</span>}
+          <p className="location-module-description mt-1.5 text-sm leading-relaxed text-muted-foreground">
             {text}
           </p>
           <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">
-            Configurează
+            {action}
           </div>
         </div>
       </div>
@@ -318,6 +323,7 @@ export default function ProviderLocations({
   onSelect,
   onRefresh,
   onOpenModule,
+  overview = null,
 }) {
   const locations = workspace.locations || [];
   const capabilities = new Set(workspace.current_user_capabilities || []);
@@ -345,6 +351,9 @@ export default function ProviderLocations({
   const [showAdvancedMap, setShowAdvancedMap] = useState(false);
   const [showPublicMap, setShowPublicMap] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState("");
+  const positionSectionRef = useRef(null);
+  const positionTriggerRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -406,11 +415,24 @@ export default function ProviderLocations({
     selectedState,
     selectedLocation,
   );
+  const organization = (workspace.organizations || []).find(item => item.id === selectedLocation?.organization_id) || {};
+  const visibility = locationVisibilityPresentation(selectedLocation || {}, organization);
+  const modules = locationModulePresentation(selectedLocation || {}, overview);
 
   const closeEditor = () => {
     setValues(valuesFromDraft(selectedLocation, draft));
     setEditOpen(false);
   };
+
+  useEffect(() => {
+    if (!editOpen || editTarget !== "position") return undefined;
+    const trigger = positionTriggerRef.current;
+    const frame = requestAnimationFrame(() => {
+      positionSectionRef.current?.scrollIntoView({ block: "start" });
+      positionSectionRef.current?.focus({ preventScroll: true });
+    });
+    return () => { cancelAnimationFrame(frame); trigger?.focus(); };
+  }, [editOpen, editTarget]);
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -657,15 +679,14 @@ export default function ProviderLocations({
   }
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col gap-4 border-b border-foreground/15 pb-6 sm:flex-row sm:items-start sm:justify-between">
+    <div className="provider-locations-page space-y-6">
+      <header className="flex flex-col gap-4 border-b border-foreground/15 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-[2rem] font-extrabold leading-tight tracking-[-0.035em]">
             Locațiile organizației
           </h1>
           <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Selectează un punct de lucru și gestionează separat datele publice,
-            programul, serviciile, specialiștii și fotografiile.
+            {hasMultipleLocations ? "Selectează un punct de lucru și gestionează datele și modulele lui." : "Gestionează datele publice și configurarea punctului de lucru."}
           </p>
         </div>
         {canAddLocations && (
@@ -703,46 +724,52 @@ export default function ProviderLocations({
 
       {previewLocation && (
         <>
-          <section data-location-summary className="border-y border-foreground/15 py-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <section data-location-summary className="location-summary-section border-b border-foreground/15 pb-5">
+            <div className="location-summary-heading flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
+                <div>
                   <h2 className="font-heading text-2xl font-extrabold tracking-[-0.03em]">
                     {selectedLocationName}
                   </h2>
+                </div>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {previewLocation.locality_name || previewLocation.city || "Localitate necompletată"}
+                  {previewLocation.county_name || previewLocation.county ? ` · ${previewLocation.county_name || previewLocation.county}` : ""}
+                </p>
+                <div className="location-summary-statuses mt-3 flex flex-wrap items-center gap-2">
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${selectedState.activityClassName}`}
                   >
                     {selectedState.activityLabel}
                   </span>
-                  <span className="rounded-full border border-foreground/10 bg-secondary px-2.5 py-1 text-xs font-semibold">
-                    {selectedState.controlLabel}
+                  <span className="rounded-full border border-foreground/10 px-2.5 py-1 text-xs text-muted-foreground">
+                    Verificare: {selectedState.controlLabel}
                   </span>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${locationDataState.className}`}
+                    className="rounded-full border border-foreground/10 px-2.5 py-1 text-xs text-muted-foreground"
                   >
                     {locationDataState.label}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {previewLocation.locality_name || previewLocation.city ||
-                    "Localitate necompletată"}
-                  {previewLocation.county_name || previewLocation.county
-                    ? ` · ${previewLocation.county_name || previewLocation.county}`
-                    : ""}
-                </p>
               </div>
 
               {canManageLocationProfile && (
                 <button
                   type="button"
-                  onClick={() => setEditOpen(true)}
+                  onClick={() => { setEditTarget(""); setEditOpen(true); }}
                   className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-transparent px-5 text-sm font-semibold hover:bg-white/45 sm:w-auto"
                 >
                   <Pencil className="h-4 w-4" /> Editează datele
                 </button>
               )}
             </div>
+
+            {!visibility.publicProfile && (
+              <div className="location-visibility-note mt-4 flex items-start gap-2.5 rounded-xl border border-[#e1bda8] bg-[#efd5c5]/35 px-3.5 py-3 text-sm">
+                <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                <div><p className="font-semibold">{visibility.title}</p><p className="mt-1 leading-relaxed text-muted-foreground">{visibility.description}</p></div>
+              </div>
+            )}
 
             {draft && (
               <div className="mt-5 border-y border-[#c6d3da] bg-[#dce5e9] px-4 py-3 text-sm text-[#1c1c1c]">
@@ -751,15 +778,15 @@ export default function ProviderLocations({
               </div>
             )}
 
-            <div className="mt-5 grid divide-y divide-foreground/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3">
-              <div className="sm:pr-5">
+            <div className="location-contact-grid mt-4 grid gap-x-4 divide-y divide-foreground/10 sm:grid-cols-2">
+              <div className="min-w-0 sm:col-span-2">
                 <DetailLine
                   icon={MapPin}
                   label="Adresa"
                   value={formatStreetAddress(previewLocation.address, previewLocation.locality_name || previewLocation.city)}
                 />
               </div>
-              <div className="sm:px-5">
+              <div className="min-w-0">
                 <DetailLine
                   icon={Phone}
                   label="Telefon"
@@ -773,7 +800,7 @@ export default function ProviderLocations({
                   }
                 />
               </div>
-              <div className="sm:col-span-2 sm:border-t sm:border-foreground/10 sm:pl-0 lg:col-span-1 lg:border-t-0 lg:pl-5">
+              <div className="min-w-0">
                 <DetailLine
                   icon={Mail}
                   label="Email public"
@@ -787,7 +814,7 @@ export default function ProviderLocations({
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="location-map-actions mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowPublicMap((current) => !current)}
@@ -810,23 +837,24 @@ export default function ProviderLocations({
               <span className={`text-xs font-semibold ${hasExactPin ? "text-green-700" : "text-muted-foreground"}`}>
                 {hasExactPin && draft ? "Poziție confirmată în draft" : pinLabel}
               </span>
+              {!hasExactPin && canManageLocationProfile && <button ref={positionTriggerRef} type="button" onClick={() => { setEditTarget("position"); setEditOpen(true); }} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#dac69b] bg-[#eadcba]/35 px-3 text-xs font-semibold hover:bg-[#eadcba]/60"><MapPin className="h-3.5 w-3.5" />Verifică poziția</button>}
             </div>
 
             {showPublicMap && (
               <div data-location-summary-map className="mt-5 overflow-hidden rounded-[16px] border border-foreground/15 bg-secondary/35">
                 <div className="h-64 sm:h-72">
-                  <LocationPinMap key={selectedLocation.id} location={previewLocation} />
+                  <LocationPinMap key={selectedLocation.id} location={previewLocation} compact />
                 </div>
               </div>
             )}
           </section>
 
-          <section>
+          <section className="location-configure-section">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold">Configurează locația</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Module separate pentru {selectedLocationName}.
+                  Starea configurării și acces rapid la fiecare modul.
                 </p>
               </div>
             </div>
@@ -845,6 +873,8 @@ export default function ProviderLocations({
                   tone={CONFIGURE_TONES.servicii}
                   title="Servicii"
                   text="Alege serviciile disponibile în această locație."
+                  summary={modules.services}
+                  action="Gestionează serviciile"
                   onClick={() =>
                     onOpenModule?.("servicii", selectedLocation.id)
                   }
@@ -856,6 +886,8 @@ export default function ProviderLocations({
                   tone={CONFIGURE_TONES.program}
                   title="Program"
                   text="Setează programul acestui punct de lucru."
+                  summary={modules.hours}
+                  action="Editează programul"
                   onClick={() => onOpenModule?.("program", selectedLocation.id)}
                 />
               )}
@@ -865,6 +897,8 @@ export default function ProviderLocations({
                   tone={CONFIGURE_TONES.specialisti}
                   title="Specialiști"
                   text="Specialiștii afișați, invitațiile și cererile „Lucrez aici”."
+                  summary={modules.specialists}
+                  action="Gestionează specialiștii"
                   onClick={() =>
                     onOpenModule?.("specialisti", selectedLocation.id)
                   }
@@ -984,7 +1018,7 @@ export default function ProviderLocations({
                   </div>
                 </section>
 
-                <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
+                <section ref={positionSectionRef} tabIndex={-1} aria-label="Poziție pe hartă" className="rounded-[22px] border border-border bg-card p-4 sm:p-5 focus:outline-none">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="text-base font-bold">Poziție pe hartă</h3>

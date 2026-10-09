@@ -10,7 +10,7 @@ const VectorCanvas = lazy(() => import("./LocationPinVectorCanvas").catch(() => 
 const LegacyCanvas = lazy(() => import("./LocationPinLeafletCanvas"));
 const loading = <div role="status" className="flex h-full items-center justify-center text-sm text-muted-foreground">Se încarcă harta VIASEE…</div>;
 
-export default function LocationPinMap({ location, onPositionChange = null, className = "" }) {
+export default function LocationPinMap({ location, onPositionChange = null, className = "", compact = false }) {
   const holder = useRef(null);
   const [visible, setVisible] = useState(false);
   const [fallback, setFallback] = useState(false);
@@ -35,7 +35,7 @@ export default function LocationPinMap({ location, onPositionChange = null, clas
   );
   const Canvas = fallback ? LegacyCanvas : VectorCanvas;
   return (
-    <div ref={holder} role="region" aria-label={`Harta VIASEE — ${location?.public_display_name || location?.name || "Locație"}`} className={`relative isolate h-full overflow-hidden bg-secondary/30 ${className}`}>
+    <div ref={holder} role="region" aria-label={`Harta VIASEE — ${location?.public_display_name || location?.name || "Locație"}`} className={`relative isolate h-full overflow-hidden bg-secondary/30 ${compact ? "location-map-compact" : ""} ${className}`}>
       {visible ? <Suspense fallback={loading}><Canvas location={location} onPositionChange={onPositionChange} onFailure={fail} /></Suspense> : loading}
     </div>
   );

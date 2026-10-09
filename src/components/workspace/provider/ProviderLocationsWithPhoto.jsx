@@ -6,6 +6,7 @@ import ProviderLocationPhotoCompact from "./ProviderLocationPhotoCompact";
 import ProviderAddLocationFlow from "./ProviderAddLocationFlow";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import { formatLocationAddress } from "@/lib/addressDisplay";
+import { locationModulePresentation } from "@/lib/providerLocationPresentation";
 
 function plainLabel(value) {
   return String(value || "")
@@ -66,6 +67,7 @@ export default function ProviderLocationsWithPhoto(props) {
     null;
   const selectedLocationName =
     selectedLocation?.public_display_name || selectedLocation?.name || "Locație";
+  const photoSummary = locationModulePresentation(selectedLocation || {}, props.overview).photo;
   const organization =
     (workspace.organizations || []).find(
       (item) => item.id === selectedLocation?.organization_id,
@@ -263,7 +265,7 @@ export default function ProviderLocationsWithPhoto(props) {
 
     const interceptAddLocation = (event) => {
       const link = event.target.closest('a[href="/adauga-sau-revendica"]');
-      if (!canAddLocation || !link || !root.contains(link)) return;
+      if (!canAddLocation || !selectedLocationId || !link || !root.contains(link)) return;
       event.preventDefault();
       event.stopPropagation();
       setAddLocationOpen(true);
@@ -612,7 +614,7 @@ export default function ProviderLocationsWithPhoto(props) {
             type="button"
             onClick={() => setPhotoOpen(true)}
             style={{ borderColor: CONFIGURE_TONES.fotografie.border, backgroundColor: CONFIGURE_TONES.fotografie.bg }}
-            className="relative h-full min-h-28 overflow-hidden rounded-[14px] border p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none"
+            className="location-module-card relative h-full min-h-28 overflow-hidden rounded-[14px] border p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
           >
             <span
               aria-hidden="true"
@@ -628,14 +630,16 @@ export default function ProviderLocationsWithPhoto(props) {
                   <div className="text-sm font-bold">Fotografie locație</div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <p className="mt-1.5 min-h-16 text-sm leading-relaxed text-muted-foreground">
+                <div className="location-module-summary mt-2 text-sm font-semibold">{photoSummary.label}</div>
+                {photoSummary.pending && <span className="location-module-pending mt-1 text-xs">{photoSummary.pending}</span>}
+                <p className="location-module-description mt-1.5 text-sm leading-relaxed text-muted-foreground">
                   {/* 2026-10-04 (audit #11): când fotografia există, cardul nu mai cere „Adaugă”. */}
-                  {selectedLocation.photo_url
+                  {selectedLocation.photo_url || selectedLocation.profile_photo_url
                     ? "Schimbă fotografia principală a acestei locații."
                     : "Adaugă fotografia principală a acestei locații."}
                 </p>
                 <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">
-                  Configurează
+                  {photoSummary.action}
                 </div>
               </div>
             </div>
