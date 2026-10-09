@@ -480,61 +480,6 @@ export default function ProviderLocationsWithPhoto(props) {
         }
         .vezunde-location-map > div { height: 190px !important; }
 
-        aside[aria-label="Editează datele locației"] {
-          max-width: 56rem !important;
-          background: hsl(var(--background)) !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:first-child {
-          background: hsl(var(--background)) !important;
-          padding: 1.15rem 1.5rem !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) {
-          padding: 0 1.5rem 1.5rem !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) 300px;
-          column-gap: 1.5rem;
-          align-items: start;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section {
-          grid-column: 1;
-          margin: 0 !important;
-          border: 0 !important;
-          border-bottom: 1px solid rgb(23 23 23 / 0.12) !important;
-          border-radius: 0 !important;
-          background: transparent !important;
-          padding: 1.25rem 0 !important;
-          box-shadow: none !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) {
-          grid-column: 2;
-          align-self: start;
-          position: sticky;
-          top: 0;
-          margin-top: 1.25rem !important;
-          overflow: hidden;
-          border: 1px solid rgb(23 23 23 / 0.15) !important;
-          border-radius: 14px !important;
-          background: hsl(var(--background)) !important;
-          padding: 0 !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) > div:first-child {
-          padding: 0.85rem 1rem !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) > div:last-child {
-          height: 220px !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > div[class*="border-blue-200"],
-        aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > div[class*="border-amber-200"] {
-          grid-column: 1 / -1;
-          margin: 1rem 0 0 !important;
-          border-radius: 12px !important;
-        }
-        aside[aria-label="Editează datele locației"] > div:last-child {
-          background: hsl(var(--background)) !important;
-          padding: 0.85rem 1.5rem !important;
-        }
 
         @media (min-width: 1024px) {
           .vezunde-location-summary {
@@ -566,24 +511,7 @@ export default function ProviderLocationsWithPhoto(props) {
           }
         }
 
-        @media (max-width: 899px) {
-          aside[aria-label="Editează datele locației"] {
-            max-width: none !important;
-          }
-          aside[aria-label="Editează datele locației"] > div:nth-child(2) {
-            padding: 0 1rem 1.25rem !important;
-          }
-          aside[aria-label="Editează datele locației"] > div:nth-child(2) > div {
-            display: block;
-          }
-          aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) {
-            position: static;
-            margin-top: 1.25rem !important;
-          }
-          aside[aria-label="Editează datele locației"] > div:nth-child(2) > div > section:nth-of-type(4) > div:last-child {
-            height: 190px !important;
-          }
-        }
+
 
         @media (max-width: 639px) {
           .vezunde-location-selector-grid {
@@ -595,12 +523,6 @@ export default function ProviderLocationsWithPhoto(props) {
           .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
           .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 0; }
           .vezunde-location-map > div { height: 180px !important; }
-          aside[aria-label="Editează datele locației"] > div:first-child {
-            padding: 1rem !important;
-          }
-          aside[aria-label="Editează datele locației"] > div:last-child {
-            padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) !important;
-          }
         }
       `}</style>
 
