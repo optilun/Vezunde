@@ -42,6 +42,9 @@ const REASON_LABELS = Object.freeze({
   canonical_locality_required: 'Localitatea nu a putut fi validata',
   no_local_results: 'Nu exista rezultate locale potrivite',
   no_search_results: 'Cautarea nu a returnat rezultate',
+  // 2026-10-09 (audit Top 3, T6): cererea are rezultate, dar niciuna dintre locatii nu primeste
+  // inca cereri prin VIASEE, deci cererea nu a ajuns la nimeni.
+  no_receiving_locations: 'Locatiile gasite nu primesc inca cereri prin VIASEE',
 });
 
 const REASON_SET = new Set(Object.keys(REASON_LABELS));
@@ -93,10 +96,18 @@ export function sanitizePatientRequestRecoveryCoverageCounts(value = {}) {
  *   coverageCounts?: Record<string, any>
  * }} [options]
  */
+// 2026-10-09 (audit Top 3, T6): verificarea echipei e disponibila si cand cererea are rezultate,
+// dar dupa trimitere nu a ajuns la nicio locatie (`deliveredLeadCount === 0`, numarat pe server).
+export function patientRequestRecoveryTrigger(request, deliveredLeadCount = null) {
+  if (Number(request?.match_count || 0) === 0) return 'no_search_results';
+  return deliveredLeadCount === 0 ? 'no_receiving_locations' : '';
+}
+
 export function buildPatientRequestRecoveryRecord({
   request,
   consentVersion,
   coverageCounts = {},
+  deliveredLeadCount = null,
 } = {}) {
   if (!request?.id) {
     throw new PatientRequestRecoveryValidationError('Cererea nu a putut fi identificata.', 'request_id');
@@ -104,7 +115,8 @@ export function buildPatientRequestRecoveryRecord({
   if (consentVersion !== PATIENT_REQUEST_RECOVERY_CONSENT_VERSION) {
     throw new PatientRequestRecoveryValidationError('Acordul pentru verificarea cererii nu este valid.', 'recovery_consent_version');
   }
-  if (Number(request.match_count || 0) > 0) {
+  const trigger = patientRequestRecoveryTrigger(request, deliveredLeadCount);
+  if (!trigger) {
     throw new PatientRequestRecoveryValidationError('Verificarea interna este disponibila numai pentru cererile fara rezultate.', 'request_id');
   }
 
@@ -114,8 +126,10 @@ export function buildPatientRequestRecoveryRecord({
     contract_version: PATIENT_REQUEST_RECOVERY_CONTRACT_VERSION,
     request_id: clean(request.id, 120),
     public_reference: clean(request.public_reference, 120),
-    trigger: 'no_search_results',
-    reason: patientRequestRecoveryReason(request.matching_coverage_status),
+    trigger,
+    reason: trigger === 'no_receiving_locations'
+      ? 'no_receiving_locations'
+      : patientRequestRecoveryReason(request.matching_coverage_status),
     status: 'queued',
     outcome: 'pending',
     intent: clean(request.intent, 120),
