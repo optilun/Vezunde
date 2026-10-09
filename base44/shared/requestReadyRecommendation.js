@@ -1,5 +1,7 @@
 import { getCanonicalServiceDefinition, normalizeServiceKey } from './canonicalServiceRegistry.js';
 import { canAccessProviderLeadInbox } from './providerLeadInboxPolicy.js';
+import { loadRowsForLocationIds } from './locationScopedEntityQuery.js';
+import { locationHasActiveLeadMember } from './providerRequestIntake.js';
 
 // 2026-10-09 (audit Top 3, T4 + T5; Alex: „Începe”, după recomandarea din research).
 // O singură regulă „poate primi cererea”, folosită în trei locuri:
@@ -126,4 +128,35 @@ export function assignRequestReadyTop3(orderedEntries, limit = 20) {
     ...others,
   ];
   return relabeled.slice(0, Math.max(1, Number(limit) || 20));
+}
+
+// Evaluează în lot candidații `{ location, services, requestedKeys }` și întoarce
+// Map(location_id -> rezultatul evaluateRequestReadiness). Membrii direcți se citesc într-o singură
+// interogare; acoperirea prin proprietarul organizației se verifică doar pentru locațiile cărora
+// le lipsește numai membrul.
+export async function loadRequestReadiness(svc, candidates, needLevel = '') {
+  const list = (Array.isArray(candidates) ? candidates : []).filter((item) => item?.location?.id);
+  const readiness = new Map();
+  if (list.length === 0) return readiness;
+  const memberships = await loadRowsForLocationIds(
+    svc.entities.ProviderMembership,
+    list.map((item) => item.location.id),
+    { query: { status: 'active' }, perLocationLimit: 50 },
+  ).catch(() => []);
+  const withDirectMember = locationIdsWithDirectLeadMember(memberships);
+  for (const item of list) {
+    let result = evaluateRequestReadiness({
+      location: item.location,
+      services: item.services,
+      requestedKeys: item.requestedKeys,
+      needLevel,
+      hasActiveMember: withDirectMember.has(item.location.id),
+    });
+    if (!result.ready && result.reasons.length === 1 && result.reasons[0] === 'no_active_member') {
+      const covered = await locationHasActiveLeadMember(svc, item.location).catch(() => false);
+      if (covered) result = { ...result, ready: true, reasons: [] };
+    }
+    readiness.set(item.location.id, result);
+  }
+  return readiness;
 }
