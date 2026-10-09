@@ -205,7 +205,7 @@ export default function ProviderSidebarContent({
           className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:bg-secondary"
         >
           <HelpCircle className="h-4 w-4 shrink-0" />
-          <span>Ajutor si suport</span>
+          <span>Ajutor și suport</span>
         </Link>
       </div>
 
@@ -242,7 +242,7 @@ export default function ProviderSidebarContent({
               <Settings className="h-4 w-4" /> Setarile contului
             </DropdownMenuItem>
             <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-2.5">
-              <Link to="/ajutor-si-suport"><HelpCircle className="h-4 w-4" /> Ajutor si suport</Link>
+              <Link to="/ajutor-si-suport"><HelpCircle className="h-4 w-4" /> Ajutor și suport</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setFeedbackOpen(true)} className="min-h-10 cursor-pointer rounded-xl px-2.5">
               <MessageSquareText className="h-4 w-4" /> Trimite feedback
