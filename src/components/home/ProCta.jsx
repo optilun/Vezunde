@@ -1,215 +1,164 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Check, Search } from "lucide-react";
 import Reveal from "@/components/common/Reveal";
 import { prefetchOnIntent } from "@/lib/routePrefetch";
 
-function ProfileBlueprint() {
+// 2026-10-09 (Alex: macheta, varianta A „Caută-ți locația”). Secțiunea pentru furnizori a devenit
+// începutul revendicării: în locul ilustrației abstracte (cardul cu bare gri), un câmp de căutare
+// care deschide pagina de revendicare cu textul deja completat (AddOrClaim -> ProviderSearch
+// `initialQuery`). Fără pașii 01/02/03: secțiunea de deasupra („De la o întrebare…”) îi folosește deja.
+// Numărul de locații e rotunjit în jos („peste 1.000”; 1.462 publicate la 2026-10-09), ca să nu
+// descărcăm harta națională (≈450 KB) pe pagina principală doar pentru un număr.
+
+const BENEFITS = [
+  "Revendicarea e gratuită",
+  "Tu confirmi ce apare public",
+  "Vezi cererile din zona ta",
+];
+
+const MONO_LABEL = "font-mono text-[10px] font-semibold uppercase tracking-[0.22em] sm:text-[11px] sm:tracking-[0.24em]";
+
+function ViaseeMark() {
   return (
-    <div className="relative min-h-[14rem] overflow-hidden bg-[#dce5e9] sm:min-h-[27rem] lg:h-full lg:min-h-[34rem]">
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-35"
-        style={{
-          backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
-          backgroundSize: "180px 180px",
-        }}
-      />
-
-      <span
-        aria-hidden="true"
-        className="absolute -left-1.5 top-[29%] z-20 hidden h-3 w-3 bg-[#171717] lg:block"
-      />
-      <span
-        aria-hidden="true"
-        className="absolute -left-1.5 top-[72%] z-20 hidden h-3 w-3 bg-[#171717] lg:block"
-      />
-
-      <svg
-        viewBox="0 0 520 440"
-        className="absolute inset-0 h-full w-full"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M34 45H486M34 395H486M46 33V407M474 33V407"
-          stroke="#171717"
-          strokeOpacity=".14"
-        />
-        <path
-          d="M34 45H54M466 45H486M34 395H54M466 395H486"
-          stroke="#171717"
-          strokeOpacity=".48"
-          strokeWidth="2"
-        />
-        <circle cx="46" cy="45" r="5" fill="#171717" />
-        <circle cx="474" cy="395" r="5" fill="#171717" />
-
-        <path d="M22 221H62" stroke="#171717" strokeWidth="2" strokeOpacity=".7" />
-        <rect x="30" y="215" width="12" height="12" fill="#171717" />
-        <path d="M458 221H498" stroke="#171717" strokeWidth="2" strokeOpacity=".7" />
-        <rect x="478" y="215" width="12" height="12" fill="#171717" />
-
-        <rect
-          x="62"
-          y="68"
-          width="396"
-          height="306"
-          rx="28"
-          fill="#F8F4EC"
-          fillOpacity=".9"
-          stroke="#171717"
-          strokeOpacity=".28"
-        />
-
-        <rect x="88" y="94" width="30" height="30" rx="7" fill="#345bc8" />
-        <path
-          d="M103 100V118M94 109H112M97 103L109 115M109 103L97 115"
-          stroke="#F8F4EC"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <text
-          x="132"
-          y="107"
-          fill="#171717"
-          fontFamily="monospace"
-          fontSize="11"
-          fontWeight="700"
-          letterSpacing="2"
-        >
-          PROFIL VIASEE
-        </text>
-        <path d="M132 119H238" stroke="#171717" strokeWidth="5" strokeLinecap="round" strokeOpacity=".72" />
-
-        <rect x="348" y="96" width="84" height="25" rx="12.5" fill="#dfe8d8" />
-        <circle cx="363" cy="108.5" r="4" fill="#58744f" />
-        <path d="M374 108.5H415" stroke="#58744f" strokeWidth="4" strokeLinecap="round" strokeOpacity=".72" />
-
-        <path d="M88 147H432" stroke="#171717" strokeOpacity=".2" />
-
-        <rect x="88" y="170" width="156" height="76" rx="17" fill="#d8e3ec" stroke="#171717" strokeOpacity=".16" />
-        <text
-          x="104"
-          y="193"
-          fill="#345bc8"
-          fontFamily="monospace"
-          fontSize="9"
-          fontWeight="700"
-          letterSpacing="1.5"
-        >
-          SERVICII
-        </text>
-        <path d="M104 210H219M104 226H185" stroke="#171717" strokeWidth="5" strokeLinecap="round" strokeOpacity=".55" />
-
-        <rect x="258" y="170" width="174" height="76" rx="17" fill="#eadcba" stroke="#171717" strokeOpacity=".16" />
-        <text
-          x="274"
-          y="193"
-          fill="#8b641f"
-          fontFamily="monospace"
-          fontSize="9"
-          fontWeight="700"
-          letterSpacing="1.5"
-        >
-          ECHIPĂ
-        </text>
-        <circle cx="284" cy="220" r="10" fill="#a97825" fillOpacity=".8" />
-        <circle cx="309" cy="220" r="10" fill="#a97825" fillOpacity=".5" />
-        <circle cx="334" cy="220" r="10" fill="#a97825" fillOpacity=".3" />
-        <path d="M354 213H414M354 228H393" stroke="#171717" strokeWidth="4" strokeLinecap="round" strokeOpacity=".48" />
-
-        <rect x="88" y="260" width="344" height="88" rx="17" fill="#e8e0ea" stroke="#171717" strokeOpacity=".16" />
-        <text
-          x="104"
-          y="284"
-          fill="#735c80"
-          fontFamily="monospace"
-          fontSize="9"
-          fontWeight="700"
-          letterSpacing="1.5"
-        >
-          LOCAȚII
-        </text>
-        <circle cx="119" cy="317" r="16" stroke="#735c80" strokeWidth="5" />
-        <circle cx="119" cy="317" r="4" fill="#171717" />
-        <path d="M151 305H402M151 323H352" stroke="#171717" strokeWidth="5" strokeLinecap="round" strokeOpacity=".5" />
+    <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-[0.35rem] bg-[#345bc8]">
+      <svg viewBox="0 0 40 40" className="h-5 w-5" fill="#F8F4EC">
+        <rect x="17" y="3" width="6" height="34" rx="2" />
+        <rect x="3" y="17" width="34" height="6" rx="2" />
+        <rect x="17" y="3" width="6" height="34" rx="2" transform="rotate(45 20 20)" />
+        <rect x="17" y="3" width="6" height="34" rx="2" transform="rotate(-45 20 20)" />
       </svg>
-    </div>
+    </span>
+  );
+}
+
+function PanelLink({ to, state, children }) {
+  return (
+    <Link
+      to={to}
+      state={state}
+      {...prefetchOnIntent(to)}
+      className="group flex min-h-12 items-center justify-between gap-3 rounded-lg text-sm font-semibold text-[#171717] outline-none hover:text-black focus-visible:ring-2 focus-visible:ring-[#171717] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EC] sm:text-[15px]"
+    >
+      {children}
+      <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
+    </Link>
+  );
+}
+
+function HowItWorksLink({ className = "" }) {
+  return (
+    <Link
+      to="/pentru-specialisti"
+      {...prefetchOnIntent("/pentru-specialisti")}
+      className={`items-center gap-2 min-h-11 text-sm font-semibold text-[#F8F4EC]/80 underline decoration-[#F8F4EC]/30 underline-offset-[5px] outline-none hover:text-[#F8F4EC] hover:decoration-[#F8F4EC]/60 focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] sm:text-[15px] ${className}`}
+    >
+      Vezi cum funcționează
+      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </Link>
   );
 }
 
 export default function ProCta() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+
+  const submit = (event) => {
+    event.preventDefault();
+    const searchQuery = query.trim().slice(0, 120);
+    navigate("/adauga-sau-revendica", searchQuery ? { state: { searchQuery } } : undefined);
+  };
+
   return (
     <section
       aria-labelledby="professional-profile-title"
       className="mx-auto mt-16 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
     >
-      {/* Umbra e box-shadow (nu filtru drop-shadow) si fara will-change permanent: filtrul pe un
-          bloc atat de mare se redesena la fiecare pas al animatiei si al derularii. */}
+      {/* Umbra e box-shadow (nu filtru drop-shadow) si fara will-change permanent. */}
       <Reveal
         threshold={0.08}
-        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent shadow-[0_22px_30px_rgba(23,23,23,0.10)] lg:grid-cols-[1.3fr_0.9fr]"
+        className="relative grid gap-8 overflow-hidden rounded-[1.75rem_1.75rem_0.625rem_1.75rem] bg-[#171717] px-6 pb-6 pt-9 text-[#F8F4EC] shadow-[0_22px_30px_rgba(23,23,23,0.10)] sm:gap-10 sm:rounded-[2.25rem_2.25rem_0.75rem_2.25rem] sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:items-center lg:gap-14 lg:p-16"
       >
-        <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-6 py-8 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
-          <span
-            aria-hidden="true"
-            className="absolute left-0 top-14 h-px w-8 bg-[#F8F4EC]/35 sm:w-12"
-          />
-
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-[#F8F4EC]/58 sm:text-[11px]">
-            Pentru specialiști și locații
-          </p>
+        <div className="min-w-0">
+          <p className={`${MONO_LABEL} text-[#F8F4EC]/62`}>Pentru optici, cabinete și clinici</p>
 
           <h2
             id="professional-profile-title"
-            className="mt-5 max-w-[45rem] font-heading text-[2.35rem] sm:text-[clamp(2.75rem,5vw,5.35rem)] font-extrabold leading-[0.95] tracking-[-0.06em]"
+            className="mt-4 max-w-[45rem] font-heading text-[2.5rem] font-extrabold leading-[0.97] tracking-[-0.055em] sm:mt-5 sm:text-[clamp(2.75rem,5vw,4.75rem)] sm:leading-[0.95] sm:tracking-[-0.06em]"
           >
-            <span className="sm:hidden">Ești specialist?<span className="mt-1 block font-display font-medium italic">Fă-te găsit.</span></span>
-            <span className="hidden sm:inline">Arată clar</span>
-            <span className="mt-1 hidden font-display font-medium italic tracking-[-0.045em] sm:block">cu ce îi poți ajuta.</span>
+            Locația ta e deja pe VIASEE.
+            <span className="mt-1 block font-display font-medium italic tracking-[-0.04em] sm:mt-1.5 sm:tracking-[-0.045em]">Revendic-o gratuit.</span>
           </h2>
 
-          <p className="mt-5 max-w-[43rem] text-sm leading-relaxed text-[#F8F4EC]/68 sm:mt-7 sm:text-lg">
-            <span className="sm:hidden">Prezintă serviciile, echipa și locațiile tale.</span>
-            <span className="hidden sm:inline">Adaugă sau revendică profilul tău profesional ori profilul unei optici, al unui cabinet sau al unei clinici. Prezintă clar serviciile, specializările, echipa și locațiile.</span>
+          <p className="mt-5 max-w-[38rem] text-[15px] leading-relaxed text-[#F8F4EC]/72 sm:mt-7 sm:text-lg">
+            Completezi serviciile, programul și echipa. Clienții din zona ta te găsesc cu informații confirmate de tine, iar cererile lor ajung în contul tău.
           </p>
 
-          <div className="mt-6 flex flex-col items-stretch gap-3 sm:mt-9 sm:flex-row sm:flex-wrap sm:items-center">
-            <Link
-              to="/adauga-sau-revendica"
-              {...prefetchOnIntent("/adauga-sau-revendica")}
-              className="group inline-flex min-h-14 items-center justify-between gap-5 rounded-full bg-[#F8F4EC] py-2 pl-6 pr-2 text-sm font-semibold text-[#171717] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-[0_16px_34px_rgba(0,0,0,0.24)] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:w-auto sm:pl-7 sm:text-base"
-            >
-              <span className="sm:hidden">Adaugă sau revendică</span><span className="hidden sm:inline">Adaugă sau revendică un profil</span>
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#171717] text-[#F8F4EC]">
-                <ArrowRight
-                  className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transition-none"
-                  aria-hidden="true"
-                />
-              </span>
-            </Link>
+          <ul className="mt-6 flex flex-col gap-2.5 text-sm font-semibold text-[#F8F4EC]/86 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-x-7 sm:gap-y-3 sm:text-[15px]">
+            {BENEFITS.map((benefit) => (
+              <li key={benefit} className="flex items-center gap-2.5">
+                <Check className="h-[18px] w-[18px] shrink-0 text-[#c9a85c]" strokeWidth={2.6} aria-hidden="true" />
+                {benefit}
+              </li>
+            ))}
+          </ul>
 
-            <Link
-              to="/pentru-specialisti"
-              {...prefetchOnIntent("/pentru-specialisti")}
-              className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#F8F4EC]/25 px-6 text-sm font-semibold text-[#F8F4EC]/80 outline-none transition-[border-color,color,transform] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:border-[#F8F4EC]/55 hover:text-[#F8F4EC] focus-visible:ring-2 focus-visible:ring-[#F8F4EC] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171717] motion-reduce:transform-none sm:px-7 sm:text-base"
+          <HowItWorksLink className="mt-8 hidden lg:inline-flex" />
+        </div>
+
+        <div className="min-w-0 rounded-[1.375rem] bg-[#F8F4EC] px-5 py-6 text-[#171717] shadow-[0_18px_40px_rgba(0,0,0,0.28)] sm:rounded-[1.75rem] sm:p-8">
+          <div className="flex items-center gap-3">
+            <ViaseeMark />
+            <span className={`${MONO_LABEL} font-bold text-[#5c5f57]`}>Caută-ți locația</span>
+          </div>
+          <h3 className="mt-5 font-heading text-[1.375rem] font-extrabold leading-[1.12] tracking-[-0.035em] sm:mt-6 sm:text-[1.75rem] sm:tracking-[-0.04em]">
+            Începe cu numele sau orașul.
+          </h3>
+          <p className="mt-2.5 hidden text-[15px] leading-relaxed text-[#5c5f57] sm:block">
+            Îți arătăm profilul existent și îl revendici în câțiva pași.
+          </p>
+
+          <form onSubmit={submit} className="mt-5 sm:mt-6">
+            <label htmlFor="home-claim-search" className="block text-[13px] font-bold">
+              Numele locației sau orașul
+            </label>
+            <div className="mt-2 flex h-[3.25rem] items-center gap-2.5 rounded-full border border-[#d8dbd2] bg-white px-4 focus-within:border-[#171717] focus-within:ring-2 focus-within:ring-[#171717]/15 sm:h-14 sm:px-5">
+              <Search className="h-[18px] w-[18px] shrink-0 text-[#5c5f57]" aria-hidden="true" />
+              <input
+                id="home-claim-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                maxLength={120}
+                autoComplete="off"
+                enterKeyHint="search"
+                placeholder="Ex.: numele opticii, Cluj-Napoca"
+                className="min-w-0 flex-1 bg-transparent text-base text-[#171717] outline-none placeholder:text-[#8b8e84]"
+              />
+            </div>
+            <button
+              type="submit"
+              {...prefetchOnIntent("/adauga-sau-revendica")}
+              className="group mt-3 flex min-h-14 w-full items-center justify-between gap-4 rounded-full bg-[#171717] py-2 pl-6 pr-2 text-[15px] font-bold text-[#F8F4EC] outline-none transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.22)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#171717] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:mt-3.5 sm:text-base"
             >
-              <span className="sm:hidden">Află mai mult</span><span className="hidden sm:inline">Vezi cum funcționează</span>
-            </Link>
+              Caută și revendică
+              <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F8F4EC] text-[#171717]">
+                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transition-none" />
+              </span>
+            </button>
+          </form>
+
+          <p className="mt-4 text-[13px] leading-normal text-[#5c5f57]">
+            <strong className="font-bold text-[#171717]">Peste 1.000 de locații</strong> sunt deja listate în director.
+          </p>
+
+          <div className="mt-5 flex flex-col border-t border-[#d8dbd2] pt-3 sm:mt-6 sm:pt-4">
+            <PanelLink to="/adauga-sau-revendica" state={{ startFlow: "new_location" }}>Nu o găsești? Adaugă o locație nouă</PanelLink>
+            <PanelLink to="/profil-profesional/nou">Ești specialist independent? Creează-ți profilul</PanelLink>
           </div>
         </div>
 
-        {/* Pe desktop panoul iese de sub blocul negru (0,8 s, nu 1,75 s cu pauza); pe telefon apare
-            ca restul sectiunilor. */}
-        <Reveal
-          variant="slide-in-left"
-          delay={100}
-          threshold={0.08}
-          className="relative z-10 border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
-        >
-          <ProfileBlueprint />
-        </Reveal>
+        <HowItWorksLink className="inline-flex justify-self-center lg:hidden" />
       </Reveal>
     </section>
   );
