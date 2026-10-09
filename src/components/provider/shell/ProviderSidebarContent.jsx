@@ -210,9 +210,9 @@ export default function ProviderSidebarContent({
             <span className="relative mt-1.5 block font-heading text-[14px] font-extrabold leading-snug tracking-[-0.02em] text-foreground">Răspunde cererilor clienților</span>
             <span className="relative mt-1 block text-[11.5px] leading-relaxed text-[#6b5a3e]">Răspunsuri, chat și detalii complete pentru cererile eligibile.</span>
             <span className="relative mt-2.5 flex items-center justify-between gap-2 border-t border-[#dac69b]/70 pt-2.5">
-              <span className="text-[12px] tabular-nums text-foreground"><span className="font-heading font-extrabold">de la 49 RON</span><span className="text-[#6b5a3e]"> / lună</span></span>
-              <span className="inline-flex items-center gap-1 font-heading text-[11.5px] font-bold text-foreground">
-                Vezi pachetele <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+              <span className="whitespace-nowrap text-[12px] tabular-nums text-foreground"><span className="font-heading font-extrabold">de la 49 RON</span><span className="text-[#6b5a3e]">/lună</span></span>
+              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none">
+                <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </span>
           </Link>
