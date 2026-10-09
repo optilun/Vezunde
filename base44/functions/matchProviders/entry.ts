@@ -22,6 +22,7 @@ import {
   withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { loadRequestReadiness } from '../../shared/requestReadyRecommendation.js';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.
 const SAFETY_RULES = [
@@ -466,11 +467,24 @@ Deno.serve(async (req) => {
 
     scored.sort((a, b) => b.score - a.score);
 
-    const eligibleSorted = scored.filter((entry) => entry.bucket === 'eligible');
+    const eligibleByScore = scored.filter((entry) => entry.bucket === 'eligible');
     const directorySorted = scored.filter((entry) => entry.bucket === 'extended_directory');
+    // 2026-10-09 (audit Top 3, T4; aceeași regulă ca matchProvidersSemantic): Top 3 = primele trei
+    // locații eligibile, în ordinea scorului, care pot primi cererea prin VIASEE. Celelalte rămân
+    // „extended_confirmed”, în aceeași ordine. Scorul nu se schimbă.
+    const readiness = await loadRequestReadiness(svc, eligibleByScore.map((entry) => ({
+      location: entry.loc,
+      services: serviceRowsByLocation[entry.loc.id] || [],
+      requestedKeys: entry.matched,
+    })), needLevel);
+    for (const entry of eligibleByScore) entry.acceptsRequests = readiness.get(entry.loc.id)?.ready === true;
+    const readyTop3 = eligibleByScore.filter((entry) => entry.acceptsRequests).slice(0, 3);
+    const readyTop3Set = new Set(readyTop3);
+    const eligibleSorted = [...readyTop3, ...eligibleByScore.filter((entry) => !readyTop3Set.has(entry))];
     eligibleSorted.forEach((entry, index) => {
-      entry.finalBucket = index < 3 ? 'top3' : 'extended_confirmed';
-      entry.bucketRank = index < 3 ? index + 1 : index - 2;
+      const inTop3 = readyTop3Set.has(entry);
+      entry.finalBucket = inTop3 ? 'top3' : 'extended_confirmed';
+      entry.bucketRank = inTop3 ? index + 1 : index - readyTop3.length + 1;
     });
     directorySorted.forEach((entry, index) => {
       entry.finalBucket = 'extended_directory';
@@ -575,7 +589,8 @@ Deno.serve(async (req) => {
         expansion_tier: entry.tier,
         result_bucket: entry.finalBucket,
         bucket_rank: entry.bucketRank,
-        is_top3_eligible: entry.bucket === 'eligible',
+        is_top3_eligible: entry.bucket === 'eligible' && entry.acceptsRequests === true,
+        accepts_requests_via_viasee: entry.bucket === 'eligible' ? entry.acceptsRequests === true : undefined,
         routing_reason: entry.routing_reason,
       };
     });
