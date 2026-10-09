@@ -27,9 +27,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Textura VIASEE folosită și la banda de acces din Cereri (ProviderAccessBand).
-const UPGRADE_GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" };
-
 function NavButton({ item, active, onClick }) {
   const Icon = item.icon;
   return (
@@ -171,6 +168,29 @@ export default function ProviderSidebarContent({
         ))}
       </nav>
 
+      {showUpgradeCard && (
+        // 2026-10-09 (Alex: „prea mare; mai mic și dreptunghiular, altă culoare”): un singur rând,
+        // închis la culoare ca butoanele principale VIASEE, cu accent auriu. Stă sub meniu, deasupra
+        // separatorului, ca „Trimite feedback” și „Ajutor și suport” să rămână jos, lângă cont.
+        // Linkul are `mode=provider`, ca să rămână în spațiul organizației.
+        <div className="shrink-0 px-3 pb-3">
+          <Link
+            to={`/contul-meu?mode=provider&s=settings&tab=billing${entitlement?.location_id ? "&location=" + encodeURIComponent(entitlement.location_id) : ""}`}
+            aria-label="Treci la VIASEE Pro: vezi pachetele, de la 49 RON pe lună"
+            className="group flex min-h-[3.25rem] w-full items-center gap-2.5 rounded-xl bg-[#1b1a17] px-3 py-2 text-left outline-none transition-colors hover:bg-[#2a2823] focus-visible:ring-2 focus-visible:ring-[#c9a85c] focus-visible:ring-offset-2"
+          >
+            <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#c9a85c]/15 ring-1 ring-inset ring-[#c9a85c]/40">
+              <Sparkles className="h-4 w-4 text-[#e2c88a]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-heading text-[13px] font-extrabold tracking-[-0.02em] text-[#fdfbf6]">Treci la Pro</span>
+              <span className="block whitespace-nowrap text-[11.5px] tabular-nums text-[#fdfbf6]/60">de la 49 RON/lună</span>
+            </span>
+            <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-[#e2c88a] transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+          </Link>
+        </div>
+      )}
+
       <div className="shrink-0 border-t border-border px-3 py-3">
         <button
           type="button"
@@ -188,36 +208,6 @@ export default function ProviderSidebarContent({
           <span>Ajutor si suport</span>
         </Link>
       </div>
-
-      {showUpgradeCard && (
-        // 2026-10-09 (redesign, cerut de Alex): cardul spune ce câștigi, nu doar „Treci la Pro”.
-        // Pe trei rânduri, fără text tăiat la lățimi medii: eticheta VIASEE Pro, beneficiul, apoi
-        // prețul de pornire și îndemnul. Tonurile chihlimbar și textura sunt aceleași ca la banda de
-        // acces din Cereri. Linkul are `mode=provider`, ca să rămână în spațiul organizației.
-        <div className="shrink-0 px-3 pt-3">
-          <Link
-            to={`/contul-meu?mode=provider&s=settings&tab=billing${entitlement?.location_id ? "&location=" + encodeURIComponent(entitlement.location_id) : ""}`}
-            aria-label="VIASEE Pro: vezi pachetele, de la 49 RON pe lună"
-            className="group relative block w-full overflow-hidden rounded-2xl border border-[#dac69b] bg-[#fbf3df] px-3.5 pb-3 pt-3 text-left outline-none transition-colors hover:border-[#c4a465] hover:bg-[#f8eccf] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
-          >
-            <span aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-25 mix-blend-multiply" style={UPGRADE_GRAIN} />
-            <span className="relative flex items-center justify-between gap-2">
-              <span className="font-heading text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#7a5f2c]">VIASEE Pro</span>
-              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#dac69b] bg-[#eadcba]">
-                <Sparkles className="h-3.5 w-3.5 text-black/60" />
-              </span>
-            </span>
-            <span className="relative mt-1.5 block font-heading text-[14px] font-extrabold leading-snug tracking-[-0.02em] text-foreground">Răspunde cererilor clienților</span>
-            <span className="relative mt-1 block text-[11.5px] leading-relaxed text-[#6b5a3e]">Răspunsuri, chat și detalii complete pentru cererile eligibile.</span>
-            <span className="relative mt-2.5 flex items-center justify-between gap-2 border-t border-[#dac69b]/70 pt-2.5">
-              <span className="whitespace-nowrap text-[12px] tabular-nums text-foreground"><span className="font-heading font-extrabold">de la 49 RON</span><span className="text-[#6b5a3e]">/lună</span></span>
-              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none">
-                <ArrowRight className="h-3.5 w-3.5" />
-              </span>
-            </span>
-          </Link>
-        </div>
-      )}
 
       <div className="shrink-0 border-t border-border px-3 py-3">
         <DropdownMenu>
