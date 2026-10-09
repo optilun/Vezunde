@@ -223,7 +223,9 @@ async function validateRecommendationBuckets(svc, resolved, request) {
       const controlled = ['claimed', 'verified'].includes(control)
         && (needLevel !== 'specialized_medical' || control === 'verified');
       if (!controlled) {
-        bucket = control === 'directory' ? 'extended_directory' : 'excluded';
+        // Ca la potrivire (recommendationBucketForProfile): profilul nepotrivit nivelului coboară la
+        // rezultat suplimentar din director.
+        bucket = 'extended_directory';
         reasons = withReason({ exclusion_reasons: reasons }, 'server_validation:profile_not_eligible');
       }
     }
