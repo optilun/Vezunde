@@ -13,7 +13,7 @@
 .provider-locations-page .location-configure-section .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
 .provider-locations-page .location-configure-section .vezunde-location-modules > button > div > div:last-child > div:last-child { padding-top: 16px; }
 .location-map-compact .viasee-marker-name { max-width: 150px; }
-.location-map-compact .maplibregl-ctrl-attrib { max-width: calc(100% - 16px); box-sizing: border-box; font-size: 10px; line-height: 1.4; }
+.location-map-compact .maplibregl-ctrl-attrib { max-width: calc(100% - 16px); box-sizing: border-box !important; font-size: 10px; line-height: 1.4; }
 .location-map-compact .maplibregl-ctrl-attrib-inner { max-width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere; }
 .location-map-compact .maplibregl-ctrl-attrib.maplibregl-compact-show { height: auto; }
 .location-map-compact .maplibregl-ctrl-group button { width: 36px; height: 36px; }
