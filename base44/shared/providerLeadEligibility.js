@@ -1,3 +1,4 @@
+import { normalizeServiceKey } from './canonicalServiceRegistry.js';
 export const PROVIDER_LEAD_CONTRACT_VERSION = 'provider-lead-v1';
 export const PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION = 'provider-lead-eligibility-v1';
 // 2026-09-01: v3 adauga la textul acordului mesajul cu care pacientul a pornit cautarea
@@ -47,9 +48,15 @@ function active(value) {
     && !['inactiv', 'inactiva', 'inactive'].includes(status);
 }
 
+// 2026-10-09 (audit Top 3, T4): cheile se compară normalizate, ca la potrivire. Înainte, un
+// serviciu salvat cu o cheie veche (alias) intra în Top 3, dar locația nu primea cererea.
+function canonicalKey(value) {
+  return normalizeServiceKey(value)?.canonicalKey || clean(value);
+}
+
 function serviceRowsForRequest(serviceRows, requestedKeys) {
-  const requested = new Set(requestedKeys || []);
-  return (serviceRows || []).filter((row) => requested.has(clean(row?.service_key)));
+  const requested = new Set((requestedKeys || []).map(canonicalKey).filter(Boolean));
+  return (serviceRows || []).filter((row) => requested.has(canonicalKey(row?.service_key)));
 }
 
 export function evaluateProviderLeadEligibility({ request, match, location, services }) {
@@ -85,7 +92,7 @@ export function evaluateProviderLeadEligibility({ request, match, location, serv
   return {
     eligible: reasons.length === 0,
     reasons,
-    matched_service_keys: [...new Set(eligibleServiceRows.map((row) => clean(row.service_key)).filter(Boolean))],
+    matched_service_keys: [...new Set(eligibleServiceRows.map((row) => canonicalKey(row.service_key)).filter(Boolean))],
   };
 }
 

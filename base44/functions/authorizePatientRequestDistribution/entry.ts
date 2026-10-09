@@ -15,6 +15,7 @@ import {
 import { notifyProviderLeadAvailable } from '../../shared/leadCommunicationNotifications.js';
 import { notifyPatientRequestDistributed } from '../../shared/patientCommunicationNotifications.js';
 import { locationHasActiveLeadMember } from '../../shared/providerRequestIntake.js';
+import { TOP3_LIMIT } from '../../shared/requestReadyRecommendation.js';
 
 function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
@@ -143,7 +144,16 @@ Deno.serve(async (httpRequest) => {
 
     const plans = await eligibleLeadPlans(svc, lockedRequest);
     const now = new Date().toISOString();
-    const leadRows = plans.map(({ match, location, eligibility }) => ({
+    // 2026-10-09 (audit Top 3, T5): plasă de siguranță. Detaliile complete merg la cel mult
+    // TOP3_LIMIT locații, în ordinea potrivirilor, chiar dacă datele salvate ar spune altceva.
+    let fullDetailSlots = TOP3_LIMIT;
+    const leadRows = plans.map(({ match, location, eligibility }) => {
+      const inTop3 = match.result_bucket === 'top3' && fullDetailSlots > 0;
+      if (inTop3) fullDetailSlots -= 1;
+      const bucketSnapshot = inTop3
+        ? 'top3'
+        : (match.result_bucket === 'top3' ? 'extended_confirmed' : (match.result_bucket || ''));
+      return {
       request_id: lockedRequest.id,
       request_match_id: match.id,
       organization_id: location.organization_id || '',
@@ -158,12 +168,12 @@ Deno.serve(async (httpRequest) => {
       for_whom: lockedRequest.for_whom || '',
       age_group: lockedRequest.age_group || '',
       timing_key: lockedRequest.timing_key || '',
-      result_bucket_snapshot: match.result_bucket || '',
+      result_bucket_snapshot: bucketSnapshot,
       need_level_snapshot: match.need_level_snapshot || lockedRequest.matching_need_level || '',
       profile_control_status_snapshot: location.profile_control_status || '',
       matched_service_keys: eligibility.matched_service_keys,
       preview_summary: buildProviderLeadPreview(lockedRequest),
-      access_tier: match.result_bucket === 'top3' ? 'pro_full' : 'free_preview',
+      access_tier: inTop3 ? 'pro_full' : 'free_preview',
       contact_access_state: 'hidden',
       conversation_access_state: 'locked',
       delivery_state: 'available',
@@ -174,9 +184,10 @@ Deno.serve(async (httpRequest) => {
       eligibility_reasons: [
         'request_distribution_consent',
         'server_revalidated',
-        ...(match.result_bucket === 'top3' ? ['top3_pro_full_details_eligible'] : []),
+        ...(inTop3 ? ['top3_pro_full_details_eligible'] : []),
       ],
-    }));
+      };
+    });
 
     if (leadRows.length > 0) await svc.entities.ProviderLead.bulkCreate(leadRows);
 
