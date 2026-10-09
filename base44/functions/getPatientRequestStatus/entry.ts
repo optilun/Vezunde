@@ -211,7 +211,15 @@ async function findRecoveryCase(svc, requestId) {
   return rows[0] || null;
 }
 
-async function createRecoveryCase(svc, request, input) {
+// 2026-10-09 (audit Top 3, T6): cate cereri au ajuns efectiv la locatii. Daca pacientul a trimis
+// cererea si nu a ajuns la nimeni, poate cere ajutorul echipei, ca la cererile fara rezultate.
+async function deliveredLeadCountFor(svc, request, contact) {
+  if (contact?.provider_request_distribution_consent !== true) return null;
+  const leads = await svc.entities.ProviderLead.filter({ request_id: request.id }, '-created_date', 100);
+  return leads.length;
+}
+
+async function createRecoveryCase(svc, request, input, contact = null) {
   if (input.recovery_consent !== true
     || clean(input.recovery_consent_version, 120) !== PATIENT_REQUEST_RECOVERY_CONSENT_VERSION) {
     return { error: 'Acordul pentru verificarea cererii nu este valid.', status: 400 };
@@ -221,8 +229,11 @@ async function createRecoveryCase(svc, request, input) {
   if (lifecycleSnapshot.lifecycle?.state !== PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE) {
     return { error: 'Cererea nu mai poate fi trimisa pentru verificare.', status: 409 };
   }
-  if (Number(request.match_count || 0) > 0) {
-    return { error: 'Verificarea interna este disponibila numai pentru cererile fara rezultate.', status: 409 };
+  const deliveredLeadCount = Number(request.match_count || 0) > 0
+    ? await deliveredLeadCountFor(svc, request, contact)
+    : null;
+  if (Number(request.match_count || 0) > 0 && deliveredLeadCount !== 0) {
+    return { error: 'Verificarea interna este disponibila pentru cererile fara rezultate sau care nu au ajuns la nicio locatie.', status: 409 };
   }
 
   const existing = await findRecoveryCase(svc, request.id);
@@ -233,6 +244,7 @@ async function createRecoveryCase(svc, request, input) {
       request,
       consentVersion: clean(input.recovery_consent_version, 120),
       coverageCounts: input.coverage_counts || {},
+      deliveredLeadCount,
     });
     const recovery = await svc.entities.PatientRequestRecoveryCase.create(record);
     return { recovery, idempotent_replay: false };
@@ -330,7 +342,10 @@ async function buildStatusPayload(svc, request, contact) {
     workspace,
     no_response_review: noResponseReview,
     distribution_authorized: contact.provider_request_distribution_consent === true,
-    recovery_allowed: lifecycle.state === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE && Number(currentRequest.match_count || 0) === 0,
+    recovery_allowed: lifecycle.state === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE && (
+      Number(currentRequest.match_count || 0) === 0
+      || (contact.provider_request_distribution_consent === true && leadRows.length === 0)
+    ),
     recovery: sanitizePatientRequestRecovery(recovery),
     response_count: responses.length,
     responses,
@@ -364,7 +379,7 @@ Deno.serve(async (req) => {
     const authorizedRequestId = authorized.request.id;
 
     if (action === 'recovery_request') {
-      const result = await createRecoveryCase(svc, authorized.request, input);
+      const result = await createRecoveryCase(svc, authorized.request, input, authorized.contact);
       if (result.error) return res({ error: result.error }, result.status);
       return res({
         ...(await buildStatusPayload(svc, authorized.request, authorized.contact)),
