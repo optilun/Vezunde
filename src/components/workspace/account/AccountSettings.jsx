@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BellRing,
@@ -24,11 +24,28 @@ const MODE_LABELS = {
   applicant: "Pregătire profil",
 };
 
+export const LEAD_EMAIL_FOCUS_KEY = "viasee:account-settings-focus";
+
 // 2026-10-09 (audit Setări, S5; Alex: „Fiecare își alege”): emailul la cereri noi, pe fiecare
 // locație unde ești proprietar sau manager. Implicit pornit. Fără astfel de locații, secțiunea lipsește.
 function LeadEmailPreferences() {
   const [state, setState] = useState({ status: "loading", items: [], error: "" });
   const [savingId, setSavingId] = useState("");
+  const sectionRef = useRef(null);
+
+  // 2026-10-09 (verificare live): „Setează notificările” din Setările organizației deschide
+  // Setările contului direct la această secțiune, nu în capul paginii.
+  useEffect(() => {
+    if (state.status !== "ready" || state.items.length === 0) return;
+    let focus = "";
+    try {
+      focus = window.sessionStorage.getItem(LEAD_EMAIL_FOCUS_KEY) || "";
+      if (focus) window.sessionStorage.removeItem(LEAD_EMAIL_FOCUS_KEY);
+    } catch (_error) {
+      focus = "";
+    }
+    if (focus === "lead-email") sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [state.status, state.items.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +74,7 @@ function LeadEmailPreferences() {
 
   if (state.status === "ready" && state.items.length === 0) return null;
   return (
+    <div ref={sectionRef} id="notificari-email" className="scroll-mt-24">
     <SectionCard icon={BellRing} title="Notificări pe email" description="Alegi pentru tine, pe fiecare locație, dacă primești email la fiecare cerere nouă. Notificările din aplicație rămân active.">
       {state.status === "loading" && <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă locațiile…</p>}
       {state.items.length > 0 && (
@@ -85,6 +103,7 @@ function LeadEmailPreferences() {
       )}
       {state.error && <p role="alert" className="mt-3 text-xs font-semibold text-red-800">{state.error}</p>}
     </SectionCard>
+    </div>
   );
 }
 

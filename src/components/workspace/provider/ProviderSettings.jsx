@@ -484,7 +484,10 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         <SettingsRow
           title="Notificări pe email"
           description="Fiecare proprietar și manager alege, din Setările contului, dacă primește email la cererile noi ale fiecărei locații."
-          action={<CompactButton onClick={() => onSwitchMode?.("personal")}>Setează notificările <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
+          action={<CompactButton onClick={() => {
+            try { window.sessionStorage.setItem(LEAD_EMAIL_FOCUS_KEY, "lead-email"); } catch (_error) { /* fără stocare, se deschide doar pagina */ }
+            onSwitchMode?.("personal");
+          }}>Setează notificările <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
         />
       </SettingsSection>
 
