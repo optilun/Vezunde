@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  Building2,
   Info,
   CheckCircle2,
   ChevronDown,
@@ -911,33 +912,34 @@ export default function ProviderLocations({
 
       {editOpen && canManageLocationProfile && selectedLocation && (
         <div
-          className="fixed inset-0 z-[80] bg-black/35 backdrop-blur-sm"
+          className="location-details-editor-overlay fixed inset-0 z-[80]"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setEditOpen(false);
           }}
         >
           <aside
-            className="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col border-l border-border bg-background shadow-2xl"
+            className="location-details-editor absolute inset-y-0 right-0"
             role="dialog"
             aria-modal="true"
             aria-label="Editează datele locației"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4 sm:px-6">
+            <header className="location-details-editor__header">
               <div className="min-w-0">
-                <div className="text-sm font-medium text-muted-foreground">
-                  {selectedLocationName}
+                <p className="location-details-editor__eyebrow">Date publice · Locație</p>
+                <div className="location-details-editor__context">
+                  <Building2 aria-hidden="true" /><span>{selectedLocationName}</span>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <h2 className="font-heading text-2xl font-extrabold tracking-tight">
+                <div className="location-details-editor__title-row">
+                  <h2 className="font-heading">
                     Editează datele locației
                   </h2>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${locationDataState.className}`}
+                    className={`location-details-editor__status ${locationDataState.className}`}
                   >
                     {locationDataState.label}
                   </span>
                 </div>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                <p className="location-details-editor__intro">
                   Numele public, adresa, contactul și poziția pe hartă sunt
                   publicate numai după verificarea VIASEE.
                 </p>
@@ -945,29 +947,31 @@ export default function ProviderLocations({
               <button
                 type="button"
                 onClick={closeEditor}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
+                className="location-details-editor__close"
                 aria-label="Închide"
               >
                 <X className="h-4 w-4" />
               </button>
-            </div>
+            </header>
 
-            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-              <div className="space-y-5">
+            <div className="location-details-editor__body">
+              <div className="location-details-editor__sections">
                 {pendingReview && (
-                  <div className="rounded-2xl border border-[#c6d3da] bg-[#dce5e9] px-4 py-3 text-sm leading-relaxed text-[#1c1c1c]">
+                  <div className="location-details-editor__notice location-details-editor__notice--pending">
                     Datele sunt deja în verificare. Poți consulta previzualizarea,
                     dar nu le poți modifica până la decizia VIASEE.
                   </div>
                 )}
 
-                <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
-                  <div className="mb-4">
-                    <h3 className="text-base font-bold">Identitatea locației</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                <section className="location-details-editor__section" data-tone="identity">
+                  <header className="location-details-editor__section-heading">
+                    <span className="location-details-editor__section-icon" aria-hidden="true"><Building2 /></span>
+                    <div><p className="location-details-editor__eyebrow">01 · Identitate</p>
+                    <h3>Identitatea locației</h3>
+                    <p>
                       Numele public și adresa principală a punctului de lucru.
-                    </p>
-                  </div>
+                    </p></div>
+                  </header>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label htmlFor="location-display-name" className="text-sm font-semibold text-foreground">
@@ -1018,19 +1022,20 @@ export default function ProviderLocations({
                   </div>
                 </section>
 
-                <section ref={positionSectionRef} tabIndex={-1} aria-label="Poziție pe hartă" className="rounded-[22px] border border-border bg-card p-4 sm:p-5 focus:outline-none">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold">Poziție pe hartă</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <section ref={positionSectionRef} tabIndex={-1} aria-label="Poziție pe hartă" className="location-details-editor__section focus:outline-none" data-tone="position">
+                  <header className="location-details-editor__section-heading">
+                    <span className="location-details-editor__section-icon" aria-hidden="true"><MapPin /></span>
+                    <div><p className="location-details-editor__eyebrow">02 · Hartă</p>
+                      <h3>Poziție pe hartă</h3>
+                      <p>
                         Apasă pe hartă sau trage pinul la intrarea locației.
                       </p>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${hasExactPin ? "bg-[#dfe3d2] text-[#1c1c1c]" : "bg-secondary text-muted-foreground"}`}>
+                    <span className={`location-details-editor__pin-status ${hasExactPin ? "bg-[#dfe3d2] text-[#1c1c1c]" : "bg-[#f1eee7] text-muted-foreground"}`}>
                       {hasExactPin ? "Confirmată în formular" : pinLabel}
                     </span>
-                  </div>
-                  <div className="mt-4 h-72 overflow-hidden rounded-2xl border border-border sm:h-80">
+                  </header>
+                  <div className="location-details-editor__map">
                     <LocationPinMap location={previewLocation} onPositionChange={pendingReview ? undefined : editPosition} />
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -1085,19 +1090,23 @@ export default function ProviderLocations({
                   )}
                 </section>
 
-                <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
-                  <div className="mb-4">
-                    <h3 className="text-base font-bold">Contact public</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                <section className="location-details-editor__section" data-tone="contact">
+                  <header className="location-details-editor__section-heading">
+                    <span className="location-details-editor__section-icon" aria-hidden="true"><Phone /></span>
+                    <div><p className="location-details-editor__eyebrow">03 · Contact</p>
+                    <h3>Contact public</h3>
+                    <p>
                       Datele prin care clienții pot contacta direct această locație.
-                    </p>
-                  </div>
+                    </p></div>
+                  </header>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="text-sm font-semibold text-foreground">
+                      <label htmlFor="location-public-phone" className="text-sm font-semibold text-foreground">
                         Telefon public locație
                       </label>
                       <input
+                        id="location-public-phone"
+                        type="tel"
                         className={`${inputCls} mt-1.5`}
                         value={values.public_phone}
                         disabled={pendingReview}
@@ -1110,10 +1119,12 @@ export default function ProviderLocations({
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-semibold text-foreground">
+                      <label htmlFor="location-public-email" className="text-sm font-semibold text-foreground">
                         Email public locație
                       </label>
                       <input
+                        id="location-public-email"
+                        type="email"
                         className={`${inputCls} mt-1.5`}
                         value={values.public_email}
                         disabled={pendingReview}
@@ -1128,34 +1139,34 @@ export default function ProviderLocations({
                   </div>
                 </section>
 
-                <div className="rounded-2xl border border-[#dac69b] bg-[#eadcba] px-4 py-3 text-sm leading-relaxed text-[#1c1c1c]">
-                  Schimbările nu se publică direct. După trimitere, apar în panoul
-                  de administrare pentru verificare.
+                <div className="location-details-editor__notice">
+                  <Info aria-hidden="true" /><p>Schimbările nu se publică direct. După trimitere, apar în panoul
+                  de administrare pentru verificare.</p>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-border bg-card px-5 py-4 sm:px-6">
+            <footer className="location-details-editor__footer">
               {message && (
                 <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
                   {message}
                 </p>
               )}
               {draftState?.editable && hasUnsavedChanges && <p className="mb-3 text-xs text-muted-foreground">Salvează modificările în draft înainte de trimitere.</p>}
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="location-details-editor__actions">
                 <button
                   type="button"
                   onClick={closeEditor}
-                  className="rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
+                  className="location-details-editor__button"
                 >
                   Închide
                 </button>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="location-details-editor__save-actions">
                   <button
                     type="button"
                     disabled={saving || pendingReview}
                     onClick={saveDraft}
-                    className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                    className={`location-details-editor__button ${draftState?.editable ? "" : "location-details-editor__button--primary"}`}
                   >
                     <Save className="h-4 w-4" /> Salvează draft
                   </button>
@@ -1164,14 +1175,14 @@ export default function ProviderLocations({
                       type="button"
                       disabled={saving || hasCoordinateIssues || hasUnsavedChanges}
                       onClick={submitDraft}
-                      className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+                      className="location-details-editor__button location-details-editor__button--primary"
                     >
                       Trimite spre verificare
                     </button>
                   )}
                 </div>
               </div>
-            </div>
+            </footer>
           </aside>
         </div>
       )}
