@@ -176,6 +176,7 @@ export default function AddOrClaim() {
       ) : (
         <WizardShell split phases={PHASES} phaseStep={1} title="Găsește organizația sau locația" subtitle="Verificăm mai întâi dacă profilul există deja.">
           <ProviderSearch
+            initialQuery={typeof navState?.searchQuery === "string" ? navState.searchQuery : ""}
             onClaim={(loc, options) => {
               clearResumeState();
               setSelected(loc);
