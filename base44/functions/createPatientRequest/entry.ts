@@ -202,7 +202,8 @@ function withReason(match, reason) {
 // Ordinea și scorurile primite nu se schimbă.
 async function validateRecommendationBuckets(svc, resolved, request) {
   const needLevel = request.matching_need_level || '';
-  const top3Candidates = resolved.filter(({ match }) => match.result_bucket === 'top3').slice(0, TOP3_LIMIT);
+  // Toate cele marcate „top3” (cel mult 20, cât acceptă normalizeMatches); rămân primele TOP3_LIMIT valide.
+  const top3Candidates = resolved.filter(({ match }) => match.result_bucket === 'top3');
   const servicesByLocation = new Map(await Promise.all(top3Candidates.map(async ({ location }) => [
     location.id,
     await svc.entities.LocationService.filter({ location_id: location.id }, null, 500).catch(() => []),
