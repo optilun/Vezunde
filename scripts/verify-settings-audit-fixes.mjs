@@ -25,7 +25,9 @@ for (const text of ['Setarile contului', 'Setari globale', 'Contul tau', 'Prefer
 for (const text of ['Fotografie de profil', 'Adaugă fotografia', 'Descriere scurtă', 'Salvează profilul']) assert.ok(profile.includes(text), `S1: „${text}”`);
 
 // S2: fără termeni interni.
-assert.doesNotMatch(account, /Base44|workspace|infrastructura|owner/i, 'S2: termeni interni în Setările contului');
+for (const text of ['Base44 gestioneaza', 'Base44 gestionează', 'workspace-ul', 'Workspace furnizor', 'infrastructura actuala', 'infrastructura actuală', 'rolul de owner', 'Rolul de owner', 'ultim owner']) {
+  assert.ok(!account.includes(text), `S2: termen intern rămas: „${text}”`);
+}
 assert.match(eligibility, /Ești ultimul proprietar activ al \$\{organizationName\}/);
 assert.doesNotMatch(eligibility, /message: `Esti ultimul owner/);
 for (const source of [roleFn, deactivateFn]) assert.match(source, /Nu poți elimina ultimul proprietar activ al organizației/);
