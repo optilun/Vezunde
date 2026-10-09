@@ -107,6 +107,11 @@ export default function MatchResultCard({ location, onSelect, onHover = null, se
         details={(
           <>
             <ServiceMatchDetails location={location} />
+            {/* 2026-10-09 (audit Top 3, T4): profil confirmat, dar locația nu primește încă cereri prin
+                VIASEE, deci nu poate fi în Top 3. Valoarea vine de la server, nu se calculează aici. */}
+            {variant === "confirmed" && location.accepts_requests_via_viasee === false && (
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Nu primește încă cereri prin VIASEE · o poți contacta direct</p>
+            )}
             {isDirectoryProfile && <DirectoryNoticeToggle location={location} />}
           </>
         )}

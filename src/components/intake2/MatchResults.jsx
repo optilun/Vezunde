@@ -386,7 +386,7 @@ export default function MatchResults({
             <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
             <InfoHint
               label="Cum sunt alese recomandările?"
-              items={["Selectate pe baza serviciilor confirmate, relevanței cererii și verificării profilului în aria aleasă. Plata nu influențează ordinea. Afișăm până la trei recomandări, doar când există opțiuni eligibile."]}
+              items={["Selectate dintre locațiile care primesc cereri prin VIASEE, pe baza serviciilor confirmate, relevanței cererii și verificării profilului în aria aleasă. Plata nu influențează ordinea. Afișăm până la trei recomandări, doar când există opțiuni eligibile."]}
             />
           </div>
           <div className="mt-3">
