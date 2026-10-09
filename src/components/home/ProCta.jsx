@@ -80,7 +80,7 @@ export default function ProCta() {
         className="relative grid gap-8 overflow-hidden rounded-[1.75rem_1.75rem_0.625rem_1.75rem] bg-[#171717] px-6 pb-6 pt-9 text-[#F8F4EC] shadow-[0_22px_30px_rgba(23,23,23,0.10)] sm:gap-10 sm:rounded-[2.25rem_2.25rem_0.75rem_2.25rem] sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:items-center lg:gap-14 lg:p-16"
       >
         <div className="min-w-0">
-          <p className={`${MONO_LABEL} text-[#F8F4EC]/62`}>Pentru optici, cabinete și clinici</p>
+          <p className={`${MONO_LABEL} text-[#F8F4EC]/[0.62]`}>Pentru optici, cabinete și clinici</p>
 
           <h2
             id="professional-profile-title"
@@ -90,11 +90,11 @@ export default function ProCta() {
             <span className="mt-1 block font-display font-medium italic tracking-[-0.04em] sm:mt-1.5 sm:tracking-[-0.045em]">Revendic-o gratuit.</span>
           </h2>
 
-          <p className="mt-5 max-w-[38rem] text-[15px] leading-relaxed text-[#F8F4EC]/72 sm:mt-7 sm:text-lg">
+          <p className="mt-5 max-w-[38rem] text-[15px] leading-relaxed text-[#F8F4EC]/[0.72] sm:mt-7 sm:text-lg">
             Completezi serviciile, programul și echipa. Clienții din zona ta te găsesc cu informații confirmate de tine, iar cererile lor ajung în contul tău.
           </p>
 
-          <ul className="mt-6 flex flex-col gap-2.5 text-sm font-semibold text-[#F8F4EC]/86 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-x-7 sm:gap-y-3 sm:text-[15px]">
+          <ul className="mt-6 flex flex-col gap-2.5 text-sm font-semibold text-[#F8F4EC]/[0.86] sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-x-7 sm:gap-y-3 sm:text-[15px]">
             {BENEFITS.map((benefit) => (
               <li key={benefit} className="flex items-center gap-2.5">
                 <Check className="h-[18px] w-[18px] shrink-0 text-[#c9a85c]" strokeWidth={2.6} aria-hidden="true" />
