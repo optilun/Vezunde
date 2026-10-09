@@ -1,6 +1,8 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import NotificationCenter from "./NotificationCenter";
+import ProviderLocalActivityPanel from "./ProviderLocalActivityPanel";
 import {
   providerNotificationLocationIds,
   resolveProviderNotificationLocation,
@@ -14,7 +16,8 @@ function responseData(response) {
   return data;
 }
 
-export default function ProviderNotificationCenter({ locationId = "", locations = null, onOpenTarget = null }) {
+export default function ProviderNotificationCenter({ locationId = "", locations = null, onOpenTarget = null, onOpenPro = null }) {
+  const [activityLocationId, setActivityLocationId] = useState("");
   // Fiecare apel pentru "Toate locatiile" este reautorizat de endpointul existent.
   const scopeKey = JSON.stringify(providerNotificationLocationIds(locationId, locations));
   const locationIds = useMemo(() => JSON.parse(scopeKey), [scopeKey]);
@@ -66,6 +69,7 @@ export default function ProviderNotificationCenter({ locationId = "", locations 
     if (!notification?.action_target_id) return;
     const targetLocationId = resolveProviderNotificationLocation(notification, locationIds, isAggregate ? "" : locationId);
     if (!targetLocationId) return;
+    if (notification.action_kind === "activity") { setActivityLocationId(targetLocationId); return; }
     if (onOpenTarget) {
       onOpenTarget({ ...notification, location_id: targetLocationId });
       return;
@@ -75,6 +79,8 @@ export default function ProviderNotificationCenter({ locationId = "", locations 
   }, [isAggregate, locationId, locationIds, onOpenTarget]);
 
   return (
+    <div className="flex flex-wrap items-center gap-2">
+    {locationIds.length > 0 && <button type="button" onClick={() => setActivityLocationId(locationIds[0])} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold hover:bg-secondary"><TrendingUp className="h-4 w-4" aria-hidden="true" /><span>Activitate în zonă</span></button>}
     <NotificationCenter
       key={scopeKey}
       label="Notificări"
@@ -83,6 +89,9 @@ export default function ProviderNotificationCenter({ locationId = "", locations 
       markNotificationRead={markNotificationRead}
       markAllNotificationsRead={markAllNotificationsRead}
       onOpenTarget={openTarget}
+      showActivityFilters
     />
+    {activityLocationId && locationIds.includes(activityLocationId) && <ProviderLocalActivityPanel key={activityLocationId} locationId={activityLocationId} locations={locations || []} onLocationChange={setActivityLocationId} onClose={() => setActivityLocationId("")} onOpenPro={onOpenPro} />}
+    </div>
   );
 }

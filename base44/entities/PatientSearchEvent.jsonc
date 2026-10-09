@@ -2,6 +2,10 @@
   "name": "PatientSearchEvent",
   "type": "object",
   "properties": {
+    "analytics_version": { "type": "string" },
+    "analytics_eligible": { "type": "boolean", "default": false },
+    "county_key": { "type": "string" },
+    "locality_siruta_code": { "type": "string" },
     "service_key": {
       "type": "string"
     },

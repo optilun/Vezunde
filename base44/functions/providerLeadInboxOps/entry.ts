@@ -25,6 +25,8 @@ import {
 } from '../../shared/inAppNotificationPolicy.js';
 import { ensureProviderInAppNotifications } from '../../shared/inAppNotificationProjection.js';
 import { reconcilePatientRequestExpiration } from '../../shared/patientRequestLifecycleOps.js';
+import { loadLocalInterest, ensureLocalInterestDigest, readActivityPreference, saveActivityPreference } from '../../shared/providerLocalInterestOps.js';
+import { deduplicateActivityNotifications } from '../../shared/providerLocalInterestPolicy.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -164,14 +166,11 @@ function providerNotificationFilter(userId, locationId) {
 async function listProviderNotifications(svc, userId, location, limit) {
   const locationId = location.id;
   const filter = providerNotificationFilter(userId, locationId);
-  const [rows, allRows] = await Promise.all([
-    svc.entities.InAppNotification.filter(filter, '-created_date', boundedLimit(limit)),
-    svc.entities.InAppNotification.filter(filter, '-created_date', 500),
-  ]);
+  const allRows = await svc.entities.InAppNotification.filter(filter, '-created_date', 500);
   return {
     notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
-    counters: summarizeInAppNotifications(allRows),
-    notifications: rows.map((row) => sanitizeProviderInAppNotification(row, location)),
+    counters: summarizeInAppNotifications(deduplicateActivityNotifications(allRows)),
+    notifications: deduplicateActivityNotifications(allRows).slice(0, boundedLimit(limit)).map((row) => sanitizeProviderInAppNotification(row, location)),
   };
 }
 
@@ -190,6 +189,13 @@ async function markProviderNotificationRead(svc, userId, location, notificationI
       status: 'read',
       read_at: new Date().toISOString(),
     });
+  if (notification.event_key === 'provider_local_interest_weekly' && notification.idempotency_key) {
+    const duplicates = await svc.entities.InAppNotification.filter({
+      ...providerNotificationFilter(userId, locationId), idempotency_key: notification.idempotency_key,
+    }, '-created_date', 100);
+    await Promise.all(duplicates.filter(row => row.status !== 'read').map(row =>
+      svc.entities.InAppNotification.update(row.id, { status: 'read', read_at: new Date().toISOString() })));
+  }
   return { notification: sanitizeProviderInAppNotification(updated, location) };
 }
 
@@ -223,9 +229,26 @@ Deno.serve(async (req) => {
     const authorized = await authorizeLocation(svc, user, locationId);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
+    if (action === 'local_interest_preference') {
+      if (typeof input.weekly_enabled !== 'boolean') return res({ error: 'Preferință invalidă.' }, 400);
+      return res(await saveActivityPreference(svc, user.id, locationId, input.weekly_enabled));
+    }
+    if (action === 'local_interest') {
+      const entitlement = await entitlementForLocation(svc, locationId);
+      const [interest, preference] = await Promise.all([
+        loadLocalInterest(svc, authorized.location, entitlement),
+        readActivityPreference(svc, user.id, locationId),
+      ]);
+      return res({ ...interest, weekly_enabled: preference.weekly_enabled });
+    }
+
     if (action === 'notifications_list') {
       await reconcileLocationExpirations(svc, locationId).catch(() => null);
       await ensureProviderInAppNotifications({ svc, userId: user.id, locationId }).catch(() => []);
+      // The weekly in-app digest is projected when the center is loaded, like
+      // existing request notifications. No email/push is sent by this action.
+      await (async () => ensureLocalInterestDigest({ svc, user, location: authorized.location,
+        entitlement: await entitlementForLocation(svc, locationId) }))().catch(() => null);
       return res(await listProviderNotifications(svc, user.id, authorized.location, input.limit));
     }
     if (action === 'notification_mark_read') {

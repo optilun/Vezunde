@@ -22,6 +22,7 @@ export default function recordSearchEvent(payload = {}, serviceKeys = [], data =
       service_key: serviceKeys[0] || "",
       need_category: payload.intent || "",
       county_name: payload.county_name || "",
+      locality_siruta_code: payload.locality_siruta_code || "",
       locality_name: payload.locality_name || payload.locality_city || "",
       result_count: Array.isArray(data.results) ? data.results.length : 0,
       entry_point: payload.entry_point || "formular",

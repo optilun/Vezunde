@@ -1,6 +1,7 @@
 export const IN_APP_NOTIFICATION_CONTRACT_VERSION = 'in-app-notification-v2';
 
 export const IN_APP_NOTIFICATION_EVENT_KEYS = Object.freeze({
+  PROVIDER_LOCAL_INTEREST_WEEKLY: 'provider_local_interest_weekly',
   PROVIDER_LEAD_AVAILABLE: 'provider_lead_available',
   PATIENT_REQUEST_RECEIVED: 'patient_request_received',
   PATIENT_REQUEST_DISTRIBUTED: 'patient_request_distributed',
@@ -23,7 +24,7 @@ export const IN_APP_NOTIFICATION_EVENT_KEYS = Object.freeze({
 
 const EVENT_KEYS = new Set(Object.values(IN_APP_NOTIFICATION_EVENT_KEYS));
 const STATUSES = new Set(['unread', 'read']);
-const ACTION_KINDS = new Set(['lead', 'chat', 'request', 'contact']);
+const ACTION_KINDS = new Set(['lead', 'chat', 'request', 'contact', 'activity']);
 
 function clean(value, maxLength = 240) {
   return String(value || '').replace(/[\r\n]+/g, ' ').trim().slice(0, maxLength);
