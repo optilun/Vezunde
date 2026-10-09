@@ -39,6 +39,8 @@ const REASON_LABELS = {
   canonical_locality_required: "Localitatea nu a putut fi validată",
   no_local_results: "Fără rezultate locale potrivite",
   no_search_results: "Căutarea nu a returnat rezultate",
+  // 2026-10-09 (audit Top 3, T6): cererea avea rezultate, dar nu a ajuns la nicio locație.
+  no_receiving_locations: "Locațiile găsite nu primesc încă cereri prin VIASEE",
 };
 
 const FILTER_LABEL = { active: "Active", history: "Istoric", all: "Toate" };
