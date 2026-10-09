@@ -89,20 +89,25 @@ export function sanitizePatientRequestRecoveryCoverageCounts(value = {}) {
   };
 }
 
-/**
- * @param {{
- *   request?: Record<string, any>,
- *   consentVersion?: string,
- *   coverageCounts?: Record<string, any>
- * }} [options]
- */
 // 2026-10-09 (audit Top 3, T6): verificarea echipei e disponibila si cand cererea are rezultate,
 // dar dupa trimitere nu a ajuns la nicio locatie (`deliveredLeadCount === 0`, numarat pe server).
+/**
+ * @param {Record<string, any> | null | undefined} request
+ * @param {number | null} [deliveredLeadCount]
+ */
 export function patientRequestRecoveryTrigger(request, deliveredLeadCount = null) {
   if (Number(request?.match_count || 0) === 0) return 'no_search_results';
   return deliveredLeadCount === 0 ? 'no_receiving_locations' : '';
 }
 
+/**
+ * @param {{
+ *   request?: Record<string, any>,
+ *   consentVersion?: string,
+ *   coverageCounts?: Record<string, any>,
+ *   deliveredLeadCount?: number | null
+ * }} [options]
+ */
 export function buildPatientRequestRecoveryRecord({
   request,
   consentVersion,
