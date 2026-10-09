@@ -3,7 +3,7 @@ import {
   Archive,
   CheckCircle2,
   ChevronDown,
-  ExternalLink,
+  ChevronRight,
   EyeOff,
   Loader2,
   RotateCcw,
@@ -78,7 +78,9 @@ function organizationVisibility(organization) {
   const visibility = String(organization?.public_visibility_status || "").toLowerCase();
   if (["public", "published", "publicata", "visible", "approved"].includes(visibility)) return { label: "Profil public", className: "bg-green-100 text-green-800" };
   if (["pending_review", "in_review", "in_verificare"].includes(visibility)) return { label: "În verificare", className: "bg-amber-100 text-amber-800" };
-  if (["hidden", "private", "unpublished", "ascunsa", "archived"].includes(visibility)) return { label: "Profil ascuns", className: "bg-secondary text-muted-foreground" };
+  // 2026-10-09 (audit Setări, S9): „arhivat” ca în Prezentare, nu „ascuns”.
+  if (visibility === "archived") return { label: "Profil arhivat", className: "bg-secondary text-muted-foreground" };
+  if (["hidden", "private", "unpublished", "ascunsa"].includes(visibility)) return { label: "Profil ascuns", className: "bg-secondary text-muted-foreground" };
   return { label: "Profil în pregătire", className: "bg-secondary text-muted-foreground" };
 }
 
@@ -380,7 +382,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
           action={(
             <div className="flex items-center gap-3">
               <span className="max-w-[240px] truncate text-sm font-medium text-foreground">{organizationName}</span>
-              <CompactButton onClick={() => onNavigate?.("profile")}>Profil public <ExternalLink className="h-3.5 w-3.5" /></CompactButton>
+              <CompactButton onClick={() => onNavigate?.("profile")}>Profilul organizației <ChevronRight className="h-3.5 w-3.5" /></CompactButton>
             </div>
           )}
         />
@@ -396,13 +398,13 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         />
         <SettingsRow
           title="Locații"
-          description={`${activeOrganizationLocations.length} active din ${organizationLocations.length} locații asociate organizației.`}
-          action={<CompactButton onClick={() => onNavigate?.("locations")}>Vezi locațiile <ExternalLink className="h-3.5 w-3.5" /></CompactButton>}
+          description={`${activeOrganizationLocations.length} active din ${organizationLocations.length} ${organizationLocations.length === 1 ? "locație asociată" : "locații asociate"} organizației.`}
+          action={<CompactButton onClick={() => onNavigate?.("locations")}>Vezi locațiile <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
         />
         <SettingsRow
           title="Acces și utilizatori"
           description="Proprietari, administratori, manageri și membri: cine lucrează în organizație și în ce locații."
-          action={<CompactButton onClick={() => onNavigate?.("access")}>Gestionează accesul <ExternalLink className="h-3.5 w-3.5" /></CompactButton>}
+          action={<CompactButton onClick={() => onNavigate?.("access")}>Gestionează accesul <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
         />
       </SettingsSection>
 
@@ -419,7 +421,8 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         />
       </SettingsSection>
 
-      <SettingsSection title="Preferințe pe acest dispozitiv" tone="amber" description="Preferințele sunt personale și sunt salvate numai pe acest dispozitiv.">
+      {/* 2026-10-09 (audit Setări, S10): cu o singură locație alegerea nu schimbă nimic. */}
+      {locations.length > 1 && <SettingsSection title="Preferințe pe acest dispozitiv" tone="amber" description="Preferințele sunt personale și sunt salvate numai pe acest dispozitiv.">
         <SettingsRow
           title="Când deschizi contul organizației"
           description="Alege dacă VIASEE deschide ultima locație folosită sau o locație fixă."
@@ -455,13 +458,13 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
             )}
           />
         )}
-      </SettingsSection>
+      </SettingsSection>}
 
       <SettingsSection title="Cont și securitate" tone="lavender" description="Datele personale, parola și confidențialitatea sunt administrate separat de organizație.">
         <SettingsRow
           title="Cont personal VIASEE"
           description={user?.email || "Cont autentificat"}
-          action={<CompactButton onClick={() => onSwitchMode?.("personal")}>Setările contului <ExternalLink className="h-3.5 w-3.5" /></CompactButton>}
+          action={<CompactButton onClick={() => onSwitchMode?.("personal")}>Setările contului <ChevronRight className="h-3.5 w-3.5" /></CompactButton>}
         />
       </SettingsSection>
 
@@ -532,7 +535,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
       </SettingsSection>
 
       <p className="px-1 text-xs leading-relaxed text-muted-foreground">
-        Solicitările sunt salvate în VIASEE, apar în panoul administratorului și păstrează istoricul complet al deciziei.
+        Solicitările din Zona de pericol ajung la echipa VIASEE, iar istoricul fiecărei decizii rămâne păstrat.
       </p>
 
       </>}
