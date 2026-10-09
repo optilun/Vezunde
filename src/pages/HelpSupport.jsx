@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -27,19 +27,19 @@ import {
 
 const TICKET_STATUS = {
   open: { label: "Deschis", tone: "bg-blue-100 text-blue-900" },
-  in_progress: { label: "In lucru", tone: "bg-amber-100 text-amber-900" },
-  waiting_user: { label: "Asteapta raspunsul tau", tone: "bg-violet-100 text-violet-900" },
+  in_progress: { label: "În lucru", tone: "bg-amber-100 text-amber-900" },
+  waiting_user: { label: "Așteaptă răspunsul tău", tone: "bg-violet-100 text-violet-900" },
   resolved: { label: "Rezolvat", tone: "bg-green-100 text-green-900" },
-  closed: { label: "Inchis", tone: "bg-secondary text-muted-foreground" },
+  closed: { label: "Închis", tone: "bg-secondary text-muted-foreground" },
 };
 
 const CATEGORY_LABELS = {
-  account: "Cont si autentificare",
+  account: "Cont și autentificare",
   organization: "Organizație sau locație",
   professional: "Profil profesional",
-  patient_request: "Solicitari pacienti",
-  technical: "Problema tehnica",
-  other: "Alta situatie",
+  patient_request: "Solicitări pacienți",
+  technical: "Problemă tehnică",
+  other: "Altă situație",
 };
 
 const OPEN_STATUSES = new Set(["open", "in_progress", "waiting_user"]);
@@ -80,7 +80,7 @@ export default function HelpSupport() {
       );
       setTickets(rows || []);
     } catch {
-      setLoadError("Tichetele nu au putut fi incarcate momentan. Foloseste butonul Actualizeaza pentru a incerca din nou.");
+      setLoadError("Tichetele nu au putut fi încărcate momentan. Apasă „Actualizează” ca să încerci din nou.");
     } finally {
       setLoading(false);
     }
@@ -89,6 +89,23 @@ export default function HelpSupport() {
   useEffect(() => {
     loadTickets();
   }, [loadTickets]);
+
+  // 2026-10-09 (audit Setări, S7): un link ca „Cere redeschiderea” din Setări deschide direct
+  // formularul de tichet, completat cu subiectul și detaliile. Nimic nu se trimite fără „Trimite
+  // solicitarea”. Parametrii sunt scoși din adresă, ca reîncărcarea să nu redeschidă formularul.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const subject = (searchParams.get("subiect") || "").trim().slice(0, 140);
+    if (!subject) return;
+    const category = CATEGORY_LABELS[searchParams.get("categorie")] ? searchParams.get("categorie") : "other";
+    setTicketForm({ category, subject, description: (searchParams.get("detalii") || "").slice(0, 3000) });
+    setTicketStatus("idle");
+    setTicketError("");
+    setNewTicketOpen(true);
+    const next = new URLSearchParams(searchParams);
+    ["subiect", "categorie", "detalii"].forEach((key) => next.delete(key));
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const filteredTickets = useMemo(() => tickets.filter((ticket) => {
     if (activeTab === "all") return true;
@@ -132,7 +149,7 @@ export default function HelpSupport() {
       }, 650);
     } catch {
       setTicketStatus("error");
-      setTicketError("Solicitarea nu a putut fi trimisa momentan. Incearca din nou in cateva clipe.");
+      setTicketError("Solicitarea nu a putut fi trimisă momentan. Încearcă din nou în câteva clipe.");
     }
   };
 
@@ -142,7 +159,7 @@ export default function HelpSupport() {
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <ViaseeBrand />
           <Link to="/contul-meu" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-semibold transition hover:bg-secondary">
-            <ArrowLeft className="h-4 w-4" /> Inapoi la cont
+            <ArrowLeft className="h-4 w-4" /> Înapoi la cont
           </Link>
         </div>
       </header>
@@ -150,9 +167,9 @@ export default function HelpSupport() {
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 sm:py-12">
         <section className="text-center">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-foreground text-background"><LifeBuoy className="h-5 w-5" /></span>
-          <h1 className="mt-5 font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">Ajutor si suport VIASEE</h1>
+          <h1 className="mt-5 font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">Ajutor și suport VIASEE</h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Gaseste raspunsuri rapide, trimite feedback sau urmareste o solicitare de suport din acelasi loc, indiferent de spatiul in care lucrezi.
+            Găsește răspunsuri rapide, trimite feedback sau urmărește o solicitare de suport din același loc, indiferent de spațiul în care lucrezi.
           </p>
         </section>
 
@@ -160,29 +177,29 @@ export default function HelpSupport() {
           <a href="#ghid-rapid" className="group rounded-3xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-900"><BookOpen className="h-5 w-5" /></span>
             <h2 className="mt-5 text-base font-bold">Ghid rapid</h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Raspunsuri despre contul personal, organizatii, locatii si profilul profesional.</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Răspunsuri despre contul personal, organizații, locații și profilul profesional.</p>
           </a>
           <button type="button" onClick={() => setFeedbackOpen(true)} className="group rounded-3xl border border-border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-900"><MessageSquareText className="h-5 w-5" /></span>
             <h2 className="mt-5 text-base font-bold">Trimite feedback</h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Spune-ne ce functioneaza, ce lipseste sau ce ar trebui imbunatatit in VIASEE.</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Spune-ne ce funcționează, ce lipsește sau ce ar trebui îmbunătățit în VIASEE.</p>
           </button>
           <button type="button" onClick={openNewTicket} className="group rounded-3xl border border-border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white"><Headphones className="h-5 w-5" /></span>
-            <h2 className="mt-5 text-base font-bold">Solicita ajutor</h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Deschide un tichet pentru o problema de cont, organizatie, profil sau functionare.</p>
+            <h2 className="mt-5 text-base font-bold">Solicită ajutor</h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Deschide un tichet pentru o problemă de cont, organizație, profil sau funcționare.</p>
           </button>
         </section>
 
         <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-heading text-xl font-extrabold">Solicitarile mele</h2>
+              <h2 className="font-heading text-xl font-extrabold">Solicitările mele</h2>
               <p className="mt-1 text-xs text-muted-foreground">Vezi statusul tichetelor trimise echipei VIASEE.</p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={loadTickets} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary">
-                <RefreshCw className="h-3.5 w-3.5" /> Actualizeaza
+                <RefreshCw className="h-3.5 w-3.5" /> Actualizează
               </button>
               <button type="button" onClick={openNewTicket} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background">
                 <Plus className="h-3.5 w-3.5" /> Tichet nou
@@ -193,7 +210,7 @@ export default function HelpSupport() {
           <div className="mt-5 flex gap-1 overflow-x-auto rounded-2xl bg-secondary/45 p-1">
             {[
               { key: "open", label: `Deschise (${openCount})` },
-              { key: "closed", label: `Inchise (${closedCount})` },
+              { key: "closed", label: `Închise (${closedCount})` },
               { key: "all", label: `Toate (${tickets.length})` },
             ].map((tab) => (
               <button
@@ -208,14 +225,14 @@ export default function HelpSupport() {
           </div>
 
           <div className="mt-5">
-            {loading && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca...</div>}
+            {loading && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă…</div>}
             {!loading && loadError && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">{loadError}</div>}
             {!loading && !loadError && filteredTickets.length === 0 && (
               <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-secondary/20 px-5 text-center">
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground"><TicketCheck className="h-5 w-5" /></span>
-                <h3 className="mt-4 text-sm font-bold">Nu exista tichete in aceasta categorie</h3>
-                <p className="mt-1 text-xs text-muted-foreground">Daca ai nevoie de ajutor, poti deschide o solicitare noua.</p>
-                <button type="button" onClick={openNewTicket} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background"><Plus className="h-3.5 w-3.5" /> Creeaza tichet</button>
+                <h3 className="mt-4 text-sm font-bold">Nu există tichete în această categorie</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Dacă ai nevoie de ajutor, poți deschide o solicitare nouă.</p>
+                <button type="button" onClick={openNewTicket} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background"><Plus className="h-3.5 w-3.5" /> Creează tichet</button>
               </div>
             )}
             {!loading && filteredTickets.length > 0 && (
@@ -238,9 +255,9 @@ export default function HelpSupport() {
           <h2 className="font-heading text-xl font-extrabold">Ghid rapid</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {[
-              ["Unde schimb spatiul activ?", "Din selectorul de sus al sidebarului poti trece intre contul personal, profilul profesional si fiecare organizatie la care ai acces."],
-              ["Unde sunt setarile contului?", "Setarile globale sunt in meniul utilizatorului din partea de jos. Setarile organizatiei si ale locatiei raman in workspace-ul lor."],
-              ["Cum apare o organizatie in cont?", "Organizatia apare automat dupa ce ai un membership activ sau dupa aprobarea solicitarii de revendicare, adaugare ori acces."],
+              ["Unde schimb spațiul activ?", "Din selectorul din stânga sus poți trece între contul personal, profilul profesional și fiecare organizație la care ai acces."],
+              ["Unde sunt setările contului?", "Setările contului sunt în meniul cu numele tău, jos în stânga. Setările organizației și ale locațiilor sunt în spațiul organizației, la „Setări”."],
+              ["Cum apare o organizație în cont?", "Organizația apare automat după ce primești acces sau după aprobarea cererii de revendicare ori de adăugare."],
               ["Profilul profesional este același cu organizația?", "Nu. Profilul profesional aparține specialistului și poate fi asociat cu una sau mai multe locații, fără să devină proprietatea organizației."],
             ].map(([question, answer]) => (
               <article key={question} className="rounded-2xl border border-border bg-background p-4">
@@ -257,7 +274,7 @@ export default function HelpSupport() {
           <form onSubmit={submitTicket}>
             <DialogHeader className="border-b border-border px-6 py-5 pr-12 text-left">
               <DialogTitle className="font-heading text-xl font-extrabold">Spune-ne cu ce te putem ajuta</DialogTitle>
-              <DialogDescription>Descrie situatia suficient de clar pentru ca echipa VIASEE sa o poata reproduce sau verifica.</DialogDescription>
+              <DialogDescription>Descrie situația suficient de clar ca echipa VIASEE să o poată verifica.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-6 py-6">
               <div>
@@ -268,11 +285,11 @@ export default function HelpSupport() {
               </div>
               <div>
                 <label htmlFor="ticket-subject" className="text-xs font-semibold text-muted-foreground">Subiect</label>
-                <input id="ticket-subject" required minLength={5} maxLength={140} value={ticketForm.subject} onChange={(event) => setTicketForm((current) => ({ ...current, subject: event.target.value }))} placeholder="Pe scurt, ce nu functioneaza?" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40" />
+                <input id="ticket-subject" required minLength={5} maxLength={140} value={ticketForm.subject} onChange={(event) => setTicketForm((current) => ({ ...current, subject: event.target.value }))} placeholder="Pe scurt, cu ce te putem ajuta?" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40" />
               </div>
               <div>
                 <label htmlFor="ticket-description" className="text-xs font-semibold text-muted-foreground">Descriere</label>
-                <textarea id="ticket-description" required minLength={20} maxLength={3000} rows={7} value={ticketForm.description} onChange={(event) => setTicketForm((current) => ({ ...current, description: event.target.value }))} placeholder="Ce incercai sa faci, ce s-a intamplat si care sunt pasii pentru reproducere?" className="mt-2 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-foreground/40" />
+                <textarea id="ticket-description" required minLength={20} maxLength={3000} rows={7} value={ticketForm.description} onChange={(event) => setTicketForm((current) => ({ ...current, description: event.target.value }))} placeholder="Ce încercai să faci, ce s-a întâmplat și ce pași ai urmat?" className="mt-2 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-foreground/40" />
                 <div className="mt-1 text-right text-[10px] text-muted-foreground">{ticketForm.description.length}/3000</div>
               </div>
               {ticketError && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{ticketError}</p>}
@@ -296,19 +313,19 @@ export default function HelpSupport() {
               </DialogHeader>
               <div className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-6">
                 <article className="rounded-2xl border border-border bg-background p-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mesajul tau</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mesajul tău</div>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{selectedTicket.description}</p>
                 </article>
                 {selectedTicket.support_response ? (
                   <article className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70">Raspuns VIASEE</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70">Răspuns VIASEE</div>
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{selectedTicket.support_response}</p>
                     {selectedTicket.responded_at && <p className="mt-3 text-[10px] opacity-65">{formatDate(selectedTicket.responded_at)}</p>}
                   </article>
                 ) : (
                   <div className="flex items-start gap-3 rounded-2xl bg-secondary/45 p-4 text-muted-foreground">
                     <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p className="text-xs leading-relaxed">Solicitarea este inregistrata. Raspunsul echipei VIASEE va aparea aici dupa analiza.</p>
+                    <p className="text-xs leading-relaxed">Solicitarea este înregistrată. Răspunsul echipei VIASEE apare aici după analiză.</p>
                   </div>
                 )}
               </div>

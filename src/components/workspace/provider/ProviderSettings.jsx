@@ -94,6 +94,17 @@ function locationVisibility(location) {
   return { label: "Draft", className: "bg-secondary text-muted-foreground" };
 }
 
+// 2026-10-09 (audit Setări, S7): „Cere redeschiderea” deschide un tichet completat, nu o pagină goală.
+function reopenRequestUrl(location) {
+  const label = locationLabel(location);
+  const params = new URLSearchParams({
+    categorie: "organization",
+    subiect: `Redeschiderea locației ${label}`,
+    detalii: `Aș dori redeschiderea locației ${label} în VIASEE.\nID locație: ${location?.id || "-"}\n\nCe s-a schimbat de la închidere (adresă, program, contact):\n`,
+  });
+  return `/ajutor-si-suport?${params.toString()}`;
+}
+
 const LIFECYCLE_ACTION_LABELS = {
   hide: "ascundere temporară",
   republish: "republicare",
@@ -515,7 +526,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
           <SettingsRow
             title="Locația este închisă în VIASEE"
             description="Nu apare în căutare și nu are pagină publică. Datele și istoricul ei rămân păstrate. Pentru redeschidere, scrie-ne și verificăm împreună datele locației."
-            action={<CompactButton onClick={() => { window.location.assign("/ajutor-si-suport"); }}><RotateCcw className="h-3.5 w-3.5" /> Cere redeschiderea</CompactButton>}
+            action={<CompactButton onClick={() => { window.location.assign(reopenRequestUrl(selectedLocation)); }}><RotateCcw className="h-3.5 w-3.5" /> Cere redeschiderea</CompactButton>}
           />
         )}
 
