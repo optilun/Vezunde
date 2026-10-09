@@ -1,5 +1,6 @@
 // 2026-10-09 (Alex: macheta, varianta A „Caută-ți locația”). Secțiunea pentru furnizori de pe pagina
 // principală pornește revendicarea: câmp de căutare -> /adauga-sau-revendica cu textul completat.
+// Actualizat 2026-10-09 (direcția C): fără card de fundal și cu mai puțin text.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
@@ -14,6 +15,10 @@ assert.match(cta, /Revendic-o gratuit\./);
 assert.doesNotMatch(cta, /ProfileBlueprint|PROFIL VIASEE|Arată clar/, 'ilustrația abstractă și titlul vechi au ieșit');
 assert.doesNotMatch(cta, /0\{index \+ 1\}|"01"/, 'fără pașii 01/02/03 (secțiunea de deasupra îi are deja)');
 
+// Direcția C: direct pe fundalul paginii, fără card negru sau colorat, text redus
+assert.doesNotMatch(cta, /bg-\[#171717\] px-6 pb-6|bg-\[#efe6d2\]/, 'fără card de fundal (negru sau nisip)');
+assert.doesNotMatch(cta, /Completezi serviciile|Peste 1\.000 de locații|Începe cu numele sau orașul/, 'textele lungi au ieșit');
+
 // Căutarea: etichetă reală, trimitere către revendicare cu textul căutat
 assert.match(cta, /<label htmlFor="home-claim-search"/);
 assert.match(cta, /id="home-claim-search"/);
@@ -22,12 +27,10 @@ assert.match(cta, /navigate\("\/adauga-sau-revendica", searchQuery \? \{ state: 
 assert.match(cta, /type="submit"/);
 
 // Celelalte drumuri
-assert.match(cta, /<PanelLink to="\/adauga-sau-revendica" state=\{\{ startFlow: "new_location" \}\}>/);
-assert.match(cta, /<PanelLink to="\/profil-profesional\/nou">/);
-assert.match(cta, /to="\/pentru-specialisti"/);
+assert.match(cta, /<PathLink to="\/adauga-sau-revendica" state=\{\{ startFlow: "new_location" \}\}>/);
+assert.match(cta, /<PathLink to="\/profil-profesional\/nou">/);
 
-// Fără cifre inventate; fără descărcarea hărții naționale pe pagina principală
-assert.match(cta, /Peste 1\.000 de locații/);
+// Fără descărcarea hărții naționale pe pagina principală
 assert.doesNotMatch(cta, /harta-nationala|loadNationalMapSnapshot/);
 
 // Opacitățile nestandard folosesc forma cu paranteze (altfel Tailwind nu generează clasa)
