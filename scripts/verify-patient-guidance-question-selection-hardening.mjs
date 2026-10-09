@@ -228,7 +228,9 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // cheile adaugate de cautarea in text. Restul ramurii ramane ca mai sus.
   // 2026-09-30, aprobat de owner ("Incepe tot"): locatiile doar pentru copii (isPediatricOnlyLocation)
   // nu mai intra la cautarile pentru adulti si vin primele in fallbackul structural la cele pentru copii.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "f2f1d8ff");
+  // 2026-10-09, audit Top 3 T4 (aprobat explicit de owner: „Începe”): Top 3 = primele trei locatii
+  // confirmate, in ordinea de pana acum, care pot primi cererea prin VIASEE (assignRequestReadyTop3).
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "4eb620e2");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";

@@ -111,6 +111,13 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // (isPediatricOnlyLocation) nu mai intra la cautarile pentru adulti si vin primele in
     // fallbackul structural la cele pentru copii (isChildSearch: control_copil, for_whom sau varsta).
     'e7f528ff1cf878a918168720825ddbc85f438b93',
+    // 2026-10-09, audit Top 3 T4 (aprobat explicit de owner: „Începe”, după recomandarea din
+    // research): Top 3 = primele trei locații eligibile, în ordinea scorului de până acum, care pot
+    // primi cererea prin VIASEE (loadRequestReadiness din base44/shared/requestReadyRecommendation.js:
+    // profil, publicare, „Primesc cereri”, serviciu confirmat, membru activ). Scorul și ordinea nu se
+    // schimbă; celelalte eligibile rămân „extended_confirmed”. Rezultatul include
+    // `accepts_requests_via_viasee`. Planul plătit nu intră în decizie.
+    '8c37a72ac8b74564edfeccecb8be19c0e4842051',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
@@ -266,6 +273,12 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // observatie raspunsurile care contrazic textul. Verificat linie cu linie: nicio schimbare in ramura de
     // potrivire (amprenta f2f1d8ff ramane), deci scorul, ordonarea si selectia Top 3 sunt neatinse.
     'd2fdc4a22e800d82cf82ffb6066eb8d7a925bb51',
+    // 2026-10-09, audit Top 3 T4 (aprobat explicit de owner: „Începe”, după recomandarea din
+    // research): dupa assignRecommendationBuckets (neschimbat, rulat pe toata lista), assignRequestReadyTop3
+    // muta doar eticheta „top3” pe primele trei locatii confirmate care pot primi cererea prin VIASEE
+    // (markRequestReadyResults -> loadRequestReadiness). Scorul si ordinea raman cele de pana acum;
+    // planul platit nu intra in decizie. Amprenta ramurii de potrivire devine '4eb620e2'.
+    '79e12d674584836df8679447a484c1d9823294df',
   ]),
 });
 

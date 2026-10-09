@@ -60,7 +60,9 @@ const functionSource = await readFile(new URL('../base44/functions/authorizePati
 const clientSource = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
 const submissionSource = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
-assert.match(functionSource, /match\.result_bucket === 'top3' \? 'pro_full' : 'free_preview'/);
+// 2026-10-09 (audit Top 3, T5): detaliile complete merg la cel mult TOP3_LIMIT locații din Top 3.
+assert.match(functionSource, /const inTop3 = match\.result_bucket === 'top3' && fullDetailSlots > 0;/);
+assert.match(functionSource, /access_tier: inTop3 \? 'pro_full' : 'free_preview'/);
 assert.match(functionSource, /top3_full_detail_count/);
 assert.match(functionSource, /provider_contact_sharing_consent: false/);
 assert.match(functionSource, /contact_access_state: 'hidden'/);
