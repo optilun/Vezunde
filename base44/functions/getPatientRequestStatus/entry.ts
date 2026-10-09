@@ -334,6 +334,9 @@ async function buildStatusPayload(svc, request, contact) {
     recovery: sanitizePatientRequestRecovery(recovery),
     response_count: responses.length,
     responses,
+    // 2026-10-09 (audit Top 3, T3): locatiile la care cererea a ajuns efectiv. Inainte, pacientul
+    // vedea „Cerere trimisa” pe fiecare card, inclusiv la locatiile care nu primesc cereri.
+    delivered_location_ids: [...new Set(leadRows.map((lead) => clean(lead?.location_id, 120)).filter(Boolean))],
     contact_email_verified: contact.contact_email_verified === true,
     contact_email_masked: maskPatientEmail(contact.contact_email),
     contact_phone_available: Boolean(clean(contact.contact_phone, 32)),
