@@ -3,6 +3,7 @@ import { BookmarkPlus, CheckCircle2, LockKeyhole, Send, ShieldCheck } from "luci
 import { base44 } from "@/api/base44Client";
 import PatientRequestEmailVerification from "./PatientRequestEmailVerification";
 import RequestWorkspace from "./RequestWorkspace";
+import PatientNoDeliveryRecovery from "./PatientNoDeliveryRecovery";
 import {
   PATIENT_REQUEST_CREATE_TIMEOUT_MS,
   authorizePatientRequestDistribution,
@@ -298,15 +299,28 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
                   </button>
                 </div>
               ) : (
-                <div className="mt-5 rounded-xl border border-primary/20 bg-background p-4">
-                  <p className="text-sm font-semibold text-foreground">
-                    {Number(distributionResult.lead_count) > 0
-                      ? `Cererea este disponibilă pentru ${distributionResult.lead_count} locații eligibile.`
-                      : "Momentan nu există locații eligibile pentru distribuire."}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Locațiile sunt vizibile mai jos imediat. Răspunsurile și conversațiile apar separat pentru fiecare locație. Telefonul rămâne ascuns.
-                  </p>
+                <div className="mt-5 space-y-4">
+                  {/* 2026-10-09 (audit Top 3, T3 + T6): spunem exact unde a ajuns cererea; dacă nu a ajuns
+                      nicăieri, pacientul poate cere ajutorul echipei. */}
+                  <div className="rounded-xl border border-primary/20 bg-background p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      {Number(distributionResult.lead_count) > 0
+                        ? `Cererea a ajuns la ${Number(distributionResult.lead_count) === 1 ? "o locație" : `${distributionResult.lead_count} locații`}.`
+                        : "Cererea nu a ajuns la nicio locație."}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {Number(distributionResult.lead_count) > 0
+                        ? "Le vezi mai jos, marcate „Cerere trimisă”. Răspunsurile și conversațiile apar separat pentru fiecare locație. Telefonul rămâne ascuns."
+                        : "Locațiile găsite nu primesc încă cereri prin VIASEE. Le poți contacta direct, de pe profil."}
+                    </p>
+                  </div>
+                  {Number(distributionResult.lead_count) === 0 && (
+                    <PatientNoDeliveryRecovery
+                      requestId={success.request_id}
+                      accessToken={success.request_access_token || ""}
+                      coverageCounts={submittedMeta?.coverage_counts || meta?.coverage_counts || {}}
+                    />
+                  )}
                 </div>
               )}
             </div>

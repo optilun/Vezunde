@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clipboard, KeyRound, Loader2, RefreshCw, SearchCheck, Send, ShieldCheck } from "lucide-react";
 import PatientNoResponseReviewPanel from "@/components/intake2/PatientNoResponseReviewPanel";
 import PatientRecoveryStatusCard from "@/components/intake2/PatientRecoveryStatusCard";
+import PatientNoDeliveryRecovery from "@/components/intake2/PatientNoDeliveryRecovery";
 import PatientRequestEmailVerification from "@/components/intake2/PatientRequestEmailVerification";
 import RequestWorkspace from "@/components/intake2/RequestWorkspace";
 import {
@@ -264,7 +265,20 @@ export default function PatientRequestResume({ publicReference }) {
             {distributing ? "Pregatim cererea..." : "Trimite cererea"}
           </button>
         </section>
-      ) : workspaceView}
+      ) : (
+        <>
+          {/* 2026-10-09 (audit Top 3, T6): cererea trimisă care nu a ajuns la nicio locație. */}
+          {snapshot.recovery_allowed && !noResults && (
+            <PatientNoDeliveryRecovery
+              requestId={requestId}
+              accessToken={accessToken}
+              coverageCounts={workspace.meta?.coverage_counts || {}}
+              onRecovered={(data) => { if (data?.request) setSnapshot(data); }}
+            />
+          )}
+          {workspaceView}
+        </>
+      )}
     </div>
   );
 }
