@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2,
-  ExternalLink,
+  ChevronRight,
   Loader2,
   LockKeyhole,
   LogOut,
@@ -18,9 +18,9 @@ import PersonalProfileSettings from "./PersonalProfileSettings";
 
 const MODE_LABELS = {
   personal: "Cont personal",
-  provider: "Workspace furnizor",
+  provider: "Organizații",
   professional: "Cont profesional",
-  applicant: "Pregatire profil",
+  applicant: "Pregătire profil",
 };
 
 function SectionCard({ icon: Icon, title, description, children, danger = false }) {
@@ -131,19 +131,19 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
       <section className="rounded-[26px] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="font-heading text-2xl font-extrabold tracking-tight">Setarile contului</h1>
+            <h1 className="font-heading text-2xl font-extrabold tracking-tight">Setările contului</h1>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              Aceste setari apartin contului tau VIASEE si se aplica indiferent daca folosesti zona personala, profesionala sau workspace-ul unui furnizor.
+              Aceste setări aparțin contului tău VIASEE și se aplică în toate spațiile lui: personal, profesional și organizații.
             </p>
           </div>
-          <span className="w-fit rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">Setari globale</span>
+          <span className="w-fit rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">Setări globale</span>
         </div>
       </section>
 
-      <SectionCard icon={UserRound} title="Contul tau" description="Identitatea contului este separata de profilul public al specialistului si de datele organizatiilor.">
+      <SectionCard icon={UserRound} title="Contul tău" description="Identitatea contului este separată de profilul public de specialist și de datele organizațiilor.">
         <PersonalProfileSettings user={user} onRefresh={onRefresh} />
         <div className="mt-5 border-t border-border pt-5">
-          <div className="text-xs font-semibold text-muted-foreground">Spatiile aceluiasi cont</div>
+          <div className="text-xs font-semibold text-muted-foreground">Spațiile aceluiași cont</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {accountModes.map((mode) => (
               <button
@@ -159,11 +159,11 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
           </div>
         </div>
         <p className="mt-4 rounded-2xl bg-secondary/35 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Emailul nu se modifica aici. Functia, descrierea profesionala si specializarile se gestioneaza separat din Cont profesional si devin publice numai dupa verificare VIASEE.
+          Emailul nu se modifică aici. Funcția, descrierea profesională și specializările se gestionează din Cont profesional și devin publice numai după verificarea VIASEE.
         </p>
       </SectionCard>
 
-      <SectionCard icon={Settings2} title="Preferinte aplicatie" description="Preferintele de baza sunt salvate pe acest dispozitiv si nu modifica organizatia sau locatiile publice.">
+      <SectionCard icon={Settings2} title="Preferințe aplicație" description="Preferințele sunt salvate pe acest dispozitiv și nu schimbă organizația sau locațiile publice.">
         <div className="grid gap-5 lg:grid-cols-2">
           <div>
             <label htmlFor="start-mode" className="text-xs font-semibold text-muted-foreground">La autentificare deschide</label>
@@ -173,37 +173,41 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
               onChange={(event) => savePreference({ startMode: event.target.value })}
               className="mt-2 w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-foreground/40"
             >
-              <option value="last">Ultimul spatiu folosit</option>
+              <option value="last">Ultimul spațiu folosit</option>
               {visibleModes.map((mode) => <option key={mode.key} value={mode.key}>{mode.label || MODE_LABELS[mode.key] || mode.key}</option>)}
             </select>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Daca spatiul ales nu mai este disponibil, VIASEE deschide automat urmatorul spatiu la care ai acces.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Dacă spațiul ales nu mai este disponibil, VIASEE deschide automat următorul spațiu la care ai acces.</p>
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background p-4">
-            <input
-              type="checkbox"
-              checked={preferences.rememberLastLocation}
-              onChange={(event) => savePreference({ rememberLastLocation: event.target.checked })}
-              className="mt-0.5 h-4 w-4 rounded border-border"
-            />
-            <span>
-              <span className="block text-sm font-bold">Retine ultima locatie folosita</span>
-              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Se aplica numai workspace-ului furnizor si numai pe acest dispozitiv.</span>
-            </span>
-          </label>
+          {/* 2026-10-09 (audit Setări, S4): bifa „Reține ultima locație folosită” dubla alegerea din
+              Setările organizației și, debifată, trecea pe „locație fixă” fără o locație aleasă. Alegerea
+              rămâne într-un singur loc; aici doar trimitem acolo. */}
+          {accountModes.some((mode) => mode?.key === "provider") && (
+            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-background p-4">
+              <span>
+                <span className="block text-sm font-bold">Locația deschisă în organizație</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Alegi ultima locație folosită sau o locație fixă din Setările organizației → General.</span>
+              </span>
+              {onSwitchMode && (
+                <button type="button" onClick={() => onSwitchMode("provider")} className="inline-flex h-10 w-fit items-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-semibold hover:bg-secondary">
+                  Setările organizației <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Preferintele se salveaza automat.
+          <CheckCircle2 className="h-3.5 w-3.5" /> Preferințele se salvează automat.
         </div>
       </SectionCard>
 
-      <SectionCard icon={LockKeyhole} title="Securitate" description="Base44 gestioneaza autentificarea si parolele. VIASEE foloseste numai fluxurile confirmate in infrastructura actuala.">
+      <SectionCard icon={LockKeyhole} title="Securitate" description="Autentificarea și parolele sunt gestionate prin sistemul securizat de autentificare al VIASEE.">
         <div className="divide-y divide-border/70">
           <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-sm font-bold">Resetarea parolei</div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pentru conturile care folosesc email si parola, vei primi un link de resetare pe adresa contului.</p>
-              {resetStatus === "sent" && <p className="mt-2 text-xs font-semibold text-green-700">Daca resetarea este disponibila pentru acest cont, linkul a fost trimis.</p>}
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pentru conturile cu email și parolă, primești un link de resetare pe adresa contului.</p>
+              {resetStatus === "sent" && <p className="mt-2 text-xs font-semibold text-green-700">Dacă resetarea este disponibilă pentru acest cont, linkul a fost trimis.</p>}
             </div>
             <button
               type="button"
@@ -218,8 +222,8 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
 
           <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-bold">Sesiunea curenta</div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Gestionarea sesiunilor multiple si autentificarea in doi pasi nu sunt expuse de infrastructura actuala.</p>
+              <div className="text-sm font-bold">Sesiunea curentă</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Deocamdată nu poți vedea alte sesiuni deschise, iar autentificarea în doi pași nu este disponibilă.</p>
             </div>
             <button type="button" onClick={onLogout} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary lg:h-10">
               <LogOut className="h-4 w-4" /> Deconectare
@@ -228,13 +232,13 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
         </div>
       </SectionCard>
 
-      <SectionCard icon={ShieldCheck} title="Confidentialitate si date" description="Documentele publice si solicitarile privind datele contului sunt separate de profilurile organizatiilor si specialistilor.">
+      <SectionCard icon={ShieldCheck} title="Confidențialitate și date" description="Documentele publice și solicitările privind datele contului sunt separate de profilurile organizațiilor și specialiștilor.">
         <div className="grid gap-3 sm:grid-cols-3">
           <Link to="/confidentialitate" className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 text-sm font-semibold hover:bg-secondary">
-            Confidentialitate <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            Confidențialitate <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
           <Link to="/termeni" className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 text-sm font-semibold hover:bg-secondary">
-            Termeni si conditii <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            Termeni și condiții <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
           <a href="mailto:contact@viasee.ro?subject=Solicitare%20privind%20datele%20contului%20VIASEE" className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 text-sm font-semibold hover:bg-secondary">
             Contact pentru date <Mail className="h-4 w-4 text-muted-foreground" />
@@ -242,20 +246,21 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
         </div>
       </SectionCard>
 
-      <SectionCard icon={TriangleAlert} title="Zona de pericol" description="Stergerea contului este o solicitare verificata, nu o actiune instantanee. Profilurile, accesul si obligatiile existente trebuie analizate inainte." danger>
+      <SectionCard icon={TriangleAlert} title="Zona de pericol" description="Ștergerea contului este o solicitare verificată, nu o acțiune instantanee. Profilurile, accesul și obligațiile existente sunt analizate înainte." danger>
         {eligibility.status === "loading" && (
           <div className="flex items-center gap-2 rounded-2xl bg-secondary/35 px-4 py-3 text-xs text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Verificam daca exista blocaje operationale.
+            <Loader2 className="h-4 w-4 animate-spin" /> Verificăm dacă ceva împiedică ștergerea contului.
           </div>
         )}
 
         {hasDeletionBlockers && (
           <div className="space-y-2 rounded-2xl border border-red-200 bg-red-50 p-4">
-            <div className="text-sm font-bold text-red-900">Contul nu poate fi sters momentan</div>
+            <div className="text-sm font-bold text-red-900">Contul nu poate fi șters momentan</div>
             {blockers.map((blocker, index) => (
               <p key={`${blocker.code || "blocker"}-${index}`} className="text-xs leading-relaxed text-red-900/80">{blocker.message}</p>
             ))}
-            <p className="text-xs leading-relaxed text-red-900/80">Rolul de owner trebuie transferat unui alt utilizator activ înainte de ștergere. Poți trimite cererea acum, iar echipa VIASEE te ajută cu transferul.</p>
+            {/* 2026-10-09 (audit Setări, S3): mesajul serverului spune deja ce trebuie transferat; aici doar oferim ajutorul. */}
+            <p className="text-xs leading-relaxed text-red-900/80">Poți trimite cererea acum, iar echipa VIASEE te ajută cu transferul.</p>
           </div>
         )}
 
@@ -267,7 +272,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
 
         {!hasDeletionBlockers && eligibility.status === "ready" && (
           <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-relaxed text-green-900">
-            Nu am identificat un blocaj de tip ultim owner. Solicitarea va fi totusi verificata manual inainte de procesare.
+            Nu am găsit nimic care să împiedice ștergerea. Cererea este totuși verificată manual înainte de procesare.
           </div>
         )}
 
@@ -279,7 +284,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
                 <div className="text-sm font-bold">Cererea de ștergere a fost înregistrată</div>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Trimisă pe {formatDay(deletionRequest.requested_at)}. Echipa VIASEE îți răspunde la {user?.email || "adresa contului"} până la {formatDay(deletionRequest.due_at)}
-                  {hasDeletionBlockers ? " și te ajută să transferi mai întâi rolul de owner." : "."}
+                  {hasDeletionBlockers ? " și te ajută să transferi mai întâi rolul de proprietar." : "."}
                 </p>
               </div>
             </div>

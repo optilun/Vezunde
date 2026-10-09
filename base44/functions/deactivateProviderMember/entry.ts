@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     if (!m) return res({ error: 'Membrul nu exista' }, 404);
     if (!(await isOwner(svc, user.id, m.location_id))) return res({ error: 'Doar ownerul locatiei poate dezactiva membri' }, 403);
     if (m.user_id === user.id) return res({ error: 'Nu iti poti dezactiva propriul acces' }, 403);
-    if (role(m.role) === 'organization_owner' && await remainingOwnerCountAfterRemoval(svc, m) === 0) return res({ error: m.organization_id ? 'Nu poti elimina ultimul owner activ al organizatiei' : 'Nu poti elimina ultimul owner activ al locatiei independente' }, 400);
+    if (role(m.role) === 'organization_owner' && await remainingOwnerCountAfterRemoval(svc, m) === 0) return res({ error: m.organization_id ? 'Nu poți elimina ultimul proprietar activ al organizației' : 'Nu poți elimina ultimul proprietar activ al locației independente' }, 400);
     await svc.entities.ProviderMembership.update(m.id, { status: 'inactive', deactivated_by_user_id: user.id, deactivated_at: new Date().toISOString() });
     return res({ success: true });
   } catch (error) { return res({ error: error.message }, 500); }

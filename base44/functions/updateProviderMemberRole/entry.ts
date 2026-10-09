@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     if (!m) return res({ error: 'Membrul nu exista' }, 404);
     if (!(await isOwner(svc, user.id, m.location_id))) return res({ error: 'Doar ownerul locatiei poate schimba roluri' }, 403);
     if (m.user_id === user.id) return res({ error: 'Nu iti poti modifica propriul rol' }, 403);
-    if (role(m.role) === 'organization_owner' && proposed !== 'organization_owner' && await remainingOwnerCountAfterRemoval(svc, m) === 0) return res({ error: m.organization_id ? 'Nu poti elimina ultimul owner activ al organizatiei' : 'Nu poti elimina ultimul owner activ al locatiei independente' }, 400);
+    if (role(m.role) === 'organization_owner' && proposed !== 'organization_owner' && await remainingOwnerCountAfterRemoval(svc, m) === 0) return res({ error: m.organization_id ? 'Nu poți elimina ultimul proprietar activ al organizației' : 'Nu poți elimina ultimul proprietar activ al locației independente' }, 400);
     const loc = await svc.entities.ProviderLocation.get(m.location_id).catch(() => null);
     if (!loc) return res({ error: 'Locatia nu exista' }, 404);
     await svc.entities.ProviderMembership.update(m.id, { role: proposed, organization_id: loc.organization_id || m.organization_id || null });

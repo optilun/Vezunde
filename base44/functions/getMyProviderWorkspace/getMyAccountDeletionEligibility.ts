@@ -97,12 +97,13 @@ export async function handle(req: Request) {
       }
 
       if (activeOwnerUserIds.size === 1 && activeOwnerUserIds.has(user.id)) {
-        const organizationName = organization?.public_display_name || organization?.name || 'organizatia administrata';
+        const organizationName = organization?.public_display_name || organization?.name || 'organizația administrată';
         blockers.push({
           code: 'LAST_ORGANIZATION_OWNER',
           organization_id: organizationId,
           organization_name: organizationName,
-          message: `Esti ultimul owner activ pentru ${organizationName}. Rolul trebuie transferat inainte de stergerea contului.`,
+          // 2026-10-09 (audit Setări, S2/S3): mesaj vizibil utilizatorului, cu diacritice și fără „owner”.
+          message: `Ești ultimul proprietar activ al ${organizationName}. Transferă rolul unui alt utilizator înainte de ștergerea contului.`,
         });
       }
     }
