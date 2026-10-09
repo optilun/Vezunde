@@ -36,6 +36,7 @@ const expectedLogicalNames = [
   'openMyPatientRequest',
   'myPatientNotificationsOps',
   'mySavedItemsOps',
+  'myNotificationPreferencesOps',
 ].sort();
 const logicalNames = Object.keys(PROVIDER_WORKSPACE_FUNCTION_ROUTES).sort();
 
