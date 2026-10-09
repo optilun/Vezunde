@@ -54,6 +54,12 @@ import {
 import { buildCacheKey, invokePatientNeedLlm } from '../../shared/patientNeedLlmEngine.js';
 import { detectAnswerContradictions } from '../../shared/patientAnswerContradictions.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  assignRequestReadyTop3,
+  evaluateRequestReadiness,
+  locationIdsWithDirectLeadMember,
+} from '../../shared/requestReadyRecommendation.js';
+import { locationHasActiveLeadMember } from '../../shared/providerRequestIntake.js';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
   'independent_optical_store',
@@ -175,6 +181,37 @@ function collectStructuralCandidate(location, localityCodes, countyName, bucket,
 
 function clean(value) {
   return String(value || '').trim();
+}
+
+// 2026-10-09 (audit Top 3, T4; Alex: „Începe”). Marchează locațiile confirmate care pot primi
+// cererea prin VIASEE (aceeași regulă ca la salvare și la trimitere). Nu schimbă scorul și nici
+// ordinea; decide doar care dintre ele pot intra în Top 3 (assignRequestReadyTop3).
+async function markRequestReadyResults(svc, results, locations, servicesByLocation, needLevel) {
+  const confirmed = results.filter((result) => result.recommendation_group === 'confirmed');
+  if (confirmed.length === 0) return;
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const memberships = await loadRowsForLocationIds(
+    svc.entities.ProviderMembership,
+    confirmed.map((result) => result.id),
+    { query: { status: 'active' }, perLocationLimit: 50 },
+  ).catch(() => []);
+  const withDirectMember = locationIdsWithDirectLeadMember(memberships);
+  for (const result of confirmed) {
+    const location = locationsById.get(result.id);
+    let readiness = evaluateRequestReadiness({
+      location,
+      services: servicesByLocation[result.id] || [],
+      requestedKeys: result.matched_service_keys,
+      needLevel,
+      hasActiveMember: withDirectMember.has(result.id),
+    });
+    // Fără membru direct: verificăm și proprietarul organizației, ca la trimitere.
+    if (!readiness.ready && readiness.reasons.length === 1 && readiness.reasons[0] === 'no_active_member') {
+      const covered = await locationHasActiveLeadMember(svc, location).catch(() => false);
+      if (covered) readiness = { ...readiness, ready: true, reasons: [] };
+    }
+    result.accepts_requests_via_viasee = readiness.ready;
+  }
 }
 
 function active(row) {
@@ -967,7 +1004,13 @@ Deno.serve(async (request) => {
       });
     }
 
-    const bucketedResults = assignRecommendationBuckets(results, limit);
+    // 2026-10-09 (audit Top 3, T4): Top 3 = primele trei locații confirmate, în ordinea de până acum,
+    // care pot primi cererea. Celelalte confirmate rămân sub Top 3, cu aceeași ordine.
+    await markRequestReadyResults(svc, results, scopedLocations, servicesByLocation, needLevel);
+    const bucketedResults = assignRequestReadyTop3(
+      assignRecommendationBuckets(results, Math.max(results.length, 1)),
+      limit,
+    );
 
     // Fallback structural: doar cand rezultatele cu servicii reale sunt insuficiente.
     //
