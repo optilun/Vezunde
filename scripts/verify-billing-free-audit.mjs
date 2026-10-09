@@ -62,7 +62,10 @@ const root = await read('src/components/workspace/provider/ProviderWorkspaceRoot
 assert.match(root, /setEntitlement\(data\.entitlement \? \{ \.\.\.data\.entitlement, location_id: data\.location\?\.id \|\| selectedLocationId \} : null\)/, 'F1: planul ajunge la meniu cu locația');
 assert.match(root, /entitlement=\{entitlement\?\.location_id === selectedLocationId \? entitlement : null\}/, 'F1: verificarea din meniu rămâne aceeași');
 const sidebar = await read('src/components/provider/shell/ProviderSidebarContent.jsx');
-assert.match(sidebar, />de la 49 RON\/lună · cereri complete</, 'F1: prețul cardului ține cont de pachete');
+assert.match(sidebar, /<span className="font-heading font-extrabold">de la 49 RON<\/span>/, 'F1: prețul cardului ține cont de pachete');
+assert.match(sidebar, /Răspunde cererilor clienților/, 'redesign: cardul spune ce câștigi');
+assert.match(sidebar, /to=\{`\/contul-meu\?mode=provider&s=settings&tab=billing/, 'cardul rămâne în spațiul organizației');
+assert.doesNotMatch(sidebar, /block truncate[^"]*">de la 49/, 'textul cardului nu mai e tăiat');
 const settings = await read('src/components/workspace/provider/ProviderSettings.jsx');
 assert.match(settings, /Acces proprietar/, 'F4');
 assert.doesNotMatch(settings, /Acces owner/);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ArrowRight,
   Building2,
   Check,
   ChevronDown,
@@ -25,6 +26,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Textura VIASEE folosită și la banda de acces din Cereri (ProviderAccessBand).
+const UPGRADE_GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" };
 
 function NavButton({ item, active, onClick }) {
   const Icon = item.icon;
@@ -186,25 +190,30 @@ export default function ProviderSidebarContent({
       </div>
 
       {showUpgradeCard && (
-        // Acelasi tipar ca placa "Upgrade to Pro" din sidebar-ul Base44: card mic, rotunjit,
-        // pinuit langa fundul barei laterale, cu o insigna colorata in dreapta si titlu +
-        // subtitlu deschis la stanga. Aici in tonurile VIASEE (chihlimbar, acelasi accent ca
-        // ProviderUpgradeCard/ProviderBillingPanel), nu culorile Base44.
+        // 2026-10-09 (redesign, cerut de Alex): cardul spune ce câștigi, nu doar „Treci la Pro”.
+        // Pe trei rânduri, fără text tăiat la lățimi medii: eticheta VIASEE Pro, beneficiul, apoi
+        // prețul de pornire și îndemnul. Tonurile chihlimbar și textura sunt aceleași ca la banda de
+        // acces din Cereri. Linkul are `mode=provider`, ca să rămână în spațiul organizației.
         <div className="shrink-0 px-3 pt-3">
           <Link
-            to={`/contul-meu?s=settings&tab=billing${entitlement?.location_id ? "&location=" + encodeURIComponent(entitlement.location_id) : ""}`}
-            className="flex min-h-[4.25rem] w-full items-center gap-3 rounded-2xl border border-[#e3ddd0] bg-[#fdfbf6] px-3.5 py-3 text-left transition-colors hover:border-[#dac69b] hover:bg-[#faf3e2]"
+            to={`/contul-meu?mode=provider&s=settings&tab=billing${entitlement?.location_id ? "&location=" + encodeURIComponent(entitlement.location_id) : ""}`}
+            aria-label="VIASEE Pro: vezi pachetele, de la 49 RON pe lună"
+            className="group relative block w-full overflow-hidden rounded-2xl border border-[#dac69b] bg-[#fbf3df] px-3.5 pb-3 pt-3 text-left outline-none transition-colors hover:border-[#c4a465] hover:bg-[#f8eccf] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-heading text-[13px] font-extrabold tracking-[-0.02em] text-foreground">Treci la Pro</span>
-              <span className="mt-0.5 block truncate text-[11.5px] leading-relaxed text-muted-foreground">de la 49 RON/lună · cereri complete</span>
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-25 mix-blend-multiply" style={UPGRADE_GRAIN} />
+            <span className="relative flex items-center justify-between gap-2">
+              <span className="font-heading text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#7a5f2c]">VIASEE Pro</span>
+              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#dac69b] bg-[#eadcba]">
+                <Sparkles className="h-3.5 w-3.5 text-black/60" />
+              </span>
             </span>
-            <span
-              aria-hidden="true"
-              style={{ borderColor: "#dac69b", backgroundColor: "#eadcba" }}
-              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border"
-            >
-              <Sparkles className="h-4 w-4 text-black/55" />
+            <span className="relative mt-1.5 block font-heading text-[14px] font-extrabold leading-snug tracking-[-0.02em] text-foreground">Răspunde cererilor clienților</span>
+            <span className="relative mt-1 block text-[11.5px] leading-relaxed text-[#6b5a3e]">Chat, detalii complete și telefonul clientului, cu acordul lui.</span>
+            <span className="relative mt-2.5 flex items-center justify-between gap-2 border-t border-[#dac69b]/70 pt-2.5">
+              <span className="text-[12px] tabular-nums text-foreground"><span className="font-heading font-extrabold">de la 49 RON</span><span className="text-[#6b5a3e]"> / lună</span></span>
+              <span className="inline-flex items-center gap-1 font-heading text-[11.5px] font-bold text-foreground">
+                Vezi pachetele <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+              </span>
             </span>
           </Link>
         </div>
