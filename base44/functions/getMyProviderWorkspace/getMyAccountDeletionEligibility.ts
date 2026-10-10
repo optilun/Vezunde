@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import { filterByIdList, getManyByIds } from '../../shared/providerWorkspaceBatchQueries.js';
 
 const PROVIDER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
@@ -142,6 +143,13 @@ export async function handle(req: Request) {
           page_path: '/contul-meu',
           ...(professionalProfiles[0]?.id ? { professional_profile_id: professionalProfiles[0].id } : {}),
           ...(organizationIds[0] ? { organization_id: organizationIds[0] } : {}),
+        });
+        // 2026-10-10: anunt pentru admin (clopotel + email); termenul legal curge de acum.
+        await notifyAdmins(svc, {
+          event: 'account_deletion_requested',
+          entityType: 'SupportTicket',
+          entityId: openRequest.id,
+          details: adminNotificationDetails(blockers.length ? `${blockers.length} blocaje de rezolvat` : 'fără blocaje', 'termen 30 de zile'),
         });
       }
     } else if (action && action !== 'status') {
