@@ -4,6 +4,7 @@ import { Menu, ExternalLink, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import AdminErrorBoundary from "./AdminErrorBoundary";
 import AdminSidebarContent from "./AdminSidebarContent";
+import AdminNotificationBell from "./AdminNotificationBell";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 import "@/styles/workspace-mobile.css";
 import "@/styles/admin-surface.css";
@@ -113,6 +114,10 @@ export default function AdminAppShell({ activeKey, user, onLogout, children }) {
               >
                 <Search className="h-5 w-5" aria-hidden="true" />
               </button>
+              {/* 2026-10-10: anunțurile pentru admin (tot ce intră și așteaptă o decizie). */}
+              <AdminErrorBoundary variant="silent">
+                <AdminNotificationBell />
+              </AdminErrorBoundary>
               <Link
                 to="/"
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:text-sm"
