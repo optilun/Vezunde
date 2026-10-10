@@ -1,3 +1,4 @@
+import { normalizeCoverTheme } from '../../shared/providerCoverTheme.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   evaluateServicePrerequisites,
@@ -376,6 +377,7 @@ Deno.serve(async (req) => {
         organization_logo_configured: publicDisclosure.expose_full_details && Boolean(publicImage(organization?.logo_url)),
         organization_logo_version: organization?.profile_updated_at || organization?.updated_date || null,
         organization_description: organizationDescription,
+        organization_cover_theme: publicDisclosure.expose_full_details ? normalizeCoverTheme(organization?.cover_theme_json) : null,
         location_description: locationDescription,
         name: location.public_display_name || location.name,
         provider_type: location.provider_type,
@@ -425,3 +427,4 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+

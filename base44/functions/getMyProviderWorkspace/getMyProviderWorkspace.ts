@@ -87,6 +87,7 @@ function sanitizeOrganization(organization, locations) {
     public_display_name: organization.public_display_name || '',
     logo_url: organization.logo_url || '',
     cover_image_url: organization.cover_image_url || '',
+    cover_theme_json: organization.cover_theme_json || '',
     public_description: organization.public_description || '',
     website_url: organization.website_url || organization.website || '',
     public_phone: organization.public_phone || '',

@@ -5,6 +5,8 @@ import {
 } from '../../shared/providerWorkspaceSubmissionComparison.js';
 import { providerAccessRoleFromMembership, providerRoleHasCapability } from '../../shared/providerRolePolicy.js';
 
+import { normalizeCoverTheme, validateCoverTheme } from '../../shared/providerCoverTheme.js';
+
 // Deployment revision: provider-location-noop-2026-07-12
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const EDITABLE_STATUSES = ['draft', 'needs_more_info'];
@@ -151,10 +153,21 @@ export async function handle(req: Request) {
     const action = clean(input.action);
     const organizationId = clean(input.organization_id);
     if (!organizationId) return res({ error: 'organization_id este obligatoriu' }, 400);
-    if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw'].includes(action)) return res({ error: 'Actiune invalida' }, 400);
+    if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw', 'save_cover'].includes(action)) return res({ error: 'Actiune invalida' }, 400);
 
     const access = await resolveOwnerAccess(svc, user, organizationId, clean(input.location_id || input.anchor_location_id));
     if (access.error) return res({ error: access.error }, access.status);
+
+    // Branding is saved independently from moderated identity/contact/profile drafts.
+    // resolveOwnerAccess above is required for this action as for all organization edits.
+    if (action === 'save_cover') {
+      const theme = validateCoverTheme(input.theme);
+      if (!theme) return res({ error: 'Fundal invalid. Alege culori HEX valide.' }, 400);
+      const previous = normalizeCoverTheme(access.organization.cover_theme_json);
+      if (JSON.stringify(theme) === JSON.stringify(previous)) return res({ success: true, unchanged: true, cover_theme: theme });
+      await svc.entities.ProviderOrganization.update(organizationId, { cover_theme_json: JSON.stringify(theme) });
+      return res({ success: true, cover_theme: theme });
+    }
 
     if (action === 'list_mine') {
       const rows = await svc.entities.ProviderWorkspaceSubmission.filter({
