@@ -1377,7 +1377,8 @@ await check('sume Stripe: moneda lipsă sau greșită nu mai aruncă „Invalid 
   for (const amount of [null, undefined, '', 'abc', NaN, Infinity]) assert.equal(money(amount, 'ron'), '—', String(amount));
 });
 
-await check('numărători: cel mult 4 cereri deodată (fără rafală către platformă), aceleași 17 cereri, același rezultat', async () => {
+// 2026-10-10: 19 cereri (17 + cereri de pacienți fără destinatar + contacte noi din căutări).
+await check('numărători: cel mult 4 cereri deodată (fără rafală către platformă), aceleași 19 cereri, același rezultat', async () => {
   assert.equal(COUNT_CONCURRENCY, 4);
   let active = 0;
   let peak = 0;
@@ -1393,7 +1394,7 @@ await check('numărători: cel mult 4 cereri deodată (fără rafală către pla
     functions: { invoke: (name, payload) => track(() => base.functions.invoke(name, payload)) },
   };
   const limited = await loadAdminCounts(client);
-  assert.equal(total, 17, 'aceleași 17 cereri ca înainte');
+  assert.equal(total, 19, 'aceleași 19 cereri ca înainte');
   assert.ok(peak <= 4, `cel mult 4 deodată, am văzut ${peak}`);
   assert.ok(peak >= 2, 'totuși în paralel, nu una câte una');
   assert.deepEqual({ ...limited, loadedAt: 0 }, { ...(await loadAdminCounts(fakeClient())), loadedAt: 0 }, 'același rezultat');
