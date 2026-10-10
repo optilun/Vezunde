@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 
 const SECTION = 'location_lifecycle';
 const ITEM_KEY = 'location_lifecycle';
@@ -168,6 +169,15 @@ async function providerSubmit(svc, user, payload) {
     previous: existing ? { status: existing.status, action: existingPayload?.action || '' } : {},
     next: { status: 'pending_review', action, location_id: locationId },
     note: `Solicitare ${action} trimisa spre verificare administrativa.`,
+  });
+  // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+  const actionLabel = { hide: 'cere ascunderea', republish: 'cere republicarea', close: 'cere închiderea' }[action] || action;
+  await notifyAdmins(svc, {
+    event: 'location_lifecycle_submitted',
+    entityType: 'ProviderWorkspaceSubmission',
+    entityId: submission.id,
+    dedupeKey: `location_lifecycle_submitted:${submission.id}:${now}`,
+    details: adminNotificationDetails(access.location.name, access.location.city, actionLabel),
   });
   return res({ success: true, submission: safeSubmission(submission) });
 }
