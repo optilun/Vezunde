@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   hasPublishedSectionChanges,
   sameSubmissionPayload,
@@ -290,6 +291,14 @@ export async function handle(req: Request) {
         admin_note: '',
       });
       await audit(svc, user, updated, 'submit_organization_profile_review', { status: submission.status }, { status: 'pending_review' });
+      // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+      await notifyAdmins(svc, {
+        event: 'organization_profile_submitted',
+        entityType: 'ProviderWorkspaceSubmission',
+        entityId: submission.id,
+        dedupeKey: `organization_profile_submitted:${submission.id}:${updated?.submitted_at || ''}`,
+        details: adminNotificationDetails(access.organization?.public_display_name || access.organization?.name),
+      });
       return res({ submission: safeSubmission(updated) });
     }
 
