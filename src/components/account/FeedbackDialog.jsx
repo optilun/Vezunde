@@ -51,7 +51,11 @@ export default function FeedbackDialog({ open, onOpenChange, user, workspace }) 
       };
       if (workspace?.organizationId) payload.organization_id = workspace.organizationId;
       if (workspace?.professionalProfileId) payload.professional_profile_id = workspace.professionalProfileId;
-      await base44.entities.UserFeedback.create(payload);
+      const created = await base44.entities.UserFeedback.create(payload);
+      // 2026-10-10: anunt pentru admin (clopotel + email). Feedback-ul e deja salvat; o eroare aici nu-l afecteaza.
+      if (created?.id) {
+        base44.functions.invoke("adminNotificationOps", { action: "report_submission", entity_type: "UserFeedback", id: created.id }).catch(() => null);
+      }
       setStatus("sent");
     } catch {
       setStatus("error");
