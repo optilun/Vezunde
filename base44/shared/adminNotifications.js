@@ -1,4 +1,5 @@
 import { renderAutomaticEmail } from './automaticEmailRuntime.js';
+import { DEFAULT_FROM_NAME, sendViaResend } from './outreachEmailPolicy.js';
 
 // 2026-10-10 (Alex: „tot ce intra, se completeaza, se revendica [...] sa ma notifice in panoul de admin”).
 // Fiecare intrare noua care asteapta decizia adminului devine un AdminNotification (clopotelul din
@@ -16,6 +17,11 @@ export const ADMIN_SITE_URL = 'https://viasee.ro';
 export const ADMIN_PANEL_PATH = '/admin/operatiuni';
 export const ADMIN_EMAIL_TEMPLATE_KEY = 'admin_new_activity';
 export const ADMIN_EMAIL_HOURLY_LIMIT = 30;
+// 2026-10-10: emailul de test trimis prin Core.SendEmail (expeditor Base44) nu a ajuns in Inbox-ul
+// contului de admin (Outlook). Anunturile pleaca acum prin Resend, de pe subdomeniul verificat
+// mail.viasee.ro (SPF/DKIM proprii, acelasi folosit de campanii). Core.SendEmail ramane rezerva
+// daca RESEND_API_KEY lipseste sau Resend refuza.
+export const ADMIN_EMAIL_FROM = 'anunturi@mail.viasee.ro';
 const MAX_ADMIN_RECIPIENTS = 10;
 
 const event = (category, title, section, tab = '') => Object.freeze({ category, title, section, tab });
@@ -128,13 +134,36 @@ export function adminEmailRecipients(users = []) {
   return result.slice(0, MAX_ADMIN_RECIPIENTS);
 }
 
-async function sendOne(base44, svc, message) {
-  const clients = [svc?.integrations?.Core, base44?.integrations?.Core].filter((core, index, list) => core?.SendEmail && list.indexOf(core) === index);
+function resendApiKeyFromEnv() {
+  try {
+    return typeof Deno !== 'undefined' ? String(Deno.env.get('RESEND_API_KEY') || '') : '';
+  } catch (_error) {
+    return '';
+  }
+}
+
+// Intoarce furnizorul care a trimis: 'resend' sau 'base44'. Arunca doar daca niciunul nu a reusit.
+async function sendOne(base44, svc, message, { apiKey = '', resend = sendViaResend, idempotencyKey = '' } = {}) {
   let lastError = null;
+  if (apiKey) {
+    try {
+      const result = await resend(apiKey, {
+        from: `${DEFAULT_FROM_NAME} <${ADMIN_EMAIL_FROM}>`,
+        to: [message.to],
+        subject: message.subject,
+        text: message.body,
+      }, { idempotencyKey });
+      if (result?.ok) return 'resend';
+      lastError = new Error(`Resend ${result?.status || ''}: ${String(result?.text || '').slice(0, 160)}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  const clients = [svc?.integrations?.Core, base44?.integrations?.Core].filter((core, index, list) => core?.SendEmail && list.indexOf(core) === index);
   for (const core of clients) {
     try {
-      await core.SendEmail(message);
-      return;
+      await core.SendEmail({ ...message, from_name: 'VIASEE' });
+      return 'base44';
     } catch (error) {
       lastError = error;
     }
@@ -142,7 +171,7 @@ async function sendOne(base44, svc, message) {
   throw lastError || new Error('SendEmail indisponibil');
 }
 
-async function emailAdmins(base44, svc, record) {
+async function emailAdmins(base44, svc, record, options = {}) {
   const entity = svc.entities.AdminNotification;
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   // 2026-10-10: `filter` + lungime, nu `count` - SDK-ul din functiile de backend (0.8.31) nu are `count`
@@ -164,22 +193,30 @@ async function emailAdmins(base44, svc, record) {
     variables: { event_title: record.title || '', details: record.details || '', admin_link: adminNotificationLink(record) },
   }).catch(() => fallback);
 
+  const apiKey = options.resendApiKey ?? resendApiKeyFromEnv();
   let sent = 0;
   let lastError = '';
+  const providers = new Set();
   for (const to of recipients) {
     try {
-      await sendOne(base44, svc, { to, subject: singleLine(rendered.subject, 180), body: String(rendered.body || '').slice(0, 6000), from_name: 'VIASEE' });
+      const provider = await sendOne(base44, svc, { to, subject: singleLine(rendered.subject, 180), body: String(rendered.body || '').slice(0, 6000) }, {
+        apiKey,
+        resend: options.sendResend || sendViaResend,
+        idempotencyKey: `admin-notification:${record.dedupe_key || record.event_type}:${to}`,
+      });
+      providers.add(provider);
       sent += 1;
     } catch (error) {
       lastError = singleLine(error?.message || 'Email netrimis', 300);
     }
   }
   const status = sent === recipients.length ? 'sent' : sent > 0 ? 'partial' : 'failed';
-  return { email_status: status, email_recipient_count: sent, email_error: lastError, email_skip_reason: '' };
+  return { email_status: status, email_recipient_count: sent, email_error: lastError, email_skip_reason: '', email_provider: [...providers].join(',') };
 }
 
 // Punctul unic de intrare. `base44` = clientul cererii (createClientFromRequest).
-export async function notifyAdmins(base44, { event: eventType, details = '', entityType = '', entityId = '', dedupeKey = '' } = {}) {
+// `options` (doar pentru teste): { resendApiKey, sendResend }.
+export async function notifyAdmins(base44, { event: eventType, details = '', entityType = '', entityId = '', dedupeKey = '' } = {}, options = {}) {
   try {
     const record = buildAdminNotificationRecord(eventType, { details, entityType, entityId, dedupeKey });
     if (!record) return { status: 'unknown_event' };
@@ -191,7 +228,7 @@ export async function notifyAdmins(base44, { event: eventType, details = '', ent
       if (existing?.[0]) return { status: 'duplicate', notification_id: existing[0].id };
     }
     const created = await entity.create(record);
-    const email = await emailAdmins(base44, svc, record).catch((error) => ({
+    const email = await emailAdmins(base44, svc, record, options).catch((error) => ({
       email_status: 'failed',
       email_recipient_count: 0,
       email_error: singleLine(error?.message || 'Email netrimis', 300),
