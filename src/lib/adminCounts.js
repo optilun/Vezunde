@@ -24,6 +24,10 @@ export const OTHER_QUEUES = Object.freeze([
   { key: "claims", label: "Revendicări noi", section: "revendicari", group: "people" },
   { key: "tickets", label: "Tichete de suport active", section: "support_tickets", group: "people" },
   { key: "corrections", label: "Sesizări de director deschise", section: "corectii", group: "people" },
+  // 2026-10-10 (audit trasee -> admin): ce intra si nu ajungea pe Panou.
+  { key: "patient_requests_attention", label: "Cereri de pacienți fără destinatar", section: "cereri_pacienti", group: "people" },
+  { key: "feedback", label: "Feedback nou", section: "support_tickets", tab: "feedback", group: "people" },
+  { key: "search_contacts", label: "Contacte noi din căutări", section: "contacte_pacienti", group: "people" },
   { key: "email_failures", label: "Emailuri netrimise", note: "ultimele 7 zile", section: "automatic_emails", tab: "jurnal", group: "systems" },
   // Procesele care merg singure: când se opresc, nu te avertizează nimeni dacă nu vezi tu.
   { key: "import_attention", label: "Import director oprit sau eșuat", note: "ultimele 30 de zile", section: "import_directory", group: "systems" },
@@ -66,6 +70,17 @@ const numberOrNull = (value) => (Number.isFinite(value) && value >= 0 ? value : 
 async function entityCount(entity, query) {
   try {
     return numberOrNull(await entity.count(query));
+  } catch {
+    return null;
+  }
+}
+
+// Întoarce un număr de la o funcție backend sau null dacă apelul a eșuat / a răspuns cu eroare.
+async function invokeNumber(base44, name, payload, pick) {
+  try {
+    const response = await base44.functions.invoke(name, payload);
+    if (response?.data?.error) return null;
+    return numberOrNull(Number(pick(response?.data || {})));
   } catch {
     return null;
   }
@@ -139,7 +154,7 @@ export async function loadAdminCounts(base44, now = Date.now(), { concurrency = 
   const e = base44.entities;
   const since = (days) => new Date(now - days * DAY_MS).toISOString();
   const run = createLimiter(concurrency);
-  const [review, claims, tickets, corrections, feedback, emailFailures, importAttention, campaignsPaused, campaignsFailed, paymentsAttention] = await Promise.all([
+  const [review, claims, tickets, corrections, feedback, emailFailures, importAttention, campaignsPaused, campaignsFailed, paymentsAttention, patientRequestsAttention, searchContacts] = await Promise.all([
     loadReviewCounts(base44, run),
     run(() => entityCount(e.ProviderClaimRequest, { status: "in_asteptare" })),
     run(() => entityCount(e.SupportTicket, { status: { $in: [...ACTIVE_TICKET_STATUSES] } })),
@@ -152,6 +167,9 @@ export async function loadAdminCounts(base44, now = Date.now(), { concurrency = 
     run(() => entityCount(e.OutreachCampaign, { status: "paused", pause_reason: { $in: [...HEALTH_PAUSE_REASONS] }, updated_date: { $gte: since(14) } })),
     run(() => entityCount(e.OutreachCampaign, { status: "failed", updated_date: { $gte: since(14) } })),
     run(() => entityCount(e.ProviderSubscription, { status: { $in: [...PAYMENT_ATTENTION_STATUSES] } })),
+    // 2026-10-10: cereri fără rezultate / care n-au ajuns la nicio locație, fără caz de recuperare deschis.
+    run(() => invokeNumber(base44, "adminPatientRequestOps", { action: "summary" }, (d) => d.attention_count)),
+    run(() => entityCount(e.PatientSearchContact, { follow_up_status: "nou", status: "active" })),
   ]);
   return {
     review,
@@ -164,6 +182,8 @@ export async function loadAdminCounts(base44, now = Date.now(), { concurrency = 
     // Dacă una din cele două numărători a eșuat, nu afirmăm un total parțial.
     campaigns_attention: campaignsPaused === null || campaignsFailed === null ? null : campaignsPaused + campaignsFailed,
     payments_attention: paymentsAttention,
+    patient_requests_attention: patientRequestsAttention,
+    search_contacts: searchContacts,
     loadedAt: new Date().toISOString(),
   };
 }
@@ -247,7 +267,10 @@ export function sidebarBadgeFor(counts, sectionKey) {
     const { total, unavailable } = reviewTotal(counts.review);
     value = unavailable.length === REVIEW_PARTS.length ? null : total;
   } else if (sectionKey === "revendicari") value = counts.claims;
-  else if (sectionKey === "support_tickets") value = counts.tickets;
+  // 2026-10-10: tichetele și feedback-ul nou stau în aceeași secțiune; numărul le cuprinde pe amândouă.
+  else if (sectionKey === "support_tickets") value = Number.isFinite(counts.tickets) || Number.isFinite(counts.feedback) ? (counts.tickets || 0) + (counts.feedback || 0) : null;
+  else if (sectionKey === "cereri_pacienti") value = counts.patient_requests_attention;
+  else if (sectionKey === "contacte_pacienti") value = counts.search_contacts;
   else if (sectionKey === "corectii") value = counts.corrections;
   else if (sectionKey === "automatic_emails") value = counts.email_failures;
   else if (sectionKey === "outreach") value = counts.campaigns_attention;
