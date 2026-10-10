@@ -6,7 +6,8 @@ import KpiCard from "./KpiCard";
 export default function KpiGrid({ stats, onNavigate }) {
   const cards = [
     { icon: CheckCircle2, label: "Locații publicate", value: stats?.published, section: "profiluri" },
-    { icon: Inbox, label: "Cereri pacienți (7 zile)", value: stats?.patientRequests, section: "contacte_pacienti" },
+    // 2026-10-10: duce la „Cereri pacienți” (aceeași entitate pe care o numără), nu la contactele din căutări.
+    { icon: Inbox, label: "Cereri pacienți (7 zile)", value: stats?.patientRequests, section: "cereri_pacienti" },
     { icon: CreditCard, label: "Conturi Pro active", value: stats?.proAccounts, section: "billing" },
     { icon: BadgeCheck, label: "Profiluri revendicate", value: stats?.claimedProfiles, section: "profiluri" },
   ];
