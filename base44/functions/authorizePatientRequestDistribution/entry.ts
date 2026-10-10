@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import { findPatientRequestContactForToken } from '../../shared/patientRequestAccessGrant.js';
 import {
   acquirePatientRequestDistributionLock,
@@ -219,6 +220,15 @@ Deno.serve(async (httpRequest) => {
         leadCount: leadRows.length,
         distributedAt: now,
       }).catch(() => null);
+    } else {
+      // 2026-10-10: pacientul a cerut trimiterea, dar nicio locatie nu o poate primi. Doar anunt
+      // pentru admin (clopotel + email); distribuirea ramane exact cum era.
+      await notifyAdmins(base44, {
+        event: 'patient_request_undelivered',
+        entityType: 'PatientRequest',
+        entityId: lockedRequest.id,
+        details: adminNotificationDetails(lockedRequest.public_reference, lockedRequest.city, lockedRequest.county, `${Number(lockedRequest.match_count) || 0} potriviri, 0 locații care primesc cereri`),
+      });
     }
 
     const top3FullDetailCount = leadRows.filter(isTop3FullDetailLead).length;
