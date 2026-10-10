@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 
 const MAX_DATA_URL_LENGTH = 850000;
 const DATA_URL_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
@@ -96,6 +97,14 @@ export async function handle(req: Request) {
       admin_email: user.email,
       note: 'Logo organizational trimis separat spre review admin',
       performed_at: now,
+    });
+    // 2026-10-10: anunt pentru admin (clopotel + email). Nu blocheaza raspunsul.
+    await notifyAdmins(svc, {
+      event: 'logo_submitted',
+      entityType: 'ProviderOrganization',
+      entityId: organizationId,
+      dedupeKey: `logo_submitted:${organizationId}:${now}`,
+      details: adminNotificationDetails(organization.public_display_name || organization.name, location.name),
     });
 
     return Response.json({ success: true, pending_logo_review: true, organization_id: organizationId, logo_review_status: 'pending_review' });
