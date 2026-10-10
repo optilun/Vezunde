@@ -59,6 +59,10 @@ export default function ProviderLocationsWithPhoto(props) {
   }, [photoBusy, photoDirty]);
   const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState(null);
+  const showingList = (workspace.locations || []).length > 1 && !props.showLocationDetails;
+  useEffect(() => {
+    if (showingList) setPhotoOpen(false);
+  }, [showingList]);
   const selectedLocation =
     (workspace.locations || []).find(
       (location) => location.id === selectedLocationId,
@@ -104,7 +108,7 @@ export default function ProviderLocationsWithPhoto(props) {
         const location = (workspace.locations || [])[index];
         if (!location) return;
 
-        const active = location.id === selectedLocation?.id;
+        const active = false;
         const typeLabel = locationTypeLabel(location);
         const verified = isVerifiedLocation(location);
         const name =

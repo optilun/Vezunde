@@ -103,7 +103,7 @@ export default function ProviderLocationModulePage({
               type="button"
               onClick={closeServices}
               className="provider-location-services-header__close"
-              aria-label="Închide și revino la locații"
+              aria-label="Închide și revino la locație"
             >
               <X aria-hidden="true" />
             </button>
@@ -115,8 +115,8 @@ export default function ProviderLocationModulePage({
             <h1>{config.title}</h1>
             <p><MapPin aria-hidden="true" /><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</p>
           </div>
-          <button type="button" className="location-editor-close" disabled={moduleKey === "program" && hoursBusy} aria-label="Închide și revino la locații" onClick={() => {
-            if (moduleKey === "program" && hoursDirty && !window.confirm("Ai modificări nesalvate la program. Revii la locații fără să le salvezi?")) return;
+          <button type="button" className="location-editor-close" disabled={moduleKey === "program" && hoursBusy} aria-label="Închide și revino la locație" onClick={() => {
+            if (moduleKey === "program" && hoursDirty && !window.confirm("Ai modificări nesalvate la program. Revii la locație fără să le salvezi?")) return;
             onBack?.();
           }}><X aria-hidden="true" /></button>
         </header>
