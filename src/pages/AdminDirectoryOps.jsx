@@ -76,6 +76,8 @@ const AutomaticEmailWorkspace = lazy(
 const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBillingCenter"));
 // 2026-09-28: datele de contact lasate de pacienti la cautare (PatientSearchContact).
 const AdminSearchContacts = lazy(() => import("@/components/admin/patients/AdminSearchContacts"));
+// 2026-10-10: cererile pacienților (PatientRequest), cu starea fiecăreia.
+const AdminPatientRequests = lazy(() => import("@/components/admin/patients/AdminPatientRequests"));
 const AdminAnalytics = lazy(() => import("@/components/admin/analytics/AdminAnalytics"));
 
 // 2026-10-07: subtitlul e o singura linie; explicatiile mai lungi merg in `hint` (ⓘ), deci
@@ -86,6 +88,10 @@ const SECTION_HEADERS = {
     hint: "AI Copilot face doar drafturi de research. Nu publică și nu verifică nimic automat.",
   },
   billing: { subtitle: "Facturi, încasări și abonamente Pro." },
+  cereri_pacienti: {
+    subtitle: "Fiecare cerere: dacă a fost trimisă, la câte locații a ajuns și dacă are răspuns.",
+    hint: "„De rezolvat” = cereri fără rezultate sau care n-au ajuns la nicio locație și nu au încă un caz de recuperare deschis.",
+  },
   contacte_pacienti: {
     subtitle: "Pacienți care și-au lăsat datele la finalul unei căutări.",
     hint: "Ofertele se trimit doar celor marcați „Poate primi oferte”, adică cei care au dat un acord separat.",
@@ -223,6 +229,7 @@ function AdminWorkspace() {
                 {section === "outreach" && <OutreachWorkspace />}
                 {section === "automatic_emails" && <AutomaticEmailWorkspace />}
                 {section === "billing" && <AdminBillingCenter />}
+                {section === "cereri_pacienti" && <AdminPatientRequests onNavigate={navigate} />}
                 {section === "contacte_pacienti" && <AdminSearchContacts />}
                 {section === "geografie" && <GeoImport />}
                 {section === "audit" && <DirOpsAudit />}
