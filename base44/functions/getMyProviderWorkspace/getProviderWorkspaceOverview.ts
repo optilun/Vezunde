@@ -471,6 +471,7 @@ export async function handle(req: Request) {
       instagram_url: organization?.instagram_url || '',
       linkedin_url: organization?.linkedin_url || '',
       logo_url: organization?.logo_url || '',
+      cover_theme_json: organization?.cover_theme_json || '',
       public_visibility_status: organization?.public_visibility_status || 'draft',
       status: organization?.status || 'activa',
     };
@@ -565,4 +566,5 @@ export async function handle(req: Request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+
 

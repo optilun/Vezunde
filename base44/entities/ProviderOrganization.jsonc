@@ -211,6 +211,10 @@
         "inactiva"
       ],
       "default": "activa"
+    },
+    "cover_theme_json": {
+      "type": "string",
+      "description": "Validated cover theme for the public organization profile: default, solid or gradient with hex colors."
     }
   },
   "required": [
@@ -230,3 +234,4 @@
     }
   }
 }
+

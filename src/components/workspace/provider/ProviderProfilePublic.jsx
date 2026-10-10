@@ -22,6 +22,8 @@ import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 import { formatLocationAddress } from "@/lib/addressDisplay";
+import { coverThemeBackground, normalizeCoverTheme } from "@/lib/providerCoverTheme";
+import ProviderCoverEditor from "./ProviderCoverEditor";
 
 const inputCls =
   "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow] focus:border-[#345bc8] focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
@@ -484,6 +486,8 @@ function InlineProfileEditor({
 }
 
 function OrganizationProfile({
+  coverTheme,
+  onEditCover,
   organizationName,
   profileTypeLabel,
   verified,
@@ -518,28 +522,28 @@ function OrganizationProfile({
       <div
         className="relative h-36 overflow-hidden rounded-[22px] border border-[#171717]/10 sm:h-44 lg:h-48"
         style={{
-          background:
-            "linear-gradient(180deg, #dce4f2 0%, #e9ecf4 22%, #f5f3ee 55%, #f7f2e8 100%)",
+          background: coverThemeBackground(coverTheme),
         }}
       >
         <span
           aria-hidden="true"
-          className="absolute inset-0 opacity-[0.56]"
+          className={`absolute inset-0 opacity-[0.56] ${coverTheme.mode !== "default" ? "hidden" : ""}`}
           style={{
             backgroundImage:
               "radial-gradient(circle, rgba(52,48,43,0.16) 0px, rgba(52,48,43,0.16) 0.75px, rgba(0,0,0,0) 1px)",
             backgroundSize: "24px 24px",
           }}
         />
-        <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
+        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
           <span className="h-2 w-2 bg-[#345bc8]" />
           {editing ? "Editare profil" : "Profil public organizație"}
         </div>
         {draft && (
-          <span className="absolute right-5 top-5 rounded-full border border-white/55 bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#5d5a54] backdrop-blur-sm sm:right-7 sm:top-6">
+          <span className="absolute right-5 bottom-5 rounded-full border border-white/55 bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#5d5a54] backdrop-blur-sm sm:right-7 sm:bottom-6">
             {SUBMISSION_STATUS_LABELS[draft.status] || draft.status}
           </span>
         )}
+        <button type="button" onClick={onEditCover} disabled={editing || saving} aria-label="Editează coperta profilului" className="absolute right-4 top-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/95 px-3 text-xs font-semibold text-[#171717] shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#345bc8] disabled:cursor-not-allowed disabled:opacity-50 sm:right-7 sm:top-6"><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Editează coperta</span></button>
       </div>
 
       <div className="relative px-1 sm:px-3">
@@ -874,6 +878,28 @@ export default function ProviderProfilePublic({
     [organization],
   );
 
+  const [coverTheme, setCoverTheme] = useState(() => normalizeCoverTheme(organization.cover_theme_json));
+  const [coverPreview, setCoverPreview] = useState(null);
+  const [coverOpen, setCoverOpen] = useState(false);
+  useEffect(() => {
+    setCoverTheme(normalizeCoverTheme(organization.cover_theme_json));
+    setCoverPreview(null);
+    setCoverOpen(false);
+  }, [organizationId, organization.cover_theme_json]);
+  const closeCover = () => { setCoverOpen(false); setCoverPreview(null); };
+  const saveCover = async (theme) => {
+    const response = await base44.functions.invoke("manageProviderOrganizationProfile", {
+      action: "save_cover", organization_id: organizationId, location_id: locationId, theme,
+    }).catch((error) => { throw new Error(error.response?.data?.error || error.message || "Nu am putut salva coperta."); });
+    if (response.data?.error) throw new Error(response.data.error);
+    if (!response.data?.success) throw new Error("Salvarea nu a fost confirmată. Încearcă din nou.");
+    setCoverTheme(normalizeCoverTheme(response.data.cover_theme));
+    closeCover();
+    setMessage("Coperta a fost salvată pentru profilul public al organizației.");
+    await onRefresh?.();
+    await loadDraft();
+  };
+
   const [values, setValues] = useState(baseValues);
   const [logoPreview, setLogoPreview] = useState(
     pendingLogoUrl || canonicalLogo,
@@ -1105,7 +1131,10 @@ export default function ProviderProfilePublic({
 
   return (
     <div className="space-y-8 pb-8">
+      {coverOpen && <ProviderCoverEditor key={organizationId} theme={coverTheme} organizationName={organizationName} onPreview={setCoverPreview} onSave={saveCover} onClose={closeCover} />}
       <OrganizationProfile
+        coverTheme={coverPreview || coverTheme}
+        onEditCover={() => setCoverOpen(true)}
         organizationName={organizationName}
         profileTypeLabel={profileTypeLabel}
         verified={location.profile_control_status === "verified"}
@@ -1185,3 +1214,4 @@ export default function ProviderProfilePublic({
     </div>
   );
 }
+

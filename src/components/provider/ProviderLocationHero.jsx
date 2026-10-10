@@ -4,6 +4,7 @@ import { ArrowRight, Image as ImageIcon, MapPin, Phone } from "lucide-react";
 import { loadPublicOrganizationBrand } from "@/lib/publicProfilePrefetch";
 import TrustBadge from "@/components/results/TrustBadge";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
+import { coverThemeBackground, normalizeCoverTheme } from "@/lib/providerCoverTheme";
 
 function initials(name = "") {
   return String(name || "V")
@@ -163,8 +164,11 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
 }
 
 export default function ProviderLocationHero({ profile, status, serviceCount, mapUrl }) {
+  const coverTheme = normalizeCoverTheme(profile.organization_cover_theme);
+  const showCover = status !== "directory" && coverTheme.mode !== "default";
   return (
     <section className="overflow-hidden rounded-[32px] border border-border bg-card/70 shadow-sm">
+      {showCover && <div aria-label="Coperta organizației" className="h-24 border-b border-border sm:h-32" style={{ background: coverThemeBackground(coverTheme) }} />}
       {profile.photo_url ? (
         <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-stretch">
           <HeroContent profile={profile} status={status} serviceCount={serviceCount} mapUrl={mapUrl} />
@@ -179,3 +183,4 @@ export default function ProviderLocationHero({ profile, status, serviceCount, ma
     </section>
   );
 }
+
