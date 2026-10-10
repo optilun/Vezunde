@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   acquireProfessionalLifecycleLock,
   releaseProfessionalLifecycleLock,
@@ -410,6 +411,14 @@ Deno.serve(async (req) => {
       };
       await svc.entities.ProfessionalProfile.update(profile.id, updates);
       await audit(svc, user, profile.id, 'submit_professional_profile_review', { profile_review_status: reviewStatus }, { profile_review_status: 'pending_review', verification_status: 'pending_review', profile_completeness: score }, 'Profil profesional trimis spre verificare. Nu a fost publicat automat.');
+      // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+      await notifyAdmins(svc, {
+        event: 'professional_profile_submitted',
+        entityType: 'ProfessionalProfile',
+        entityId: profile.id,
+        dedupeKey: `professional_profile_submitted:${profile.id}:${now}`,
+        details: adminNotificationDetails(profile.professional_type || '', checked.value?.city || ''),
+      });
       return res({ success: true, profile_review_status: 'pending_review', profile_completeness: score, submitted_at: now });
     }
 
