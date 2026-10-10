@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   ORGANIZATION_OWNER_ROLE,
   loadOrganizationOwnerScopeResolution,
@@ -254,7 +255,16 @@ async function providerSubmit(svc: any, user: any, payload: Record<string, unkno
   const stored = JSON.parse(submission.payload_json || '{}');
   const checked = await checkedLocation(svc, stored.location);
   if (checked.error) return res({ error: checked.error }, 400);
-  await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: new Date().toISOString(), admin_note: '' });
+  const submittedAt = new Date().toISOString();
+  await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: submittedAt, admin_note: '' });
+  // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+  await notifyAdmins(svc, {
+    event: 'location_create_submitted',
+    entityType: 'ProviderWorkspaceSubmission',
+    entityId: submission.id,
+    dedupeKey: `location_create_submitted:${submission.id}:${submittedAt}`,
+    details: adminNotificationDetails(checked.value?.public_display_name, checked.value?.city, context.organization?.public_display_name || context.organization?.name),
+  });
   return res({ success: true });
 }
 
