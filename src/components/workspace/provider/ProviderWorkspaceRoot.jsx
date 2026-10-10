@@ -17,6 +17,7 @@ import {
 } from "../../../../shared/providerRolePolicy.js";
 import {
   providerLocationModuleUrl,
+  providerLocationDetailsUrl,
   providerSectionUrl,
   providerSelectionUrl,
   shouldRedirectProviderRoute,
@@ -522,7 +523,25 @@ export default function ProviderWorkspaceRoot({
     routerNavigate(providerLocationModuleUrl(locationId, moduleKey));
   };
 
-  const closeLocationModule = () => routerNavigate("/contul-meu?s=locations");
+  const showLocationDetails = params.get("view") === "location"
+    && scopedLocationIds.has(requestedLocationId)
+    && requestedLocationId === selectedLocationId;
+  const manageLocation = (locationId) => {
+    if (!scopedLocationIds.has(locationId)) return;
+    setSelectedLocationId(locationId);
+    rememberProviderLocation(user?.id, locationId);
+    routerNavigate(providerLocationDetailsUrl(params, {
+      organizationId: organizationIdForLocation(locationId), locationId,
+    }));
+    window.scrollTo({ top: 0, behavior: "auto" });
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+  };
+  const closeLocationModule = () => manageLocation(selectedLocationId);
+  const backToLocations = () => {
+    routerNavigate(providerSectionUrl(params, "locations"));
+    window.scrollTo({ top: 0, behavior: "auto" });
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+  };
   const navItems = getProviderNav({ canManageOrganizationProfile, canViewLocations, canManageRequests, canManageMembers, canManageSettings });
   const allowedSections = [
     "overview",
@@ -630,13 +649,13 @@ export default function ProviderWorkspaceRoot({
           </button>
         </div>
       )}
-      {(organizationContexts.length > 1 || (memberships.length > 1 && safeSection !== "settings")) && (
+      {(organizationContexts.length > 1 || (memberships.length > 1 && safeSection !== "settings" && safeSection !== "locations")) && (
         <LocationSwitcher
           organizationContexts={organizationContexts}
           selectedOrganizationId={selectedOrganizationId}
           memberships={memberships}
           selectedLocationId={selectedLocationId}
-          showLocations={safeSection !== "settings"}
+          showLocations={safeSection !== "settings" && (safeSection !== "locations" || Boolean(activeLocationModule) || showLocationDetails)}
           onSelectOrganization={selectOrganization}
           onSelect={selectLocation}
         />
@@ -680,8 +699,8 @@ export default function ProviderWorkspaceRoot({
             )}
             {safeSection === "locations" && !activeLocationModule && (
               <div className="space-y-8">
-                <ProviderLocationComparisonPanel workspace={scopedWorkspace} selectedLocationId={selectedLocationId} />
-                <ProviderLocationsWithPhoto workspace={scopedWorkspace} selectedLocationId={selectedLocationId} onSelect={selectLocation} overview={overview} onRefresh={refreshOverviewInPlace} onOpenModule={openLocationModule} />
+                <ProviderLocationsWithPhoto workspace={scopedWorkspace} selectedLocationId={selectedLocationId} onSelect={manageLocation} showLocationDetails={showLocationDetails} onBackLocations={backToLocations} overview={overview} onRefresh={refreshOverviewInPlace} onOpenModule={openLocationModule} />
+                {showLocationDetails && <ProviderLocationComparisonPanel workspace={scopedWorkspace} selectedLocationId={selectedLocationId} />}
               </div>
             )}
             {safeSection === "leads" && canManageRequests && (

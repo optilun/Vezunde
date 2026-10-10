@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  ArrowLeft,
   Building2,
   Info,
   CheckCircle2,
@@ -313,6 +314,8 @@ export default function ProviderLocations({
   workspace,
   selectedLocationId,
   onSelect,
+  showLocationDetails = false,
+  onBackLocations,
   onRefresh,
   onOpenModule,
   overview = null,
@@ -398,6 +401,10 @@ export default function ProviderLocations({
   };
   const locationCount = locations.length;
   const hasMultipleLocations = locationCount > 1;
+  const showDetails = !hasMultipleLocations || showLocationDetails;
+  useEffect(() => {
+    if (!showDetails) setEditOpen(false);
+  }, [showDetails]);
   const selectedLocationName =
     previewLocation?.public_display_name || previewLocation?.name || "Locație";
   const selectedState = deriveProviderLocationState(selectedLocation || {});
@@ -672,16 +679,21 @@ export default function ProviderLocations({
 
   return (
     <div className="provider-locations-page space-y-6">
+      {hasMultipleLocations && showDetails && (
+        <button type="button" onClick={onBackLocations} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold hover:bg-secondary">
+          <ArrowLeft className="h-4 w-4" /> Înapoi la locații
+        </button>
+      )}
       <header className="flex flex-col gap-4 border-b border-foreground/15 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-[2rem] font-extrabold leading-tight tracking-[-0.035em]">
-            Locațiile organizației
+            {hasMultipleLocations && showDetails ? "Gestionează locația" : "Locațiile organizației"}
           </h1>
           <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            {hasMultipleLocations ? "Selectează un punct de lucru și gestionează datele și modulele lui." : "Gestionează datele publice și configurarea punctului de lucru."}
+            {hasMultipleLocations && !showDetails ? "Alege o locație și apasă Gestionează pentru a deschide datele și configurarea ei." : "Gestionează datele publice și configurarea punctului de lucru."}
           </p>
         </div>
-        {canAddLocations && (
+        {canAddLocations && (!hasMultipleLocations || !showDetails) && (
           <Link
             to="/adauga-sau-revendica"
             className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background hover:opacity-90 sm:w-auto"
@@ -691,7 +703,7 @@ export default function ProviderLocations({
         )}
       </header>
 
-      {hasMultipleLocations && (
+      {hasMultipleLocations && !showDetails && (
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
@@ -706,7 +718,7 @@ export default function ProviderLocations({
               <LocationCard
                 key={location.id}
                 location={location}
-                active={location.id === selectedLocation?.id}
+                active={false}
                 onSelect={onSelect}
               />
             ))}
@@ -714,7 +726,7 @@ export default function ProviderLocations({
         </section>
       )}
 
-      {previewLocation && (
+      {showDetails && previewLocation && (
         <>
           <section data-location-summary className="location-summary-section border-b border-foreground/15 pb-5">
             <div className="location-summary-heading flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

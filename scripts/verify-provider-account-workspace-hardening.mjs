@@ -7,6 +7,7 @@ import {
 } from '../src/lib/accountWorkspaceLifecycle.js';
 import {
   providerLocationModuleUrl,
+  providerLocationDetailsUrl,
   providerSectionUrl,
   shouldRedirectProviderRoute,
 } from '../src/lib/providerWorkspaceLifecycle.js';
@@ -50,6 +51,18 @@ assert.equal(
   '/contul-meu?s=profile&mode=provider&organization=org-1&location=loc-1',
 );
 const settingsParams = new URLSearchParams('s=settings&mode=provider&organization=org-1&location=loc-1');
+const detailsUrl = providerLocationDetailsUrl(profileParams, { organizationId: 'org-1', locationId: 'loc-2' });
+const detailsParams = new URLSearchParams(detailsUrl.split('?')[1]);
+assert.equal(detailsParams.get('s'), 'locations');
+assert.equal(detailsParams.get('view'), 'location');
+assert.equal(detailsParams.get('location'), 'loc-2');
+assert.equal(detailsParams.get('organization'), 'org-1');
+assert.equal(detailsParams.get('mode'), 'provider');
+for (const section of ['locations', 'overview', 'settings']) {
+  const destination = new URLSearchParams(providerSectionUrl(detailsParams, section).split('?')[1]);
+  assert.equal(destination.has('view'), false, 'section navigation returns to the list, without reopening old details');
+  assert.equal(destination.get('location'), 'loc-2', 'the selected context must survive the return');
+}
 assert.equal(
   providerSectionUrl(settingsParams, 'settings'),
   '/contul-meu?s=settings&mode=provider&organization=org-1&location=loc-1',

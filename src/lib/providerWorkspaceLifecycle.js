@@ -18,6 +18,18 @@ export function providerSectionUrl(searchParams, sectionKey) {
   const next = new URLSearchParams(searchParams);
   next.set("s", sectionKey);
   next.delete("ps");
+  next.delete("view");
+  return `/contul-meu?${next.toString()}`;
+}
+
+export function providerLocationDetailsUrl(searchParams, { organizationId = "", locationId } = {}) {
+  const next = new URLSearchParams(searchParams);
+  next.set("mode", "provider");
+  next.set("s", "locations");
+  next.set("view", "location");
+  next.set("location", locationId);
+  if (organizationId) next.set("organization", organizationId);
+  next.delete("ps");
   return `/contul-meu?${next.toString()}`;
 }
 
