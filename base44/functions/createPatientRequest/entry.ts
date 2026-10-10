@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   PATIENT_REQUEST_CONTACT_RETENTION_DAYS,
   PATIENT_REQUEST_EXPIRY_DAYS,
@@ -160,6 +161,13 @@ async function saveSearchContact(base44, svc, input) {
   }
 
   const created = await svc.entities.PatientSearchContact.create({ ...record, follow_up_status: 'nou' });
+  // 2026-10-10: anunt pentru admin (clopotel + email), fara datele de contact. Nu blocheaza raspunsul.
+  await notifyAdmins(svc, {
+    event: 'search_contact_left',
+    entityType: 'PatientSearchContact',
+    entityId: created.id,
+    details: adminNotificationDetails(submission.search?.intent_label, submission.search?.city, submission.search?.county),
+  });
   return Response.json({ success: true, contact_id: created.id, updated: false }, { status: 201 });
 }
 
@@ -384,6 +392,19 @@ Deno.serve(async (request) => {
       request: completedRequest || requestRecord,
       contact: contactRecord,
     }).catch(() => null);
+
+    // 2026-10-10: anunt pentru admin (clopotel + email), fara datele pacientului si fara textul cererii.
+    await notifyAdmins(base44, {
+      event: 'patient_request_saved',
+      entityType: 'PatientRequest',
+      entityId: requestRecord.id,
+      details: adminNotificationDetails(
+        requestRecord.public_reference,
+        requestRecord.city,
+        requestRecord.county,
+        `${validMatches.length} ${validMatches.length === 1 ? 'potrivire' : 'potriviri'}`,
+      ),
+    });
 
     return Response.json({
       success: true,
