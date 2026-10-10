@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import { deriveCanonicalDirectoryState } from '../../shared/directoryCanonicalModel.js';
 import { loadRowsForLocationIds } from '../../shared/locationScopedEntityQuery.js';
 import { activeLinksByLocation, claimOrganizationLinkStatus } from '../../shared/providerOrganizationLinkIntegrity.js';
@@ -302,6 +303,18 @@ Deno.serve(async (req) => {
       note: '',
       performed_at: new Date().toISOString(),
     }).catch(() => null);
+
+    // 2026-10-10: anunt pentru admin (clopotel + email). Nu blocheaza raspunsul.
+    await notifyAdmins(base44, {
+      event: 'claim_submitted',
+      entityType: 'ProviderClaimRequest',
+      entityId: claim.id,
+      details: adminNotificationDetails(
+        businessName,
+        requestedSnapshots[0]?.city || '',
+        requestedSnapshots.length > 1 ? `${requestedSnapshots.length} locații` : '',
+      ),
+    });
 
     return Response.json({
       claim_request_id: claim.id,
