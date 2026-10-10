@@ -44,7 +44,9 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
 // site ca platforma publica toate cele 52 (verificat pana acum: 50). Regula ramane: functiile noi intra
 // in routerele existente.
 assert.equal(physicalEndpoints.length, 52, 'Suprafata Base44 trebuie sa contina exact 52 de functii fizice (50 + adminAnalyticsOps si recordSearchEvent, 2026-10-05; 49 + automaticEmailOps, 2026-09-29) dupa folosirea bridge-ului existent (48 + matchProfessionals, 2026-09-03: recomandarea de specialisti este a doua unitate de matching, in aceeasi familie cu matchProviders si matchProvidersSemantic, deci endpoint propriu; nu este logica de directory si nu are ce cauta in routerul directoryOps)');
-assert.equal(logicalNames.length, 24, 'Contractul directory trebuie sa pastreze exact cele 24 de nume logice consolidate (19 + adminFragmentedOrganizations 2026-08-19 + researchServiceBatchOps 2026-09-03 + directoryGeocodeOps 2026-09-05 + outreachCampaignOps 2026-09-12 + outreachSendOps 2026-09-12, modulul de outreach email catre furnizori - outreachWebhookOps/outreachUnsubscribeOps NU intra aici, vezi verify-outreach-email-router.mjs)');
+// 2026-10-10: 25 in loc de 24 - adminNotificationOps (anunturile pentru admin: clopotel + email) intra in
+// routerul existent directoryOps, nu ca functie fizica noua.
+assert.equal(logicalNames.length, 25, 'Contractul directory trebuie sa pastreze exact cele 25 de nume logice consolidate (19 + adminFragmentedOrganizations 2026-08-19 + adminNotificationOps 2026-10-10 + researchServiceBatchOps 2026-09-03 + directoryGeocodeOps 2026-09-05 + outreachCampaignOps 2026-09-12 + outreachSendOps 2026-09-12, modulul de outreach email catre furnizori - outreachWebhookOps/outreachUnsubscribeOps NU intra aici, vezi verify-outreach-email-router.mjs)');
 assert.ok(physicalEndpoints.includes(DIRECTORY_FUNCTION_ENDPOINT), 'Endpointul fizic directoryOps trebuie sa existe');
 assert.ok(physicalEndpoints.includes(DIRECTORY_IMPORT_FUNCTION_ENDPOINT), 'Endpointul fizic dedicat importului trebuie sa existe');
 
