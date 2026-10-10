@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import { findPatientRequestContactForToken } from '../../shared/patientRequestAccessGrant.js';
 import {
   PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
@@ -247,6 +248,17 @@ async function createRecoveryCase(svc, request, input, contact = null) {
       deliveredLeadCount,
     });
     const recovery = await svc.entities.PatientRequestRecoveryCase.create(record);
+    // 2026-10-10: anunt pentru admin (clopotel + email), fara datele pacientului. Nu blocheaza raspunsul.
+    await notifyAdmins(svc, {
+      event: 'patient_recovery_requested',
+      entityType: 'PatientRequestRecoveryCase',
+      entityId: recovery.id,
+      details: adminNotificationDetails(
+        request.public_reference,
+        request.city,
+        deliveredLeadCount === 0 ? 'n-a ajuns la nicio locație' : 'fără rezultate',
+      ),
+    });
     return { recovery, idempotent_replay: false };
   } catch (error) {
     if (error instanceof PatientRequestRecoveryValidationError) {
