@@ -363,6 +363,8 @@ function fakeClient({ failFunctions = [], failEntities = [], overrides = {} } = 
     providerLocationLifecycleOps: { submissions: [] },
     adminProfessionalProfileReview: { profiles: [{ id: 'p1' }] },
     providerPhotoUploadLifecycleOps: { assets: [] },
+    // 2026-10-10: cererile de pacienți fără destinatar intră în „De rezolvat acum” (verify-admin-notifications.mjs).
+    adminPatientRequestOps: { attention_count: 0 },
     ...overrides.functions,
   };
   const counts = { PatientRequestRecoveryCase: 2, ProviderClaimRequest: 0, SupportTicket: 0, DirectoryCorrectionRequest: 0, UserFeedback: 0, ...overrides.counts };
