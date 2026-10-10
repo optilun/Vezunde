@@ -66,6 +66,10 @@
     },
     "email_error": {
       "type": "string"
+    },
+    "email_provider": {
+      "type": "string",
+      "description": "resend (mail.viasee.ro) sau base44 (Core.SendEmail, rezerva)"
     }
   },
   "required": [
