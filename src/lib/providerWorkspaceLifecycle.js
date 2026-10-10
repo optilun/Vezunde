@@ -22,7 +22,7 @@ export function providerSectionUrl(searchParams, sectionKey) {
   return `/contul-meu?${next.toString()}`;
 }
 
-export function providerLocationDetailsUrl(searchParams, { organizationId = "", locationId } = {}) {
+export function providerLocationDetailsUrl(searchParams, { organizationId = "", locationId = "" } = {}) {
   const next = new URLSearchParams(searchParams);
   next.set("mode", "provider");
   next.set("s", "locations");
