@@ -543,7 +543,7 @@ function OrganizationProfile({
             {SUBMISSION_STATUS_LABELS[draft.status] || draft.status}
           </span>
         )}
-        <button type="button" onClick={onEditCover} aria-label="Editează coperta profilului" className="absolute right-4 top-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/95 px-3 text-xs font-semibold text-[#171717] shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#345bc8] sm:right-7 sm:top-6"><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Editează coperta</span></button>
+        <button type="button" onClick={onEditCover} disabled={editing || saving} aria-label="Editează coperta profilului" className="absolute right-4 top-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/95 px-3 text-xs font-semibold text-[#171717] shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#345bc8] disabled:cursor-not-allowed disabled:opacity-50 sm:right-7 sm:top-6"><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Editează coperta</span></button>
       </div>
 
       <div className="relative px-1 sm:px-3">
@@ -897,6 +897,7 @@ export default function ProviderProfilePublic({
     closeCover();
     setMessage("Coperta a fost salvată pentru profilul public al organizației.");
     await onRefresh?.();
+    await loadDraft();
   };
 
   const [values, setValues] = useState(baseValues);
