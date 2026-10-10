@@ -85,9 +85,11 @@ function fakeService({ sentLastHour = 0, failEmail = false, throwOnCreate = fals
   return { svc, rows, emails };
 }
 
+// Fara RESEND_API_KEY (ca in Node): pleaca prin Core.SendEmail, ca rezerva.
 {
   const { svc, rows, emails } = fakeService();
-  const first = await notifyAdmins(svc, { event: 'claim_submitted', entityId: 'c1', details: 'Optica Exemplu · Cluj-Napoca' });
+  const first = await notifyAdmins(svc, { event: 'claim_submitted', entityId: 'c1', details: 'Optica Exemplu · Cluj-Napoca' }, { resendApiKey: '' });
+  assert.equal(rows[0].email_provider, 'base44');
   assert.equal(first.status, 'created');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].email_status, 'sent');
@@ -98,6 +100,30 @@ function fakeService({ sentLastHour = 0, failEmail = false, throwOnCreate = fals
   const again = await notifyAdmins(svc, { event: 'claim_submitted', entityId: 'c1' });
   assert.equal(again.status, 'duplicate', 'aceeasi intrare nu se anunta de doua ori');
   assert.equal(emails.length, 1);
+}
+// 2026-10-10: emailul prin Core.SendEmail nu a ajuns in Inbox. Cu cheia Resend, pleaca de pe mail.viasee.ro.
+{
+  const { svc, rows, emails } = fakeService();
+  const resendCalls = [];
+  const sendResend = async (apiKey, payload, options) => { resendCalls.push({ apiKey, payload, options }); return { ok: true, status: 200 }; };
+  await notifyAdmins(svc, { event: 'support_ticket_created', entityId: 't9', details: 'Problemă tehnică' }, { resendApiKey: 're_test', sendResend });
+  assert.equal(resendCalls.length, 1);
+  assert.equal(resendCalls[0].payload.from, 'VIASEE <anunturi@mail.viasee.ro>');
+  assert.deepEqual(resendCalls[0].payload.to, ['admin@viasee.test']);
+  assert.match(resendCalls[0].payload.text, /https:\/\/viasee\.ro\/admin\/operatiuni\?s=support_tickets/);
+  assert.equal(resendCalls[0].options.idempotencyKey, 'admin-notification:support_ticket_created:t9:admin@viasee.test');
+  assert.equal(emails.length, 0, 'Core.SendEmail nu se mai foloseste cand Resend a reusit');
+  assert.equal(rows[0].email_status, 'sent');
+  assert.equal(rows[0].email_provider, 'resend');
+}
+// Resend refuza -> rezerva Core.SendEmail, emailul tot pleaca.
+{
+  const { svc, rows, emails } = fakeService();
+  const sendResend = async () => ({ ok: false, status: 422, text: 'domain not verified' });
+  await notifyAdmins(svc, { event: 'support_ticket_created', entityId: 't10' }, { resendApiKey: 're_test', sendResend });
+  assert.equal(emails.length, 1);
+  assert.equal(rows[0].email_status, 'sent');
+  assert.equal(rows[0].email_provider, 'base44');
 }
 {
   const { svc, rows, emails } = fakeService({ sentLastHour: ADMIN_EMAIL_HOURLY_LIMIT });
