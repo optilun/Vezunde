@@ -7,6 +7,7 @@ export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   adminFragmentedOrganizations: DIRECTORY_FUNCTION_ENDPOINT,
   adminNotificationOps: DIRECTORY_FUNCTION_ENDPOINT,
   adminOrganizationProfileReview: DIRECTORY_FUNCTION_ENDPOINT,
+  adminPatientRequestOps: DIRECTORY_FUNCTION_ENDPOINT,
   adminProfessionalProfileReview: DIRECTORY_FUNCTION_ENDPOINT,
   adminProviderClaimReview: DIRECTORY_FUNCTION_ENDPOINT,
   adminProviderScopedClaimReview: DIRECTORY_FUNCTION_ENDPOINT,
