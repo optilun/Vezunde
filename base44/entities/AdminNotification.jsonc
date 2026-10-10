@@ -1,0 +1,97 @@
+{
+  "name": "AdminNotification",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "description": "Tipul intrarii: claim_submitted, location_create_submitted, patient_request_saved etc. (base44/shared/adminNotifications.js)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "provider",
+        "patient",
+        "directory",
+        "support",
+        "system"
+      ],
+      "default": "system"
+    },
+    "title": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string",
+      "description": "O linie scurta, fara date de contact ale pacientilor si fara text liber trimis de utilizatori"
+    },
+    "admin_section": {
+      "type": "string"
+    },
+    "admin_tab": {
+      "type": "string"
+    },
+    "source_entity_type": {
+      "type": "string"
+    },
+    "source_entity_id": {
+      "type": "string"
+    },
+    "dedupe_key": {
+      "type": "string"
+    },
+    "read_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "read_by_user_id": {
+      "type": "string"
+    },
+    "email_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "partial",
+        "failed",
+        "skipped"
+      ],
+      "default": "pending"
+    },
+    "email_skip_reason": {
+      "type": "string"
+    },
+    "email_recipient_count": {
+      "type": "number",
+      "default": 0
+    },
+    "email_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_type",
+    "title"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
