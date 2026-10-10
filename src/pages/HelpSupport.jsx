@@ -141,6 +141,10 @@ export default function HelpSupport() {
         source: "help_center",
         page_path: `${window.location.pathname}${window.location.search}`,
       });
+      // 2026-10-10: anunt pentru admin (clopotel + email). Tichetul e deja salvat; o eroare aici nu-l afecteaza.
+      if (created?.id) {
+        base44.functions.invoke("adminNotificationOps", { action: "report_submission", entity_type: "SupportTicket", id: created.id }).catch(() => null);
+      }
       setTickets((current) => [created, ...current]);
       setTicketStatus("sent");
       setTimeout(() => {
