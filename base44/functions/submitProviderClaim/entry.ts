@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   NEW_LOCATION_CLAIM_MODES,
   NEW_LOCATION_LIMIT_MESSAGE,
@@ -257,6 +258,13 @@ Deno.serve(async (req) => {
             identity_check_snapshot: identitySnapshot,
             status: 'in_asteptare',
           });
+          // 2026-10-10: anunt pentru admin (clopotel + email). Nu blocheaza raspunsul.
+          await notifyAdmins(base44, {
+            event: 'new_location_claim',
+            entityType: 'ProviderClaimRequest',
+            entityId: reviewClaim.id,
+            details: adminNotificationDetails(l.name, 'seamănă cu un profil existent'),
+          });
           return Response.json({ claim_request_id: reviewClaim.id, duplicate_review: true });
         }
         return Response.json({
@@ -307,6 +315,14 @@ Deno.serve(async (req) => {
     if (organizationId) claimData.organization_id = organizationId;
     if (identitySnapshot) claimData.identity_check_snapshot = identitySnapshot;
     const claim = await svc.entities.ProviderClaimRequest.create(claimData);
+
+    // 2026-10-10: anunt pentru admin (clopotel + email). Nu blocheaza raspunsul.
+    await notifyAdmins(base44, {
+      event: p.mode === 'claim' ? 'claim_submitted' : 'new_location_claim',
+      entityType: 'ProviderClaimRequest',
+      entityId: claim.id,
+      details: adminNotificationDetails(businessName),
+    });
 
     return Response.json({
       claim_request_id: claim.id,
