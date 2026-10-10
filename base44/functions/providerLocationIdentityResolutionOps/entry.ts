@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   candidateRelation,
   validateLocationResolution,
@@ -207,6 +208,14 @@ async function providerSubmitExisting(svc: any, user: any, payload: Record<strin
     previous: { status: submission.status },
     next: { status: 'pending_review', target_location_id: target.id, organization_id: context.organizationId },
     note: 'Ownerul a solicitat asocierea unui profil existent.',
+  });
+  // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+  await notifyAdmins(svc, {
+    event: 'existing_location_link_submitted',
+    entityType: 'ProviderWorkspaceSubmission',
+    entityId: submission.id,
+    dedupeKey: `existing_location_link_submitted:${submission.id}:${now}`,
+    details: adminNotificationDetails(target.name, target.city),
   });
   return res({ success: true });
 }
