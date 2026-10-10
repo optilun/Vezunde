@@ -56,9 +56,11 @@ function fakeService({ sentLastHour = 0, failEmail = false, throwOnCreate = fals
   const emails = [];
   const svc = {
     entities: {
+      // Fara `count`: SDK-ul din functiile de backend (0.8.31) nu il are (gasit la testul live 2026-10-10).
       AdminNotification: {
-        filter: async (query) => rows.filter((row) => row.dedupe_key === query.dedupe_key),
-        count: async () => sentLastHour,
+        filter: async (query) => (query.dedupe_key
+          ? rows.filter((row) => row.dedupe_key === query.dedupe_key)
+          : Array.from({ length: sentLastHour }, (_, index) => ({ id: `sent${index}`, email_status: 'sent' }))),
         create: async (data) => {
           if (throwOnCreate) throw new Error('platforma indisponibila');
           const row = { id: `n${rows.length + 1}`, ...data };
