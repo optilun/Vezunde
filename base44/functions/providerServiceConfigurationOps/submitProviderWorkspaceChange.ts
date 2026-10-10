@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import {
   CLAIM_PREP_SERVICE_GROUPS as CANONICAL_CLAIM_PREP_SERVICE_GROUPS,
   getCanonicalServiceGroupIds,
@@ -925,6 +926,19 @@ export async function handle(req: Request) {
         previous: { status: submission.status },
         next: { status: 'pending_review' },
         note: `Submission trimisa pentru sectiunea ${submission.section}`,
+      });
+      // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+      const notifiedLocation = await svc.entities.ProviderLocation.get(access.location_id).catch(() => null);
+      const sectionLabel = {
+        location_details: 'Date despre locație', services: 'Servicii', team: 'Echipă', media: 'Fotografii',
+        article: 'Articol', public_profile: 'Profil public', operating_hours: 'Program',
+      }[submission.section] || submission.section;
+      await notifyAdmins(svc, {
+        event: submission.section === 'services' ? 'services_submitted' : submission.section === 'media' ? 'photo_submitted' : 'workspace_change_submitted',
+        entityType: 'ProviderWorkspaceSubmission',
+        entityId: submission.id,
+        dedupeKey: `workspace_submission:${submission.id}:${now}`,
+        details: adminNotificationDetails(notifiedLocation?.name, notifiedLocation?.city, sectionLabel),
       });
       return Response.json({ success: true });
     }
