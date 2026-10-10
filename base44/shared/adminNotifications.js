@@ -17,10 +17,10 @@ export const ADMIN_SITE_URL = 'https://viasee.ro';
 export const ADMIN_PANEL_PATH = '/admin/operatiuni';
 export const ADMIN_EMAIL_TEMPLATE_KEY = 'admin_new_activity';
 export const ADMIN_EMAIL_HOURLY_LIMIT = 30;
-// 2026-10-10: emailul de test trimis prin Core.SendEmail (expeditor Base44) nu a ajuns in Inbox-ul
-// contului de admin (Outlook). Anunturile pleaca acum prin Resend, de pe subdomeniul verificat
-// mail.viasee.ro (SPF/DKIM proprii, acelasi folosit de campanii). Core.SendEmail ramane rezerva
-// daca RESEND_API_KEY lipseste sau Resend refuza.
+// 2026-10-10: implicit anunturile pleaca prin Core.SendEmail (Base44). Decizia lui Alex: cota Resend
+// (planul gratuit: 100/zi, 3.000/luna) ramane pentru emailurile catre clienti. Resend se poate porni
+// doar pentru anunturi cu secretul ADMIN_NOTIFICATIONS_EMAIL_PROVIDER=resend; atunci pleaca de pe
+// mail.viasee.ro, iar Core.SendEmail ramane rezerva.
 export const ADMIN_EMAIL_FROM = 'anunturi@mail.viasee.ro';
 const MAX_ADMIN_RECIPIENTS = 10;
 
@@ -134,12 +134,17 @@ export function adminEmailRecipients(users = []) {
   return result.slice(0, MAX_ADMIN_RECIPIENTS);
 }
 
-function resendApiKeyFromEnv() {
+function envValue(name) {
   try {
-    return typeof Deno !== 'undefined' ? String(Deno.env.get('RESEND_API_KEY') || '') : '';
+    return typeof Deno !== 'undefined' ? String(Deno.env.get(name) || '') : '';
   } catch (_error) {
     return '';
   }
+}
+
+// 'base44' (implicit) sau 'resend'.
+export function adminEmailProvider(value = envValue('ADMIN_NOTIFICATIONS_EMAIL_PROVIDER')) {
+  return String(value || '').trim().toLowerCase() === 'resend' ? 'resend' : 'base44';
 }
 
 // Intoarce furnizorul care a trimis: 'resend' sau 'base44'. Arunca doar daca niciunul nu a reusit.
@@ -193,7 +198,8 @@ async function emailAdmins(base44, svc, record, options = {}) {
     variables: { event_title: record.title || '', details: record.details || '', admin_link: adminNotificationLink(record) },
   }).catch(() => fallback);
 
-  const apiKey = options.resendApiKey ?? resendApiKeyFromEnv();
+  const useResend = adminEmailProvider(options.provider ?? envValue('ADMIN_NOTIFICATIONS_EMAIL_PROVIDER')) === 'resend';
+  const apiKey = useResend ? (options.resendApiKey ?? envValue('RESEND_API_KEY')) : '';
   let sent = 0;
   let lastError = '';
   const providers = new Set();
@@ -215,7 +221,7 @@ async function emailAdmins(base44, svc, record, options = {}) {
 }
 
 // Punctul unic de intrare. `base44` = clientul cererii (createClientFromRequest).
-// `options` (doar pentru teste): { resendApiKey, sendResend }.
+// `options` (doar pentru teste): { provider, resendApiKey, sendResend }.
 export async function notifyAdmins(base44, { event: eventType, details = '', entityType = '', entityId = '', dedupeKey = '' } = {}, options = {}) {
   try {
     const record = buildAdminNotificationRecord(eventType, { details, entityType, entityId, dedupeKey });
