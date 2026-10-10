@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 import { getCanonicalServiceDefinition } from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   getFunctionalUnitLayout,
@@ -570,6 +571,17 @@ export async function handle(req: Request) {
         changed_fields: ['status', 'submitted_at', 'submitted_payload_json'], previous: { status: submission.status }, next: { status: 'pending_review' },
         note: 'Configurația completă a serviciilor a fost trimisă spre verificare.',
       });
+      // 2026-10-10: anunt pentru admin (clopotel + email). O retrimitere cat timp e deja in verificare
+      // nu mai anunta din nou: adminul o are deja in coada.
+      if (submission.status !== 'pending_review') {
+        await notifyAdmins(svc, {
+          event: 'services_submitted',
+          entityType: 'ProviderWorkspaceSubmission',
+          entityId: submission.id,
+          dedupeKey: `services_submitted:${submission.id}:${now}`,
+          details: adminNotificationDetails(access.loc?.name, access.loc?.city),
+        });
+      }
       return Response.json({ success: true });
     }
 
