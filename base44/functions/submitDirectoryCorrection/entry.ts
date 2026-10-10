@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { renderAutomaticEmail } from '../../shared/automaticEmailRuntime.js';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 
 const REQUEST_TYPES = [
   'incorrect_information',
@@ -243,6 +244,18 @@ Deno.serve(async (req) => {
       publicReference,
       sourceSnapshot.name || 'locatia semnalata',
     );
+    // 2026-10-10: anunt pentru admin (clopotel + email). Nu blocheaza raspunsul.
+    const requestTypeLabel = {
+      incorrect_information: 'date greșite', location_closed: 'locație închisă', location_moved: 'locație mutată',
+      duplicate_profile: 'profil duplicat', wrong_organization: 'organizație greșită',
+      personal_data_removal: 'eliminare date personale', other: 'altceva',
+    }[requestType] || requestType;
+    await notifyAdmins(base44, {
+      event: 'directory_correction_submitted',
+      entityType: 'DirectoryCorrectionRequest',
+      entityId: correction.id,
+      details: adminNotificationDetails(sourceSnapshot.name, sourceSnapshot.city, requestTypeLabel, priority === 'high' ? 'prioritate mare' : ''),
+    });
 
     return response({
       success: true,
