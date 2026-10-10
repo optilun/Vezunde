@@ -13,6 +13,7 @@ import {
   CreditCard,
   Users,
   BarChart3,
+  Inbox,
 } from "lucide-react";
 
 // Meniul admin e grupat pe intentie, nu ca lista plata: primele elemente sunt cele
@@ -42,7 +43,9 @@ export const ADMIN_NAV_PRIMARY = [
   { key: "servicii", label: "Servicii pe locații", icon: Wrench },
   { key: "research", label: "Research director", icon: Search },
 
-  { key: "contacte_pacienti", label: "Contacte din căutări", icon: Users, groupLabel: "Clienți și comunicare" },
+  // 2026-10-10: fiecare cerere de pacient, cu starea ei (trimisă, la câte locații, răspunsuri).
+  { key: "cereri_pacienti", label: "Cereri pacienți", icon: Inbox, groupLabel: "Clienți și comunicare" },
+  { key: "contacte_pacienti", label: "Contacte din căutări", icon: Users },
   { key: "outreach", label: "Campanii și marketing", icon: Mail },
   { key: "automatic_emails", label: "Emailuri automate", icon: MailCheck },
 ];
