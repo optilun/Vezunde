@@ -4,10 +4,21 @@ const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
+// 2026-10-10: datele care trec prin funcțiile de backend (SDK 0.8.31) vin ca „2026-10-10T17:55:29.046000”:
+// în UTC, dar fără „Z”. `new Date()` le citea ca oră locală, deci în România apăreau cu 2-3 ore mai vechi
+// (clopoțelul arăta „acum 3 ore” pentru un anunț de acum 3 minute). Le citește ca UTC.
+const NAIVE_ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+
+export function parseServerDate(value) {
+  if (value instanceof Date) return value;
+  const text = String(value ?? "").trim();
+  return new Date(NAIVE_ISO_DATE_TIME.test(text) ? `${text}Z` : text);
+}
+
 // „acum 5 min”, „acum 2 ore”, „ieri”, „acum 3 zile”; după o lună, data.
 export function relativeTime(value, now = Date.now()) {
   if (!value) return "";
-  const time = new Date(value).getTime();
+  const time = parseServerDate(value).getTime();
   if (!Number.isFinite(time)) return "";
   const diff = now - time;
   if (diff < -MINUTE) return new Date(time).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric" });
@@ -25,7 +36,7 @@ export function relativeTime(value, now = Date.now()) {
 
 export function fullDateTime(value) {
   if (!value) return "—";
-  const date = new Date(value);
+  const date = parseServerDate(value);
   return Number.isFinite(date.getTime()) ? date.toLocaleString("ro-RO") : "—";
 }
 
