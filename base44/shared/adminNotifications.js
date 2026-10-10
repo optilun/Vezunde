@@ -145,8 +145,11 @@ async function sendOne(base44, svc, message) {
 async function emailAdmins(base44, svc, record) {
   const entity = svc.entities.AdminNotification;
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const recentSent = await entity.count({ email_status: 'sent', created_date: { $gte: since } }).catch(() => 0);
-  if (Number(recentSent) >= ADMIN_EMAIL_HOURLY_LIMIT) {
+  // 2026-10-10: `filter` + lungime, nu `count` - SDK-ul din functiile de backend (0.8.31) nu are `count`
+  // (testul live: "r.count is not a function", emailul nu a plecat).
+  const recentRows = await entity.filter({ email_status: 'sent', created_date: { $gte: since } }, '-created_date', ADMIN_EMAIL_HOURLY_LIMIT).catch(() => []);
+  const recentSent = Array.isArray(recentRows) ? recentRows.length : 0;
+  if (recentSent >= ADMIN_EMAIL_HOURLY_LIMIT) {
     return { email_status: 'skipped', email_skip_reason: 'hourly_limit', email_recipient_count: 0 };
   }
   const users = await svc.entities.User.filter({ role: 'admin' }, '-created_date', MAX_ADMIN_RECIPIENTS).catch(() => []);
