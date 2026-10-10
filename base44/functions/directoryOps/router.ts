@@ -4,6 +4,7 @@ import { handle as adminDirectoryCorrectionReviewHandle } from './adminDirectory
 import { handle as adminFragmentedOrganizationsHandle } from './adminFragmentedOrganizations.ts';
 import { handle as adminNotificationOpsHandle } from './adminNotificationOps.ts';
 import { handle as adminOrganizationProfileReviewHandle } from './adminOrganizationProfileReview.ts';
+import { handle as adminPatientRequestOpsHandle } from './adminPatientRequestOps.ts';
 import { handle as adminProfessionalProfileReviewHandle } from './adminProfessionalProfileReview.ts';
 import { handle as adminProviderClaimReviewHandle } from './adminProviderClaimReview.ts';
 import { handle as adminProviderScopedClaimReviewHandle } from './adminProviderScopedClaimReview.ts';
@@ -36,6 +37,7 @@ export const DIRECTORY_FUNCTION_HANDLERS: Record<string, DirectoryFunctionHandle
   adminDirectoryCorrectionReview: adminDirectoryCorrectionReviewHandle,
   adminNotificationOps: adminNotificationOpsHandle,
   adminOrganizationProfileReview: adminOrganizationProfileReviewHandle,
+  adminPatientRequestOps: adminPatientRequestOpsHandle,
   adminProfessionalProfileReview: adminProfessionalProfileReviewHandle,
   adminProviderClaimReview: adminProviderClaimReviewHandle,
   adminProviderScopedClaimReview: adminProviderScopedClaimReviewHandle,
