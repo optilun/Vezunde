@@ -2,6 +2,7 @@ import { DIRECTORY_FUNCTION_ROUTES } from '../../shared/directoryFunctionRouting
 import { handle as adminDataIntegrityOpsHandle } from './adminDataIntegrityOps.ts';
 import { handle as adminDirectoryCorrectionReviewHandle } from './adminDirectoryCorrectionReview.ts';
 import { handle as adminFragmentedOrganizationsHandle } from './adminFragmentedOrganizations.ts';
+import { handle as adminNotificationOpsHandle } from './adminNotificationOps.ts';
 import { handle as adminOrganizationProfileReviewHandle } from './adminOrganizationProfileReview.ts';
 import { handle as adminProfessionalProfileReviewHandle } from './adminProfessionalProfileReview.ts';
 import { handle as adminProviderClaimReviewHandle } from './adminProviderClaimReview.ts';
@@ -33,6 +34,7 @@ export const DIRECTORY_FUNCTION_HANDLERS: Record<string, DirectoryFunctionHandle
   adminDataIntegrityOps: adminDataIntegrityOpsHandle,
   adminFragmentedOrganizations: adminFragmentedOrganizationsHandle,
   adminDirectoryCorrectionReview: adminDirectoryCorrectionReviewHandle,
+  adminNotificationOps: adminNotificationOpsHandle,
   adminOrganizationProfileReview: adminOrganizationProfileReviewHandle,
   adminProfessionalProfileReview: adminProfessionalProfileReviewHandle,
   adminProviderClaimReview: adminProviderClaimReviewHandle,
