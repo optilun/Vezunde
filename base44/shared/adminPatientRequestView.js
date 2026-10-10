@@ -72,6 +72,8 @@ export function adminPatientRequestRow(request = {}, classification = {}, { serv
     lifecycle_stage: request.lifecycle_stage || '',
     recovery_status: recoveryStatus || '',
     ...classification,
+    state_label: ADMIN_PATIENT_REQUEST_STATES[classification.state]?.label || '',
+    state_tone: ADMIN_PATIENT_REQUEST_STATES[classification.state]?.tone || 'muted',
   };
 }
 
