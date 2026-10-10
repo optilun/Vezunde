@@ -85,6 +85,13 @@ export const AUTOMATIC_EMAIL_CATALOG = Object.freeze([
     'Sesizarea {{reference}} a fost rezolvata',
     ['Buna ziua,', '', '{{note}}', '', 'Referinta: {{reference}}', '', 'Echipa VIASEE'].join('\n'),
     ['note', 'reference'], ['note']),
+  // 2026-10-10 (Alex: tot ce intra trebuie sa ajunga la admin). Trimis de base44/shared/adminNotifications.js
+  // catre utilizatorii cu rol admin. Fara date de contact ale pacientilor si fara text liber al utilizatorilor.
+  item('admin_new_activity', 'Anunt pentru administrator', 'Administrare',
+    'Cineva trimite ceva ce asteapta decizia adminului: revendicare, locatie noua, modificare de profil, specialist, sesizare, tichet, feedback, cerere de pacient', 'Administratorii VIASEE',
+    'VIASEE admin: {{event_title}}',
+    ['Buna ziua,', '', '{{event_title}}', '{{details}}', '', 'Deschide panoul de administrare:', '{{admin_link}}', '', 'Mesaj automat trimis administratorilor VIASEE. Nu contine datele de contact ale pacientilor.', '', 'Echipa VIASEE'].join('\n'),
+    ['event_title', 'details', 'admin_link'], ['admin_link']),
 ]);
 
 export const EXTERNAL_EMAIL_CATALOG = Object.freeze([
@@ -130,5 +137,7 @@ export function sampleAutomaticEmailVariables() {
     expiry_date: '15.10.2026', professional_label: 'optometrist',
     note: 'Te rugam sa completezi documentele necesare.', business_name: 'Organizatia Exemplu',
     approved_location_count: '2', approved_role: 'organization_owner', reference: 'DIR-2026-0124',
+    event_title: 'Revendicare nouă', details: 'Optica Exemplu · Cluj-Napoca',
+    admin_link: 'https://viasee.ro/admin/operatiuni?s=revendicari',
   };
 }
