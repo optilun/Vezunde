@@ -24,6 +24,7 @@ import {
 } from '../base44/shared/adminPatientRequestView.js';
 import { ADMIN_SECTIONS } from '../src/lib/adminNavConfig.js';
 import { OTHER_QUEUES, sidebarBadgeFor, summarizeCounts } from '../src/lib/adminCounts.js';
+import { parseServerDate, relativeTime } from '../src/lib/adminFormat.js';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -211,5 +212,10 @@ assert.equal(sidebarBadgeFor(counts, 'cereri_pacienti'), 3);
 assert.equal(sidebarBadgeFor(counts, 'contacte_pacienti'), 4);
 const summary = summarizeCounts(counts);
 assert.ok(summary.rows.some((item) => item.key === 'patient_requests_attention' && item.count === 3));
+
+// --- Datele din functiile de backend vin in UTC fara „Z” (testul live: „acum 3 ore” in loc de „acum 3 min”)
+assert.equal(parseServerDate('2026-10-10T17:55:29.046000').toISOString(), '2026-10-10T17:55:29.046Z');
+assert.equal(parseServerDate('2026-10-10T17:55:29.000Z').toISOString(), '2026-10-10T17:55:29.000Z');
+assert.equal(relativeTime('2026-10-10T17:55:29.046000', Date.parse('2026-10-10T17:58:30Z')), 'acum 3 min');
 
 console.log('Admin notifications + cereri pacienti: OK');
