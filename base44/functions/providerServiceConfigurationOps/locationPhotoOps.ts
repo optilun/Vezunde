@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { adminNotificationDetails, notifyAdmins } from '../../shared/adminNotifications.js';
 
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -309,6 +310,14 @@ async function providerSubmit(svc: any, user: any, payload: Record<string, unkno
     previous: { status: submission.status },
     next: { status: 'pending_review', submitted_at: now },
     note: 'Fotografia principala a locatiei a fost trimisa spre verificare.',
+  });
+  // 2026-10-10: anunt pentru admin (clopotel + email), cate unul la fiecare trimitere. Nu blocheaza raspunsul.
+  await notifyAdmins(svc, {
+    event: 'photo_submitted',
+    entityType: 'ProviderWorkspaceSubmission',
+    entityId: submission.id,
+    dedupeKey: `photo_submitted:${submission.id}:${now}`,
+    details: adminNotificationDetails(access.location?.name, access.location?.city, 'fotografia principală'),
   });
   return res({ success: true });
 }
